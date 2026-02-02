@@ -1,0 +1,28 @@
+# Mojo build artifacts
+*.mojopkg
+*.mojopkg.tmp
+
+# pixi environments
+.pixi/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+
+# Packages
+*.mojopkg
+demo
