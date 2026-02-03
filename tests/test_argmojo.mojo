@@ -170,5 +170,230 @@ fn test_has() raises:
     print("  ✓ test_has")
 
 
+# ── Phase 2: Short flag merging ──────────────────────────────────────────────
+
+
+fn test_merged_short_flags() raises:
+    """Test that -abc is expanded to -a -b -c for flags."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("all", help="All").short("a").flag())
+    cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
+    cmd.add_arg(Arg("color", help="Color").short("c").flag())
+
+    var args: List[String] = ["test", "-abc"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("all"), msg="-a should be True from -abc")
+    assert_true(result.get_flag("brief"), msg="-b should be True from -abc")
+    assert_true(result.get_flag("color"), msg="-c should be True from -abc")
+    print("  ✓ test_merged_short_flags")
+
+
+fn test_merged_flags_partial() raises:
+    """Test that -ab only sets those two flags, leaving -c unset."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("all", help="All").short("a").flag())
+    cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
+    cmd.add_arg(Arg("color", help="Color").short("c").flag())
+
+    var args: List[String] = ["test", "-ab"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("all"), msg="-a should be True from -ab")
+    assert_true(result.get_flag("brief"), msg="-b should be True from -ab")
+    assert_false(result.get_flag("color"), msg="-c should be False (not given)")
+    print("  ✓ test_merged_flags_partial")
+
+
+fn test_merged_flags_with_trailing_value() raises:
+    """Test -avo file.txt where -a and -v are flags, -o takes a value."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("all", help="All").short("a").flag())
+    cmd.add_arg(Arg("verbose", help="Verbose").short("v").flag())
+    cmd.add_arg(Arg("output", help="Output").short("o"))
+
+    var args: List[String] = ["test", "-avo", "file.txt"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("all"), msg="-a should be True")
+    assert_true(result.get_flag("verbose"), msg="-v should be True")
+    assert_equal(result.get_string("output"), "file.txt")
+    print("  ✓ test_merged_flags_with_trailing_value")
+
+
+# ── Phase 2: Attached short value ────────────────────────────────────────────
+
+
+fn test_attached_short_value() raises:
+    """Test -ofile.txt where -o takes 'file.txt' as attached value."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("output", help="Output").short("o"))
+
+    var args: List[String] = ["test", "-ofile.txt"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("output"), "file.txt")
+    print("  ✓ test_attached_short_value")
+
+
+fn test_merged_flags_with_attached_value() raises:
+    """Test -abofile.txt where -a,-b are flags, -o takes 'file.txt' inline."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("all", help="All").short("a").flag())
+    cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
+    cmd.add_arg(Arg("output", help="Output").short("o"))
+
+    var args: List[String] = ["test", "-abofile.txt"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("all"), msg="-a should be True")
+    assert_true(result.get_flag("brief"), msg="-b should be True")
+    assert_equal(result.get_string("output"), "file.txt")
+    print("  ✓ test_merged_flags_with_attached_value")
+
+
+# ── Phase 2: Choices validation ──────────────────────────────────────────────
+
+
+fn test_choices_valid() raises:
+    """Test that a valid choice is accepted."""
+    var cmd = Command("test", "Test app")
+    var fmts: List[String] = ["json", "csv", "table"]
+    cmd.add_arg(
+        Arg("format", help="Output format")
+        .long("format")
+        .short("f")
+        .choices(fmts^)
+    )
+
+    var args: List[String] = ["test", "--format", "json"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("format"), "json")
+    print("  ✓ test_choices_valid")
+
+
+fn test_choices_invalid() raises:
+    """Test that an invalid choice raises an error."""
+    var cmd = Command("test", "Test app")
+    var fmts: List[String] = ["json", "csv", "table"]
+    cmd.add_arg(
+        Arg("format", help="Output format")
+        .long("format")
+        .short("f")
+        .choices(fmts^)
+    )
+
+    var args: List[String] = ["test", "--format", "xml"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Invalid value" in msg,
+            msg="Error should mention invalid value",
+        )
+        assert_true(
+            "xml" in msg, msg="Error should mention the bad value 'xml'"
+        )
+    assert_true(caught, msg="Should have raised an error for invalid choice")
+    print("  ✓ test_choices_invalid")
+
+
+fn test_choices_with_short_attached() raises:
+    """Test choices validation with attached short value like -fxml."""
+    var cmd = Command("test", "Test app")
+    var fmts: List[String] = ["json", "csv", "table"]
+    cmd.add_arg(
+        Arg("format", help="Output format")
+        .long("format")
+        .short("f")
+        .choices(fmts^)
+    )
+
+    var args: List[String] = ["test", "-fjson"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("format"), "json")
+    print("  ✓ test_choices_with_short_attached")
+
+
+# ── Phase 2: Hidden arguments ────────────────────────────────────────────────
+
+
+fn test_hidden_not_in_help() raises:
+    """Test that hidden arguments are excluded from help output."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
+    )
+    cmd.add_arg(
+        Arg("debug", help="Debug mode")
+        .long("debug")
+        .short("d")
+        .flag()
+        .hidden()
+    )
+
+    var help = cmd._generate_help()
+    assert_true("verbose" in help, msg="visible arg should be in help")
+    assert_false("debug" in help, msg="hidden arg should NOT be in help")
+    print("  ✓ test_hidden_not_in_help")
+
+
+fn test_hidden_still_works() raises:
+    """Test that hidden arguments can still be used at the command line."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("debug", help="Debug mode")
+        .long("debug")
+        .short("d")
+        .flag()
+        .hidden()
+    )
+
+    var args: List[String] = ["test", "--debug"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("debug"), msg="hidden --debug should work")
+    print("  ✓ test_hidden_still_works")
+
+
+# ── Phase 2: Metavar ─────────────────────────────────────────────────────────
+
+
+fn test_metavar_in_help() raises:
+    """Test that metavar appears in help output."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("output", help="Output file")
+        .long("output")
+        .short("o")
+        .metavar("FILE")
+    )
+
+    var help = cmd._generate_help()
+    assert_true("FILE" in help, msg="metavar 'FILE' should appear in help")
+    # Should NOT show the default "<output>" form.
+    assert_false(
+        "<output>" in help,
+        msg="default placeholder should not appear when metavar is set",
+    )
+    print("  ✓ test_metavar_in_help")
+
+
+fn test_choices_in_help() raises:
+    """Test that choices are displayed in help when no metavar."""
+    var cmd = Command("test", "Test app")
+    var fmts: List[String] = ["json", "csv", "table"]
+    cmd.add_arg(
+        Arg("format", help="Output format")
+        .long("format")
+        .short("f")
+        .choices(fmts^)
+    )
+
+    var help = cmd._generate_help()
+    assert_true(
+        "{json,csv,table}" in help,
+        msg="choices should appear in help as {json,csv,table}",
+    )
+    print("  ✓ test_choices_in_help")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

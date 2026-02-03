@@ -1,4 +1,4 @@
-"""ParseResult — stores parsed argument values."""
+"""Stores parsed argument values."""
 
 
 struct ParseResult(Movable, Stringable, Writable):
@@ -17,14 +17,14 @@ struct ParseResult(Movable, Stringable, Writable):
     """Names of positional arguments, in declaration order."""
 
     fn __init__(out self):
-        """Create an empty ParseResult."""
+        """Creates an empty ParseResult."""
         self.flags = Dict[String, Bool]()
         self.values = Dict[String, String]()
         self.positionals = List[String]()
         self._positional_names = List[String]()
 
     fn get_flag(self, name: String) -> Bool:
-        """Get a boolean flag value. Returns False if not set.
+        """Gets a boolean flag value. Returns False if not set.
 
         Args:
             name: The argument name.
@@ -38,7 +38,7 @@ struct ParseResult(Movable, Stringable, Writable):
             return False
 
     fn get_string(self, name: String) raises -> String:
-        """Get a string argument value.
+        """Gets a string argument value.
 
         Args:
             name: The argument name.
@@ -64,7 +64,7 @@ struct ParseResult(Movable, Stringable, Writable):
         raise Error("Argument '" + name + "' not found")
 
     fn get_int(self, name: String) raises -> Int:
-        """Get an integer argument value.
+        """Gets an integer argument value.
 
         Args:
             name: The argument name.
@@ -79,7 +79,7 @@ struct ParseResult(Movable, Stringable, Writable):
         return Int(atol(s))
 
     fn has(self, name: String) -> Bool:
-        """Check whether an argument was provided.
+        """Checks whether an argument was provided.
 
         Args:
             name: The argument name.
@@ -106,7 +106,7 @@ struct ParseResult(Movable, Stringable, Writable):
         return s
 
     fn write_to[W: Writer](self, mut writer: W):
-        """Write the string representation to a writer.
+        """Writes the string representation to a writer.
 
         Parameters:
             W: The writer type.

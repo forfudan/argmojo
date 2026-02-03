@@ -1,7 +1,6 @@
 """Defines a single command-line argument."""
 
 
-@fieldwise_init
 struct Arg(Copyable, Movable, Stringable, Writable):
     """Defines a command-line argument with its metadata and constraints.
 
@@ -30,6 +29,12 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """Default value used when the argument is not provided."""
     var has_default: Bool
     """Whether a default value has been set."""
+    var choice_values: List[String]
+    """Allowed values for this argument. Empty means any value is accepted."""
+    var metavar_name: String
+    """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
+    var is_hidden: Bool
+    """If True, this argument is not shown in help output."""
 
     fn __init__(out self, name: String, *, help: String = ""):
         """Creates a new argument definition.
@@ -47,6 +52,49 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_positional = False
         self.default_value = ""
         self.has_default = False
+        self.choice_values = List[String]()
+        self.metavar_name = ""
+        self.is_hidden = False
+
+    fn __copyinit__(out self, other: Self):
+        """Creates a copy of this argument.
+
+        Args:
+            other: The Arg to copy from.
+        """
+        self.name = other.name
+        self.help_text = other.help_text
+        self.long_name = other.long_name
+        self.short_name = other.short_name
+        self.is_flag = other.is_flag
+        self.is_required = other.is_required
+        self.is_positional = other.is_positional
+        self.default_value = other.default_value
+        self.has_default = other.has_default
+        self.choice_values = List[String]()
+        for i in range(len(other.choice_values)):
+            self.choice_values.append(other.choice_values[i])
+        self.metavar_name = other.metavar_name
+        self.is_hidden = other.is_hidden
+
+    fn __moveinit__(out self, deinit other: Self):
+        """Moves the value from another Arg.
+
+        Args:
+            other: The Arg to move from.
+        """
+        self.name = other.name^
+        self.help_text = other.help_text^
+        self.long_name = other.long_name^
+        self.short_name = other.short_name^
+        self.is_flag = other.is_flag
+        self.is_required = other.is_required
+        self.is_positional = other.is_positional
+        self.default_value = other.default_value^
+        self.has_default = other.has_default
+        self.choice_values = other.choice_values^
+        self.metavar_name = other.metavar_name^
+        self.is_hidden = other.is_hidden
 
     fn long(var self, name: String) -> Self:
         """Sets the long option name (e.g., 'lingming' for --lingming).
@@ -130,6 +178,42 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         """
         self.default_value = value
         self.has_default = True
+        return self^
+
+    fn choices(var self, var values: List[String]) -> Self:
+        """Restricts the allowed values for this argument.
+
+        Args:
+            values: The list of allowed values.
+
+        Returns:
+            Self with the choices set.
+        """
+        self.choice_values = values^
+        return self^
+
+    fn metavar(var self, name: String) -> Self:
+        """Sets the display name for the value in help text.
+
+        For example, `.metavar("FILE")` causes help to show `--output FILE`
+        instead of `--output OUTPUT`.
+
+        Args:
+            name: The display name.
+
+        Returns:
+            Self with the metavar set.
+        """
+        self.metavar_name = name
+        return self^
+
+    fn hidden(var self) -> Self:
+        """Marks this argument as hidden (not shown in help output).
+
+        Returns:
+            Self marked as hidden.
+        """
+        self.is_hidden = True
         return self^
 
     fn __str__(self) -> String:

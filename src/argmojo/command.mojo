@@ -140,23 +140,74 @@ struct Command(Stringable, Writable):
                                 "Option '--" + key + "' requires a value"
                             )
                         value = raw_args[i]
+                    self._validate_choices(matched, value)
                     result.values[matched.name] = value
                 i += 1
                 continue
 
-            # Short option: -k, -k value
+            # Short option: -k, -k value, -abc (merged flags), -ofile.txt
             if arg.startswith("-") and len(arg) > 1:
                 var key = String(arg[1:])
-                var matched = self._find_by_short(key)
-                if matched.is_flag:
-                    result.flags[matched.name] = True
-                else:
+
+                # Single-char short option: -f or -k value
+                if len(key) == 1:
+                    var matched = self._find_by_short(key)
+                    if matched.is_flag:
+                        result.flags[matched.name] = True
+                    else:
+                        i += 1
+                        if i >= len(raw_args):
+                            raise Error(
+                                "Option '-" + key + "' requires a value"
+                            )
+                        var val = raw_args[i]
+                        self._validate_choices(matched, val)
+                        result.values[matched.name] = val
                     i += 1
-                    if i >= len(raw_args):
-                        raise Error("Option '-" + key + "' requires a value")
-                    result.values[matched.name] = raw_args[i]
-                i += 1
-                continue
+                    continue
+
+                # Multi-char: could be merged flags (-abc) or attached
+                # value (-ofile.txt).
+                # Strategy: try first char as a short option.
+                var first_char = String(key[0:1])
+                var first_match = self._find_by_short(first_char)
+
+                if first_match.is_flag:
+                    # First char is a flag — treat entire string as merged
+                    # flags, except the last char which may take a value.
+                    var j: Int = 0
+                    while j < len(key):
+                        var ch = String(key[j : j + 1])
+                        var m = self._find_by_short(ch)
+                        if m.is_flag:
+                            result.flags[m.name] = True
+                            j += 1
+                        else:
+                            # This char takes a value — rest of string is
+                            # the value.
+                            var val = String(key[j + 1 :])
+                            if len(val) == 0:
+                                i += 1
+                                if i >= len(raw_args):
+                                    raise Error(
+                                        "Option '-"
+                                        + ch
+                                        + "' requires a value"
+                                    )
+                                val = raw_args[i]
+                            self._validate_choices(m, val)
+                            result.values[m.name] = val
+                            j = len(key)  # break
+                    i += 1
+                    continue
+                else:
+                    # First char takes a value — rest of string is the
+                    # attached value (e.g., -ofile.txt).
+                    var val = String(key[1:])
+                    self._validate_choices(first_match, val)
+                    result.values[first_match.name] = val
+                    i += 1
+                    continue
 
             # Positional argument.
             result.positionals.append(arg)
@@ -221,6 +272,36 @@ struct Command(Stringable, Writable):
                 return self.args[i].copy()
         raise Error("Unknown option '-" + name + "'")
 
+    fn _validate_choices(self, arg: Arg, value: String) raises:
+        """Validates that the value is in the allowed choices.
+
+        Args:
+            arg: The argument definition.
+            value: The value to validate.
+
+        Raises:
+            Error if the value is not in the allowed choices.
+        """
+        if len(arg.choice_values) == 0:
+            return
+        for i in range(len(arg.choice_values)):
+            if arg.choice_values[i] == value:
+                return
+        var allowed = String("")
+        for i in range(len(arg.choice_values)):
+            if i > 0:
+                allowed += ", "
+            allowed += "'" + arg.choice_values[i] + "'"
+        raise Error(
+            "Invalid value '"
+            + value
+            + "' for argument '"
+            + arg.name
+            + "' (choose from "
+            + allowed
+            + ")"
+        )
+
     fn _generate_help(self) -> String:
         """Generates a help message from registered arguments.
 
@@ -234,7 +315,7 @@ struct Command(Stringable, Writable):
 
         # Show positional args in usage line.
         for i in range(len(self.args)):
-            if self.args[i].is_positional:
+            if self.args[i].is_positional and not self.args[i].is_hidden:
                 if self.args[i].is_required:
                     s += " <" + self.args[i].name + ">"
                 else:
@@ -245,14 +326,14 @@ struct Command(Stringable, Writable):
         # Positional arguments section.
         var has_positional = False
         for i in range(len(self.args)):
-            if self.args[i].is_positional:
+            if self.args[i].is_positional and not self.args[i].is_hidden:
                 has_positional = True
                 break
 
         if has_positional:
             s += "Arguments:\n"
             for i in range(len(self.args)):
-                if self.args[i].is_positional:
+                if self.args[i].is_positional and not self.args[i].is_hidden:
                     s += "  " + self.args[i].name
                     if self.args[i].help_text:
                         s += "    " + self.args[i].help_text
@@ -262,7 +343,7 @@ struct Command(Stringable, Writable):
         # Options section.
         s += "Options:\n"
         for i in range(len(self.args)):
-            if not self.args[i].is_positional:
+            if not self.args[i].is_positional and not self.args[i].is_hidden:
                 var line = String("  ")
                 if self.args[i].short_name:
                     line += "-" + self.args[i].short_name
@@ -272,15 +353,32 @@ struct Command(Stringable, Writable):
                     line += "    "
                 if self.args[i].long_name:
                     line += "--" + self.args[i].long_name
+
+                # Show metavar or choices for value-taking options.
+                if not self.args[i].is_flag:
+                    if self.args[i].metavar_name:
+                        line += " " + self.args[i].metavar_name
+                    elif len(self.args[i].choice_values) > 0:
+                        var choices_str = String("{")
+                        for j in range(len(self.args[i].choice_values)):
+                            if j > 0:
+                                choices_str += ","
+                            choices_str += self.args[i].choice_values[j]
+                        choices_str += "}"
+                        line += " " + choices_str
+                    else:
+                        # Default: uppercase name.
+                        line += " <" + self.args[i].name + ">"
+
                 if self.args[i].help_text:
                     # Simple padding.
-                    while len(line) < 24:
+                    while len(line) < 30:
                         line += " "
                     line += self.args[i].help_text
                 s += line + "\n"
 
-        s += "  -h, --help              Show this help message\n"
-        s += "  -V, --version           Show version\n"
+        s += "  -h, --help                  Show this help message\n"
+        s += "  -V, --version               Show version\n"
 
         return s
 
