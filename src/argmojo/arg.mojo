@@ -35,6 +35,8 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
     var is_hidden: Bool
     """If True, this argument is not shown in help output."""
+    var is_count: Bool
+    """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
 
     fn __init__(out self, name: String, *, help: String = ""):
         """Creates a new argument definition.
@@ -55,6 +57,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.choice_values = List[String]()
         self.metavar_name = ""
         self.is_hidden = False
+        self.is_count = False
 
     fn __copyinit__(out self, other: Self):
         """Creates a copy of this argument.
@@ -76,6 +79,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
             self.choice_values.append(other.choice_values[i])
         self.metavar_name = other.metavar_name
         self.is_hidden = other.is_hidden
+        self.is_count = other.is_count
 
     fn __moveinit__(out self, deinit other: Self):
         """Moves the value from another Arg.
@@ -95,6 +99,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.choice_values = other.choice_values^
         self.metavar_name = other.metavar_name^
         self.is_hidden = other.is_hidden
+        self.is_count = other.is_count
 
     fn long(var self, name: String) -> Self:
         """Sets the long option name (e.g., 'lingming' for --lingming).
@@ -214,6 +219,19 @@ struct Arg(Copyable, Movable, Stringable, Writable):
             Self marked as hidden.
         """
         self.is_hidden = True
+        return self^
+
+    fn count(var self) -> Self:
+        """Marks this argument as a counter flag.
+
+        Each occurrence increments a counter. For example, `-vvv` sets
+        the count to 3. Use `get_count()` on ParseResult to retrieve.
+
+        Returns:
+            Self marked as a counter.
+        """
+        self.is_count = True
+        self.is_flag = True
         return self^
 
     fn __str__(self) -> String:

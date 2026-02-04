@@ -105,7 +105,7 @@ src/argmojo/
 ├── command.mojo         # Command struct — command definition & parsing
 └── result.mojo          # ParseResult struct — parsed values
 tests/
-└── test_argmojo.mojo    # 11 tests, all passing ✓
+└── test_argmojo.mojo    # 30 tests, all passing ✓
 examples/
 └── demo.mojo            # Demo CLI tool, compilable to binary
 ```
@@ -127,6 +127,14 @@ examples/
 | Auto `--help` / `-h` with generated help text                         | ✓      | —     |
 | Auto `--version` / `-V`                                               | ✓      | —     |
 | Demo binary (`mojo build`)                                            | ✓      | —     |
+| Short flag merging (`-abc` → `-a -b -c`)                              | ✓      | ✓     |
+| Short option with attached value (`-ofile.txt`)                       | ✓      | ✓     |
+| Choices validation (`.choices()`)                                     | ✓      | ✓     |
+| Metavar (`.metavar("FILE")`)                                          | ✓      | ✓     |
+| Hidden arguments (`.hidden()`)                                        | ✓      | ✓     |
+| Count action (`-vvv` → 3)                                             | ✓      | ✓     |
+| Positional arg count validation                                       | ✓      | ✓     |
+| Clean exit for `--help` / `--version`                                 | ✓      | —     |
 
 ### 4.3 API Design (Current)
 
@@ -134,7 +142,7 @@ examples/
 from argmojo import Command, Arg
 
 fn main() raises:
-    var cmd = Command("sou", "A CJK-aware text search tool")
+    var cmd = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
 
     # Positional arguments
     cmd.add_arg(Arg("pattern", help="Search pattern").required().positional())
@@ -163,6 +171,10 @@ fn main() raises:
 # Short options
 -f                  # Boolean flag
 -k value            # Key-value
+-abc                # Merged short flags → -a -b -c
+-ofile.txt          # Attached short value → -o file.txt
+-abofile.txt        # Mixed: -a -b -o file.txt
+-vvv                # Count flag → verbose = 3
 
 # Positional arguments
 pattern             # By order of add_arg() calls
@@ -175,18 +187,25 @@ pattern             # By order of add_arg() calls
 
 ## 5. Development Roadmap
 
-### Phase 2: Parsing Enhancements (Next)
+### Phase 1: Skeleton
 
-- [ ] **Short flag merging** — `-abc` expands to `-a -b -c` (argparse, cobra, clap all support this)
-- [ ] **Short option with attached value** — `-ofile.txt` means `-o file.txt` (argparse, clap)
-- [ ] **Choices validation** — restrict values to a set: `.choices(["debug", "info", "warn", "error"])`
-- [ ] **Metavar** — display name for values in help: `.metavar("FILE")` → `--output FILE`
-- [ ] **Positional arg count validation** — fail if too many/too few positional args
-- [ ] **Hidden arguments** — `.hidden()` to exclude from help output (cobra, clap)
-- [ ] **`count` action** — `-vvv` → `get_int("verbose") == 3` (argparse `-v` counting)
-- [ ] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
+- [x] Establish module structure
+- [x] Implement `Arg` struct and builder methods
+- [x] Implement basic `Command` struct
+- [x] Iimplement a small demo CLI tool to test the library
 
-### Phase 3: Relationships & Validation
+### Phase 2: Parsing Enhancements ✓
+
+- [x] **Short flag merging** — `-abc` expands to `-a -b -c` (argparse, cobra, clap all support this)
+- [x] **Short option with attached value** — `-ofile.txt` means `-o file.txt` (argparse, clap)
+- [x] **Choices validation** — restrict values to a set: `.choices(["debug", "info", "warn", "error"])`
+- [x] **Metavar** — display name for values in help: `.metavar("FILE")` → `--output FILE`
+- [x] **Positional arg count validation** — fail if too many positional args
+- [x] **Hidden arguments** — `.hidden()` to exclude from help output (cobra, clap)
+- [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)
+- [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
+
+### Phase 3: Relationships & Validation (Next)
 
 - [ ] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
 - [ ] **Flags required together** — `cmd.required_together(["username", "password"])`
@@ -221,7 +240,7 @@ These will **not** be implemented:
 ## 6. Parsing Algorithm
 
 ```txt
-Input: ["sou", "zhong", "./src", "--ling", "-i", "--max-depth", "3"]
+Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 
 1. Skip argv[0] (program name)
 2. Initialize cursor i = 1

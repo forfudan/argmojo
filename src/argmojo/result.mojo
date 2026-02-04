@@ -13,6 +13,8 @@ struct ParseResult(Movable, Stringable, Writable):
     """String argument values, keyed by argument name."""
     var positionals: List[String]
     """Positional argument values, in order."""
+    var counts: Dict[String, Int]
+    """Counter values for count-type arguments (e.g., -vvv → 3)."""
     var _positional_names: List[String]
     """Names of positional arguments, in declaration order."""
 
@@ -21,6 +23,7 @@ struct ParseResult(Movable, Stringable, Writable):
         self.flags = Dict[String, Bool]()
         self.values = Dict[String, String]()
         self.positionals = List[String]()
+        self.counts = Dict[String, Int]()
         self._positional_names = List[String]()
 
     fn get_flag(self, name: String) -> Bool:
@@ -78,6 +81,20 @@ struct ParseResult(Movable, Stringable, Writable):
         var s = self.get_string(name)
         return Int(atol(s))
 
+    fn get_count(self, name: String) -> Int:
+        """Gets the count for a counter-type argument. Returns 0 if not set.
+
+        Args:
+            name: The argument name.
+
+        Returns:
+            The number of times the flag was provided.
+        """
+        try:
+            return self.counts[name]
+        except:
+            return 0
+
     fn has(self, name: String) -> Bool:
         """Checks whether an argument was provided.
 
@@ -90,6 +107,8 @@ struct ParseResult(Movable, Stringable, Writable):
         if name in self.flags:
             return True
         if name in self.values:
+            return True
+        if name in self.counts:
             return True
         for i in range(len(self._positional_names)):
             if self._positional_names[i] == name:

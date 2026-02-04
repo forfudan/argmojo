@@ -12,8 +12,8 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Positional arguments**: matched by position
 - **Default values**: fallback when an argument is not provided
 - **Required arguments**: validation that mandatory args are present
-- **Auto-generated help**: `--help` / `-h`
-- **Version display**: `--version` / `-V`
+- **Auto-generated help**: `--help` / `-h` (no need to implement manually)
+- **Version display**: `--version` / `-V` (also auto-generated)
 - **`--` stop marker**: everything after `--` is treated as positional
 
 ---

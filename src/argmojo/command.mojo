@@ -1,6 +1,6 @@
 """Defines a CLI command and performs argument parsing."""
 
-from sys import argv
+from sys import argv, exit
 
 from .arg import Arg
 from .result import ParseResult
@@ -109,12 +109,12 @@ struct Command(Stringable, Writable):
             # Handle --help / -h
             if arg == "--help" or arg == "-h":
                 print(self._generate_help())
-                raise Error("Help requested")
+                exit(0)
 
             # Handle --version / -V
             if arg == "--version" or arg == "-V":
                 print(self.name + " " + self.version)
-                raise Error("Version requested")
+                exit(0)
 
             # Long option: --key, --key=value, --key value
             if arg.startswith("--"):
@@ -130,7 +130,15 @@ struct Command(Stringable, Writable):
                     has_eq = True
 
                 var matched = self._find_by_long(key)
-                if matched.is_flag and not has_eq:
+                if matched.is_count and not has_eq:
+                    # Count flag: increment counter.
+                    var cur: Int = 0
+                    try:
+                        cur = result.counts[matched.name]
+                    except:
+                        pass
+                    result.counts[matched.name] = cur + 1
+                elif matched.is_flag and not has_eq:
                     result.flags[matched.name] = True
                 else:
                     if not has_eq:
@@ -152,7 +160,14 @@ struct Command(Stringable, Writable):
                 # Single-char short option: -f or -k value
                 if len(key) == 1:
                     var matched = self._find_by_short(key)
-                    if matched.is_flag:
+                    if matched.is_count:
+                        var cur: Int = 0
+                        try:
+                            cur = result.counts[matched.name]
+                        except:
+                            pass
+                        result.counts[matched.name] = cur + 1
+                    elif matched.is_flag:
                         result.flags[matched.name] = True
                     else:
                         i += 1
@@ -179,7 +194,15 @@ struct Command(Stringable, Writable):
                     while j < len(key):
                         var ch = String(key[j : j + 1])
                         var m = self._find_by_short(ch)
-                        if m.is_flag:
+                        if m.is_count:
+                            var cur: Int = 0
+                            try:
+                                cur = result.counts[m.name]
+                            except:
+                                pass
+                            result.counts[m.name] = cur + 1
+                            j += 1
+                        elif m.is_flag:
                             result.flags[m.name] = True
                             j += 1
                         else:
@@ -235,6 +258,16 @@ struct Command(Stringable, Writable):
                 raise Error(
                     "Required argument '" + a.name + "' was not provided"
                 )
+
+        # Validate positional argument count — too many args is an error.
+        var expected_count: Int = len(result._positional_names)
+        if expected_count > 0 and len(result.positionals) > expected_count:
+            raise Error(
+                "Too many positional arguments: expected "
+                + String(expected_count)
+                + ", got "
+                + String(len(result.positionals))
+            )
 
         return result^
 

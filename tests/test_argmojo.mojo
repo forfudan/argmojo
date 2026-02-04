@@ -395,5 +395,124 @@ fn test_choices_in_help() raises:
     print("  ✓ test_choices_in_help")
 
 
+# ── Phase 2: Count action ────────────────────────────────────────────────────
+
+
+fn test_count_single() raises:
+    """Test that -v sets count to 1."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test", "-v"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_count("verbose"), 1)
+    print("  ✓ test_count_single")
+
+
+fn test_count_triple() raises:
+    """Test that -vvv sets count to 3."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test", "-vvv"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_count("verbose"), 3)
+    print("  ✓ test_count_triple")
+
+
+fn test_count_long_repeated() raises:
+    """Test that --verbose --verbose sets count to 2."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test", "--verbose", "--verbose"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_count("verbose"), 2)
+    print("  ✓ test_count_long_repeated")
+
+
+fn test_count_mixed_short_long() raises:
+    """Test that -vv --verbose sets count to 3."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test", "-vv", "--verbose"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_count("verbose"), 3)
+    print("  ✓ test_count_mixed_short_long")
+
+
+fn test_count_default_zero() raises:
+    """Test that an unprovided count arg returns 0."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_count("verbose"), 0)
+    print("  ✓ test_count_default_zero")
+
+
+# ── Phase 2: Positional arg count validation ─────────────────────────────────
+
+
+fn test_too_many_positionals() raises:
+    """Test that extra positional args raise an error."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("pattern", help="Pattern").positional().required())
+
+    var args: List[String] = ["test", "hello", "extra1", "extra2"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Too many positional" in msg,
+            msg="Error should mention too many positional args",
+        )
+    assert_true(caught, msg="Should have raised error for extra positional args")
+    print("  ✓ test_too_many_positionals")
+
+
+fn test_exact_positionals_ok() raises:
+    """Test that the exact number of positional args is accepted."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("pattern", help="Pattern").positional().required())
+    cmd.add_arg(Arg("path", help="Path").positional().default("."))
+
+    var args: List[String] = ["test", "hello", "./src"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("pattern"), "hello")
+    assert_equal(result.get_string("path"), "./src")
+    print("  ✓ test_exact_positionals_ok")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

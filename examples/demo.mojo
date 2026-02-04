@@ -27,7 +27,7 @@ fn main() raises:
         .long("max-depth")
         .short("d")
     )
-
+    
     # Parse real argv
     var result = cmd.parse()
 
