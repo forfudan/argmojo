@@ -18,7 +18,7 @@ python = ">=3.13,<3.14"
 
 [tasks]
 # format the code
-format = "mojo format ./src ./tests"
+format = "mojo format ./src ./tests ./examples"
 
 # compile the package
 package = "mojo package src/argmojo -o argmojo.mojopkg"

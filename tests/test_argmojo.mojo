@@ -323,11 +323,7 @@ fn test_hidden_not_in_help() raises:
         Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
     )
     cmd.add_arg(
-        Arg("debug", help="Debug mode")
-        .long("debug")
-        .short("d")
-        .flag()
-        .hidden()
+        Arg("debug", help="Debug mode").long("debug").short("d").flag().hidden()
     )
 
     var help = cmd._generate_help()
@@ -340,11 +336,7 @@ fn test_hidden_still_works() raises:
     """Test that hidden arguments can still be used at the command line."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
-        Arg("debug", help="Debug mode")
-        .long("debug")
-        .short("d")
-        .flag()
-        .hidden()
+        Arg("debug", help="Debug mode").long("debug").short("d").flag().hidden()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -497,7 +489,9 @@ fn test_too_many_positionals() raises:
             "Too many positional" in msg,
             msg="Error should mention too many positional args",
         )
-    assert_true(caught, msg="Should have raised error for extra positional args")
+    assert_true(
+        caught, msg="Should have raised error for extra positional args"
+    )
     print("  ✓ test_too_many_positionals")
 
 

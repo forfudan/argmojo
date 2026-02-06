@@ -213,9 +213,7 @@ struct Command(Stringable, Writable):
                                 i += 1
                                 if i >= len(raw_args):
                                     raise Error(
-                                        "Option '-"
-                                        + ch
-                                        + "' requires a value"
+                                        "Option '-" + ch + "' requires a value"
                                     )
                                 val = raw_args[i]
                             self._validate_choices(m, val)

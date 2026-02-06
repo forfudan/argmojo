@@ -1,6 +1,6 @@
 # ArgMojo
 
-A command-line argument parser library for [Mojo](https://www.modular.com/mojo), inspired by Rust's [clap](https://github.com/clap-rs/clap).
+A command-line argument parser library for [Mojo](https://www.modular.com/mojo).
 
 ## Overview
 
@@ -18,7 +18,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 
 ---
 
-I created this project to support my experiments with a CLI-based Chinese character search engine in Mojo, as well as a CLI-based calculator for [DeciMojo](https://github.com/forfudan/decimojo).
+I created this project to support my experiments with a CLI-based Chinese character search engine in Mojo, as well as a CLI-based calculator for [DeciMojo](https://github.com/forfudan/decimojo). It is inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, and other popular argument parsing libraries, but designed to fit Mojo's unique features and constraints.
 
 ## Installation
 
@@ -33,37 +33,46 @@ pixi install
 ## Quick Start
 
 ```mojo
-from argmojo import Command, Arg
+from argmojo import Arg, Command
+
 
 fn main() raises:
-    var cmd = Command("myapp", "A sample application", version="1.0.0")
+    var cmd = Command("demo", "A CJK-aware text search tool supporting both Pinyin and Yuhao IME", version="0.1.0")
 
     # Positional arguments
+    # demo "hello" ./src
     cmd.add_arg(
-        Arg("input", help="Input file").positional().required()
+        Arg("pattern", help="Search pattern").positional().required()
+    )  
+    cmd.add_arg(
+        Arg("path", help="Search path").positional().default(".")
     )
 
     # Options
     cmd.add_arg(
-        Arg("output", help="Output file")
-            .long("output").short("o").default("out.txt")
+        Arg("ling", help="Use Lingming IME for encoding")
+        .long("ling")
+        .short("l")
+        .flag()
     )
-
-    # Flags
     cmd.add_arg(
-        Arg("verbose", help="Enable verbose output")
-            .long("verbose").short("v").flag()
+        Arg("max-depth", help="Maximum directory depth")
+        .long("max-depth")
+        .short("d")
     )
-
+    
+    # Parse real argv
     var result = cmd.parse()
 
-    var input_file = result.get_string("input")
-    var output_file = result.get_string("output")
-    var verbose = result.get_flag("verbose")
-
-    if verbose:
-        print("Input:", input_file)
-        print("Output:", output_file)
+    # Print what we got
+    print("=== Parsed Arguments ===")
+    print("  pattern:     ", result.get_string("pattern"))
+    print("  path:        ", result.get_string("path"))
+    print("  --ling:      ", result.get_flag("ling"))
+    if result.has("max-depth"):
+        print("  --max-depth: ", result.get_string("max-depth"))
+    else:
+        print("  --max-depth:  (not set)")
 ```
 
 ```bash

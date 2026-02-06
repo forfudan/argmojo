@@ -4,16 +4,16 @@ from argmojo import Arg, Command
 
 
 fn main() raises:
-    var cmd = Command("demo", "A CJK-aware text search tool", version="0.1.0")
+    var cmd = Command(
+        "demo",
+        "A CJK-aware text search tool supporting both Pinyin and Yuhao IME",
+        version="0.1.0",
+    )
 
     # Positional arguments
     # demo "hello" ./src
-    cmd.add_arg(
-        Arg("pattern", help="Search pattern").positional().required()
-    )  
-    cmd.add_arg(
-        Arg("path", help="Search path").positional().default(".")
-    )
+    cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
+    cmd.add_arg(Arg("path", help="Search path").positional().default("."))
 
     # Options
     cmd.add_arg(
@@ -27,7 +27,7 @@ fn main() raises:
         .long("max-depth")
         .short("d")
     )
-    
+
     # Parse real argv
     var result = cmd.parse()
 

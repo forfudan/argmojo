@@ -202,8 +202,7 @@ pattern             # By order of add_arg() calls
 - [x] **Metavar** — display name for values in help: `.metavar("FILE")` → `--output FILE`
 - [x] **Positional arg count validation** — fail if too many positional args
 - [x] **Hidden arguments** — `.hidden()` to exclude from help output (cobra, clap)
-- [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)
-- [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
+- [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)- [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
 
 ### Phase 3: Relationships & Validation (Next)
 
