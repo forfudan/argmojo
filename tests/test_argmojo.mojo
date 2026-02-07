@@ -508,5 +508,94 @@ fn test_exact_positionals_ok() raises:
     print("  ✓ test_exact_positionals_ok")
 
 
+# ── Phase 3: Mutually exclusive groups ────────────────────────────────────────
+
+
+fn test_exclusive_one_provided() raises:
+    """Test that providing one arg from an exclusive group is fine."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
+    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
+    var group: List[String] = ["json", "yaml", "toml"]
+    cmd.mutually_exclusive(group^)
+
+    var args: List[String] = ["test", "--json"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("json"), msg="--json should be True")
+    assert_false(result.get_flag("yaml"), msg="--yaml should be False")
+    print("  ✓ test_exclusive_one_provided")
+
+
+fn test_exclusive_none_provided() raises:
+    """Test that providing no arg from an exclusive group is fine."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
+    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    var group: List[String] = ["json", "yaml"]
+    cmd.mutually_exclusive(group^)
+
+    var args: List[String] = ["test"]
+    var result = cmd.parse_args(args)
+    assert_false(result.get_flag("json"), msg="--json should be False")
+    assert_false(result.get_flag("yaml"), msg="--yaml should be False")
+    print("  ✓ test_exclusive_none_provided")
+
+
+fn test_exclusive_conflict() raises:
+    """Test that providing two args from an exclusive group raises an error."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
+    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
+    var group: List[String] = ["json", "yaml", "toml"]
+    cmd.mutually_exclusive(group^)
+
+    var args: List[String] = ["test", "--json", "--yaml"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "mutually exclusive" in msg,
+            msg="Error should mention mutually exclusive",
+        )
+        assert_true(
+            "--json" in msg,
+            msg="Error should mention --json",
+        )
+        assert_true(
+            "--yaml" in msg,
+            msg="Error should mention --yaml",
+        )
+    assert_true(caught, msg="Should have raised error for exclusive conflict")
+    print("  ✓ test_exclusive_conflict")
+
+
+fn test_exclusive_value_args() raises:
+    """Test mutually exclusive with value-taking args."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("input", help="Input file").long("input"))
+    cmd.add_arg(Arg("stdin", help="Read stdin").long("stdin").flag())
+    var group: List[String] = ["input", "stdin"]
+    cmd.mutually_exclusive(group^)
+
+    var args: List[String] = ["test", "--input", "file.txt", "--stdin"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "mutually exclusive" in msg,
+            msg="Error should mention mutually exclusive",
+        )
+    assert_true(caught, msg="Should have raised error for exclusive conflict")
+    print("  ✓ test_exclusive_value_args")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

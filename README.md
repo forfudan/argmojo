@@ -15,6 +15,14 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Auto-generated help**: `--help` / `-h` (no need to implement manually)
 - **Version display**: `--version` / `-V` (also auto-generated)
 - **`--` stop marker**: everything after `--` is treated as positional
+- **Short flag merging**: `-abc` expands to `-a -b -c`
+- **Attached short values**: `-ofile.txt` means `-o file.txt`
+- **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
+- **Metavar**: custom display name for values in help text
+- **Hidden arguments**: exclude internal args from `--help` output
+- **Count flags**: `-vvv` → `get_count("verbose") == 3`
+- **Positional arg count validation**: reject extra positional args
+- **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
 
 ---
 
@@ -32,53 +40,140 @@ pixi install
 
 ## Quick Start
 
+Here is a simple example of how to use ArgMojo in a Mojo program. The full example can be found in `examples/demo.mojo`.
+
 ```mojo
 from argmojo import Arg, Command
 
 
 fn main() raises:
-    var cmd = Command("demo", "A CJK-aware text search tool supporting both Pinyin and Yuhao IME", version="0.1.0")
+    var cmd = Command("sou", "A CJK-aware text search tool", version="0.1.0")
 
     # Positional arguments
-    # demo "hello" ./src
-    cmd.add_arg(
-        Arg("pattern", help="Search pattern").positional().required()
-    )  
-    cmd.add_arg(
-        Arg("path", help="Search path").positional().default(".")
-    )
+    cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
+    cmd.add_arg(Arg("path", help="Search path").positional().default("."))
 
-    # Options
+    # Boolean flags
     cmd.add_arg(
         Arg("ling", help="Use Lingming IME for encoding")
-        .long("ling")
-        .short("l")
-        .flag()
+        .long("ling").short("l").flag()
     )
-    cmd.add_arg(
-        Arg("max-depth", help="Maximum directory depth")
-        .long("max-depth")
-        .short("d")
-    )
-    
-    # Parse real argv
-    var result = cmd.parse()
 
-    # Print what we got
-    print("=== Parsed Arguments ===")
-    print("  pattern:     ", result.get_string("pattern"))
-    print("  path:        ", result.get_string("path"))
-    print("  --ling:      ", result.get_flag("ling"))
-    if result.has("max-depth"):
-        print("  --max-depth: ", result.get_string("max-depth"))
-    else:
-        print("  --max-depth:  (not set)")
+    # Count flag (verbosity)
+    cmd.add_arg(
+        Arg("verbose", help="Increase verbosity (-v, -vv, -vvv)")
+        .long("verbose").short("v").count()
+    )
+
+    # Key-value option with choices and metavar
+    var formats: List[String] = ["json", "csv", "table"]
+    cmd.add_arg(
+        Arg("format", help="Output format")
+        .long("format").short("f").choices(formats^).default("table")
+    )
+
+    # Mutually exclusive flags
+    cmd.add_arg(Arg("color", help="Force colored output").long("color").flag())
+    cmd.add_arg(Arg("no-color", help="Disable colored output").long("no-color").flag())
+    var excl: List[String] = ["color", "no-color"]
+    cmd.mutually_exclusive(excl^)
+
+    # Parse and use
+    var result = cmd.parse()
+    print("pattern:", result.get_string("pattern"))
+    print("verbose:", result.get_count("verbose"))
+    print("format: ", result.get_string("format"))
 ```
 
+## Usage Examples
+
+Build the demo binary first, then try the examples below:
+
 ```bash
-$ mojo run main.mojo data.csv --verbose -o result.txt
-Input: data.csv
-Output: result.txt
+pixi run build_demo
+```
+
+### Basic usage — positional args and flags
+
+```bash
+./demo "nihao" ./src --ling
+```
+
+### Short options and default values
+
+The second positional arg (`path`) defaults to `"."` when omitted:
+
+```bash
+./demo "zhongguo" -l
+```
+
+### Help and version
+
+```bash
+./demo --help
+./demo --version
+```
+
+### Merged short flags
+
+Multiple short flags can be combined in a single `-` token. For example, `-liv` is equivalent to `-l -i -v`:
+
+```bash
+./demo "pattern" ./src -liv
+```
+
+### Attached short values
+
+A short option can receive its value without a space:
+
+```bash
+./demo "pattern" -d3          # same as -d 3
+./demo "pattern" -ftable      # same as -f table
+```
+
+### Count flags — verbosity
+
+Use `-v` multiple times (merged or repeated) to increase verbosity:
+
+```bash
+./demo "pattern" -v           # verbose = 1
+./demo "pattern" -vvv         # verbose = 3
+./demo "pattern" -v --verbose # verbose = 2  (short + long)
+```
+
+### Choices validation
+
+The `--format` option only accepts `json`, `csv`, or `table`:
+
+```bash
+./demo "pattern" --format json     # OK
+./demo "pattern" --format xml      # Error: Invalid value 'xml' for 'format'. Valid choices: json, csv, table
+```
+
+### Mutually exclusive groups
+
+`--color` and `--no-color` are mutually exclusive — using both is an error:
+
+```bash
+./demo "pattern" --color           # OK
+./demo "pattern" --no-color        # OK
+./demo "pattern" --color --no-color  # Error: Arguments are mutually exclusive: '--color', '--no-color'
+```
+
+### `--` stop marker
+
+Everything after `--` is treated as a positional argument, even if it starts with `-`:
+
+```bash
+./demo --ling -- "--pattern-with-dashes" ./src
+```
+
+### Hidden arguments
+
+Some arguments are excluded from `--help` but still work at the command line (useful for debug flags):
+
+```bash
+./demo "pattern" --debug-index   # Works, but not shown in --help
 ```
 
 ## Development

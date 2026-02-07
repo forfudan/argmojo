@@ -26,6 +26,8 @@ struct Command(Stringable, Writable):
     """Version string for --version output."""
     var args: List[Arg]
     """Registered argument definitions."""
+    var _exclusive_groups: List[List[String]]
+    """Groups of mutually exclusive argument names."""
 
     fn __init__(
         out self,
@@ -44,6 +46,7 @@ struct Command(Stringable, Writable):
         self.description = description
         self.version = version
         self.args = List[Arg]()
+        self._exclusive_groups = List[List[String]]()
 
     fn add_arg(mut self, var arg: Arg):
         """Registers an argument definition.
@@ -52,6 +55,17 @@ struct Command(Stringable, Writable):
             arg: The Arg to register.
         """
         self.args.append(arg^)
+
+    fn mutually_exclusive(mut self, var names: List[String]):
+        """Declares a group of mutually exclusive arguments.
+
+        At most one argument from each group may be provided. Parsing
+        will fail if more than one is present.
+
+        Args:
+            names: The internal names of the arguments in the group.
+        """
+        self._exclusive_groups.append(names^)
 
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
@@ -266,6 +280,32 @@ struct Command(Stringable, Writable):
                 + ", got "
                 + String(len(result.positionals))
             )
+
+        # Validate mutually exclusive groups.
+        for g in range(len(self._exclusive_groups)):
+            var found = List[String]()
+            for n in range(len(self._exclusive_groups[g])):
+                var arg_name = self._exclusive_groups[g][n]
+                if result.has(arg_name):
+                    found.append(arg_name)
+            if len(found) > 1:
+                var names_str = String("")
+                for f in range(len(found)):
+                    if f > 0:
+                        names_str += ", "
+                    # Find display name (--long or -short).
+                    var display = String("'") + found[f] + String("'")
+                    for a in range(len(self.args)):
+                        if self.args[a].name == found[f]:
+                            if self.args[a].long_name:
+                                display = "'--" + self.args[a].long_name + "'"
+                            elif self.args[a].short_name:
+                                display = "'-" + self.args[a].short_name + "'"
+                            break
+                    names_str += display
+                raise Error(
+                    "Arguments are mutually exclusive: " + names_str
+                )
 
         return result^
 
