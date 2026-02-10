@@ -2,6 +2,14 @@
 
 A command-line argument parser library for [Mojo](https://www.modular.com/mojo).
 
+> **A**rguments  
+> **R**esolved and  
+> **G**rouped into  
+> **M**eaningful  
+> **O**ptions and  
+> **J**oined  
+> **O**bjects
+
 ## Overview
 
 ArgMojo provides a builder-pattern API for defining and parsing command-line arguments in Mojo. It supports:
@@ -86,6 +94,8 @@ fn main() raises:
 ```
 
 ## Usage Examples
+
+For detailed explanations and more examples of every feature, see the **[User Manual](docs/user_manual.md)**.
 
 Build the demo binary first, then try the examples below:
 
@@ -197,6 +207,7 @@ pixi run clean
 ```txt
 argmojo/
 ├── docs/                           # Documentation
+│   ├── user_manual.md              # User manual with detailed examples
 │   └── argmojo_overall_planning.md
 ├── src/
 │   └── argmojo/                    # Main package

@@ -206,7 +206,7 @@ pattern             # By order of add_arg() calls
 - [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)
 - [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
 
-### Phase 3: Relationships & Validation (Next)
+### Phase 3: Relationships & Validation (for v0.1)
 
 - [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
 - [ ] **Flags required together** — `cmd.required_together(["username", "password"])`
@@ -214,13 +214,13 @@ pattern             # By order of add_arg() calls
 - [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`
 - [ ] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning (argparse 3.13)
 
-### Phase 4: Subcommands
+### Phase 4: Subcommands (maybe for v0.2)
 
 - [ ] **Subcommand support** — `app <subcommand> [args]` (cobra, argparse, clap)
 - [ ] **Subcommand help** — `app help <subcommand>` or `app <subcommand> --help`
 - [ ] **Global vs local flags** — flags that persist through to subcommands (cobra persistent flags)
 
-### Phase 5: Polish (Nice to Have)
+### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
 - [ ] **Colored error output** — using mist library for ANSI styled errors/help
@@ -229,7 +229,7 @@ pattern             # By order of add_arg() calls
 
 ### Explicitly Out of Scope
 
-These will **not** be implemented:
+These will **NOT** be implemented:
 
 - Derive/decorator-based API (no macros in Mojo)
 - Shell completion script generation
