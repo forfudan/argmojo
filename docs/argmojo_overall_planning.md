@@ -105,7 +105,7 @@ src/argmojo/
 ├── command.mojo         # Command struct — command definition & parsing
 └── result.mojo          # ParseResult struct — parsed values
 tests/
-└── test_argmojo.mojo    # 34 tests, all passing ✓
+└── test_argmojo.mojo    # 38 tests, all passing ✓
 examples/
 └── demo.mojo            # Demo CLI tool, compilable to binary
 ```
@@ -135,8 +135,7 @@ examples/
 | Count action (`-vvv` → 3)                                             | ✓      | ✓     |
 | Positional arg count validation                                       | ✓      | ✓     |
 | Clean exit for `--help` / `--version`                                 | ✓      | —     |
-| Mutually exclusive groups                                             | ✓      | ✓     |
-
+| Mutually exclusive groups                                             | ✓      | ✓     |  | Required-together groups | ✓ | ✓ |
 ### 4.3 API Design (Current)
 
 ```mojo
@@ -209,7 +208,7 @@ pattern             # By order of add_arg() calls
 ### Phase 3: Relationships & Validation (for v0.1)
 
 - [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
-- [ ] **Flags required together** — `cmd.required_together(["username", "password"])`
+- [x] **Flags required together** — `cmd.required_together(["username", "password"])`
 - [ ] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
 - [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`
 - [ ] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning (argparse 3.13)

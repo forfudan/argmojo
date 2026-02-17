@@ -45,7 +45,7 @@ myapp "hello" ./src
 #     pattern   path
 ```
 
-Positional arguments are assigned in the order they are registered with `add_arg()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Arg Count Validation](#15-positional-arg-count-validation)).
+Positional arguments are assigned in the order they are registered with `add_arg()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Arg Count Validation](#16-positional-arg-count-validation)).
 
 **Retrieving:**
 
@@ -388,7 +388,77 @@ Each group is validated independently — using `--json` and `--no-color` togeth
 
 > **Note:** Pass the `List[String]` with `^` (ownership transfer).
 
-## 15. Positional Arg Count Validation
+## 15. Required-Together Groups
+
+**Required together** means "if any one of these arguments is provided, all the others must be provided too". If only some are given, parsing fails.
+
+This is useful for sets of arguments that only make sense as a group — for example, authentication credentials (`--username` and `--password`), or network settings (`--host`, `--port`, `--protocol`).
+
+### Defining a group
+
+```mojo
+cmd.add_arg(Arg("username", help="Auth username").long("username").short("u"))
+cmd.add_arg(Arg("password", help="Auth password").long("password").short("p"))
+
+var group: List[String] = ["username", "password"]
+cmd.required_together(group^)
+```
+
+### Behaviour
+
+```bash
+myapp --username admin --password secret   # OK — both provided
+myapp                                      # OK — neither provided
+myapp --username admin                     # Error: Arguments required together:
+                                           #        '--password' required when '--username' is provided
+myapp --password secret                    # Error: Arguments required together:
+                                           #        '--username' required when '--password' is provided
+```
+
+### Three or more arguments
+
+Groups can contain any number of arguments:
+
+```mojo
+cmd.add_arg(Arg("host",  help="Host").long("host"))
+cmd.add_arg(Arg("port",  help="Port").long("port"))
+cmd.add_arg(Arg("proto", help="Protocol").long("proto"))
+
+var net_group: List[String] = ["host", "port", "proto"]
+cmd.required_together(net_group^)
+```
+
+```bash
+myapp --host localhost --port 8080 --proto https   # OK
+myapp --host localhost                             # Error: '--port', '--proto' required when '--host' is provided
+```
+
+### Combining with mutually exclusive groups
+
+Required-together and mutually exclusive can coexist on the same command:
+
+```mojo
+# These two must appear together
+var auth: List[String] = ["username", "password"]
+cmd.required_together(auth^)
+
+# These two cannot appear together
+var excl: List[String] = ["json", "yaml"]
+cmd.mutually_exclusive(excl^)
+```
+
+### When to use
+
+| Scenario            | Example                                 |
+| ------------------- | --------------------------------------- |
+| Authentication pair | `--username` + `--password`             |
+| Network connection  | `--host` + `--port` + `--protocol`      |
+| TLS settings        | `--cert` + `--key`                      |
+| Database connection | `--db-host` + `--db-user` + `--db-pass` |
+
+> **Note:** Pass the `List[String]` with `^` (ownership transfer).
+
+## 16. Positional Arg Count Validation
 
 ArgMojo ensures that the user does not provide more positional arguments than defined. Extra positional values trigger an error.
 
@@ -414,7 +484,7 @@ myapp "hello" ./src            # OK — pattern = "hello", path = "./src"
 myapp "hello" ./src /tmp       # Error: Too many positional arguments: expected 2, got 3
 ```
 
-## 16. The `--` Stop Marker
+## 17. The `--` Stop Marker
 
 A bare `--` tells the parser to **stop interpreting options**. Everything after `--` is treated as a positional argument, even if it looks like an option.
 
@@ -438,7 +508,7 @@ myapp --ling -- "-v is not a flag here" ./src
 # path = "./src"
 ```
 
-## 17. Auto-generated Help
+## 18. Auto-generated Help
 
 Every command automatically supports `--help` (or `-h`). The help text is generated from the registered argument definitions.
 
@@ -482,7 +552,7 @@ Options:
 
 After printing help, the program exits cleanly with exit code 0.
 
-## 18. Version Display
+## 19. Version Display
 
 Every command automatically supports `--version` (or `-V`).
 
@@ -505,7 +575,7 @@ var cmd = Command("myapp", "Description", version="1.0.0")
 
 After printing the version, the program exits cleanly with exit code 0.
 
-## 19. Reading Parsed Results
+## 20. Reading Parsed Results
 
 After calling `cmd.parse()` or `cmd.parse_args()`, you get a `ParseResult` with these typed accessors:
 

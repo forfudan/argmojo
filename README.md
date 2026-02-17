@@ -31,6 +31,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Count flags**: `-vvv` → `get_count("verbose") == 3`
 - **Positional arg count validation**: reject extra positional args
 - **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
+- **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
 
 ---
 
@@ -184,6 +185,16 @@ Some arguments are excluded from `--help` but still work at the command line (us
 
 ```bash
 ./demo "pattern" --debug-index   # Works, but not shown in --help
+```
+
+### Required-together groups
+
+`--username` and `--password` must be provided together — using one without the other is an error:
+
+```bash
+./demo "pattern" --username admin --password secret  # OK
+./demo "pattern"                                     # OK (neither is provided)
+./demo "pattern" --username admin                    # Error: '--password' required when '--username' is provided
 ```
 
 ## Development

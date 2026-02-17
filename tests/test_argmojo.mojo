@@ -1,4 +1,4 @@
-"""Tests for argmojo — command-line argument parser."""
+"""Testss for argmojo — command-line argument parser."""
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 
@@ -6,7 +6,7 @@ from argmojo import Arg, Command, ParseResult
 
 
 fn test_flag_long() raises:
-    """Test parsing a long flag (--verbose)."""
+    """Tests parsing a long flag (--verbose)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
@@ -19,7 +19,7 @@ fn test_flag_long() raises:
 
 
 fn test_flag_short() raises:
-    """Test parsing a short flag (-v)."""
+    """Tests parsing a short flag (-v)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
@@ -32,7 +32,7 @@ fn test_flag_short() raises:
 
 
 fn test_flag_default_false() raises:
-    """Test that an unset flag defaults to False."""
+    """Tests that an unset flag defaults to False."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
@@ -45,7 +45,7 @@ fn test_flag_default_false() raises:
 
 
 fn test_key_value_long_space() raises:
-    """Test parsing --key value (space separated)."""
+    """Tests parsing --key value (space separated)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
 
@@ -56,7 +56,7 @@ fn test_key_value_long_space() raises:
 
 
 fn test_key_value_long_equals() raises:
-    """Test parsing --key=value (equals separated)."""
+    """Tests parsing --key=value (equals separated)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
 
@@ -67,7 +67,7 @@ fn test_key_value_long_equals() raises:
 
 
 fn test_key_value_short() raises:
-    """Test parsing -o value (short option with value)."""
+    """Tests parsing -o value (short option with value)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
 
@@ -78,7 +78,7 @@ fn test_key_value_short() raises:
 
 
 fn test_positional_args() raises:
-    """Test parsing positional arguments."""
+    """Tests parsing positional arguments."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
     cmd.add_arg(Arg("path", help="Search path").positional().default("."))
@@ -91,7 +91,7 @@ fn test_positional_args() raises:
 
 
 fn test_positional_with_default() raises:
-    """Test that positional arguments use defaults when not provided."""
+    """Tests that positional arguments use defaults when not provided."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
     cmd.add_arg(Arg("path", help="Search path").positional().default("."))
@@ -104,7 +104,7 @@ fn test_positional_with_default() raises:
 
 
 fn test_mixed_args() raises:
-    """Test parsing a mix of positional args and options."""
+    """Tests parsing a mix of positional args and options."""
     var cmd = Command("sou", "Search tool")
     cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
     cmd.add_arg(Arg("path", help="Search path").positional().default("."))
@@ -142,7 +142,7 @@ fn test_mixed_args() raises:
 
 
 fn test_double_dash_stop() raises:
-    """Test that '--' stops option parsing."""
+    """Tests that '--' stops option parsing."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("verbose").long("verbose").short("v").flag())
 
@@ -158,7 +158,7 @@ fn test_double_dash_stop() raises:
 
 
 fn test_has() raises:
-    """Test the has() method."""
+    """Tests the has() method."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("verbose").long("verbose").flag())
     cmd.add_arg(Arg("output").long("output"))
@@ -174,7 +174,7 @@ fn test_has() raises:
 
 
 fn test_merged_short_flags() raises:
-    """Test that -abc is expanded to -a -b -c for flags."""
+    """Tests that -abc is expanded to -a -b -c for flags."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("all", help="All").short("a").flag())
     cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
@@ -189,7 +189,7 @@ fn test_merged_short_flags() raises:
 
 
 fn test_merged_flags_partial() raises:
-    """Test that -ab only sets those two flags, leaving -c unset."""
+    """Tests that -ab only sets those two flags, leaving -c unset."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("all", help="All").short("a").flag())
     cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
@@ -204,7 +204,7 @@ fn test_merged_flags_partial() raises:
 
 
 fn test_merged_flags_with_trailing_value() raises:
-    """Test -avo file.txt where -a and -v are flags, -o takes a value."""
+    """Tests -avo file.txt where -a and -v are flags, -o takes a value."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("all", help="All").short("a").flag())
     cmd.add_arg(Arg("verbose", help="Verbose").short("v").flag())
@@ -222,7 +222,7 @@ fn test_merged_flags_with_trailing_value() raises:
 
 
 fn test_attached_short_value() raises:
-    """Test -ofile.txt where -o takes 'file.txt' as attached value."""
+    """Tests -ofile.txt where -o takes 'file.txt' as attached value."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("output", help="Output").short("o"))
 
@@ -233,7 +233,7 @@ fn test_attached_short_value() raises:
 
 
 fn test_merged_flags_with_attached_value() raises:
-    """Test -abofile.txt where -a,-b are flags, -o takes 'file.txt' inline."""
+    """Tests -abofile.txt where -a,-b are flags, -o takes 'file.txt' inline."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("all", help="All").short("a").flag())
     cmd.add_arg(Arg("brief", help="Brief").short("b").flag())
@@ -251,7 +251,7 @@ fn test_merged_flags_with_attached_value() raises:
 
 
 fn test_choices_valid() raises:
-    """Test that a valid choice is accepted."""
+    """Tests that a valid choice is accepted."""
     var cmd = Command("test", "Test app")
     var fmts: List[String] = ["json", "csv", "table"]
     cmd.add_arg(
@@ -268,7 +268,7 @@ fn test_choices_valid() raises:
 
 
 fn test_choices_invalid() raises:
-    """Test that an invalid choice raises an error."""
+    """Tests that an invalid choice raises an error."""
     var cmd = Command("test", "Test app")
     var fmts: List[String] = ["json", "csv", "table"]
     cmd.add_arg(
@@ -297,7 +297,7 @@ fn test_choices_invalid() raises:
 
 
 fn test_choices_with_short_attached() raises:
-    """Test choices validation with attached short value like -fxml."""
+    """Tests choices validation with attached short value like -fxml."""
     var cmd = Command("test", "Test app")
     var fmts: List[String] = ["json", "csv", "table"]
     cmd.add_arg(
@@ -317,7 +317,7 @@ fn test_choices_with_short_attached() raises:
 
 
 fn test_hidden_not_in_help() raises:
-    """Test that hidden arguments are excluded from help output."""
+    """Tests that hidden arguments are excluded from help output."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
@@ -333,7 +333,7 @@ fn test_hidden_not_in_help() raises:
 
 
 fn test_hidden_still_works() raises:
-    """Test that hidden arguments can still be used at the command line."""
+    """Tests that hidden arguments can still be used at the command line."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("debug", help="Debug mode").long("debug").short("d").flag().hidden()
@@ -349,7 +349,7 @@ fn test_hidden_still_works() raises:
 
 
 fn test_metavar_in_help() raises:
-    """Test that metavar appears in help output."""
+    """Tests that metavar appears in help output."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("output", help="Output file")
@@ -369,7 +369,7 @@ fn test_metavar_in_help() raises:
 
 
 fn test_choices_in_help() raises:
-    """Test that choices are displayed in help when no metavar."""
+    """Tests that choices are displayed in help when no metavar."""
     var cmd = Command("test", "Test app")
     var fmts: List[String] = ["json", "csv", "table"]
     cmd.add_arg(
@@ -391,7 +391,7 @@ fn test_choices_in_help() raises:
 
 
 fn test_count_single() raises:
-    """Test that -v sets count to 1."""
+    """Tests that -v sets count to 1."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbosity level")
@@ -407,7 +407,7 @@ fn test_count_single() raises:
 
 
 fn test_count_triple() raises:
-    """Test that -vvv sets count to 3."""
+    """Tests that -vvv sets count to 3."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbosity level")
@@ -423,7 +423,7 @@ fn test_count_triple() raises:
 
 
 fn test_count_long_repeated() raises:
-    """Test that --verbose --verbose sets count to 2."""
+    """Tests that --verbose --verbose sets count to 2."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbosity level")
@@ -439,7 +439,7 @@ fn test_count_long_repeated() raises:
 
 
 fn test_count_mixed_short_long() raises:
-    """Test that -vv --verbose sets count to 3."""
+    """Tests that -vv --verbose sets count to 3."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbosity level")
@@ -455,7 +455,7 @@ fn test_count_mixed_short_long() raises:
 
 
 fn test_count_default_zero() raises:
-    """Test that an unprovided count arg returns 0."""
+    """Tests that an unprovided count arg returns 0."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
         Arg("verbose", help="Verbosity level")
@@ -474,7 +474,7 @@ fn test_count_default_zero() raises:
 
 
 fn test_too_many_positionals() raises:
-    """Test that extra positional args raise an error."""
+    """Tests that extra positional args raise an error."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("pattern", help="Pattern").positional().required())
 
@@ -496,7 +496,7 @@ fn test_too_many_positionals() raises:
 
 
 fn test_exact_positionals_ok() raises:
-    """Test that the exact number of positional args is accepted."""
+    """Tests that the exact number of positional args is accepted."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("pattern", help="Pattern").positional().required())
     cmd.add_arg(Arg("path", help="Path").positional().default("."))
@@ -512,7 +512,7 @@ fn test_exact_positionals_ok() raises:
 
 
 fn test_exclusive_one_provided() raises:
-    """Test that providing one arg from an exclusive group is fine."""
+    """Tests that providing one arg from an exclusive group is fine."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
     cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
@@ -528,7 +528,7 @@ fn test_exclusive_one_provided() raises:
 
 
 fn test_exclusive_none_provided() raises:
-    """Test that providing no arg from an exclusive group is fine."""
+    """Tests that providing no arg from an exclusive group is fine."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
     cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
@@ -543,7 +543,7 @@ fn test_exclusive_none_provided() raises:
 
 
 fn test_exclusive_conflict() raises:
-    """Test that providing two args from an exclusive group raises an error."""
+    """Tests that providing two args from an exclusive group raises an error."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
     cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
@@ -575,7 +575,7 @@ fn test_exclusive_conflict() raises:
 
 
 fn test_exclusive_value_args() raises:
-    """Test mutually exclusive with value-taking args."""
+    """Tests mutually exclusive with value-taking args."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("input", help="Input file").long("input"))
     cmd.add_arg(Arg("stdin", help="Read stdin").long("stdin").flag())
@@ -595,6 +595,94 @@ fn test_exclusive_value_args() raises:
         )
     assert_true(caught, msg="Should have raised error for exclusive conflict")
     print("  ✓ test_exclusive_value_args")
+
+
+# ── Phase 3: Required-together groups ─────────────────────────────────────────
+
+
+fn test_required_together_all_provided() raises:
+    """Tests that providing all args from a required-together group is fine."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
+    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var group: List[String] = ["username", "password"]
+    cmd.required_together(group^)
+
+    var args: List[String] = ["test", "--username", "admin", "--password", "secret"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("username"), "admin")
+    assert_equal(result.get_string("password"), "secret")
+    print("  ✓ test_required_together_all_provided")
+
+
+fn test_required_together_none_provided() raises:
+    """Tests that providing none from a required-together group is fine."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
+    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var group: List[String] = ["username", "password"]
+    cmd.required_together(group^)
+
+    var args: List[String] = ["test"]
+    var result = cmd.parse_args(args)
+    assert_false(result.has("username"), msg="username should not be set")
+    assert_false(result.has("password"), msg="password should not be set")
+    print("  ✓ test_required_together_none_provided")
+
+
+fn test_required_together_partial() raises:
+    """Tests that providing only some from a required-together group raises an error."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
+    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var group: List[String] = ["username", "password"]
+    cmd.required_together(group^)
+
+    var args: List[String] = ["test", "--username", "admin"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "required together" in msg,
+            msg="Error should mention required together",
+        )
+        assert_true(
+            "--password" in msg,
+            msg="Error should mention --password",
+        )
+    assert_true(caught, msg="Should have raised error for partial group")
+    print("  ✓ test_required_together_partial")
+
+
+fn test_required_together_three_args() raises:
+    """Tests required-together with three arguments, only one provided."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("host", help="Host").long("host"))
+    cmd.add_arg(Arg("port", help="Port").long("port"))
+    cmd.add_arg(Arg("proto", help="Protocol").long("proto"))
+    var group: List[String] = ["host", "port", "proto"]
+    cmd.required_together(group^)
+
+    var args: List[String] = ["test", "--host", "localhost"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "--port" in msg,
+            msg="Error should mention --port",
+        )
+        assert_true(
+            "--proto" in msg,
+            msg="Error should mention --proto",
+        )
+    assert_true(caught, msg="Should have raised error for partial group")
+    print("  ✓ test_required_together_three_args")
 
 
 fn main() raises:

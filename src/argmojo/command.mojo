@@ -28,6 +28,8 @@ struct Command(Stringable, Writable):
     """Registered argument definitions."""
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
+    var _required_groups: List[List[String]]
+    """Groups of arguments that must be provided together."""
 
     fn __init__(
         out self,
@@ -47,6 +49,7 @@ struct Command(Stringable, Writable):
         self.version = version
         self.args = List[Arg]()
         self._exclusive_groups = List[List[String]]()
+        self._required_groups = List[List[String]]()
 
     fn add_arg(mut self, var arg: Arg):
         """Registers an argument definition.
@@ -66,6 +69,17 @@ struct Command(Stringable, Writable):
             names: The internal names of the arguments in the group.
         """
         self._exclusive_groups.append(names^)
+
+    fn required_together(mut self, var names: List[String]):
+        """Declares a group of arguments that must be provided together.
+
+        If any argument from the group is provided, all others in the
+        group must also be provided. Parsing will fail otherwise.
+
+        Args:
+            names: The internal names of the arguments in the group.
+        """
+        self._required_groups.append(names^)
 
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
@@ -305,6 +319,53 @@ struct Command(Stringable, Writable):
                     names_str += display
                 raise Error(
                     "Arguments are mutually exclusive: " + names_str
+                )
+
+        # Validate required-together groups.
+        for g in range(len(self._required_groups)):
+            var provided = List[String]()
+            var missing = List[String]()
+            for n in range(len(self._required_groups[g])):
+                var arg_name = self._required_groups[g][n]
+                if result.has(arg_name):
+                    provided.append(arg_name)
+                else:
+                    missing.append(arg_name)
+            if len(provided) > 0 and len(missing) > 0:
+                # Build display names for the missing args.
+                var missing_str = String("")
+                for m in range(len(missing)):
+                    if m > 0:
+                        missing_str += ", "
+                    var display = String("'") + missing[m] + String("'")
+                    for a in range(len(self.args)):
+                        if self.args[a].name == missing[m]:
+                            if self.args[a].long_name:
+                                display = "'--" + self.args[a].long_name + "'"
+                            elif self.args[a].short_name:
+                                display = "'-" + self.args[a].short_name + "'"
+                            break
+                    missing_str += display
+                # Build display names for the provided args.
+                var provided_str = String("")
+                for p in range(len(provided)):
+                    if p > 0:
+                        provided_str += ", "
+                    var display = String("'") + provided[p] + String("'")
+                    for a in range(len(self.args)):
+                        if self.args[a].name == provided[p]:
+                            if self.args[a].long_name:
+                                display = "'--" + self.args[a].long_name + "'"
+                            elif self.args[a].short_name:
+                                display = "'-" + self.args[a].short_name + "'"
+                            break
+                    provided_str += display
+                raise Error(
+                    "Arguments required together: "
+                    + missing_str
+                    + " required when "
+                    + provided_str
+                    + " is provided"
                 )
 
         return result^

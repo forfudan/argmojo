@@ -1,7 +1,8 @@
 """Example: a mini CLI to demonstrate argmojo usage.
 
 Showcases: positional args, flags, key-value options, choices,
-count flags, hidden args, and mutually exclusive groups.
+count flags, hidden args, mutually exclusive groups, and
+required-together groups.
 """
 
 from argmojo import Arg, Command
@@ -82,6 +83,13 @@ fn main() raises:
         .hidden()
     )
 
+    # ── Required-together group ──────────────────────────────────────────
+    # --username and --password must both be provided, or neither.
+    cmd.add_arg(Arg("username", help="Auth username").long("username").short("u"))
+    cmd.add_arg(Arg("password", help="Auth password").long("password").short("p"))
+    var auth_group: List[String] = ["username", "password"]
+    cmd.required_together(auth_group^)
+
     # ── Parse real argv ──────────────────────────────────────────────────
     var result = cmd.parse()
 
@@ -101,3 +109,6 @@ fn main() raises:
         print("  --max-depth:   (not set)")
     if result.get_flag("debug-index"):
         print("  [debug] index dump enabled")
+    if result.has("username"):
+        print("  --username:   ", result.get_string("username"))
+        print("  --password:   ", result.get_string("password"))
