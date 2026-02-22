@@ -45,7 +45,7 @@ myapp "hello" ./src
 #     pattern   path
 ```
 
-Positional arguments are assigned in the order they are registered with `add_arg()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Arg Count Validation](#16-positional-arg-count-validation)).
+Positional arguments are assigned in the order they are registered with `add_arg()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Arg Count Validation](#17-positional-arg-count-validation)).
 
 **Retrieving:**
 
@@ -388,7 +388,73 @@ Each group is validated independently — using `--json` and `--no-color` togeth
 
 > **Note:** Pass the `List[String]` with `^` (ownership transfer).
 
-## 15. Required-Together Groups
+## 15. Negatable Flags
+
+A **negatable** flag automatically creates a `--no-X` counterpart. When the user passes `--X`, the flag is set to `True`; when they pass `--no-X`, it is explicitly set to `False`.
+
+This replaces the manual pattern of defining two separate flags (`--color` and `--no-color`) and a mutually exclusive group.
+
+### Defining a negatable flag
+
+```mojo
+cmd.add_arg(
+    Arg("color", help="Enable colored output")
+    .long("color").flag().negatable()
+)
+```
+
+### Behaviour
+
+```bash
+myapp --color       # color = True,  has("color") = True
+myapp --no-color    # color = False, has("color") = True
+myapp               # color = False, has("color") = False  (default)
+```
+
+Use `result.has("color")` to distinguish between "user explicitly disabled colour" (`--no-color`) and "user didn't mention colour at all".
+
+### Help output
+
+Negatable flags are displayed as a paired form:
+
+```text
+      --color / --no-color    Enable colored output
+```
+
+### Comparison with manual approach
+
+**Before (two flags + mutually exclusive):**
+
+```mojo
+cmd.add_arg(Arg("color", help="Force colored output").long("color").flag())
+cmd.add_arg(Arg("no-color", help="Disable colored output").long("no-color").flag())
+var group: List[String] = ["color", "no-color"]
+cmd.mutually_exclusive(group^)
+```
+
+**After (single negatable flag):**
+
+```mojo
+cmd.add_arg(
+    Arg("color", help="Enable colored output")
+    .long("color").flag().negatable()
+)
+```
+
+The negatable approach is simpler and uses only one entry in `ParseResult`.
+
+### When to use
+
+| Scenario           | Example                              |
+| ------------------ | ------------------------------------ |
+| Colour control     | `--color` / `--no-color`             |
+| Feature toggle     | `--cache` / `--no-cache`             |
+| Header inclusion   | `--headers` / `--no-headers`         |
+| Interactive prompt | `--interactive` / `--no-interactive` |
+
+> **Note:** Only flags (`.flag()`) can be made negatable. Calling `.negatable()` on a non-flag argument has no effect on parsing.
+
+## 16. Required-Together Groups
 
 **Required together** means "if any one of these arguments is provided, all the others must be provided too". If only some are given, parsing fails.
 
@@ -458,7 +524,7 @@ cmd.mutually_exclusive(excl^)
 
 > **Note:** Pass the `List[String]` with `^` (ownership transfer).
 
-## 16. Positional Arg Count Validation
+## 17. Positional Arg Count Validation
 
 ArgMojo ensures that the user does not provide more positional arguments than defined. Extra positional values trigger an error.
 
@@ -484,7 +550,7 @@ myapp "hello" ./src            # OK — pattern = "hello", path = "./src"
 myapp "hello" ./src /tmp       # Error: Too many positional arguments: expected 2, got 3
 ```
 
-## 17. The `--` Stop Marker
+## 18. The `--` Stop Marker
 
 A bare `--` tells the parser to **stop interpreting options**. Everything after `--` is treated as a positional argument, even if it looks like an option.
 
@@ -508,7 +574,7 @@ myapp --ling -- "-v is not a flag here" ./src
 # path = "./src"
 ```
 
-## 18. Auto-generated Help
+## 19. Auto-generated Help
 
 Every command automatically supports `--help` (or `-h`). The help text is generated from the registered argument definitions.
 
@@ -552,7 +618,7 @@ Options:
 
 After printing help, the program exits cleanly with exit code 0.
 
-## 19. Version Display
+## 20. Version Display
 
 Every command automatically supports `--version` (or `-V`).
 
@@ -575,7 +641,7 @@ var cmd = Command("myapp", "Description", version="1.0.0")
 
 After printing the version, the program exits cleanly with exit code 0.
 
-## 20. Reading Parsed Results
+## 21. Reading Parsed Results
 
 After calling `cmd.parse()` or `cmd.parse_args()`, you get a `ParseResult` with these typed accessors:
 

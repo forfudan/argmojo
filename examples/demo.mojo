@@ -1,8 +1,8 @@
 """Example: a mini CLI to demonstrate argmojo usage.
 
 Showcases: positional args, flags, key-value options, choices,
-count flags, hidden args, mutually exclusive groups, and
-required-together groups.
+count flags, hidden args, negatable flags, mutually exclusive groups,
+and required-together groups.
 """
 
 from argmojo import Arg, Command
@@ -60,20 +60,21 @@ fn main() raises:
         .default("table")
     )
 
-    # ── Mutually exclusive group ─────────────────────────────────────────
-    # Only one of --color / --no-color may be used at a time.
+    # ── Negatable flag ────────────────────────────────────────────────────
+    # --color enables colour, --no-color disables it.
     cmd.add_arg(
-        Arg("color", help="Force colored output")
+        Arg("color", help="Enable colored output")
         .long("color")
         .flag()
+        .negatable()
     )
-    cmd.add_arg(
-        Arg("no-color", help="Disable colored output")
-        .long("no-color")
-        .flag()
-    )
-    var color_group: List[String] = ["color", "no-color"]
-    cmd.mutually_exclusive(color_group^)
+
+    # ── Mutually exclusive group ─────────────────────────────────────────
+    # Only one of --json / --yaml may be used at a time.
+    cmd.add_arg(Arg("json", help="Output as JSON").long("json").flag())
+    cmd.add_arg(Arg("yaml", help="Output as YAML").long("yaml").flag())
+    var format_excl: List[String] = ["json", "yaml"]
+    cmd.mutually_exclusive(format_excl^)
 
     # ── Hidden argument (internal / debug) ───────────────────────────────
     cmd.add_arg(
@@ -102,7 +103,9 @@ fn main() raises:
     print("  --verbose:    ", result.get_count("verbose"))
     print("  --format:     ", result.get_string("format"))
     print("  --color:      ", result.get_flag("color"))
-    print("  --no-color:   ", result.get_flag("no-color"))
+    if result.has("json") or result.has("yaml"):
+        print("  --json:       ", result.get_flag("json"))
+        print("  --yaml:       ", result.get_flag("yaml"))
     if result.has("max-depth"):
         print("  --max-depth:  ", result.get_string("max-depth"))
     else:

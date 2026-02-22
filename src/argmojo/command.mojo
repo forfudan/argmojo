@@ -157,8 +157,23 @@ struct Command(Stringable, Writable):
                     key = String(key[:eq_pos])
                     has_eq = True
 
+                # Check for --no-X negation pattern.
+                var is_negation = False
+                if key.startswith("no-") and not has_eq:
+                    var base_key = String(key[3:])
+                    for idx in range(len(self.args)):
+                        if (
+                            self.args[idx].long_name == base_key
+                            and self.args[idx].is_negatable
+                        ):
+                            is_negation = True
+                            key = base_key
+                            break
+
                 var matched = self._find_by_long(key)
-                if matched.is_count and not has_eq:
+                if is_negation:
+                    result.flags[matched.name] = False
+                elif matched.is_count and not has_eq:
                     # Count flag: increment counter.
                     var cur: Int = 0
                     try:
@@ -485,6 +500,8 @@ struct Command(Stringable, Writable):
                     line += "    "
                 if self.args[i].long_name:
                     line += "--" + self.args[i].long_name
+                    if self.args[i].is_negatable:
+                        line += " / --no-" + self.args[i].long_name
 
                 # Show metavar or choices for value-taking options.
                 if not self.args[i].is_flag:

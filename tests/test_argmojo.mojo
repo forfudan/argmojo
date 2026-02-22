@@ -685,5 +685,102 @@ fn test_required_together_three_args() raises:
     print("  ✓ test_required_together_three_args")
 
 
+# ── Phase 3: Negatable flags (--no-X) ────────────────────────────────────────
+
+
+fn test_negatable_positive() raises:
+    """Test that --color sets a negatable flag to True."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("color", help="Colored output")
+        .long("color")
+        .flag()
+        .negatable()
+    )
+
+    var args: List[String] = ["test", "--color"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("color"), msg="--color should be True")
+    print("  ✓ test_negatable_positive")
+
+
+fn test_negatable_negative() raises:
+    """Test that --no-color sets a negatable flag to False."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("color", help="Colored output")
+        .long("color")
+        .flag()
+        .negatable()
+    )
+
+    var args: List[String] = ["test", "--no-color"]
+    var result = cmd.parse_args(args)
+    assert_false(result.get_flag("color"), msg="--no-color should be False")
+    assert_true(result.has("color"), msg="color should be present after --no-color")
+    print("  ✓ test_negatable_negative")
+
+
+fn test_negatable_default() raises:
+    """Test that an unset negatable flag defaults to False (not present)."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("color", help="Colored output")
+        .long("color")
+        .flag()
+        .negatable()
+    )
+
+    var args: List[String] = ["test"]
+    var result = cmd.parse_args(args)
+    assert_false(result.get_flag("color"), msg="unset negatable should be False")
+    assert_false(result.has("color"), msg="unset negatable should not be present")
+    print("  ✓ test_negatable_default")
+
+
+fn test_negatable_in_help() raises:
+    """Test that negatable flags show --X / --no-X in help."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("color", help="Colored output")
+        .long("color")
+        .flag()
+        .negatable()
+    )
+
+    var args: List[String] = ["test", "--help"]
+    _ = args
+    var help = cmd._generate_help()
+    assert_true(
+        "--color / --no-color" in help,
+        msg="Help should show --color / --no-color",
+    )
+    print("  ✓ test_negatable_in_help")
+
+
+fn test_non_negatable_rejects_no_prefix() raises:
+    """Test that --no-X fails for a non-negatable flag."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbose output")
+        .long("verbose")
+        .flag()
+    )
+
+    var args: List[String] = ["test", "--no-verbose"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Unknown option" in msg,
+            msg="Error should mention unknown option",
+        )
+    assert_true(caught, msg="Should have raised error for --no-verbose on non-negatable")
+    print("  ✓ test_non_negatable_rejects_no_prefix")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

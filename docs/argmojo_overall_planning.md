@@ -36,27 +36,30 @@ These features appear across 3+ libraries and depend only on string operations a
 | `--` stop marker                 | ✓        | ✓     | ✓    | **Done** |
 | Auto `--help` / `-h`             | ✓        | ✓     | ✓    | **Done** |
 | Auto `--version` / `-V`          | ✓        | ✓     | ✓    | **Done** |
-| Short flag merging (`-abc`)      | ✓        | ✓     | ✓    | Phase 2  |
-| Choices / enum validation        | ✓        | —     | ✓    | Phase 2  |
-| Subcommands                      | ✓        | ✓     | ✓    | Phase 3  |
-| Mutually exclusive flags         | ✓        | ✓     | ✓    | Phase 3  |
-| Flags required together          | —        | ✓     | —    | Phase 3  |
-| Suggest on typo (Levenshtein)    | ✓ (3.14) | ✓     | ✓    | Phase 4  |
-| Metavar (display name for value) | ✓        | —     | ✓    | Phase 2  |
-| Positional arg count validation  | —        | ✓     | ✓    | Phase 2  |
-| `--no-X` negation flags          | ✓ (3.9)  | —     | ✓    | Phase 3  |
+| Short flag merging (`-abc`)      | ✓        | ✓     | ✓    | **Done** |
+| Metavar (display name for value) | ✓        | —     | ✓    | **Done** |
+| Positional arg count validation  | —        | ✓     | ✓    | **Done** |
+| Choices / enum validation        | ✓        | —     | ✓    | **Done** |
+| Mutually exclusive flags         | ✓        | ✓     | ✓    | **Done** |
+| Flags required together          | —        | ✓     | —    | **Done** |
+| `--no-X` negation flags          | ✓ (3.9)  | —     | ✓    | **Done** |
+| Long option prefix matching      | ✓        | —     | —    | Phase 3  |
+| Append / collect action          | ✓        | ✓     | ✓    | Phase 3  |
+| One-required group               | —        | ✓     | ✓    | Phase 3  |
+| Subcommands                      | ✓        | ✓     | ✓    | Phase 4  |
+| Suggest on typo (Levenshtein)    | ✓ (3.14) | ✓     | ✓    | Phase 5  |
 
 ### 2.3 Features Excluded (Infeasible or Inappropriate)
 
-| Feature                                       | Reason for Exclusion                                                               |
-| --------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Derive / decorator API                        | Mojo has no macros or decorators                                                   |
-| Shell auto-completion generation              | Requires writing shell scripts; out of scope                                       |
-| Usage-string-driven parsing (docopt style)    | Too implicit; not a good fit for a typed systems language                          |
-| Type-conversion callbacks                     | Mojo has no first-class closures; use `get_int()` / `get_string()` pattern instead |
-| Config file reading (`fromfile_prefix_chars`) | Out of scope; users can pre-process argv                                           |
-| Environment variable fallback                 | Can be done externally; not core parser responsibility                             |
-| Template-customisable help (Go cobra style)   | Mojo has no template engine; help format is hardcoded                              |
+| Feature                                       | Reason for Exclusion                                      |
+| --------------------------------------------- | --------------------------------------------------------- |
+| Derive / decorator API                        | Mojo has no macros or decorators                          |
+| Shell auto-completion generation              | Requires writing shell scripts; out of scope              |
+| Usage-string-driven parsing (docopt style)    | Too implicit; not a good fit for a typed systems language |
+| Type-conversion callbacks                     | Use `get_int()` / `get_string()` pattern instead          |
+| Config file reading (`fromfile_prefix_chars`) | Out of scope; users can pre-process argv                  |
+| Environment variable fallback                 | Can be done externally; not core parser responsibility    |
+| Template-customisable help (Go cobra style)   | Mojo has no template engine; help format is hardcoded     |
 
 ## 3. Technical Foundations
 
@@ -105,7 +108,7 @@ src/argmojo/
 ├── command.mojo         # Command struct — command definition & parsing
 └── result.mojo          # ParseResult struct — parsed values
 tests/
-└── test_argmojo.mojo    # 38 tests, all passing ✓
+└── test_argmojo.mojo    # Unit tests for ArgMojo, ensure robustness
 examples/
 └── demo.mojo            # Demo CLI tool, compilable to binary
 ```
@@ -135,7 +138,10 @@ examples/
 | Count action (`-vvv` → 3)                                             | ✓      | ✓     |
 | Positional arg count validation                                       | ✓      | ✓     |
 | Clean exit for `--help` / `--version`                                 | ✓      | —     |
-| Mutually exclusive groups                                             | ✓      | ✓     |  | Required-together groups | ✓ | ✓ |
+| Mutually exclusive groups                                             | ✓      | ✓     |
+| Required-together groups                                              | ✓      | ✓     |
+| Negatable flags (`.negatable()` → `--no-X`)                           | ✓      | ✓     |
+
 ### 4.3 API Design (Current)
 
 ```mojo
@@ -209,7 +215,10 @@ pattern             # By order of add_arg() calls
 
 - [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
 - [x] **Flags required together** — `cmd.required_together(["username", "password"])`
-- [ ] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
+- [x] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
+- [ ] **Long option prefix matching** — `--verb` auto-resolves to `--verbose` when unambiguous (argparse `allow_abbrev`)
+- [ ] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects repeated options into a list (argparse `append`, cobra `StringArrayVar`, clap `Append`)
+- [ ] **One-required group** — `cmd.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
 - [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`
 - [ ] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning (argparse 3.13)
 
@@ -268,49 +277,14 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 6. Return ParseResult
 ```
 
-## 7. Testing Strategy
-
-All tests use `cmd.parse_args(List[String])` to inject arguments without needing a real binary.
-
-Tests run via `mojo run -I src tests/test_argmojo.mojo` (mojo test is not available in 0.26.1).
-
-### Current tests (11, all passing ✓)
-
-| Test                           | What it verifies                        |
-| ------------------------------ | --------------------------------------- |
-| `test_flag_long`               | `--verbose` sets flag to True           |
-| `test_flag_short`              | `-v` sets flag to True                  |
-| `test_flag_default_false`      | Unset flag defaults to False            |
-| `test_key_value_long_space`    | `--output file.txt`                     |
-| `test_key_value_long_equals`   | `--output=file.txt`                     |
-| `test_key_value_short`         | `-o file.txt`                           |
-| `test_positional_args`         | Two positional args                     |
-| `test_positional_with_default` | Second positional uses default          |
-| `test_mixed_args`              | Positional + flags + key-value together |
-| `test_double_dash_stop`        | `--` stops option parsing               |
-| `test_has`                     | `has()` returns correct results         |
-
-### Tests to add (per roadmap)
-
-- Short flag merging: `-abc` → three separate flags
-- Short option attached value: `-ofile.txt`
-- Choices validation: pass/fail
-- Positional count: too many / too few
-- Hidden args: not shown in help
-- Count action: `-vvv` == 3
-- Mutually exclusive: error on `--json --yaml`
-- Required together: error on `--user` without `--pass`
-- Negation: `--no-color` sets color to False
-- Subcommands: correct dispatch
-- Typo suggestion: Levenshtein output
-
 ## 8. Mojo 0.26.1 Notes
 
-Important Mojo-specific patterns used throughout this project:
+Here are some important Mojo-specific patterns used throughout this project. Mojo is rapidly evolving, so these may need to be updated in the future:
 
 | Pattern                | What & Why                                          |
 | ---------------------- | --------------------------------------------------- |
-| `@fieldwise_init`      | Replaces `@value` in Mojo 0.26.1                    |
+| `"""Tests..."""`       | Docstring convention                                |
+| `@fieldwise_init`      | Replaces `@value`                                   |
 | `var self`             | Used for builder methods instead of `owned self`    |
 | `String()`             | Explicit conversion; `str()` is not available       |
 | `[a, b, c]` for `List` | List literal syntax instead of variadic constructor |

@@ -30,6 +30,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Hidden arguments**: exclude internal args from `--help` output
 - **Count flags**: `-vvv` → `get_count("verbose") == 3`
 - **Positional arg count validation**: reject extra positional args
+- **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
 - **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
 - **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
 
@@ -81,17 +82,18 @@ fn main() raises:
         .long("format").short("f").choices(formats^).default("table")
     )
 
-    # Mutually exclusive flags
-    cmd.add_arg(Arg("color", help="Force colored output").long("color").flag())
-    cmd.add_arg(Arg("no-color", help="Disable colored output").long("no-color").flag())
-    var excl: List[String] = ["color", "no-color"]
-    cmd.mutually_exclusive(excl^)
+    # Negatable flag — --color enables, --no-color disables
+    cmd.add_arg(
+        Arg("color", help="Enable colored output")
+        .long("color").flag().negatable()
+    )
 
     # Parse and use
     var result = cmd.parse()
     print("pattern:", result.get_string("pattern"))
     print("verbose:", result.get_count("verbose"))
     print("format: ", result.get_string("format"))
+    print("color:  ", result.get_flag("color"))
 ```
 
 ## Usage Examples
@@ -161,14 +163,24 @@ The `--format` option only accepts `json`, `csv`, or `table`:
 ./demo "pattern" --format xml      # Error: Invalid value 'xml' for 'format'. Valid choices: json, csv, table
 ```
 
-### Mutually exclusive groups
+### Negatable flags
 
-`--color` and `--no-color` are mutually exclusive — using both is an error:
+A negatable flag pairs `--X` (sets `True`) with `--no-X` (sets `False`) automatically:
 
 ```bash
-./demo "pattern" --color           # OK
-./demo "pattern" --no-color        # OK
-./demo "pattern" --color --no-color  # Error: Arguments are mutually exclusive: '--color', '--no-color'
+./demo "pattern" --color           # color = True
+./demo "pattern" --no-color        # color = False
+./demo "pattern"                   # color = False (default)
+```
+
+### Mutually exclusive groups
+
+`--json` and `--yaml` are mutually exclusive — using both is an error:
+
+```bash
+./demo "pattern" --json            # OK
+./demo "pattern" --yaml            # OK
+./demo "pattern" --json --yaml     # Error: Arguments are mutually exclusive: '--json', '--yaml'
 ```
 
 ### `--` stop marker

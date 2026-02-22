@@ -37,6 +37,8 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """If True, this argument is not shown in help output."""
     var is_count: Bool
     """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
+    var is_negatable: Bool
+    """If True, this flag also accepts --no-X to set it to False."""
 
     fn __init__(out self, name: String, *, help: String = ""):
         """Creates a new argument definition.
@@ -58,6 +60,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.metavar_name = ""
         self.is_hidden = False
         self.is_count = False
+        self.is_negatable = False
 
     fn __copyinit__(out self, other: Self):
         """Creates a copy of this argument.
@@ -80,6 +83,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.metavar_name = other.metavar_name
         self.is_hidden = other.is_hidden
         self.is_count = other.is_count
+        self.is_negatable = other.is_negatable
 
     fn __moveinit__(out self, deinit other: Self):
         """Moves the value from another Arg.
@@ -100,6 +104,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.metavar_name = other.metavar_name^
         self.is_hidden = other.is_hidden
         self.is_count = other.is_count
+        self.is_negatable = other.is_negatable
 
     fn long(var self, name: String) -> Self:
         """Sets the long option name (e.g., 'lingming' for --lingming).
@@ -232,6 +237,19 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         """
         self.is_count = True
         self.is_flag = True
+        return self^
+
+    fn negatable(var self) -> Self:
+        """Marks this flag as negatable.
+
+        A negatable flag accepts both `--X` (sets True) and `--no-X`
+        (sets False). For example, `.long("color").flag().negatable()`
+        accepts `--color` and `--no-color`.
+
+        Returns:
+            Self marked as negatable.
+        """
+        self.is_negatable = True
         return self^
 
     fn __str__(self) -> String:
