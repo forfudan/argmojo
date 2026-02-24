@@ -1,4 +1,4 @@
-"""Testss for argmojo — command-line argument parser."""
+"""Tests for argmojo — command-line argument parser."""
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 from argmojo import Arg, Command, ParseResult

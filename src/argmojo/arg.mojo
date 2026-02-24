@@ -7,6 +7,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     Use the builder pattern to configure the argument:
 
     ```mojo
+    from argmojo import Arg
     var arg = Arg("output", help="Output file path").long("output").short("o").takes_value()
     ```
     """

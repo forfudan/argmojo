@@ -5,7 +5,7 @@ channels = [
   "https://repo.prefix.dev/modular-community",
   "conda-forge",
 ]
-description = "A command-line argument parser library for Mojo, inspired by Rust's clap"
+description = "A command-line argument parser library for Mojo"
 license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]

@@ -156,7 +156,7 @@ fn main() raises:
     cmd.add_arg(Arg("path", help="Search path").positional().default("."))
 
     # Optional arguments
-    cmd.add_arg(Arg("ling", help="Use Yuho Lingming encoding").long("ling").short("l").flag())
+    cmd.add_arg(Arg("ling", help="Use Yuhao Lingming encoding").long("ling").short("l").flag())
     cmd.add_arg(Arg("ignore-case", help="Case insensitive search").long("ignore-case").short("i").flag())
     cmd.add_arg(Arg("max-depth", help="Maximum directory depth").long("max-depth").short("d").takes_value())
 
@@ -200,7 +200,7 @@ pattern             # By order of add_arg() calls
 - [x] Establish module structure
 - [x] Implement `Arg` struct and builder methods
 - [x] Implement basic `Command` struct
-- [x] Iimplement a small demo CLI tool to test the library
+- [x] Implement a small demo CLI tool to test the library
 
 ### Phase 2: Parsing Enhancements ✓
 
@@ -213,7 +213,7 @@ pattern             # By order of add_arg() calls
 - [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)
 - [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of `raise Error`
 
-### Phase 3: Relationships & Validation (for v0.1)
+### Phase 3: Relationships & Validation (for v0.2)
 
 - [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
 - [x] **Flags required together** — `cmd.required_together(["username", "password"])`
@@ -224,7 +224,7 @@ pattern             # By order of add_arg() calls
 - [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`
 - [ ] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning (argparse 3.13)
 
-### Phase 4: Subcommands (maybe for v0.2)
+### Phase 4: Subcommands (maybe for v0.3)
 
 - [ ] **Subcommand support** — `app <subcommand> [args]` (cobra, argparse, clap)
 - [ ] **Subcommand help** — `app help <subcommand>` or `app <subcommand> --help`
@@ -239,7 +239,7 @@ pattern             # By order of add_arg() calls
 
 ### Explicitly Out of Scope
 
-These will **NOT** be implemented:
+These will **NOT** be implemented (but who knows :D maybe in the future if there's demand):
 
 - Derive/decorator-based API (no macros in Mojo)
 - Shell completion script generation
@@ -279,9 +279,11 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 6. Return ParseResult
 ```
 
-## 8. Mojo 0.26.1 Notes
+## 8. Notes on Mojo versions
 
-Here are some important Mojo-specific patterns used throughout this project. Mojo is rapidly evolving, so these may need to be updated in the future:
+Here are some important Mojo-specific patterns used throughout this project. Mojo is rapidly evolving, so these may need to be updated in the future.
+
+These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji) too.
 
 | Pattern                | What & Why                                          |
 | ---------------------- | --------------------------------------------------- |

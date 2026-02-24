@@ -12,6 +12,7 @@ struct Command(Stringable, Writable):
     Example:
 
     ```mojo
+    from argmojo import Command, Arg
     var cmd = Command("myapp", "A sample application")
     cmd.add_arg(Arg("verbose", help="Enable verbose output").long("verbose").short("v").flag())
     var result = cmd.parse()

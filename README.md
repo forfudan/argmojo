@@ -12,42 +12,46 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo).
 
 ## Overview
 
-ArgMojo provides a builder-pattern API for defining and parsing command-line arguments in Mojo. It supports:
+ArgMojo provides a builder-pattern API for defining and parsing command-line arguments in Mojo. It currently supports:
 
-[x] **Long options**: `--verbose`, `--output file.txt`, `--output=file.txt`
-[x] **Short options**: `-v`, `-o file.txt`
-[x] **Boolean flags**: options that take no value
-[x] **Positional arguments**: matched by position
-[x] **Default values**: fallback when an argument is not provided
-[x] **Required arguments**: validation that mandatory args are present
-[x] **Auto-generated help**: `--help` / `-h` (no need to implement manually)
-[x] **Version display**: `--version` / `-V` (also auto-generated)
-[x] **`--` stop marker**: everything after `--` is treated as positional
-[x] **Short flag merging**: `-abc` expands to `-a -b -c`
-[x] **Attached short values**: `-ofile.txt` means `-o file.txt`
-[x] **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
-[x] **Metavar**: custom display name for values in help text
-[x] **Hidden arguments**: exclude internal args from `--help` output
-[x] **Count flags**: `-vvv` → `get_count("verbose") == 3`
-[x] **Positional arg count validation**: reject extra positional args
-[x] **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
-[x] **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
-[x] **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
-[x] **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version`), an error is raised.
+- **Long options**: `--verbose`, `--output file.txt`, `--output=file.txt`
+- **Short options**: `-v`, `-o file.txt`
+- **Boolean flags**: options that take no value
+- **Positional arguments**: matched by position
+- **Default values**: fallback when an argument is not provided
+- **Required arguments**: validation that mandatory args are present
+- **Auto-generated help**: `--help` / `-h` (no need to implement manually)
+- **Version display**: `--version` / `-V` (also auto-generated)
+- **`--` stop marker**: everything after `--` is treated as positional
+- **Short flag merging**: `-abc` expands to `-a -b -c`
+- **Attached short values**: `-ofile.txt` means `-o file.txt`
+- **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
+- **Metavar**: custom display name for values in help text
+- **Hidden arguments**: exclude internal args from `--help` output
+- **Count flags**: `-vvv` → `get_count("verbose") == 3`
+- **Positional arg count validation**: reject extra positional args
+- **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
+- **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
+- **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
+- **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version`), an error is raised.
 
 ---
 
 I created this project to support my experiments with a CLI-based Chinese character search engine in Mojo, as well as a CLI-based calculator for [DeciMojo](https://github.com/forfudan/decimojo). It is inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, and other popular argument parsing libraries, but designed to fit Mojo's unique features and constraints.
 
+My goal is to provide a Mojo-idiomatic argument parsing library that can be easily adopted by the growing Mojo community for their CLI applications. **Before Mojo v1.0** (which means it gets stable), my focus is on building core features and ensuring correctness. "Core features" refer to those who appear in `argparse`/`clap`/`cobra` and are commonly used in CLI apps. "Correctness" means that the library should handle edge cases properly, provide clear error messages, and have good test coverage. Some fancy features will depend on my time and interest.
+
 ## Installation
 
-ArgMojo requires Mojo >= 0.26.1 and uses [pixi](https://pixi.sh) for environment management.
+ArgMojo requires Mojo == 0.26.1 and uses [pixi](https://pixi.sh) for environment management.
 
 ```bash
 git clone https://github.com/forfudan/argmojo.git
 cd argmojo
 pixi install
 ```
+
+I make the Mojo version strictly 0.26.1 because that's the version I developed and tested on, and Mojo is rapidly evolving. Based on my experience, the library will not work every time there's a new Mojo release.
 
 ## Quick Start
 
@@ -58,7 +62,7 @@ from argmojo import Arg, Command
 
 
 fn main() raises:
-    var cmd = Command("sou", "A CJK-aware text search tool", version="0.1.0")
+    var cmd = Command("demo", "A CJK-aware text search tool that supports Pinyin and Yuhao Input Methods (宇浩系列輸入法).", version="0.1.0")
 
     # Positional arguments
     cmd.add_arg(Arg("pattern", help="Search pattern").positional().required())
@@ -213,7 +217,7 @@ Some arguments are excluded from `--help` but still work at the command line (us
 ### A mock example showing how features work together
 
 ```bash
-./demo yes ./src --li --color --no-color --usern zhu --pas 12345
+./demo yes ./src --verbo --color -li -d 3 --no-color --usern zhu --pas 12345
 ```
 
 This will be parsed as:
@@ -264,7 +268,7 @@ argmojo/
 │       ├── command.mojo            # Command struct (parsing logic)
 │       └── result.mojo             # ParseResult struct (parsed values)
 ├── tests/
-│   └── test_argmojo.mojo          # Tests
+│   └── test_argmojo.mojo           # Tests
 ├── pixi.toml                       # pixi configuration
 ├── .gitignore
 ├── LICENSE
