@@ -157,10 +157,11 @@ struct Command(Stringable, Writable):
                     key = String(key[:eq_pos])
                     has_eq = True
 
-                # Check for --no-X negation pattern.
+                # Check for --no-X negation pattern (with prefix matching).
                 var is_negation = False
                 if key.startswith("no-") and not has_eq:
                     var base_key = String(key[3:])
+                    # Exact match first.
                     for idx in range(len(self.args)):
                         if (
                             self.args[idx].long_name == base_key
@@ -169,6 +170,35 @@ struct Command(Stringable, Writable):
                             is_negation = True
                             key = base_key
                             break
+                    # Prefix match if no exact match found.
+                    if not is_negation:
+                        var neg_candidates = List[String]()
+                        var neg_idx: Int = -1
+                        for idx in range(len(self.args)):
+                            if (
+                                self.args[idx].long_name
+                                and self.args[idx].long_name.startswith(
+                                    base_key
+                                )
+                                and self.args[idx].is_negatable
+                            ):
+                                neg_candidates.append(self.args[idx].long_name)
+                                neg_idx = idx
+                        if len(neg_candidates) == 1:
+                            is_negation = True
+                            key = self.args[neg_idx].long_name
+                        elif len(neg_candidates) > 1:
+                            var opts = String("")
+                            for j in range(len(neg_candidates)):
+                                if j > 0:
+                                    opts += ", "
+                                opts += "'--no-" + neg_candidates[j] + "'"
+                            raise Error(
+                                "Ambiguous option '--no-"
+                                + base_key
+                                + "' could match: "
+                                + opts
+                            )
 
                 var matched = self._find_by_long(key)
                 if is_negation:
@@ -332,9 +362,7 @@ struct Command(Stringable, Writable):
                                 display = "'-" + self.args[a].short_name + "'"
                             break
                     names_str += display
-                raise Error(
-                    "Arguments are mutually exclusive: " + names_str
-                )
+                raise Error("Arguments are mutually exclusive: " + names_str)
 
         # Validate required-together groups.
         for g in range(len(self._required_groups)):
@@ -386,20 +414,54 @@ struct Command(Stringable, Writable):
         return result^
 
     fn _find_by_long(self, name: String) raises -> Arg:
-        """Finds an argument definition by its long name.
+        """Finds an argument definition by its long name or unambiguous prefix.
+
+        First tries an exact match. If no exact match is found, tries prefix
+        matching: if the given name is a prefix of exactly one registered long
+        option, that option is returned. If it matches multiple options, an
+        ambiguous-option error is raised.
+
+        This mirrors Python argparse's ``allow_abbrev`` behaviour — users can
+        shorten ``--verbose`` to ``--verb`` (or even ``--ver``) as long as the
+        abbreviation is unambiguous.
 
         Args:
-            name: The long option name (without '--').
+            name: The long option name (without '--'), or an unambiguous prefix.
 
         Returns:
             The matching Arg.
 
         Raises:
-            Error if no argument matches.
+            Error if no argument matches or the prefix is ambiguous.
         """
+        # 1. Exact match — always preferred.
         for i in range(len(self.args)):
             if self.args[i].long_name == name:
                 return self.args[i].copy()
+
+        # 2. Prefix match — find all long names that start with `name`.
+        var candidates = List[String]()
+        var candidate_idx: Int = -1
+        for i in range(len(self.args)):
+            if self.args[i].long_name and self.args[i].long_name.startswith(
+                name
+            ):
+                candidates.append(self.args[i].long_name)
+                candidate_idx = i
+
+        if len(candidates) == 1:
+            return self.args[candidate_idx].copy()
+
+        if len(candidates) > 1:
+            var opts = String("")
+            for j in range(len(candidates)):
+                if j > 0:
+                    opts += ", "
+                opts += "'--" + candidates[j] + "'"
+            raise Error(
+                "Ambiguous option '--" + name + "' could match: " + opts
+            )
+
         raise Error("Unknown option '--" + name + "'")
 
     fn _find_by_short(self, name: String) raises -> Arg:
@@ -531,6 +593,70 @@ struct Command(Stringable, Writable):
 
         return s
 
+    fn print_summary(self, result: ParseResult):
+        """Prints a human-readable summary of all parsed arguments.
+
+        Iterates over registered argument definitions and prints each
+        argument's display name (``--long`` / ``-s``) alongside its
+        parsed value.  Hidden arguments are included only when they
+        were actually provided.
+
+        Args:
+            result: The ParseResult returned by ``parse()`` or ``parse_args()``.
+        """
+        print("=== Parsed Arguments ===")
+
+        # Positional arguments.
+        for i in range(len(self.args)):
+            if self.args[i].is_positional:
+                var val = String("(not set)")
+                try:
+                    val = result.get_string(self.args[i].name)
+                except:
+                    pass
+                print("  " + self.args[i].name + ": " + val)
+
+        # Named arguments (flags, counts, values).
+        for i in range(len(self.args)):
+            if self.args[i].is_positional:
+                continue
+
+            # Build display name: -s, --long  or just --long or -s
+            var display = String("")
+            if self.args[i].short_name:
+                display += "-" + self.args[i].short_name
+            if self.args[i].long_name:
+                if display:
+                    display += ", "
+                display += "--" + self.args[i].long_name
+
+            # Skip hidden args that weren't provided.
+            if self.args[i].is_hidden and not result.has(self.args[i].name):
+                continue
+
+            # Pad display name for alignment.
+            while len(display) < 22:
+                display += " "
+
+            if self.args[i].is_count:
+                print(
+                    "  " + display + String(result.get_count(self.args[i].name))
+                )
+            elif self.args[i].is_flag:
+                print(
+                    "  " + display + String(result.get_flag(self.args[i].name))
+                )
+            else:
+                if result.has(self.args[i].name):
+                    var val = String("")
+                    try:
+                        val = result.get_string(self.args[i].name)
+                    except:
+                        pass
+                    print("  " + display + val)
+                else:
+                    print("  " + display + "(not set)")
+
     fn __str__(self) -> String:
         """Returns a string representation of this command."""
         return (
@@ -541,6 +667,7 @@ struct Command(Stringable, Writable):
             + ")"
         )
 
+    # TODO: Use writer instead of __str__
     fn write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 

@@ -1,7 +1,6 @@
 """Testss for argmojo — command-line argument parser."""
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
-
 from argmojo import Arg, Command, ParseResult
 
 
@@ -608,7 +607,13 @@ fn test_required_together_all_provided() raises:
     var group: List[String] = ["username", "password"]
     cmd.required_together(group^)
 
-    var args: List[String] = ["test", "--username", "admin", "--password", "secret"]
+    var args: List[String] = [
+        "test",
+        "--username",
+        "admin",
+        "--password",
+        "secret",
+    ]
     var result = cmd.parse_args(args)
     assert_equal(result.get_string("username"), "admin")
     assert_equal(result.get_string("password"), "secret")
@@ -631,7 +636,8 @@ fn test_required_together_none_provided() raises:
 
 
 fn test_required_together_partial() raises:
-    """Tests that providing only some from a required-together group raises an error."""
+    """Tests that providing only some from a required-together group raises an
+    error."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(Arg("username", help="User").long("username").short("u"))
     cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
@@ -692,10 +698,7 @@ fn test_negatable_positive() raises:
     """Test that --color sets a negatable flag to True."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
-        Arg("color", help="Colored output")
-        .long("color")
-        .flag()
-        .negatable()
+        Arg("color", help="Colored output").long("color").flag().negatable()
     )
 
     var args: List[String] = ["test", "--color"]
@@ -708,16 +711,15 @@ fn test_negatable_negative() raises:
     """Test that --no-color sets a negatable flag to False."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
-        Arg("color", help="Colored output")
-        .long("color")
-        .flag()
-        .negatable()
+        Arg("color", help="Colored output").long("color").flag().negatable()
     )
 
     var args: List[String] = ["test", "--no-color"]
     var result = cmd.parse_args(args)
     assert_false(result.get_flag("color"), msg="--no-color should be False")
-    assert_true(result.has("color"), msg="color should be present after --no-color")
+    assert_true(
+        result.has("color"), msg="color should be present after --no-color"
+    )
     print("  ✓ test_negatable_negative")
 
 
@@ -725,16 +727,17 @@ fn test_negatable_default() raises:
     """Test that an unset negatable flag defaults to False (not present)."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
-        Arg("color", help="Colored output")
-        .long("color")
-        .flag()
-        .negatable()
+        Arg("color", help="Colored output").long("color").flag().negatable()
     )
 
     var args: List[String] = ["test"]
     var result = cmd.parse_args(args)
-    assert_false(result.get_flag("color"), msg="unset negatable should be False")
-    assert_false(result.has("color"), msg="unset negatable should not be present")
+    assert_false(
+        result.get_flag("color"), msg="unset negatable should be False"
+    )
+    assert_false(
+        result.has("color"), msg="unset negatable should not be present"
+    )
     print("  ✓ test_negatable_default")
 
 
@@ -742,10 +745,7 @@ fn test_negatable_in_help() raises:
     """Test that negatable flags show --X / --no-X in help."""
     var cmd = Command("test", "Test app")
     cmd.add_arg(
-        Arg("color", help="Colored output")
-        .long("color")
-        .flag()
-        .negatable()
+        Arg("color", help="Colored output").long("color").flag().negatable()
     )
 
     var args: List[String] = ["test", "--help"]
@@ -761,11 +761,7 @@ fn test_negatable_in_help() raises:
 fn test_non_negatable_rejects_no_prefix() raises:
     """Test that --no-X fails for a non-negatable flag."""
     var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("verbose", help="Verbose output")
-        .long("verbose")
-        .flag()
-    )
+    cmd.add_arg(Arg("verbose", help="Verbose output").long("verbose").flag())
 
     var args: List[String] = ["test", "--no-verbose"]
     var caught = False
@@ -778,8 +774,106 @@ fn test_non_negatable_rejects_no_prefix() raises:
             "Unknown option" in msg,
             msg="Error should mention unknown option",
         )
-    assert_true(caught, msg="Should have raised error for --no-verbose on non-negatable")
+    assert_true(
+        caught, msg="Should have raised error for --no-verbose on non-negatable"
+    )
     print("  ✓ test_non_negatable_rejects_no_prefix")
+
+
+fn test_prefix_match_unambiguous() raises:
+    """Test that --verb resolves to --verbose when unambiguous."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
+    )
+    cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
+
+    var args: List[String] = ["test", "--verb"]
+    var result = cmd.parse_args(args)
+    assert_true(
+        result.get_flag("verbose"), msg="--verb should resolve to --verbose"
+    )
+    print("  ✓ test_prefix_match_unambiguous")
+
+
+fn test_prefix_match_value() raises:
+    """Test that prefix matching works for value-taking options."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
+
+    var args: List[String] = ["test", "--out", "file.txt"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("output"), "file.txt")
+    print("  ✓ test_prefix_match_value")
+
+
+fn test_prefix_match_equals() raises:
+    """Test that prefix matching works with --key=value syntax."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("output", help="Output file").long("output").short("o"))
+
+    var args: List[String] = ["test", "--out=file.txt"]
+    var result = cmd.parse_args(args)
+    assert_equal(result.get_string("output"), "file.txt")
+    print("  ✓ test_prefix_match_equals")
+
+
+fn test_prefix_match_ambiguous() raises:
+    """Test that ambiguous prefix raises an error."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
+    )
+    cmd.add_arg(
+        Arg("version-info", help="Version info").long("version-info").flag()
+    )
+
+    var args: List[String] = ["test", "--ver"]
+    var caught = False
+    try:
+        _ = cmd.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true("Ambiguous" in msg, msg="Error should mention ambiguity")
+    assert_true(caught, msg="Should have raised error for ambiguous prefix")
+    print("  ✓ test_prefix_match_ambiguous")
+
+
+fn test_prefix_match_exact_preferred() raises:
+    """Test that exact match is preferred over prefix match."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(Arg("color", help="Color mode").long("color").flag())
+    cmd.add_arg(Arg("colorize", help="Colorize output").long("colorize").flag())
+
+    # --color should exactly match 'color', not be ambiguous.
+    var args: List[String] = ["test", "--color"]
+    var result = cmd.parse_args(args)
+    assert_true(
+        result.get_flag("color"),
+        msg="--color should exactly match 'color'",
+    )
+    assert_false(
+        result.get_flag("colorize"),
+        msg="--colorize should not be set",
+    )
+    print("  ✓ test_prefix_match_exact_preferred")
+
+
+fn test_prefix_match_negatable() raises:
+    """Test that --no-col resolves to --no-color when unambiguous."""
+    var cmd = Command("test", "Test app")
+    cmd.add_arg(
+        Arg("color", help="Colored output").long("color").flag().negatable()
+    )
+
+    var args: List[String] = ["test", "--no-col"]
+    var result = cmd.parse_args(args)
+    assert_false(result.get_flag("color"), msg="--no-col should negate color")
+    assert_true(
+        result.has("color"), msg="color should be present after --no-col"
+    )
+    print("  ✓ test_prefix_match_negatable")
 
 
 fn main() raises:

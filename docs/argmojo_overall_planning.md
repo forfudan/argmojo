@@ -26,28 +26,28 @@ This section summarises the key design patterns and features from well-known arg
 
 These features appear across 3+ libraries and depend only on string operations and basic data structures:
 
-| Feature                          | argparse | cobra | clap | Priority |
-| -------------------------------- | -------- | ----- | ---- | -------- |
-| Long/short options with values   | ✓        | ✓     | ✓    | **Done** |
-| Positional arguments             | ✓        | ✓     | ✓    | **Done** |
-| Boolean flags                    | ✓        | ✓     | ✓    | **Done** |
-| Default values                   | ✓        | ✓     | ✓    | **Done** |
-| Required argument validation     | ✓        | ✓     | ✓    | **Done** |
-| `--` stop marker                 | ✓        | ✓     | ✓    | **Done** |
-| Auto `--help` / `-h`             | ✓        | ✓     | ✓    | **Done** |
-| Auto `--version` / `-V`          | ✓        | ✓     | ✓    | **Done** |
-| Short flag merging (`-abc`)      | ✓        | ✓     | ✓    | **Done** |
-| Metavar (display name for value) | ✓        | —     | ✓    | **Done** |
-| Positional arg count validation  | —        | ✓     | ✓    | **Done** |
-| Choices / enum validation        | ✓        | —     | ✓    | **Done** |
-| Mutually exclusive flags         | ✓        | ✓     | ✓    | **Done** |
-| Flags required together          | —        | ✓     | —    | **Done** |
-| `--no-X` negation flags          | ✓ (3.9)  | —     | ✓    | **Done** |
-| Long option prefix matching      | ✓        | —     | —    | Phase 3  |
-| Append / collect action          | ✓        | ✓     | ✓    | Phase 3  |
-| One-required group               | —        | ✓     | ✓    | Phase 3  |
-| Subcommands                      | ✓        | ✓     | ✓    | Phase 4  |
-| Suggest on typo (Levenshtein)    | ✓ (3.14) | ✓     | ✓    | Phase 5  |
+| Feature                          | argparse | cobra | clap | Planned phase |
+| -------------------------------- | -------- | ----- | ---- | ------------- |
+| Long/short options with values   | ✓        | ✓     | ✓    | **Done**      |
+| Positional arguments             | ✓        | ✓     | ✓    | **Done**      |
+| Boolean flags                    | ✓        | ✓     | ✓    | **Done**      |
+| Default values                   | ✓        | ✓     | ✓    | **Done**      |
+| Required argument validation     | ✓        | ✓     | ✓    | **Done**      |
+| `--` stop marker                 | ✓        | ✓     | ✓    | **Done**      |
+| Auto `--help` / `-h`             | ✓        | ✓     | ✓    | **Done**      |
+| Auto `--version` / `-V`          | ✓        | ✓     | ✓    | **Done**      |
+| Short flag merging (`-abc`)      | ✓        | ✓     | ✓    | **Done**      |
+| Metavar (display name for value) | ✓        | —     | ✓    | **Done**      |
+| Positional arg count validation  | —        | ✓     | ✓    | **Done**      |
+| Choices / enum validation        | ✓        | —     | ✓    | **Done**      |
+| Mutually exclusive flags         | ✓        | ✓     | ✓    | **Done**      |
+| Flags required together          | —        | ✓     | —    | **Done**      |
+| `--no-X` negation flags          | ✓ (3.9)  | —     | ✓    | **Done**      |
+| Long option prefix matching      | ✓        | —     | —    | **Done**      |
+| Append / collect action          | ✓        | ✓     | ✓    | Phase 3       |
+| One-required group               | —        | ✓     | ✓    | Phase 3       |
+| Subcommands                      | ✓        | ✓     | ✓    | Phase 4       |
+| Suggest on typo (Levenshtein)    | ✓ (3.14) | ✓     | ✓    | Phase 5       |
 
 ### 2.3 Features Excluded (Infeasible or Inappropriate)
 
@@ -141,6 +141,7 @@ examples/
 | Mutually exclusive groups                                             | ✓      | ✓     |
 | Required-together groups                                              | ✓      | ✓     |
 | Negatable flags (`.negatable()` → `--no-X`)                           | ✓      | ✓     |
+| Long option prefix matching (`--verb` → `--verbose`)                  | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -173,6 +174,7 @@ fn main() raises:
 --flag              # Boolean flag
 --key value         # Key-value (space separated)
 --key=value         # Key-value (equals separated)
+--verb              # Prefix match → --verbose (if unambiguous)
 
 # Short options
 -f                  # Boolean flag
@@ -216,7 +218,7 @@ pattern             # By order of add_arg() calls
 - [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
 - [x] **Flags required together** — `cmd.required_together(["username", "password"])`
 - [x] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
-- [ ] **Long option prefix matching** — `--verb` auto-resolves to `--verbose` when unambiguous (argparse `allow_abbrev`)
+- [x] **Long option prefix matching** — `--verb` auto-resolves to `--verbose` when unambiguous (argparse `allow_abbrev`)
 - [ ] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects repeated options into a list (argparse `append`, cobra `StringArrayVar`, clap `Append`)
 - [ ] **One-required group** — `cmd.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
 - [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`

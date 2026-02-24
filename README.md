@@ -14,25 +14,26 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo).
 
 ArgMojo provides a builder-pattern API for defining and parsing command-line arguments in Mojo. It supports:
 
-- **Long options**: `--verbose`, `--output file.txt`, `--output=file.txt`
-- **Short options**: `-v`, `-o file.txt`
-- **Boolean flags**: options that take no value
-- **Positional arguments**: matched by position
-- **Default values**: fallback when an argument is not provided
-- **Required arguments**: validation that mandatory args are present
-- **Auto-generated help**: `--help` / `-h` (no need to implement manually)
-- **Version display**: `--version` / `-V` (also auto-generated)
-- **`--` stop marker**: everything after `--` is treated as positional
-- **Short flag merging**: `-abc` expands to `-a -b -c`
-- **Attached short values**: `-ofile.txt` means `-o file.txt`
-- **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
-- **Metavar**: custom display name for values in help text
-- **Hidden arguments**: exclude internal args from `--help` output
-- **Count flags**: `-vvv` → `get_count("verbose") == 3`
-- **Positional arg count validation**: reject extra positional args
-- **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
-- **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
-- **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
+[x] **Long options**: `--verbose`, `--output file.txt`, `--output=file.txt`
+[x] **Short options**: `-v`, `-o file.txt`
+[x] **Boolean flags**: options that take no value
+[x] **Positional arguments**: matched by position
+[x] **Default values**: fallback when an argument is not provided
+[x] **Required arguments**: validation that mandatory args are present
+[x] **Auto-generated help**: `--help` / `-h` (no need to implement manually)
+[x] **Version display**: `--version` / `-V` (also auto-generated)
+[x] **`--` stop marker**: everything after `--` is treated as positional
+[x] **Short flag merging**: `-abc` expands to `-a -b -c`
+[x] **Attached short values**: `-ofile.txt` means `-o file.txt`
+[x] **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
+[x] **Metavar**: custom display name for values in help text
+[x] **Hidden arguments**: exclude internal args from `--help` output
+[x] **Count flags**: `-vvv` → `get_count("verbose") == 3`
+[x] **Positional arg count validation**: reject extra positional args
+[x] **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
+[x] **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
+[x] **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
+[x] **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version`), an error is raised.
 
 ---
 
@@ -207,6 +208,30 @@ Some arguments are excluded from `--help` but still work at the command line (us
 ./demo "pattern" --username admin --password secret  # OK
 ./demo "pattern"                                     # OK (neither is provided)
 ./demo "pattern" --username admin                    # Error: '--password' required when '--username' is provided
+```
+
+### A mock example showing how features work together
+
+```bash
+./demo yes ./src --li --color --no-color --usern zhu --pas 12345
+```
+
+This will be parsed as:
+
+```bash
+=== Parsed Arguments ===
+  pattern: yes
+  path: ./src
+  -l, --ling            True
+  -i, --ignore-case     True
+  -v, --verbose         1
+  -d, --max-depth       3
+  -f, --format          table
+  --color               False
+  --json                False
+  --yaml                False
+  -u, --username        zhu
+  -p, --password        12345
 ```
 
 ## Development

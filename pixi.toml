@@ -24,7 +24,7 @@ format = "mojo format ./src ./tests ./examples"
 package = "mojo package src/argmojo -o argmojo.mojopkg"
 
 # run tests
-test = "pixi run package && mojo run -I src tests/test_argmojo.mojo"
+test = "pixi run format && pixi run package && mojo run -I src tests/test_argmojo.mojo"
 
 # run demo
 demo = "pixi run package && mojo run -I src examples/demo.mojo"

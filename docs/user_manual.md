@@ -550,7 +550,73 @@ myapp "hello" ./src            # OK — pattern = "hello", path = "./src"
 myapp "hello" ./src /tmp       # Error: Too many positional arguments: expected 2, got 3
 ```
 
-## 18. The `--` Stop Marker
+## 18. Long Option Prefix Matching
+
+ArgMojo supports **prefix matching** (also known as *abbreviation*) for long options. If a user types a prefix of a long option name that **unambiguously** matches exactly one registered option, it is automatically resolved.
+
+This mirrors Python argparse's `allow_abbrev` behaviour.
+
+### Basic example
+
+```mojo
+cmd.add_arg(Arg("verbose", help="Verbose output").long("verbose").short("v").flag())
+cmd.add_arg(Arg("output",  help="Output file").long("output").short("o"))
+```
+
+```bash
+myapp --verb               # resolves to --verbose
+myapp --out file.txt       # resolves to --output file.txt
+myapp --out=file.txt       # resolves to --output=file.txt
+```
+
+### Ambiguous prefixes
+
+If the prefix matches more than one option, an error is raised:
+
+```mojo
+cmd.add_arg(Arg("verbose",      help="Verbose").long("verbose").flag())
+cmd.add_arg(Arg("version-info", help="Version info").long("version-info").flag())
+```
+
+```bash
+myapp --ver
+# Error: Ambiguous option '--ver' could match: '--verbose', '--version-info'
+```
+
+### Exact match always wins
+
+If the user's input is an **exact match** for one option, it is chosen even if it is also a prefix of another option:
+
+```mojo
+cmd.add_arg(Arg("color",    help="Color mode").long("color").flag())
+cmd.add_arg(Arg("colorize", help="Colorize output").long("colorize").flag())
+```
+
+```bash
+myapp --color       # exact match → color (not ambiguous with colorize)
+myapp --col         # ambiguous → error
+```
+
+### Works with negatable flags
+
+Prefix matching also applies to `--no-X` negation:
+
+```bash
+myapp --no-col      # resolves to --no-color (if color is the only negatable match)
+```
+
+### When to use
+
+This feature is always enabled — no configuration needed. It is most useful for long option names where typing the full name is cumbersome:
+
+```bash
+myapp --max 5       # instead of --max-depth 5
+myapp --ig          # instead of --ignore-case
+```
+
+> **Tip:** Exact long option names are always accepted. Prefix matching is a convenience that does not change the behaviour of exact matches.
+
+## 19. The `--` Stop Marker
 
 A bare `--` tells the parser to **stop interpreting options**. Everything after `--` is treated as a positional argument, even if it looks like an option.
 
@@ -574,7 +640,7 @@ myapp --ling -- "-v is not a flag here" ./src
 # path = "./src"
 ```
 
-## 19. Auto-generated Help
+## 20. Auto-generated Help
 
 Every command automatically supports `--help` (or `-h`). The help text is generated from the registered argument definitions.
 
@@ -618,7 +684,7 @@ Options:
 
 After printing help, the program exits cleanly with exit code 0.
 
-## 20. Version Display
+## 21. Version Display
 
 Every command automatically supports `--version` (or `-V`).
 
@@ -641,7 +707,7 @@ var cmd = Command("myapp", "Description", version="1.0.0")
 
 After printing the version, the program exits cleanly with exit code 0.
 
-## 21. Reading Parsed Results
+## 22. Reading Parsed Results
 
 After calling `cmd.parse()` or `cmd.parse_args()`, you get a `ParseResult` with these typed accessors:
 

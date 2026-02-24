@@ -2,7 +2,12 @@
 
 Showcases: positional args, flags, key-value options, choices,
 count flags, hidden args, negatable flags, mutually exclusive groups,
-and required-together groups.
+required-together groups, and long option prefix matching.
+
+Long option prefix matching allows abbreviated options:
+  --verb  → --verbose
+  --ling  → --ling      (exact match)
+  --max   → --max-depth (unambiguous prefix)
 """
 
 from argmojo import Arg, Command
@@ -11,7 +16,10 @@ from argmojo import Arg, Command
 fn main() raises:
     var cmd = Command(
         "sou",
-        "A CJK-aware text search tool supporting Pinyin and Yuhao IME",
+        (
+            "A CJK-aware text search tool that supports Pinyin and Yuhao Input"
+            " Methods."
+        ),
         version="0.1.0",
     )
 
@@ -21,7 +29,7 @@ fn main() raises:
 
     # ── Boolean flags ────────────────────────────────────────────────────
     cmd.add_arg(
-        Arg("ling", help="Use Lingming IME for encoding")
+        Arg("ling", help="Use Lingming IME (靈明輸入法) for encoding")
         .long("ling")
         .short("l")
         .flag()
@@ -86,8 +94,12 @@ fn main() raises:
 
     # ── Required-together group ──────────────────────────────────────────
     # --username and --password must both be provided, or neither.
-    cmd.add_arg(Arg("username", help="Auth username").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Auth password").long("password").short("p"))
+    cmd.add_arg(
+        Arg("username", help="Auth username").long("username").short("u")
+    )
+    cmd.add_arg(
+        Arg("password", help="Auth password").long("password").short("p")
+    )
     var auth_group: List[String] = ["username", "password"]
     cmd.required_together(auth_group^)
 
@@ -95,23 +107,4 @@ fn main() raises:
     var result = cmd.parse()
 
     # ── Display parsed results ───────────────────────────────────────────
-    print("=== Parsed Arguments ===")
-    print("  pattern:      ", result.get_string("pattern"))
-    print("  path:         ", result.get_string("path"))
-    print("  --ling:       ", result.get_flag("ling"))
-    print("  --ignore-case:", result.get_flag("ignore-case"))
-    print("  --verbose:    ", result.get_count("verbose"))
-    print("  --format:     ", result.get_string("format"))
-    print("  --color:      ", result.get_flag("color"))
-    if result.has("json") or result.has("yaml"):
-        print("  --json:       ", result.get_flag("json"))
-        print("  --yaml:       ", result.get_flag("yaml"))
-    if result.has("max-depth"):
-        print("  --max-depth:  ", result.get_string("max-depth"))
-    else:
-        print("  --max-depth:   (not set)")
-    if result.get_flag("debug-index"):
-        print("  [debug] index dump enabled")
-    if result.has("username"):
-        print("  --username:   ", result.get_string("username"))
-        print("  --password:   ", result.get_string("password"))
+    cmd.print_summary(result)
