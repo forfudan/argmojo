@@ -20,7 +20,8 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Positional arguments**: matched by position
 - **Default values**: fallback when an argument is not provided
 - **Required arguments**: validation that mandatory args are present
-- **Auto-generated help**: `--help` / `-h` (no need to implement manually)
+- **Auto-generated help**: `--help` / `-h` / `-?` with dynamic column alignment, pixi-style ANSI colours, and customisable header/arg colours
+- **Help on no args**: optionally show help when invoked with no arguments
 - **Version display**: `--version` / `-V` (also auto-generated)
 - **`--` stop marker**: everything after `--` is treated as positional
 - **Short flag merging**: `-abc` expands to `-a -b -c`
@@ -33,7 +34,11 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
 - **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
 - **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
-- **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version`), an error is raised.
+- **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version-info`), an error is raised.
+- **Append / collect action**: `--tag x --tag y` collects repeated options into a list with `.append()`
+- **One-required groups**: require at least one argument from a group (e.g., must provide `--json` or `--yaml`)
+- **Value delimiter**: `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`
+- **Multi-value options (nargs)**: `--point 10 20` consumes N consecutive values with `.nargs(N)`
 
 ---
 
@@ -93,6 +98,12 @@ fn main() raises:
         .long("color").flag().negatable()
     )
 
+    # Multi-value option — consumes exactly 2 values per occurrence
+    cmd.add_arg(
+        Arg("point", help="X Y coordinate")
+        .long("point").short("P").nargs(2).metavar("N")
+    )
+
     # Parse and use
     var result = cmd.parse()
     print("pattern:", result.get_string("pattern"))
@@ -114,7 +125,7 @@ pixi run build_demo
 ### Basic usage — positional args and flags
 
 ```bash
-./demo "nihao" ./src --ling
+./demo "nihao" ./src --ling --json
 ```
 
 ### Short options and default values
@@ -122,13 +133,15 @@ pixi run build_demo
 The second positional arg (`path`) defaults to `"."` when omitted:
 
 ```bash
-./demo "zhongguo" -l
+./demo "zhongguo" -l --json
 ```
 
 ### Help and version
 
 ```bash
 ./demo --help
+./demo -h
+./demo '-?'      # -? needs quoting because ? is a shell glob wildcard
 ./demo --version
 ```
 
@@ -137,7 +150,7 @@ The second positional arg (`path`) defaults to `"."` when omitted:
 Multiple short flags can be combined in a single `-` token. For example, `-liv` is equivalent to `-l -i -v`:
 
 ```bash
-./demo "pattern" ./src -liv
+./demo "pattern" ./src -liv --json
 ```
 
 ### Attached short values
@@ -145,8 +158,8 @@ Multiple short flags can be combined in a single `-` token. For example, `-liv` 
 A short option can receive its value without a space:
 
 ```bash
-./demo "pattern" -d3          # same as -d 3
-./demo "pattern" -ftable      # same as -f table
+./demo "pattern" --json -d3          # same as -d 3
+./demo "pattern" --json -ftable      # same as -f table
 ```
 
 ### Count flags — verbosity
@@ -154,9 +167,9 @@ A short option can receive its value without a space:
 Use `-v` multiple times (merged or repeated) to increase verbosity:
 
 ```bash
-./demo "pattern" -v           # verbose = 1
-./demo "pattern" -vvv         # verbose = 3
-./demo "pattern" -v --verbose # verbose = 2  (short + long)
+./demo "pattern" --json -v           # verbose = 1
+./demo "pattern" --json -vvv         # verbose = 3
+./demo "pattern" --json -v --verbose # verbose = 2  (short + long)
 ```
 
 ### Choices validation
@@ -164,8 +177,8 @@ Use `-v` multiple times (merged or repeated) to increase verbosity:
 The `--format` option only accepts `json`, `csv`, or `table`:
 
 ```bash
-./demo "pattern" --format json     # OK
-./demo "pattern" --format xml      # Error: Invalid value 'xml' for 'format'. Valid choices: json, csv, table
+./demo "pattern" --json --format json     # OK
+./demo "pattern" --json --format xml      # Error: Invalid value 'xml' for argument 'format' (choose from 'json', 'csv', 'table')
 ```
 
 ### Negatable flags
@@ -173,9 +186,9 @@ The `--format` option only accepts `json`, `csv`, or `table`:
 A negatable flag pairs `--X` (sets `True`) with `--no-X` (sets `False`) automatically:
 
 ```bash
-./demo "pattern" --color           # color = True
-./demo "pattern" --no-color        # color = False
-./demo "pattern"                   # color = False (default)
+./demo "pattern" --json --color           # color = True
+./demo "pattern" --json --no-color        # color = False
+./demo "pattern" --json                   # color = False (default)
 ```
 
 ### Mutually exclusive groups
@@ -193,7 +206,7 @@ A negatable flag pairs `--X` (sets `True`) with `--no-X` (sets `False`) automati
 Everything after `--` is treated as a positional argument, even if it starts with `-`:
 
 ```bash
-./demo --ling -- "--pattern-with-dashes" ./src
+./demo --json --ling -- "--pattern-with-dashes" ./src
 ```
 
 ### Hidden arguments
@@ -201,7 +214,7 @@ Everything after `--` is treated as a positional argument, even if it starts wit
 Some arguments are excluded from `--help` but still work at the command line (useful for debug flags):
 
 ```bash
-./demo "pattern" --debug-index   # Works, but not shown in --help
+./demo "pattern" --json --debug-index   # Works, but not shown in --help
 ```
 
 ### Required-together groups
@@ -209,20 +222,69 @@ Some arguments are excluded from `--help` but still work at the command line (us
 `--username` and `--password` must be provided together — using one without the other is an error:
 
 ```bash
-./demo "pattern" --username admin --password secret  # OK
-./demo "pattern"                                     # OK (neither is provided)
-./demo "pattern" --username admin                    # Error: '--password' required when '--username' is provided
+./demo "pattern" --json --username admin --password secret  # OK
+./demo "pattern" --json                                     # OK (neither auth arg is provided)
+./demo "pattern" --json --username admin                    # Error: '--password' required when '--username' is provided
+```
+
+### Append / collect action
+
+`--tag` can be repeated; values are collected into a list:
+
+```bash
+./demo "pattern" --json --tag foo --tag bar -tbaz
+# tags = ["foo", "bar", "baz"]
+```
+
+### One-required groups
+
+`--json` and `--yaml` form a one-required group — at least one must be provided:
+
+```bash
+./demo "pattern" --json            # OK
+./demo "pattern" --yaml            # OK
+./demo "pattern"                   # Error: At least one of the following arguments is required: '--json', '--yaml'
+```
+
+Combined with the mutually exclusive group, this enforces **exactly one** output format.
+
+### Value delimiter
+
+`--env` accepts comma-separated values that are split into a list:
+
+```bash
+./demo "pattern" --json --env dev,staging,prod
+# envs = ["dev", "staging", "prod"]
+
+./demo "pattern" --json --env dev,staging --env prod
+# envs = ["dev", "staging", "prod"]   (values accumulate)
+```
+
+### Multi-value options (nargs)
+
+`--point` consumes exactly 2 values per occurrence. Repeating it collects multiple pairs:
+
+```bash
+./demo "pattern" --json --point 10 20
+# points = [10, 20]
+
+./demo "pattern" --json --point 10 20 --point 30 40
+# points = [10, 20, 30, 40]
+
+./demo "pattern" --json -P 5 6
+# points = [5, 6]    (short option works too)
 ```
 
 ### A mock example showing how features work together
 
 ```bash
-./demo yes ./src --verbo --color -li -d 3 --no-color --usern zhu --pas 12345
+./demo yes ./src --verbo --json -t ime --color -li -d 3 --no-color --usern zhu -t search --pas 12345 -t cn --env dev,prod --point 10 20 --formatting csv
 ```
 
 This will be parsed as:
 
 ```bash
+Warning: '--formatting' is deprecated: Use --format instead
 === Parsed Arguments ===
   pattern: yes
   path: ./src
@@ -232,10 +294,20 @@ This will be parsed as:
   -d, --max-depth       3
   -f, --format          table
   --color               False
-  --json                False
+  --json                True
   --yaml                False
+  --xml                 False
+  -t, --tag             [ime, search, cn]
+  -e, --env             [dev, prod]
+  -P, --point           [10, 20]
   -u, --username        zhu
   -p, --password        12345
+  -S, --save            False
+  -O, --output          (not set)
+  --port                (not set)
+  -D, --define          {}
+  --colour              auto
+  --formatting          csv
 ```
 
 ## Development

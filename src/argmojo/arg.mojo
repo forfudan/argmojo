@@ -40,6 +40,28 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
     var is_negatable: Bool
     """If True, this flag also accepts --no-X to set it to False."""
+    var is_append: Bool
+    """If True, repeated uses collect values into a list (e.g., --tag x --tag y)."""
+    var delimiter_char: String
+    """If non-empty, each value is split by this delimiter into multiple list entries."""
+    var nargs_count: Int
+    """Number of values to consume per occurrence (0 means single-value mode)."""
+    var range_min: Int
+    """Minimum allowed value (inclusive) for numeric range validation."""
+    var range_max: Int
+    """Maximum allowed value (inclusive) for numeric range validation."""
+    var has_range: Bool
+    """Whether numeric range validation is active."""
+    var is_map: Bool
+    """If True, each value is parsed as key=value and stored in a Dict."""
+    var alias_names: List[String]
+    """Alternative long names that resolve to this argument."""
+    var deprecated_msg: String
+    """If non-empty, this argument is deprecated; the string is the warning message."""
+
+    # ===------------------------------------------------------------------=== #
+    # Life cycle methods
+    # ===------------------------------------------------------------------=== #
 
     fn __init__(out self, name: String, *, help: String = ""):
         """Creates a new argument definition.
@@ -62,50 +84,83 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_hidden = False
         self.is_count = False
         self.is_negatable = False
+        self.is_append = False
+        self.delimiter_char = ""
+        self.nargs_count = 0
+        self.range_min = 0
+        self.range_max = 0
+        self.has_range = False
+        self.is_map = False
+        self.alias_names = List[String]()
+        self.deprecated_msg = ""
 
-    fn __copyinit__(out self, other: Self):
+    fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
 
         Args:
-            other: The Arg to copy from.
+            copy: The Arg to copy from.
         """
-        self.name = other.name
-        self.help_text = other.help_text
-        self.long_name = other.long_name
-        self.short_name = other.short_name
-        self.is_flag = other.is_flag
-        self.is_required = other.is_required
-        self.is_positional = other.is_positional
-        self.default_value = other.default_value
-        self.has_default = other.has_default
+        self.name = copy.name
+        self.help_text = copy.help_text
+        self.long_name = copy.long_name
+        self.short_name = copy.short_name
+        self.is_flag = copy.is_flag
+        self.is_required = copy.is_required
+        self.is_positional = copy.is_positional
+        self.default_value = copy.default_value
+        self.has_default = copy.has_default
         self.choice_values = List[String]()
-        for i in range(len(other.choice_values)):
-            self.choice_values.append(other.choice_values[i])
-        self.metavar_name = other.metavar_name
-        self.is_hidden = other.is_hidden
-        self.is_count = other.is_count
-        self.is_negatable = other.is_negatable
+        for i in range(len(copy.choice_values)):
+            self.choice_values.append(copy.choice_values[i])
+        self.metavar_name = copy.metavar_name
+        self.is_hidden = copy.is_hidden
+        self.is_count = copy.is_count
+        self.is_negatable = copy.is_negatable
+        self.is_append = copy.is_append
+        self.delimiter_char = copy.delimiter_char
+        self.nargs_count = copy.nargs_count
+        self.range_min = copy.range_min
+        self.range_max = copy.range_max
+        self.has_range = copy.has_range
+        self.is_map = copy.is_map
+        self.alias_names = List[String]()
+        for i in range(len(copy.alias_names)):
+            self.alias_names.append(copy.alias_names[i])
+        self.deprecated_msg = copy.deprecated_msg
 
-    fn __moveinit__(out self, deinit other: Self):
+    fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Arg.
 
         Args:
-            other: The Arg to move from.
+            move: The Arg to move from.
         """
-        self.name = other.name^
-        self.help_text = other.help_text^
-        self.long_name = other.long_name^
-        self.short_name = other.short_name^
-        self.is_flag = other.is_flag
-        self.is_required = other.is_required
-        self.is_positional = other.is_positional
-        self.default_value = other.default_value^
-        self.has_default = other.has_default
-        self.choice_values = other.choice_values^
-        self.metavar_name = other.metavar_name^
-        self.is_hidden = other.is_hidden
-        self.is_count = other.is_count
-        self.is_negatable = other.is_negatable
+        self.name = move.name^
+        self.help_text = move.help_text^
+        self.long_name = move.long_name^
+        self.short_name = move.short_name^
+        self.is_flag = move.is_flag
+        self.is_required = move.is_required
+        self.is_positional = move.is_positional
+        self.default_value = move.default_value^
+        self.has_default = move.has_default
+        self.choice_values = move.choice_values^
+        self.metavar_name = move.metavar_name^
+        self.is_hidden = move.is_hidden
+        self.is_count = move.is_count
+        self.is_negatable = move.is_negatable
+        self.is_append = move.is_append
+        self.delimiter_char = move.delimiter_char^
+        self.nargs_count = move.nargs_count
+        self.range_min = move.range_min
+        self.range_max = move.range_max
+        self.has_range = move.has_range
+        self.is_map = move.is_map
+        self.alias_names = move.alias_names^
+        self.deprecated_msg = move.deprecated_msg^
+
+    # ===------------------------------------------------------------------=== #
+    # Builder methods for configuring the argument
+    # ===------------------------------------------------------------------=== #
 
     fn long(var self, name: String) -> Self:
         """Sets the long option name (e.g., 'lingming' for --lingming).
@@ -252,6 +307,132 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         """
         self.is_negatable = True
         return self^
+
+    fn append(var self) -> Self:
+        """Marks this argument as an append/collect option.
+
+        Each occurrence adds its value to a list. For example,
+        `--tag x --tag y` collects `["x", "y"]`. Use `get_list()`
+        on ParseResult to retrieve the collected values.
+
+        Returns:
+            Self marked as append.
+        """
+        self.is_append = True
+        return self^
+
+    # TODO: Allow auto-translating full-width punctuation to ASCII for delimiter.
+    # For example
+    # "，" → ","
+    # "；" → ";"
+    # "：" → ":"
+    fn delimiter(var self, sep: String) -> Self:
+        """Sets a value delimiter for splitting a single value into multiple.
+
+        When set, each provided value is split by the delimiter, and each
+        piece is added to the list individually.  Implies `.append()`.
+        For example, `.delimiter(",")` causes `--tag a,b,c` to produce
+        `["a", "b", "c"]`.
+
+        Args:
+            sep: The delimiter string (e.g., ",").
+
+        Returns:
+            Self with the delimiter and append mode set.
+        """
+        self.delimiter_char = sep
+        self.is_append = True
+        return self^
+
+    fn nargs(var self, n: Int) -> Self:
+        """Sets the number of values consumed per occurrence.
+
+        When set, each use of the option consumes exactly ``n``
+        consecutive arguments.  For example, ``.nargs(2)`` on
+        ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
+        Implies ``.append()`` so values are stored in
+        ``ParseResult.lists``.
+
+        Args:
+            n: Number of values to consume (must be ≥ 2).
+
+        Returns:
+            Self with nargs and append mode set.
+        """
+        self.nargs_count = n
+        self.is_append = True
+        return self^
+
+    fn range(var self, min_val: Int, max_val: Int) -> Self:
+        """Sets numeric range validation for this argument.
+
+        When set, the parsed value must be an integer within
+        ``[min_val, max_val]`` (inclusive).  Validation occurs
+        after parsing, during the validation phase.
+
+        Args:
+            min_val: Minimum allowed value (inclusive).
+            max_val: Maximum allowed value (inclusive).
+
+        Returns:
+            Self with range validation enabled.
+        """
+        self.range_min = min_val
+        self.range_max = max_val
+        self.has_range = True
+        return self^
+
+    fn map_option(var self) -> Self:
+        """Marks this argument as a key-value map option.
+
+        Each value must be in ``key=value`` format.  Values are
+        stored in ``ParseResult.maps`` and retrieved with
+        ``get_map()``.  Implies ``.append()`` for repeated uses.
+
+        For example, ``--define DEBUG=1 --define VERSION=2`` produces
+        ``{"DEBUG": "1", "VERSION": "2"}``.
+
+        Returns:
+            Self marked as a map option.
+        """
+        self.is_map = True
+        self.is_append = True
+        return self^
+
+    fn aliases(var self, var names: List[String]) -> Self:
+        """Sets alternative long names for this argument.
+
+        Any alias resolves to this argument during parsing.  For
+        example, ``.long("colour").aliases(["color"])`` makes both
+        ``--colour`` and ``--color`` accepted.
+
+        Args:
+            names: The alternative long option names (without ``--``).
+
+        Returns:
+            Self with aliases registered.
+        """
+        self.alias_names = names^
+        return self^
+
+    fn deprecated(var self, message: String) -> Self:
+        """Marks this argument as deprecated.
+
+        When the user provides a deprecated argument, a warning is
+        printed to stderr but parsing continues normally.
+
+        Args:
+            message: The deprecation message (e.g., "Use --format instead").
+
+        Returns:
+            Self marked as deprecated.
+        """
+        self.deprecated_msg = message
+        return self^
+
+    # ===------------------------------------------------------------------=== #
+    # String representation methods
+    # ===------------------------------------------------------------------=== #
 
     fn __str__(self) -> String:
         """Returns a string representation of this argument definition."""

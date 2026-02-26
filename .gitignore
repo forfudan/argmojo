@@ -27,3 +27,6 @@ logs/
 # Packages
 *.mojopkg
 demo
+
+# Local notes (not tracked)
+local/

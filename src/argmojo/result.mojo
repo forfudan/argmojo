@@ -15,6 +15,10 @@ struct ParseResult(Movable, Stringable, Writable):
     """Positional argument values, in order."""
     var counts: Dict[String, Int]
     """Counter values for count-type arguments (e.g., -vvv → 3)."""
+    var lists: Dict[String, List[String]]
+    """Collected list values for append-type arguments (e.g., --tag x --tag y)."""
+    var maps: Dict[String, Dict[String, String]]
+    """Key-value map values for map-type arguments (e.g., --define key=val)."""
     var _positional_names: List[String]
     """Names of positional arguments, in declaration order."""
 
@@ -24,6 +28,8 @@ struct ParseResult(Movable, Stringable, Writable):
         self.values = Dict[String, String]()
         self.positionals = List[String]()
         self.counts = Dict[String, Int]()
+        self.lists = Dict[String, List[String]]()
+        self.maps = Dict[String, Dict[String, String]]()
         self._positional_names = List[String]()
 
     fn get_flag(self, name: String) -> Bool:
@@ -95,6 +101,52 @@ struct ParseResult(Movable, Stringable, Writable):
         except:
             return 0
 
+    fn get_list(self, name: String) -> List[String]:
+        """Gets the collected list for an append-type argument.
+
+        Returns an empty list if the argument was never provided.
+
+        Args:
+            name: The argument name.
+
+        Returns:
+            The list of collected values.
+
+        Note:
+            For map-type arguments (`.map_option()`), each entry is the
+            raw ``key=value`` string (e.g. ``["DEBUG=1", "VERSION=2"]``).
+            Use ``get_map()`` instead to retrieve the parsed dict.
+        """
+        try:
+            var result = List[String]()
+            var lst = self.lists[name].copy()
+            for i in range(len(lst)):
+                result.append(String(lst[i]))
+            return result^
+        except:
+            return List[String]()
+
+    fn get_map(self, name: String) -> Dict[String, String]:
+        """Gets the key-value map for a map-type argument.
+
+        Returns an empty Dict if the argument was never provided.
+
+        Args:
+            name: The argument name.
+
+        Returns:
+            The Dict of key-value pairs.
+        """
+        try:
+            # Return a copy of the stored map.
+            var result = Dict[String, String]()
+            var m = self.maps[name].copy()
+            for entry in m.items():
+                result[entry.key] = entry.value
+            return result^
+        except:
+            return Dict[String, String]()
+
     fn has(self, name: String) -> Bool:
         """Checks whether an argument was provided.
 
@@ -109,6 +161,10 @@ struct ParseResult(Movable, Stringable, Writable):
         if name in self.values:
             return True
         if name in self.counts:
+            return True
+        if name in self.lists:
+            return True
+        if name in self.maps:
             return True
         for i in range(len(self._positional_names)):
             if self._positional_names[i] == name:

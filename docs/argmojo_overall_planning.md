@@ -24,30 +24,51 @@ This section summarises the key design patterns and features from well-known arg
 
 ### 2.2 Universal Features Worth Adopting
 
-These features appear across 3+ libraries and depend only on string operations and basic data structures:
+These features appear across multiple libraries and depend only on string operations and basic data structures.
 
-| Feature                          | argparse | cobra | clap | Planned phase |
-| -------------------------------- | -------- | ----- | ---- | ------------- |
-| Long/short options with values   | ✓        | ✓     | ✓    | **Done**      |
-| Positional arguments             | ✓        | ✓     | ✓    | **Done**      |
-| Boolean flags                    | ✓        | ✓     | ✓    | **Done**      |
-| Default values                   | ✓        | ✓     | ✓    | **Done**      |
-| Required argument validation     | ✓        | ✓     | ✓    | **Done**      |
-| `--` stop marker                 | ✓        | ✓     | ✓    | **Done**      |
-| Auto `--help` / `-h`             | ✓        | ✓     | ✓    | **Done**      |
-| Auto `--version` / `-V`          | ✓        | ✓     | ✓    | **Done**      |
-| Short flag merging (`-abc`)      | ✓        | ✓     | ✓    | **Done**      |
-| Metavar (display name for value) | ✓        | —     | ✓    | **Done**      |
-| Positional arg count validation  | —        | ✓     | ✓    | **Done**      |
-| Choices / enum validation        | ✓        | —     | ✓    | **Done**      |
-| Mutually exclusive flags         | ✓        | ✓     | ✓    | **Done**      |
-| Flags required together          | —        | ✓     | —    | **Done**      |
-| `--no-X` negation flags          | ✓ (3.9)  | —     | ✓    | **Done**      |
-| Long option prefix matching      | ✓        | —     | —    | **Done**      |
-| Append / collect action          | ✓        | ✓     | ✓    | Phase 3       |
-| One-required group               | —        | ✓     | ✓    | Phase 3       |
-| Subcommands                      | ✓        | ✓     | ✓    | Phase 4       |
-| Suggest on typo (Levenshtein)    | ✓ (3.14) | ✓     | ✓    | Phase 5       |
+| Feature                           | argparse | Click | cobra | clap | Other                  | Planned phase |
+| --------------------------------- | -------- | ----- | ----- | ---- | ---------------------- | ------------- |
+| Long/short options with values    | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Positional arguments              | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Boolean flags                     | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Default values                    | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Required argument validation      | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| `--` stop marker                  | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Auto `--help` / `-h` / `-?`       | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Auto `--version` / `-V`           | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Short flag merging (`-abc`)       | ✓        | —     | ✓     | ✓    |                        | **Done**      |
+| Metavar (display name for value)  | ✓        | —     | —     | ✓    |                        | **Done**      |
+| Positional arg count validation   | —        | —     | ✓     | ✓    |                        | **Done**      |
+| Choices / enum validation         | ✓        | ✓     | —     | ✓    |                        | **Done**      |
+| Mutually exclusive flags          | ✓        | —     | ✓     | ✓    |                        | **Done**      |
+| Flags required together           | —        | —     | ✓     | —    |                        | **Done**      |
+| `--no-X` negation flags           | ✓ (3.9)  | —     | —     | ✓    |                        | **Done**      |
+| Long option prefix matching       | ✓        | —     | —     | —    |                        | **Done**      |
+| Append / collect action           | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| One-required group                | —        | —     | ✓     | ✓    |                        | **Done**      |
+| Value delimiter (`--tag a,b,c`)   | —        | —     | ✓     | ✓    |                        | **Done**      |
+| Colored help (customisable)       | —        | ✓     | —     | ✓    | pixi                   | **Done**      |
+| nargs (multi-value per option)    | ✓        | ✓     | —     | ✓    |                        | **Done**      |
+| Conditional requirement           | —        | —     | ✓     | ✓    |                        | **Done**      |
+| Numeric range validation          | —        | —     | —     | —    |                        | **Done**      |
+| Key-value map (`-Dkey=val`)       | —        | —     | —     | —    | Java `-D`, Docker `-e` | **Done**      |
+| Aliases for long names            | —        | —     | ✓     | ✓    |                        | **Done**      |
+| Deprecated arguments              | ✓ (3.13) | —     | ✓     | —    |                        | **Done**      |
+| Subcommands                       | ✓        | ✓     | ✓     | ✓    |                        | Phase 4       |
+| Response file (`@args.txt`)       | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |
+| Argument parents (shared args)    | ✓        | —     | —     | —    |                        | Phase 5       |
+| Interactive prompting             | —        | ✓     | —     | —    |                        | Phase 5       |
+| Password / masked input           | —        | ✓     | —     | —    |                        | Phase 5       |
+| Confirmation (`--yes` / `-y`)     | —        | ✓     | —     | —    |                        | Phase 5       |
+| Pre/Post run hooks                | —        | —     | ✓     | —    |                        | Phase 5       |
+| REMAINDER nargs                   | ✓        | —     | —     | —    |                        | Phase 5       |
+| Partial parsing (known args)      | ✓        | —     | —     | ✓    |                        | Phase 5       |
+| Require equals syntax             | —        | —     | —     | ✓    |                        | Phase 5       |
+| Default-if-present (const)        | ✓        | —     | —     | ✓    |                        | Phase 5       |
+| Suggest on typo (Levenshtein)     | ✓ (3.14) | —     | ✓     | ✓    |                        | Phase 5       |
+| CJK-aware help formatting         | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
+| CJK full-to-half-width correction | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
+| CJK punctuation detection         | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 
 ### 2.3 Features Excluded (Infeasible or Inappropriate)
 
@@ -108,7 +129,10 @@ src/argmojo/
 ├── command.mojo         # Command struct — command definition & parsing
 └── result.mojo          # ParseResult struct — parsed values
 tests/
-└── test_argmojo.mojo    # Unit tests for ArgMojo, ensure robustness
+├── test_parse.mojo      # Core parsing tests (flags, values, shorts, etc.)
+├── test_groups.mojo     # Group constraint tests (exclusive, conditional, etc.)
+├── test_collect.mojo    # Collection feature tests (append, delimiter, nargs)
+└── test_help.mojo       # Help output tests (formatting, colours, alignment)
 examples/
 └── demo.mojo            # Demo CLI tool, compilable to binary
 ```
@@ -142,6 +166,15 @@ examples/
 | Required-together groups                                              | ✓      | ✓     |
 | Negatable flags (`.negatable()` → `--no-X`)                           | ✓      | ✓     |
 | Long option prefix matching (`--verb` → `--verbose`)                  | ✓      | ✓     |
+| Append / collect action (`--tag x --tag y` → list)                    | ✓      | ✓     |
+| One-required groups (`cmd.one_required(["json", "yaml"])`)            | ✓      | ✓     |
+| Value delimiter (`.delimiter(",")` → split into list)                 | ✓      | ✓     |
+| Nargs (`.nargs(N)` → consume N values per occurrence)                 | ✓      | ✓     |
+| Conditional requirements (`cmd.required_if("output", "save")`)        | ✓      | ✓     |
+| Numeric range validation (`.range(1, 65535)`)                         | ✓      | ✓     |
+| Key-value map option (`.map_option()` → `Dict[String, String]`)      | ✓      | ✓     |
+| Aliases (`.aliases(["color"])` for `--colour` / `--color`)            | ✓      | ✓     |
+| Deprecated arguments (`.deprecated("msg")` → stderr warning)         | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -219,10 +252,19 @@ pattern             # By order of add_arg() calls
 - [x] **Flags required together** — `cmd.required_together(["username", "password"])`
 - [x] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
 - [x] **Long option prefix matching** — `--verb` auto-resolves to `--verbose` when unambiguous (argparse `allow_abbrev`)
-- [ ] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects repeated options into a list (argparse `append`, cobra `StringArrayVar`, clap `Append`)
-- [ ] **One-required group** — `cmd.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
-- [ ] **Aliases** for long names — `.aliases(["colour"])` for `--color`
-- [ ] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning (argparse 3.13)
+- [x] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects repeated options into a list (argparse `append`, cobra `StringArrayVar`, clap `Append`)
+- [x] **One-required group** — `cmd.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
+- [x] **Value delimiter** — `--tag a,b,c` splits by delimiter into `["a", "b", "c"]` (cobra `StringSliceVar`, clap `value_delimiter`)
+- [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help` (common in Windows CLI tools, Java, MySQL, curl)
+- [x] **Help on no args** — `cmd.help_on_no_args()` shows help when invoked with no arguments (like git/docker/cargo)
+- [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
+- [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
+- [x] **nargs (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
+- [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
+- [x] **Numeric range validation** — `.range(1, 65535)` validates `--port` value is within range (no major library has this built-in)
+- [x] **Key-value map option** — `--define key=value --define k2=v2` → `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
+- [x] **Aliases** for long names — `.aliases(["color"])` for `--colour` / `--color`
+- [x] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning to stderr (argparse 3.13)
 
 ### Phase 4: Subcommands (maybe for v0.3)
 
@@ -233,9 +275,21 @@ pattern             # By order of add_arg() calls
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
-- [ ] **Colored error output** — using mist library for ANSI styled errors/help
+- [ ] **Colored error output** — ANSI styled error messages (help output already colored)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
 - [ ] **Usage line customisation** — override the auto-generated usage string
+- [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
+- [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
+- [ ] **Default-if-present (const)** — `--opt` (no value) → use const; `--opt val` → use val; absent → use default (argparse `const`)
+- [ ] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
+- [ ] **Argument parents** — share a common set of Arg definitions across multiple Commands (argparse `parents`)
+- [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
+- [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
+- [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)
+- [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
+- [ ] **REMAINDER nargs** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
+- [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
+- [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
 
 ### Explicitly Out of Scope
 
@@ -253,29 +307,39 @@ These will **NOT** be implemented (but who knows :D maybe in the future if there
 ```txt
 Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 
-1. Skip argv[0] (program name)
-2. Initialize cursor i = 1
-3. Loop:
-   ├─ If args[i] == "--":
-   │     Everything after is treated as positional arguments, break
-   ├─ If args[i] == "--help" or "-h":
-   │     Print help and exit
-   ├─ If args[i] == "--version" or "-V":
-   │     Print version and exit
-   ├─ If args[i].startswith("--"):
-   │     Parse long option
-   │     ├─ If contains "=": split into key=value
-   │     ├─ If flag: set to True
-   │     └─ Otherwise: take args[i+1] as value, i += 1
-   ├─ If args[i].startswith("-") and len > 1:
-   │     Parse short option
-   │     ├─ If single char and is flag: set flag
-   │     ├─ If single char and takes value: take args[i+1]
-   │     └─ If multiple chars: expand as merged flags  [Phase 2]
-   └─ Otherwise:
-         Treat as positional argument
-4. Apply defaults for missing arguments
-5. Validate: check required arguments, choices, positional count
+1. Initialize ParseResult and register positional names
+2. If `help_on_no_args` is enabled and only argv[0] exists:
+    print help and exit
+3. Loop from argv[1] with cursor i:
+    ├─ If args[i] == "--":
+    │     Enter positional-only mode
+    ├─ If positional-only mode is on:
+    │     Append token to positional list
+    ├─ If args[i] == "--help" or "-h" or "-?":
+    │     Print help and exit
+    ├─ If args[i] == "--version" or "-V":
+    │     Print version and exit
+    ├─ If args[i].startswith("--"):
+    │     Parse long option
+    │     ├─ Support `--key=value`
+    │     ├─ Support `--no-key` (negatable flags, with prefix match)
+    │     ├─ Resolve by exact long name or unambiguous prefix
+    │     ├─ Handle count / flag / nargs / value-taking options
+    │     └─ For append args, split by delimiter if configured
+    ├─ If args[i].startswith("-") and len > 1:
+    │     Parse short option(s)
+    │     ├─ Single short: count / flag / nargs / value
+    │     └─ Multi-short: merged flags and attached value (`-ofile.txt`)
+    └─ Otherwise:
+            Treat as positional argument
+4. Apply defaults for missing arguments (named + positional slots)
+5. Validate:
+    ├─ Required arguments
+    ├─ Positional count (too many positionals)
+    ├─ Mutually exclusive groups
+    ├─ Required-together groups
+    ├─ One-required groups
+    └─ Conditional requirements
 6. Return ParseResult
 ```
 

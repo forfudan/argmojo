@@ -1,6 +1,7 @@
-"""Tests for argmojo — command-line argument parser."""
+"""Tests for argmojo — core parsing (flags, values, positionals, shorts, count, negatable, prefix)."""
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
+import argmojo
 from argmojo import Arg, Command, ParseResult
 
 
@@ -172,6 +173,9 @@ fn test_has() raises:
 # ── Phase 2: Short flag merging ──────────────────────────────────────────────
 
 
+# ── Phase 2: Short flag merging ──────────────────────────────────────────────
+
+
 fn test_merged_short_flags() raises:
     """Tests that -abc is expanded to -a -b -c for flags."""
     var cmd = Command("test", "Test app")
@@ -220,6 +224,9 @@ fn test_merged_flags_with_trailing_value() raises:
 # ── Phase 2: Attached short value ────────────────────────────────────────────
 
 
+# ── Phase 2: Attached short value ────────────────────────────────────────────
+
+
 fn test_attached_short_value() raises:
     """Tests -ofile.txt where -o takes 'file.txt' as attached value."""
     var cmd = Command("test", "Test app")
@@ -244,6 +251,9 @@ fn test_merged_flags_with_attached_value() raises:
     assert_true(result.get_flag("brief"), msg="-b should be True")
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_merged_flags_with_attached_value")
+
+
+# ── Phase 2: Choices validation ──────────────────────────────────────────────
 
 
 # ── Phase 2: Choices validation ──────────────────────────────────────────────
@@ -313,77 +323,6 @@ fn test_choices_with_short_attached() raises:
 
 
 # ── Phase 2: Hidden arguments ────────────────────────────────────────────────
-
-
-fn test_hidden_not_in_help() raises:
-    """Tests that hidden arguments are excluded from help output."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
-    )
-    cmd.add_arg(
-        Arg("debug", help="Debug mode").long("debug").short("d").flag().hidden()
-    )
-
-    var help = cmd._generate_help()
-    assert_true("verbose" in help, msg="visible arg should be in help")
-    assert_false("debug" in help, msg="hidden arg should NOT be in help")
-    print("  ✓ test_hidden_not_in_help")
-
-
-fn test_hidden_still_works() raises:
-    """Tests that hidden arguments can still be used at the command line."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("debug", help="Debug mode").long("debug").short("d").flag().hidden()
-    )
-
-    var args: List[String] = ["test", "--debug"]
-    var result = cmd.parse_args(args)
-    assert_true(result.get_flag("debug"), msg="hidden --debug should work")
-    print("  ✓ test_hidden_still_works")
-
-
-# ── Phase 2: Metavar ─────────────────────────────────────────────────────────
-
-
-fn test_metavar_in_help() raises:
-    """Tests that metavar appears in help output."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("output", help="Output file")
-        .long("output")
-        .short("o")
-        .metavar("FILE")
-    )
-
-    var help = cmd._generate_help()
-    assert_true("FILE" in help, msg="metavar 'FILE' should appear in help")
-    # Should NOT show the default "<output>" form.
-    assert_false(
-        "<output>" in help,
-        msg="default placeholder should not appear when metavar is set",
-    )
-    print("  ✓ test_metavar_in_help")
-
-
-fn test_choices_in_help() raises:
-    """Tests that choices are displayed in help when no metavar."""
-    var cmd = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
-    cmd.add_arg(
-        Arg("format", help="Output format")
-        .long("format")
-        .short("f")
-        .choices(fmts^)
-    )
-
-    var help = cmd._generate_help()
-    assert_true(
-        "{json,csv,table}" in help,
-        msg="choices should appear in help as {json,csv,table}",
-    )
-    print("  ✓ test_choices_in_help")
 
 
 # ── Phase 2: Count action ────────────────────────────────────────────────────
@@ -472,6 +411,9 @@ fn test_count_default_zero() raises:
 # ── Phase 2: Positional arg count validation ─────────────────────────────────
 
 
+# ── Phase 2: Positional arg count validation ─────────────────────────────────
+
+
 fn test_too_many_positionals() raises:
     """Tests that extra positional args raise an error."""
     var cmd = Command("test", "Test app")
@@ -508,187 +450,6 @@ fn test_exact_positionals_ok() raises:
 
 
 # ── Phase 3: Mutually exclusive groups ────────────────────────────────────────
-
-
-fn test_exclusive_one_provided() raises:
-    """Tests that providing one arg from an exclusive group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
-    var group: List[String] = ["json", "yaml", "toml"]
-    cmd.mutually_exclusive(group^)
-
-    var args: List[String] = ["test", "--json"]
-    var result = cmd.parse_args(args)
-    assert_true(result.get_flag("json"), msg="--json should be True")
-    assert_false(result.get_flag("yaml"), msg="--yaml should be False")
-    print("  ✓ test_exclusive_one_provided")
-
-
-fn test_exclusive_none_provided() raises:
-    """Tests that providing no arg from an exclusive group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    var group: List[String] = ["json", "yaml"]
-    cmd.mutually_exclusive(group^)
-
-    var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
-    assert_false(result.get_flag("json"), msg="--json should be False")
-    assert_false(result.get_flag("yaml"), msg="--yaml should be False")
-    print("  ✓ test_exclusive_none_provided")
-
-
-fn test_exclusive_conflict() raises:
-    """Tests that providing two args from an exclusive group raises an error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
-    var group: List[String] = ["json", "yaml", "toml"]
-    cmd.mutually_exclusive(group^)
-
-    var args: List[String] = ["test", "--json", "--yaml"]
-    var caught = False
-    try:
-        _ = cmd.parse_args(args)
-    except e:
-        caught = True
-        var msg = String(e)
-        assert_true(
-            "mutually exclusive" in msg,
-            msg="Error should mention mutually exclusive",
-        )
-        assert_true(
-            "--json" in msg,
-            msg="Error should mention --json",
-        )
-        assert_true(
-            "--yaml" in msg,
-            msg="Error should mention --yaml",
-        )
-    assert_true(caught, msg="Should have raised error for exclusive conflict")
-    print("  ✓ test_exclusive_conflict")
-
-
-fn test_exclusive_value_args() raises:
-    """Tests mutually exclusive with value-taking args."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("input", help="Input file").long("input"))
-    cmd.add_arg(Arg("stdin", help="Read stdin").long("stdin").flag())
-    var group: List[String] = ["input", "stdin"]
-    cmd.mutually_exclusive(group^)
-
-    var args: List[String] = ["test", "--input", "file.txt", "--stdin"]
-    var caught = False
-    try:
-        _ = cmd.parse_args(args)
-    except e:
-        caught = True
-        var msg = String(e)
-        assert_true(
-            "mutually exclusive" in msg,
-            msg="Error should mention mutually exclusive",
-        )
-    assert_true(caught, msg="Should have raised error for exclusive conflict")
-    print("  ✓ test_exclusive_value_args")
-
-
-# ── Phase 3: Required-together groups ─────────────────────────────────────────
-
-
-fn test_required_together_all_provided() raises:
-    """Tests that providing all args from a required-together group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
-    var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
-
-    var args: List[String] = [
-        "test",
-        "--username",
-        "admin",
-        "--password",
-        "secret",
-    ]
-    var result = cmd.parse_args(args)
-    assert_equal(result.get_string("username"), "admin")
-    assert_equal(result.get_string("password"), "secret")
-    print("  ✓ test_required_together_all_provided")
-
-
-fn test_required_together_none_provided() raises:
-    """Tests that providing none from a required-together group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
-    var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
-
-    var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
-    assert_false(result.has("username"), msg="username should not be set")
-    assert_false(result.has("password"), msg="password should not be set")
-    print("  ✓ test_required_together_none_provided")
-
-
-fn test_required_together_partial() raises:
-    """Tests that providing only some from a required-together group raises an
-    error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
-    var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
-
-    var args: List[String] = ["test", "--username", "admin"]
-    var caught = False
-    try:
-        _ = cmd.parse_args(args)
-    except e:
-        caught = True
-        var msg = String(e)
-        assert_true(
-            "required together" in msg,
-            msg="Error should mention required together",
-        )
-        assert_true(
-            "--password" in msg,
-            msg="Error should mention --password",
-        )
-    assert_true(caught, msg="Should have raised error for partial group")
-    print("  ✓ test_required_together_partial")
-
-
-fn test_required_together_three_args() raises:
-    """Tests required-together with three arguments, only one provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("host", help="Host").long("host"))
-    cmd.add_arg(Arg("port", help="Port").long("port"))
-    cmd.add_arg(Arg("proto", help="Protocol").long("proto"))
-    var group: List[String] = ["host", "port", "proto"]
-    cmd.required_together(group^)
-
-    var args: List[String] = ["test", "--host", "localhost"]
-    var caught = False
-    try:
-        _ = cmd.parse_args(args)
-    except e:
-        caught = True
-        var msg = String(e)
-        assert_true(
-            "--port" in msg,
-            msg="Error should mention --port",
-        )
-        assert_true(
-            "--proto" in msg,
-            msg="Error should mention --proto",
-        )
-    assert_true(caught, msg="Should have raised error for partial group")
-    print("  ✓ test_required_together_three_args")
 
 
 # ── Phase 3: Negatable flags (--no-X) ────────────────────────────────────────
@@ -739,23 +500,6 @@ fn test_negatable_default() raises:
         result.has("color"), msg="unset negatable should not be present"
     )
     print("  ✓ test_negatable_default")
-
-
-fn test_negatable_in_help() raises:
-    """Test that negatable flags show --X / --no-X in help."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("color", help="Colored output").long("color").flag().negatable()
-    )
-
-    var args: List[String] = ["test", "--help"]
-    _ = args
-    var help = cmd._generate_help()
-    assert_true(
-        "--color / --no-color" in help,
-        msg="Help should show --color / --no-color",
-    )
-    print("  ✓ test_negatable_in_help")
 
 
 fn test_non_negatable_rejects_no_prefix() raises:
@@ -874,6 +618,9 @@ fn test_prefix_match_negatable() raises:
         result.has("color"), msg="color should be present after --no-col"
     )
     print("  ✓ test_prefix_match_negatable")
+
+
+# ── Phase 3: Append / collect action ─────────────────────────────────────────
 
 
 fn main() raises:
