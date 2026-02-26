@@ -26,6 +26,60 @@ comptime _DEFAULT_WARN_COLOR = _ORANGE
 comptime _DEFAULT_ERROR_COLOR = _RED
 
 
+fn _looks_like_number(token: String) -> Bool:
+    """Returns True if *token* is a negative-number literal.
+
+    Recognises the forms ``-N``, ``-N.N``, ``-.N``, ``-NeX``, ``-N.NeX``,
+    and the corresponding ``-Ne+X`` / ``-Ne-X`` variants (same grammar as
+    Python / argparse numeric detection).
+    """
+    if len(token) < 2 or token[0:1] != "-":
+        return False
+    var j = 1
+    # Optional leading '.' after minus (e.g. -.5).
+    if token[j : j + 1] == ".":
+        j += 1
+        if j >= len(token) or not (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            return False
+    elif not (token[j : j + 1] >= "0" and token[j : j + 1] <= "9"):
+        return False
+    # Integer digits.
+    while j < len(token) and (
+        token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+    ):
+        j += 1
+    # Optional fractional part.
+    if j < len(token) and token[j : j + 1] == ".":
+        j += 1
+        while j < len(token) and (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            j += 1
+    # Optional exponent.
+    if j < len(token) and (token[j : j + 1] == "e" or token[j : j + 1] == "E"):
+        j += 1
+        if j < len(token) and (
+            token[j : j + 1] == "+" or token[j : j + 1] == "-"
+        ):
+            j += 1
+        if j >= len(token) or not (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            return False
+        while j < len(token) and (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            j += 1
+    return j == len(token)
+
+
+fn _is_ascii_digit(ch: String) -> Bool:
+    """Returns True if *ch* is a single ASCII digit character ('0'-'9')."""
+    return ch >= "0" and ch <= "9"
+
+
 fn _resolve_color(name: String) raises -> String:
     """Maps a user-facing colour name to its ANSI code.
 
@@ -112,6 +166,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
     var _help_subcommand_enabled: Bool
     """When True (default), auto-insert a 'help' subcommand on first 
     `add_subcommand()` call."""
+    var _allow_negative_numbers: Bool
+    """When True, tokens matching negative-number format (-N, -N.N, -NeX)
+    are always treated as positional arguments.
+    When False (default), the same treatment applies automatically whenever
+    no registered short option uses a digit character (auto-detect).
+    Enable explicitly via `allow_negative_numbers()` when you have a digit
+    short option and still need negative-number literals to pass through."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -142,6 +203,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_on_no_args = False
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
+        self._allow_negative_numbers = False
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -165,6 +227,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_on_no_args = move._help_on_no_args
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
+        self._allow_negative_numbers = move._allow_negative_numbers
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -203,6 +266,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_on_no_args = copy._help_on_no_args
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
+        self._allow_negative_numbers = copy._allow_negative_numbers
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -297,6 +361,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not self.subcommands[i]._is_help_subcommand:
                 new_subs.append(self.subcommands[i].copy())
         self.subcommands = new_subs^
+
+    fn allow_negative_numbers(mut self):
+        """Treats tokens that look like negative numbers as positional arguments.
+
+        By default ArgMojo already auto-detects negative-number tokens
+        (``-9``, ``-3.14``, ``-1.5e10``) and passes them through as
+        positionals **when no registered short option starts with a digit**.
+        Call this method explicitly when you have registered a digit short
+        option (e.g., ``-3`` for ``--triple``) and still need negative-number
+        literals to be treated as positionals.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Arg
+        var cmd = Command("calc", "Calculator")
+        cmd.allow_negative_numbers()
+        cmd.add_arg(Arg("expr", help="Expression").positional().required())
+        # Now: calc -9.5  →  positionals = ["-9.5"]
+        ```
+        """
+        self._allow_negative_numbers = True
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -747,6 +833,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
             if arg.startswith("-") and len(arg) > 1:
+                # ── Negative-number detection (argparse-style) ──────────────
+                # A token like "-9.5e3" is treated as a positional value when:
+                #   (a) allow_negative_numbers() was called explicitly, OR
+                #   (b) the token looks numeric AND no registered short option
+                #       uses a digit character (auto-detect, no naming clash).
+                if _looks_like_number(arg):
+                    var has_digit_short = False
+                    for _ni in range(len(self.args)):
+                        var sn = self.args[_ni].short_name
+                        if sn >= "0" and sn <= "9":
+                            has_digit_short = True
+                            break
+                    if self._allow_negative_numbers or not has_digit_short:
+                        result.positionals.append(arg)
+                        i += 1
+                        continue
+                # ────────────────────────────────────────────────────────────
                 var key = String(arg[1:])
 
                 # Single-char short option: -f or -k value
@@ -1611,6 +1714,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     line += " "
                 line += opt_helps[k]
             s += line + "\n"
+
+        # Tip: show '--' separator hint when positional args are registered.
+        if has_positional:
+            s += (
+                "\n"
+                + H
+                + "Tip:"
+                + _RESET
+                + " Use '--' to pass values that start with '-' (e.g.,"
+                " negative numbers):  "
+                + self.name
+                + " -- -9.5\n"
+            )
 
         return s
 

@@ -46,6 +46,7 @@ from argmojo import Arg, Command
   - [Auto-generated Help](#auto-generated-help)
   - [Version Display](#version-display)
 - [Parsing Behaviour](#parsing-behaviour)
+  - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
   - [The `--` Stop Marker](#the----stop-marker)
 
@@ -1481,6 +1482,91 @@ After printing the version, the program exits cleanly with exit code 0.
 
 ## Parsing Behaviour
 
+### Negative Number Passthrough
+
+By default, tokens starting with `-` are interpreted as options. This creates a problem when you need to pass **negative numbers** (like `-9.5`, `-3.14`, `-1.5e10`) as positional values.
+
+ArgMojo provides three complementary approaches to handle this, inspired by Python's argparse.
+
+---
+
+**Approach 1: Auto-detect (zero configuration)**
+
+When no registered short option uses a **digit character** as its name, ArgMojo automatically recognises numeric-looking tokens and treats them as positional arguments instead of options.
+
+```mojo
+var cmd = Command("calc", "Calculator")
+cmd.add_arg(Arg("operand", help="A number").positional().required())
+```
+
+```bash
+calc -9876543        # operand = "-9876543" (auto-detected as a number)
+calc -3.14           # operand = "-3.14"
+calc -.5             # operand = "-.5"
+calc -1.5e10         # operand = "-1.5e10"
+calc -2.0e-3         # operand = "-2.0e-3"
+```
+
+This works because `-9`, `-3`, etc. do not match any registered short option. The parser sees a numeric pattern and skips the option-dispatch path.
+
+Recognised patterns: `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-Ne+X`, `-Ne-X` (where `N` and `X` are digit sequences).
+
+---
+
+**Approach 2: The `--` separator (always works)**
+
+The `--` stop marker forces everything after it to be treated as positional. This is the most universal approach and works regardless of any configuration.
+
+```bash
+calc -- -9.5         # operand = "-9.5"
+calc -- -3e4         # operand = "-3e4"
+```
+
+See [The `--` Stop Marker](#the----stop-marker) for details. When positional arguments are registered, ArgMojo's help output includes a **Tip** line reminding users about this:
+
+```text
+Tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc -- -9.5
+```
+
+---
+
+**Approach 3: `allow_negative_numbers()` (explicit opt-in)**
+
+If you have a registered short option that uses a digit character (e.g., `-3` for `--triple`), the auto-detect is suppressed to avoid ambiguity. In this case, call `allow_negative_numbers()` to force all numeric-looking tokens to be treated as positionals.
+
+```mojo
+var cmd = Command("calc", "Calculator")
+cmd.allow_negative_numbers()   # Explicit opt-in
+cmd.add_arg(
+    Arg("triple", help="Triple mode").long("triple").short("3").flag()
+)
+cmd.add_arg(Arg("operand", help="A number").positional().required())
+```
+
+```bash
+calc --triple -3.14   # triple = True, operand = "-3.14"
+calc -3               # operand = "-3" (NOT the -3 flag!)
+```
+
+> **Warning:** When `allow_negative_numbers()` is active, even a bare `-3` that exactly matches a registered short option will be consumed as a positional number. Use the long form (`--triple`) to set the flag.
+
+---
+
+**When to use which approach**
+
+| Scenario                                                                  | Recommended approach               |
+| ------------------------------------------------------------------------- | ---------------------------------- |
+| No digit short options registered                                         | Auto-detect (nothing to configure) |
+| You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`         |
+| You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                     |
+| Legacy or defensive: works in all cases                                   | `--` separator                     |
+
+---
+
+**What is NOT a number**
+
+Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. They will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered.
+
 ### Long Option Prefix Matching
 
 ArgMojo supports **prefix matching** (also known as *abbreviation*) for long options. If a user types a prefix of a long option name that **unambiguously** matches exactly one registered option, it is automatically resolved.
@@ -1576,3 +1662,12 @@ myapp --ling -- "-v is not a flag here" ./src
 # pattern = "-v is not a flag here"
 # path = "./src"
 ```
+
+A common use-case is passing **negative numbers** as positional arguments:
+
+```bash
+myapp -- -9.5
+# pattern = "-9.5"
+```
+
+> **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).
