@@ -288,10 +288,10 @@ Before adding subcommand routing, clean up `parse_args()` so root and child can 
 
 #### Step 1 — Data model & API surface
 
-- [ ] Add `subcommands: List[Command]` field on `Command` (Matryoshka doll :D)
-- [ ] Add `add_subcommand(mut self, sub: Command)` builder method
-- [ ] Add `subcommand: String` field on `ParseResult` (name of selected subcommand, empty if none)
-- [ ] Add `subcommand_result: Optional[ParseResult]` or similar on `ParseResult` to hold child results
+- [x] Add `subcommands: List[Command]` field on `Command` (Matryoshka doll :D)
+- [x] Add `add_subcommand(mut self, sub: Command)` builder method
+- [x] Add `subcommand: String` field on `ParseResult` (name of selected subcommand, empty if none)
+- [x] Add `subcommand_result: Optional[ParseResult]` or similar on `ParseResult` to hold child results
 
 Target API:
 
@@ -346,20 +346,27 @@ if result.subcommand == "search":
 
 #### Step 6 — Tests
 
-- [ ] Create `tests/test_subcommands.mojo`
-- [ ] Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
-- [ ] Global flag: `app --verbose search pattern` → root flag verbose=true, child positional
-- [ ] Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
-- [ ] Help: `app --help` lists commands; `app search --help` shows child help
-- [ ] `app help search` equivalent to `app search --help`
-- [ ] Unknown subcommand error
-- [ ] `--` stops subcommand dispatch: `app -- search` → positional "search" on root
-- [ ] Persistent flag inheritance and conflict detection
-- [ ] No subcommand registered: existing single-command behavior unchanged
+- [x] Create `tests/test_subcommands.mojo` (Step 0 + Step 1)
+- [x] Step 1: `Command.subcommands` empty initially
+- [x] Step 1: `add_subcommand()` populates list and preserves child args
+- [x] Step 1: Multiple subcommands ordered correctly
+- [x] Step 1: `ParseResult.subcommand` defaults to `""`
+- [x] Step 1: `has_subcommand_result()` / `get_subcommand_result()` lifecycle
+- [x] Step 1: `ParseResult.__copyinit__` preserves subcommand data
+- [x] Step 1: `parse_args()` unchanged when no subcommands registered
+- [ ] Step 2+: Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
+- [ ] Step 2+: Global flag: `app --verbose search pattern` → root flag verbose=true, child positional
+- [ ] Step 2+: Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
+- [ ] Step 4: Help: `app --help` lists commands; `app search --help` shows child help
+- [ ] Step 4: `app help search` equivalent to `app search --help`
+- [ ] Step 5: Unknown subcommand error
+- [ ] Step 2: `--` stops subcommand dispatch: `app -- search` → positional "search" on root
+- [ ] Step 3: Persistent flag inheritance and conflict detection
 
 #### Step 7 — Documentation & examples
 
-- [ ] Update `examples/demo.mojo` demonstrating a 2-3 subcommand CLI
+- [x] Add `examples/demo_subcommands.mojo` demonstrating Step 1 data model & API surface
+- [ ] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
 - [ ] Update user manual with subcommand usage patterns
 - [ ] Document persistent flag behavior and conflict rules
 

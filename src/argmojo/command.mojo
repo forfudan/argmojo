@@ -63,7 +63,7 @@ fn _resolve_color(name: String) raises -> String:
     )
 
 
-struct Command(Stringable, Writable):
+struct Command(Copyable, Movable, Stringable, Writable):
     """Defines a CLI command prototype with its arguments and handles parsing.
 
     Example:
@@ -84,6 +84,8 @@ struct Command(Stringable, Writable):
     """Version string for --version output."""
     var args: List[Arg]
     """Registered argument definitions."""
+    var subcommands: List[Command]
+    """Registered subcommand definitions. Each is a full Command instance."""
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
     var _required_groups: List[List[String]]
@@ -124,6 +126,7 @@ struct Command(Stringable, Writable):
         self.description = description
         self.version = version
         self.args = List[Arg]()
+        self.subcommands = List[Command]()
         self._exclusive_groups = List[List[String]]()
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
@@ -133,6 +136,63 @@ struct Command(Stringable, Writable):
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
+
+    fn __moveinit__(out self, deinit move: Self):
+        """Moves a Command, transferring ownership of all fields.
+
+        Args:
+            move: The Command to move from.
+        """
+        self.name = move.name^
+        self.description = move.description^
+        self.version = move.version^
+        self.args = move.args^
+        self.subcommands = move.subcommands^
+        self._exclusive_groups = move._exclusive_groups^
+        self._required_groups = move._required_groups^
+        self._one_required_groups = move._one_required_groups^
+        self._conditional_reqs = move._conditional_reqs^
+        self._help_on_no_args = move._help_on_no_args
+        self._header_color = move._header_color^
+        self._arg_color = move._arg_color^
+        self._warn_color = move._warn_color^
+        self._error_color = move._error_color^
+
+    fn __copyinit__(out self, copy: Self):
+        """Creates a deep copy of a Command.
+
+        All field data — including registered args and subcommands — is
+        duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
+        moves rather than copies, so this is only triggered when a
+        ``Command`` value is assigned via ``=``.
+
+        Args:
+            copy: The Command to copy from.
+        """
+        self.name = copy.name
+        self.description = copy.description
+        self.version = copy.version
+        self.args = copy.args.copy()
+        self.subcommands = copy.subcommands.copy()
+        self._exclusive_groups = List[List[String]]()
+        for i in range(len(copy._exclusive_groups)):
+            self._exclusive_groups.append(copy._exclusive_groups[i].copy())
+        self._required_groups = List[List[String]]()
+        for i in range(len(copy._required_groups)):
+            self._required_groups.append(copy._required_groups[i].copy())
+        self._one_required_groups = List[List[String]]()
+        for i in range(len(copy._one_required_groups)):
+            self._one_required_groups.append(
+                copy._one_required_groups[i].copy()
+            )
+        self._conditional_reqs = List[List[String]]()
+        for i in range(len(copy._conditional_reqs)):
+            self._conditional_reqs.append(copy._conditional_reqs[i].copy())
+        self._help_on_no_args = copy._help_on_no_args
+        self._header_color = copy._header_color
+        self._arg_color = copy._arg_color
+        self._warn_color = copy._warn_color
+        self._error_color = copy._error_color
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the command
@@ -154,6 +214,36 @@ struct Command(Stringable, Writable):
         ```
         """
         self.args.append(arg^)
+
+    fn add_subcommand(mut self, var sub: Command):
+        """Registers a subcommand.
+
+        A subcommand is a full ``Command`` instance that handles a specific verb
+        (e.g. ``app search …``, ``app init …``).  After parsing, the selected
+        subcommand name is stored in ``result.subcommand`` and its own parsed
+        values are available via ``result.get_subcommand_result()``.
+
+        Args:
+            sub: The subcommand ``Command`` to register.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Arg
+
+        var app = Command("app", "My CLI tool", version="0.3.0")
+
+        var search = Command("search", "Search for patterns")
+        search.add_arg(Arg("pattern", help="Search pattern").required().positional())
+
+        var init = Command("init", "Initialize a new project")
+        init.add_arg(Arg("name", help="Project name").required().positional())
+
+        app.add_subcommand(search^)
+        app.add_subcommand(init^)
+        ```
+        """
+        self.subcommands.append(sub^)
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.

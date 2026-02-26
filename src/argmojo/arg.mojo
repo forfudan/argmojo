@@ -4,11 +4,59 @@
 struct Arg(Copyable, Movable, Stringable, Writable):
     """Defines a command-line argument with its metadata and constraints.
 
-    Use the builder pattern to configure the argument:
+    Use the builder pattern to configure the argument and add it to a Command.
+
+    Examples:
 
     ```mojo
-    from argmojo import Arg
-    var arg = Arg("output", help="Output file path").long("output").short("o").takes_value()
+    from argmojo import Command, Arg
+
+    # Boolean flag  →  result.get_flag("verbose")
+    _ = Arg("verbose", help="...").long("verbose").short("v").flag()
+
+    # Key-value option  →  result.get_string("output")
+    _ = Arg("output", help="...").long("output").short("o")
+
+    # Key-value with default  →  result.get_string("format")
+    _ = Arg("format", help="...").long("format").default("json")
+
+    # Restrict to a set of values
+    _ = Arg("level", help="...").long("level").choices(["debug","info","warn"])
+
+    # Positional (matched by order)  →  result.get_string("path")
+    _ = Arg("path", help="...").positional().required()
+    _ = Arg("dest", help="...").positional().default(".")
+
+    # Count flag  (-vvv → 3)  →  result.get_count("verbose")
+    _ = Arg("verbose", help="...").long("verbose").short("v").count()
+
+    # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
+    _ = Arg("color", help="...").long("color").flag().negatable()
+
+    # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
+    _ = Arg("tag", help="...").long("tag").short("t").append()
+
+    # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
+    _ = Arg("env", help="...").long("env").delimiter(",")
+
+    # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
+    _ = Arg("point", help="...").long("point").nargs(2)
+
+    # Numeric range validation  →  result.get_int("port")
+    _ = Arg("port", help="...").long("port").range(1, 65535)
+
+    # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
+    _ = Arg("def", help="...").long("define").short("D").map_option()
+
+    # Aliases  (--colour and --color both work)
+    _ = Arg("colour", help="...").long("colour").aliases(["color"])
+
+    # Deprecated argument  (still works but prints a warning to stderr)
+    _ = Arg("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
+
+    # Display helpers
+    _ = Arg("file", help="...").long("file").metavar("PATH")  # help: --file PATH
+    _ = Arg("internal", help="...").long("internal").hidden()  # hidden from help
     ```
     """
 

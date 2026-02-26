@@ -1,7 +1,7 @@
 """Stores parsed argument values."""
 
 
-struct ParseResult(Movable, Stringable, Writable):
+struct ParseResult(Copyable, Movable, Stringable, Writable):
     """Stores the results of parsing command-line arguments.
 
     Provides typed accessors to retrieve argument values by name.
@@ -21,6 +21,14 @@ struct ParseResult(Movable, Stringable, Writable):
     """Key-value map values for map-type arguments (e.g., --define key=val)."""
     var _positional_names: List[String]
     """Names of positional arguments, in declaration order."""
+    var subcommand: String
+    """Name of the selected subcommand. Empty string if no subcommand was given."""
+    var _subcommand_results: List[ParseResult]
+    """Child ParseResult from subcommand parsing. Contains 0 or 1 elements.
+
+    Use ``has_subcommand_result()`` to check presence and
+    ``get_subcommand_result()`` to retrieve the value.
+    """
 
     fn __init__(out self):
         """Creates an empty ParseResult."""
@@ -31,6 +39,44 @@ struct ParseResult(Movable, Stringable, Writable):
         self.lists = Dict[String, List[String]]()
         self.maps = Dict[String, Dict[String, String]]()
         self._positional_names = List[String]()
+        self.subcommand = ""
+        self._subcommand_results = List[ParseResult]()
+
+    fn __copyinit__(out self, copy: Self):
+        """Creates a deep copy of a ParseResult.
+
+        Args:
+            copy: The ParseResult to copy from.
+        """
+        self.flags = copy.flags.copy()
+        self.values = copy.values.copy()
+        self.positionals = copy.positionals.copy()
+        self.counts = copy.counts.copy()
+        self.lists = Dict[String, List[String]]()
+        for entry in copy.lists.items():
+            self.lists[entry.key] = entry.value.copy()
+        self.maps = Dict[String, Dict[String, String]]()
+        for entry in copy.maps.items():
+            self.maps[entry.key] = entry.value.copy()
+        self._positional_names = copy._positional_names.copy()
+        self.subcommand = copy.subcommand
+        self._subcommand_results = copy._subcommand_results.copy()
+
+    fn __moveinit__(out self, deinit move: Self):
+        """Moves a ParseResult, transferring all field ownership.
+
+        Args:
+            move: The ParseResult to move from.
+        """
+        self.flags = move.flags^
+        self.values = move.values^
+        self.positionals = move.positionals^
+        self.counts = move.counts^
+        self.lists = move.lists^
+        self.maps = move.maps^
+        self._positional_names = move._positional_names^
+        self.subcommand = move.subcommand^
+        self._subcommand_results = move._subcommand_results^
 
     fn get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
@@ -171,12 +217,41 @@ struct ParseResult(Movable, Stringable, Writable):
                 return i < len(self.positionals)
         return False
 
+    fn has_subcommand_result(self) -> Bool:
+        """Checks whether a subcommand result is present.
+
+        Returns:
+            True if a child ``ParseResult`` was stored from subcommand
+            parsing, False otherwise.
+        """
+        return len(self._subcommand_results) > 0
+
+    fn get_subcommand_result(self) raises -> ParseResult:
+        """Returns the child ParseResult produced by subcommand parsing.
+
+        Returns:
+            A copy of the child ParseResult.
+
+        Raises:
+            Error if no subcommand result is present. Check
+            ``has_subcommand_result()`` before calling this method.
+        """
+        if len(self._subcommand_results) == 0:
+            raise Error(
+                "No subcommand result available. Did you forget to check"
+                " has_subcommand_result()?"
+            )
+        var r: ParseResult = self._subcommand_results[0].copy()
+        return r^
+
     fn __str__(self) -> String:
         """Return a string representation of the parse result."""
         var s = String("ParseResult(")
         s += "flags=" + String(len(self.flags))
         s += ", values=" + String(len(self.values))
         s += ", positionals=" + String(len(self.positionals))
+        if self.subcommand != "":
+            s += ", subcommand='" + self.subcommand + "'"
         s += ")"
         return s
 

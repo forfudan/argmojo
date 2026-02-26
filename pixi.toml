@@ -37,6 +37,9 @@ test = """\
 # run demo
 demo = "pixi run package && mojo run -I src examples/demo.mojo"
 
+# run subcommand data model demo (Phase 4 Step 1)
+demo_subcommands = "pixi run package && mojo run -I src examples/demo_subcommands.mojo"
+
 # build demo binary
 build_demo = "pixi run package && mojo build -I src examples/demo.mojo -o demo"
 

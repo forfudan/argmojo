@@ -4,6 +4,14 @@ Step 0: Validates that the _apply_defaults() and _validate() extraction
 from parse_args() preserves all existing behavior. These tests exercise
 the defaults and validation paths directly through parse_args(), ensuring
 no regression from the refactor.
+
+Step 1: Validates the data model & API surface for subcommand support:
+  - Command.subcommands field (List[Command])
+  - Command.add_subcommand() builder method
+  - ParseResult.subcommand field (String, defaults to "")
+  - ParseResult.has_subcommand_result() / get_subcommand_result()
+  - ParseResult.__copyinit__ preserves subcommand data
+  - parse_args() unchanged when no subcommands are registered
 """
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
@@ -322,6 +330,175 @@ fn test_full_parse_with_defaults_and_range() raises:
     var result = cmd.parse_args(args)
     assert_equal(result.get_string("port"), "50")
     print("  ✓ test_full_parse_with_defaults_and_range")
+
+
+# ── Step 1: Data model — Command.subcommands field ───────────────────────────
+
+
+fn test_command_subcommands_empty_initially() raises:
+    """Tests that a fresh Command has no subcommands registered."""
+    var app = Command("app", "My app")
+    assert_equal(len(app.subcommands), 0)
+    print("  ✓ test_command_subcommands_empty_initially")
+
+
+fn test_add_subcommand_single() raises:
+    """Tests that add_subcommand() appends one subcommand to the list."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search for patterns")
+    app.add_subcommand(search^)
+    assert_equal(len(app.subcommands), 1)
+    assert_equal(app.subcommands[0].name, "search")
+    assert_equal(app.subcommands[0].description, "Search for patterns")
+    print("  ✓ test_add_subcommand_single")
+
+
+fn test_add_subcommand_multiple() raises:
+    """Tests that multiple subcommands can be registered and are ordered."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search for patterns")
+    var init = Command("init", "Initialize a new project")
+    var build = Command("build", "Build the project")
+    app.add_subcommand(search^)
+    app.add_subcommand(init^)
+    app.add_subcommand(build^)
+    assert_equal(len(app.subcommands), 3)
+    assert_equal(app.subcommands[0].name, "search")
+    assert_equal(app.subcommands[1].name, "init")
+    assert_equal(app.subcommands[2].name, "build")
+    print("  ✓ test_add_subcommand_multiple")
+
+
+fn test_add_subcommand_preserves_child_args() raises:
+    """Tests that a subcommand's own arg definitions survive transfer."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_arg(
+        Arg("max-depth", help="Max depth").long("max-depth").short("d")
+    )
+    app.add_subcommand(search^)
+    assert_equal(len(app.subcommands), 1)
+    assert_equal(len(app.subcommands[0].args), 2)
+    assert_equal(app.subcommands[0].args[0].name, "pattern")
+    assert_equal(app.subcommands[0].args[1].name, "max-depth")
+    print("  ✓ test_add_subcommand_preserves_child_args")
+
+
+fn test_subcommand_has_own_version() raises:
+    """Tests that a subcommand can have its own version string."""
+    var app = Command("app", "My app", version="1.0.0")
+    var sub = Command("serve", "Start server", version="2.0.0-beta")
+    app.add_subcommand(sub^)
+    assert_equal(app.version, "1.0.0")
+    assert_equal(app.subcommands[0].version, "2.0.0-beta")
+    print("  ✓ test_subcommand_has_own_version")
+
+
+# ── Step 1: Data model — ParseResult.subcommand field ────────────────────────
+
+
+fn test_parseresult_subcommand_defaults_empty() raises:
+    """Tests that ParseResult.subcommand defaults to empty string."""
+    var result = ParseResult()
+    assert_equal(result.subcommand, "")
+    print("  ✓ test_parseresult_subcommand_defaults_empty")
+
+
+fn test_parseresult_subcommand_can_be_set() raises:
+    """Tests that ParseResult.subcommand can be assigned a name."""
+    var result = ParseResult()
+    result.subcommand = "search"
+    assert_equal(result.subcommand, "search")
+    print("  ✓ test_parseresult_subcommand_can_be_set")
+
+
+fn test_parseresult_no_subcommand_result_initially() raises:
+    """Tests that has_subcommand_result() returns False on a fresh ParseResult.
+    """
+    var result = ParseResult()
+    assert_false(result.has_subcommand_result())
+    print("  ✓ test_parseresult_no_subcommand_result_initially")
+
+
+fn test_parseresult_get_subcommand_result_raises_when_empty() raises:
+    """Tests that get_subcommand_result() raises when no child result exists."""
+    var result = ParseResult()
+    var caught = False
+    try:
+        _ = result.get_subcommand_result()
+    except e:
+        caught = True
+        assert_true(
+            "No subcommand result" in String(e),
+            msg="Error should mention 'No subcommand result'",
+        )
+    assert_true(caught, msg="Should have raised for empty subcommand result")
+    print("  ✓ test_parseresult_get_subcommand_result_raises_when_empty")
+
+
+fn test_parseresult_subcommand_result_stored_and_retrieved() raises:
+    """Tests that a child ParseResult can be stored and retrieved."""
+    var parent = ParseResult()
+    var child = ParseResult()
+    child.values["pattern"] = "hello"
+    parent.subcommand = "search"
+    parent._subcommand_results.append(child^)
+    assert_true(parent.has_subcommand_result())
+    var retrieved = parent.get_subcommand_result()
+    assert_equal(retrieved.get_string("pattern"), "hello")
+    print("  ✓ test_parseresult_subcommand_result_stored_and_retrieved")
+
+
+fn test_parseresult_str_includes_subcommand() raises:
+    """Tests that __str__ includes the subcommand name when set."""
+    var result = ParseResult()
+    result.subcommand = "build"
+    var s = String(result)
+    assert_true("build" in s, msg="__str__ should include the subcommand name")
+    print("  ✓ test_parseresult_str_includes_subcommand")
+
+
+fn test_parseresult_str_no_subcommand_section_when_empty() raises:
+    """Tests that __str__ omits the subcommand when it is empty."""
+    var result = ParseResult()
+    var s = String(result)
+    assert_false(
+        "subcommand" in s,
+        msg="__str__ should not include 'subcommand' when empty",
+    )
+    print("  ✓ test_parseresult_str_no_subcommand_section_when_empty")
+
+
+fn test_parseresult_copy_preserves_subcommand() raises:
+    """Tests that copying a ParseResult preserves subcommand and child result.
+    """
+    var original = ParseResult()
+    original.subcommand = "init"
+    var child = ParseResult()
+    child.values["name"] = "myproject"
+    original._subcommand_results.append(child^)
+    # Copy explicitly (triggers __copyinit__).
+    var copy = original.copy()
+    assert_equal(copy.subcommand, "init")
+    assert_true(copy.has_subcommand_result())
+    assert_equal(copy.get_subcommand_result().get_string("name"), "myproject")
+    print("  ✓ test_parseresult_copy_preserves_subcommand")
+
+
+fn test_parse_without_subcommands_unaffected() raises:
+    """Tests that parse_args() results are unchanged when no subcommands exist.
+    """
+    var cmd = Command("app", "My app")
+    cmd.add_arg(
+        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    )
+    var args: List[String] = ["app", "--verbose"]
+    var result = cmd.parse_args(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.subcommand, "")
+    assert_false(result.has_subcommand_result())
+    print("  ✓ test_parse_without_subcommands_unaffected")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
