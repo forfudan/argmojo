@@ -129,10 +129,12 @@ src/argmojo/
 ├── command.mojo         # Command struct — command definition & parsing
 └── result.mojo          # ParseResult struct — parsed values
 tests/
-├── test_parse.mojo      # Core parsing tests (flags, values, shorts, etc.)
-├── test_groups.mojo     # Group constraint tests (exclusive, conditional, etc.)
-├── test_collect.mojo    # Collection feature tests (append, delimiter, nargs)
-└── test_help.mojo       # Help output tests (formatting, colours, alignment)
+├── test_parse.mojo         # Core parsing tests (flags, values, shorts, etc.)
+├── test_groups.mojo        # Group constraint tests (exclusive, conditional, etc.)
+├── test_collect.mojo       # Collection feature tests (append, delimiter, nargs)
+├── test_help.mojo          # Help output tests (formatting, colours, alignment)
+├── test_extras.mojo        # Range, map, alias, deprecated tests
+└── test_subcommands.mojo   # Phase 4 subcommand tests (Step 0+)
 examples/
 └── demo.mojo            # Demo CLI tool, compilable to binary
 ```
@@ -172,9 +174,9 @@ examples/
 | Nargs (`.nargs(N)` → consume N values per occurrence)                 | ✓      | ✓     |
 | Conditional requirements (`cmd.required_if("output", "save")`)        | ✓      | ✓     |
 | Numeric range validation (`.range(1, 65535)`)                         | ✓      | ✓     |
-| Key-value map option (`.map_option()` → `Dict[String, String]`)      | ✓      | ✓     |
+| Key-value map option (`.map_option()` → `Dict[String, String]`)       | ✓      | ✓     |
 | Aliases (`.aliases(["color"])` for `--colour` / `--color`)            | ✓      | ✓     |
-| Deprecated arguments (`.deprecated("msg")` → stderr warning)         | ✓      | ✓     |
+| Deprecated arguments (`.deprecated("msg")` → stderr warning)          | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -266,11 +268,100 @@ pattern             # By order of add_arg() calls
 - [x] **Aliases** for long names — `.aliases(["color"])` for `--colour` / `--color`
 - [x] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning to stderr (argparse 3.13)
 
-### Phase 4: Subcommands (maybe for v0.3)
+### Phase 4: Subcommands (for v0.2 or v0.3 depending on complexity)
 
-- [ ] **Subcommand support** — `app <subcommand> [args]` (cobra, argparse, clap)
-- [ ] **Subcommand help** — `app help <subcommand>` or `app <subcommand> --help`
-- [ ] **Global vs local flags** — flags that persist through to subcommands (cobra persistent flags)
+Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo from a single-parser into a parser tree. The core insight is that **a subcommand is just another `Command` instance** — it already has `parse_args()`, `_generate_help()`, and all validation logic. No new parser, tokenizer, or separate module files are needed.
+
+#### Architecture: composition inside `Command`
+
+- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~1500 lines.
+- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline.
+- **Composition-based.** `Command` gains a child command list. When `parse_args()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_args()`. 100% logic reuse, zero duplication.
+
+#### Pre-requisite refactor (Step 0)
+
+Before adding subcommand routing, clean up `parse_args()` so root and child can each call the same validation/defaults path:
+
+- [x] Extract `_apply_defaults(mut result)` — move the ~20-line defaults block into a private method
+- [x] Extract `_validate(result)` — move the ~130-line validation block (required, exclusive, together, one-required, conditional, range) into a private method
+- [x] Verify all existing tests still pass after this refactor (143 original + 17 new Step 0 tests = 160 total, all passing)
+
+#### Step 1 — Data model & API surface
+
+- [ ] Add `subcommands: List[Command]` field on `Command` (Matryoshka doll :D)
+- [ ] Add `add_subcommand(mut self, sub: Command)` builder method
+- [ ] Add `subcommand: String` field on `ParseResult` (name of selected subcommand, empty if none)
+- [ ] Add `subcommand_result: Optional[ParseResult]` or similar on `ParseResult` to hold child results
+
+Target API:
+
+```mojo
+var app = Command("app", "My CLI tool", version="0.3.0")
+app.add_arg(Arg("verbose", help="Verbose output").long("verbose").short("v").flag())
+
+var search = Command("search", "Search for patterns")
+search.add_arg(Arg("pattern", help="Search pattern").required().positional())
+search.add_arg(Arg("max-depth", help="Max depth").long("max-depth").short("d").takes_value())
+
+var init = Command("init", "Initialize a new project")
+init.add_arg(Arg("name", help="Project name").required().positional())
+
+app.add_subcommand(search)
+app.add_subcommand(init)
+
+var result = app.parse()
+if result.subcommand == "search":
+    var sub = result.subcommand_result
+    var pattern = sub.get_string("pattern")
+```
+
+#### Step 2 — Parse routing
+
+- [ ] In `parse_args()`, when the current token is not an option and subcommands are registered, check if it matches a subcommand name
+- [ ] On match: record `result.subcommand = name`, build child argv (remaining tokens), call `child.parse_args(child_argv)`, store child result
+- [ ] On no match and subcommands exist: treat as positional (existing behavior) or error depending on policy
+- [ ] `--` before subcommand boundary: all subsequent tokens are positional for root, no subcommand dispatch
+- [ ] Handle `app help <sub>` as equivalent to `app <sub> --help`
+
+#### Step 3 — Global (persistent) flags
+
+- [ ] Add `.persistent()` builder method on `Arg` (sets `is_persistent: Bool`)
+- [ ] Before child parse, inject copies of parent's persistent args into the child's arg list (or make child parser aware of them)
+- [ ] Root-level persistent flag values are parsed before dispatch and merged into child result
+- [ ] Conflict policy: reject duplicate long/short names between parent persistent args and child local args at registration time (`add_subcommand` raises)
+
+#### Step 4 — Help & UX
+
+- [ ] Root `_generate_help()` appends a "Commands:" section listing subcommand names + descriptions (aligned like options)
+- [ ] `app <sub> --help` delegates to `sub._generate_help()` directly
+- [ ] `app help <sub>` recognized as special routing in parse loop
+- [ ] Child help includes inherited persistent flags under a "Global Options:" heading
+- [ ] Usage line shows full command path: `app search [OPTIONS] PATTERN`
+
+#### Step 5 — Error handling
+
+- [ ] Unknown subcommand: `"Unknown command '<name>'. Available commands: search, init"`
+- [ ] Errors inside child parse: prefix with command path for clarity (e.g. `"app search: Option '--foo' requires a value"`)
+- [ ] Exit codes consistent with current behavior (exit 2 for parse errors)
+
+#### Step 6 — Tests
+
+- [ ] Create `tests/test_subcommands.mojo`
+- [ ] Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
+- [ ] Global flag: `app --verbose search pattern` → root flag verbose=true, child positional
+- [ ] Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
+- [ ] Help: `app --help` lists commands; `app search --help` shows child help
+- [ ] `app help search` equivalent to `app search --help`
+- [ ] Unknown subcommand error
+- [ ] `--` stops subcommand dispatch: `app -- search` → positional "search" on root
+- [ ] Persistent flag inheritance and conflict detection
+- [ ] No subcommand registered: existing single-command behavior unchanged
+
+#### Step 7 — Documentation & examples
+
+- [ ] Update `examples/demo.mojo` demonstrating a 2-3 subcommand CLI
+- [ ] Update user manual with subcommand usage patterns
+- [ ] Document persistent flag behavior and conflict rules
 
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 
@@ -341,6 +432,30 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
     ├─ One-required groups
     └─ Conditional requirements
 6. Return ParseResult
+```
+
+### 6.1 Subcommand parsing flow (planned)
+
+```txt
+Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
+
+1. Root parse_args() begins normal cursor walk from argv[1]
+2. "--verbose" → starts with "--" → parsed as root-level long option (flag)
+3. "search" → no "-" prefix → check registered subcommands:
+    ├─ match found → record subcommand = "search"
+    ├─ no match + subcommands registered → error (or treat as positional)
+    └─ no subcommands registered → treat as positional (existing behavior)
+4. Build child argv: ["app search", "pattern", "--max-depth", "3"]
+   (argv[0] = command path for child help/error messages)
+5. Inject persistent args from root into child's arg list
+6. Call child.parse_args(child_argv) → child runs its own full parse loop
+   (same code path: long/short/merged/positional/defaults/validation)
+7. Store child ParseResult in root result:
+    ├─ result.subcommand = "search"
+    └─ result.subcommand_result = child_result
+8. Root runs _apply_defaults() and _validate() for root-level args only
+   (child already validated itself in step 6)
+9. Return root ParseResult to application code
 ```
 
 ## 8. Notes on Mojo versions

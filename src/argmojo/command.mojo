@@ -779,9 +779,29 @@ struct Command(Stringable, Writable):
             result.positionals.append(arg)
             i += 1
 
-        # === DEFAULTS APPLICATION PHASE === #
+        # Apply defaults and validate constraints.
+        self._apply_defaults(result)
+        self._validate(result)
 
-        # Apply defaults for arguments not provided.
+        return result^
+
+    # ===------------------------------------------------------------------=== #
+    # Defaults & validation helpers (extracted for subcommand reuse)
+    # ===------------------------------------------------------------------=== #
+
+    fn _apply_defaults(self, mut result: ParseResult):
+        """Fills in default values for arguments not provided by the user.
+
+        For positional arguments, defaults are placed into the correct slot.
+        For named arguments, the default is stored in `result.values`.
+
+        Args:
+            result: The parse result to mutate in-place.
+
+        Notes:
+
+        This method is made standalone so that subcommands can reuse it.
+        """
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.has_default and not result.has(a.name):
@@ -796,8 +816,24 @@ struct Command(Stringable, Writable):
                 else:
                     result.values[a.name] = a.default_value
 
-        # === VALIDATION PHASE === #
+    fn _validate(self, result: ParseResult) raises:
+        """Runs all post-parse validation checks on the result.
 
+        Checks (in order):
+        1. Required arguments are present.
+        2. Positional argument count is not exceeded.
+        3. Mutually exclusive groups have at most one member set.
+        4. Required-together groups are all-or-nothing.
+        5. One-required groups have at least one member set.
+        6. Conditional requirements are satisfied.
+        7. Numeric range constraints are met.
+
+        Args:
+            result: The parse result to validate.
+
+        Raises:
+            Error if any validation check fails.
+        """
         # Validate required arguments.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
@@ -961,7 +997,9 @@ struct Command(Stringable, Writable):
                             + "]"
                         )
 
-        return result^
+    # ===------------------------------------------------------------------=== #
+    # Argument lookup helpers
+    # ===------------------------------------------------------------------=== #
 
     fn _find_by_long(self, name: String) raises -> Arg:
         """Finds an argument definition by its long name, alias, or unambiguous prefix.
