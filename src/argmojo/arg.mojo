@@ -106,6 +106,11 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """Alternative long names that resolve to this argument."""
     var deprecated_msg: String
     """If non-empty, this argument is deprecated; the string is the warning message."""
+    var is_persistent: Bool
+    """If True, this argument is automatically inherited by every subcommand.
+    Persistent flags/options are injected into child command parsers at
+    dispatch time so the user may place them either before or after the
+    subcommand token on the command line."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -141,6 +146,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_map = False
         self.alias_names = List[String]()
         self.deprecated_msg = ""
+        self.is_persistent = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -175,6 +181,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         for i in range(len(copy.alias_names)):
             self.alias_names.append(copy.alias_names[i])
         self.deprecated_msg = copy.deprecated_msg
+        self.is_persistent = copy.is_persistent
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Arg.
@@ -205,6 +212,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_map = move.is_map
         self.alias_names = move.alias_names^
         self.deprecated_msg = move.deprecated_msg^
+        self.is_persistent = move.is_persistent
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -476,6 +484,32 @@ struct Arg(Copyable, Movable, Stringable, Writable):
             Self marked as deprecated.
         """
         self.deprecated_msg = message
+        return self^
+
+    fn persistent(var self) -> Self:
+        """Marks this argument as persistent (inherited by all subcommands).
+
+        A persistent argument defined on a parent command is automatically
+        injected into every child command parser at dispatch time.  The
+        user may therefore place the option either before or after the
+        subcommand token::
+
+            app --verbose search pattern   # --verbose parsed by root
+            app search --verbose pattern   # --verbose parsed by child
+                                           # (injected) and bubbled up
+
+        In both cases ``root_result.get_flag("verbose")`` returns ``True``.
+        The child result also carries the value when the flag appears
+        after the subcommand token.
+
+        Persistent arguments may not share a ``long_name`` or ``short_name``
+        with any local argument of a registered subcommand — ArgMojo raises
+        an error at ``add_subcommand()`` time if a conflict is detected.
+
+        Returns:
+            Self marked as persistent.
+        """
+        self.is_persistent = True
         return self^
 
     # ===------------------------------------------------------------------=== #

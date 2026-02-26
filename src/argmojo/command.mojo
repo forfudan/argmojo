@@ -293,7 +293,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self.args.append(arg^)
 
-    fn add_subcommand(mut self, var sub: Command):
+    fn add_subcommand(mut self, var sub: Command) raises:
         """Registers a subcommand.
 
         A subcommand is a full ``Command`` instance that handles a specific verb
@@ -303,6 +303,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         Args:
             sub: The subcommand ``Command`` to register.
+
+        Raises:
+            Error if a persistent argument on this command shares a ``long_name``
+            or ``short_name`` with any local argument on ``sub``.
 
         Example:
 
@@ -321,6 +325,47 @@ struct Command(Copyable, Movable, Stringable, Writable):
         app.add_subcommand(init^)
         ```
         """
+        # Conflict check: persistent parent args must not share names with
+        # any local arg in the child — that would make the option ambiguous
+        # after injection.
+        for pi in range(len(self.args)):
+            if not self.args[pi].is_persistent:
+                continue
+            var pa = self.args[pi].copy()
+            for ci in range(len(sub.args)):
+                var ca = sub.args[ci].copy()
+                if (
+                    pa.long_name
+                    and ca.long_name
+                    and pa.long_name == ca.long_name
+                ):
+                    self._error(
+                        "Persistent flag '--"
+                        + pa.long_name
+                        + "' on '"
+                        + self.name
+                        + "' conflicts with '--"
+                        + ca.long_name
+                        + "' on subcommand '"
+                        + sub.name
+                        + "'"
+                    )
+                if (
+                    pa.short_name
+                    and ca.short_name
+                    and pa.short_name == ca.short_name
+                ):
+                    self._error(
+                        "Persistent flag '-"
+                        + pa.short_name
+                        + "' on '"
+                        + self.name
+                        + "' conflicts with '-"
+                        + ca.short_name
+                        + "' on subcommand '"
+                        + sub.name
+                        + "'"
+                    )
         # Auto-register the 'help' subcommand as the first entry once.
         # This keeps help discoverable at a fixed position (index 0) while
         # user-defined subcommands remain in registration order after it.
@@ -1060,9 +1105,56 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         # No target, unknown, or self-referential → root help.
                         print(self._generate_help())
                         exit(0)
-                    var child_result = self.subcommands[sub_idx].parse_args(
-                        child_argv
-                    )
+                    # Build a child copy with persistent args injected so they
+                    # are recognised wherever the user places them on the line.
+                    var child_copy = self.subcommands[sub_idx].copy()
+                    for _pi in range(len(self.args)):
+                        if self.args[_pi].is_persistent:
+                            child_copy.args.append(self.args[_pi].copy())
+                    var child_result = child_copy.parse_args(child_argv)
+                    # Bubble up persistent values from child to root result so
+                    # that root_result.get_flag("x") always works regardless of
+                    # whether the flag appeared before or after the subcommand
+                    # token. (If root already parsed the flag before reaching
+                    # the subcommand token, its value takes precedence.)
+                    # Also push down root-parsed persistent values to child
+                    # result so that sub_result.get_flag("x") always works too.
+                    for _pi in range(len(self.args)):
+                        if not self.args[_pi].is_persistent:
+                            continue
+                        var _pn = self.args[_pi].name
+                        # Bubble up: child parsed flag after subcommand token.
+                        if (
+                            _pn in child_result.flags
+                            and _pn not in result.flags
+                        ):
+                            result.flags[_pn] = child_result.flags[_pn]
+                        if (
+                            _pn in child_result.values
+                            and _pn not in result.values
+                        ):
+                            result.values[_pn] = child_result.values[_pn]
+                        if (
+                            _pn in child_result.counts
+                            and _pn not in result.counts
+                        ):
+                            result.counts[_pn] = child_result.counts[_pn]
+                        # Push down: root parsed flag before subcommand token.
+                        if (
+                            _pn in result.flags
+                            and _pn not in child_result.flags
+                        ):
+                            child_result.flags[_pn] = result.flags[_pn]
+                        if (
+                            _pn in result.values
+                            and _pn not in child_result.values
+                        ):
+                            child_result.values[_pn] = result.values[_pn]
+                        if (
+                            _pn in result.counts
+                            and _pn not in child_result.counts
+                        ):
+                            child_result.counts[_pn] = result.counts[_pn]
                     result.subcommand = arg
                     result._subcommand_results.append(child_result^)
                     # All remaining tokens were consumed by the child.

@@ -56,8 +56,9 @@ These features appear across multiple libraries and depend only on string operat
 | Aliases for long names             | —        | —     | ✓     | ✓    |                        | **Done**      |
 | Deprecated arguments               | ✓ (3.13) | —     | ✓     | —    |                        | **Done**      |
 | Negative number passthrough        | ✓        | —     | —     | ✓    | Essential for `decimo` | **Done**      |
-| Subcommands                        | ✓        | ✓     | ✓     | ✓    |                        | Phase 4       |
-| Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl    | Phase 4       |
+| Subcommands                        | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl    | **Done**      |
+| Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.  | **Done**      |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                        | Phase 5       |
 | Interactive prompting              | —        | ✓     | —     | —    |                        | Phase 5       |
@@ -334,10 +335,11 @@ if result.subcommand == "search":
 
 #### Step 3 — Global (persistent) flags
 
-- [ ] Add `.persistent()` builder method on `Arg` (sets `is_persistent: Bool`)
-- [ ] Before child parse, inject copies of parent's persistent args into the child's arg list (or make child parser aware of them)
-- [ ] Root-level persistent flag values are parsed before dispatch and merged into child result
-- [ ] Conflict policy: reject duplicate long/short names between parent persistent args and child local args at registration time (`add_subcommand` raises)
+- [x] Add `.persistent()` builder method on `Arg` (sets `is_persistent: Bool`)
+- [x] Before child parse, inject copies of parent's persistent args into the child's arg list (or make child parser aware of them)
+- [x] Root-level persistent flag values are parsed before dispatch and merged into child result
+- [x] Conflict policy: reject duplicate long/short names between parent persistent args and child local args at registration time (`add_subcommand` raises)
+- [x] Bidirectional sync: bubble-up (flag after subcommand → root result) + push-down (flag before subcommand → child result)
 
 #### Step 4 — Help & UX
 
@@ -379,11 +381,22 @@ if result.subcommand == "search":
 - [x] Step 2b: `disable_help_subcommand()` after `add_subcommand()` removes it
 - [x] Step 2b: Normal dispatch unaffected by the presence of auto-added help sub
 - [x] Step 2b: With help disabled, token `"help"` becomes a root positional
+- [x] Step 3: Persistent flag on root works without subcommand
+- [x] Step 3: Persistent flag before subcommand → in root result; pushed down to child result
+- [x] Step 3: Persistent flag after subcommand → in child result; bubbled up to root result
+- [x] Step 3: Short-form persistent flag works in both positions
+- [x] Step 3: Persistent value-taking option (not just flag) syncs both ways
+- [x] Step 3: Absent persistent flag defaults to False in both root and child
+- [x] Step 3: Non-persistent root flag after subcommand causes unknown-option error
+- [x] Step 3: Conflict detection — long_name clash raises at `add_subcommand()` time
+- [x] Step 3: Conflict detection — short_name clash raises at `add_subcommand()` time
+- [x] Step 3: No conflict raised for non-persistent args with the same name
 
 #### Step 7 — Documentation & examples
 
 - [x] Add `examples/demo_subcommands.mojo` demonstrating Step 2 + Step 2b routing (search / init / build + help subcommand inspection)
 - [x] Add `examples/demo_negative.mojo` demonstrating all three negative-number passthrough approaches (auto-detect, `--`, `allow_negative_numbers()`)
+- [x] Add `examples/demo_persistent.mojo` demonstrating before/after persistent flags, bidirectional sync, conflict detection
 - [ ] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
 - [ ] Update user manual with subcommand usage patterns
 - [ ] Document persistent flag behavior and conflict rules
