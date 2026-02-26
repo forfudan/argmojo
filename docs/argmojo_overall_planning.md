@@ -120,7 +120,7 @@ This gives us the raw list of argument strings, and the remaining task is to imp
 | `List[String]`                | Store argument list, positional names |
 | `Dict[String, Bool]`          | Flag values                           |
 | `Dict[String, String]`        | Named values                          |
-| `struct` with builder pattern | Arg, Command, ParseResult types       |
+| `struct` with builder pattern | Argument, Command, ParseResult types  |
 
 ## 4. Current Implementation Status
 
@@ -128,10 +128,10 @@ This gives us the raw list of argument strings, and the remaining task is to imp
 
 ```txt
 src/argmojo/
-├── __init__.mojo               # Package exports (Arg, Command, ParseResult)
-├── arg.mojo                    # Arg struct — argument definition with builder pattern
+├── __init__.mojo               # Package exports (Argument, Command, ParseResult)
+├── argument.mojo                # Argument struct — argument definition with builder pattern
 ├── command.mojo                # Command struct — command definition & parsing
-└── result.mojo                 # ParseResult struct — parsed values
+└── parse_result.mojo            # ParseResult struct — parsed values
 tests/
 ├── test_parse.mojo             # Core parsing tests (flags, values, shorts, etc.)
 ├── test_groups.mojo            # Group constraint tests (exclusive, conditional, etc.)
@@ -150,8 +150,8 @@ examples/
 
 | Feature                                                                                            | Status | Tests |
 | -------------------------------------------------------------------------------------------------- | ------ | ----- |
-| `Arg` struct with builder pattern                                                                  | ✓      | —     |
-| `Command` struct with `add_arg()`                                                                  | ✓      | —     |
+| `Argument` struct with builder pattern                                                             | ✓      | —     |
+| `Command` struct with `add_argument()`                                                             | ✓      | —     |
 | `ParseResult` with `get_flag()`, `get_string()`, `get_int()`, `has()`                              | ✓      | ✓     |
 | Long flags `--verbose`                                                                             | ✓      | ✓     |
 | Short flags `-v`                                                                                   | ✓      | ✓     |
@@ -176,10 +176,10 @@ examples/
 | Negatable flags (`.negatable()` → `--no-X`)                                                        | ✓      | ✓     |
 | Long option prefix matching (`--verb` → `--verbose`)                                               | ✓      | ✓     |
 | Append / collect action (`--tag x --tag y` → list)                                                 | ✓      | ✓     |
-| One-required groups (`cmd.one_required(["json", "yaml"])`)                                         | ✓      | ✓     |
+| One-required groups (`command.one_required(["json", "yaml"])`)                                     | ✓      | ✓     |
 | Value delimiter (`.delimiter(",")` → split into list)                                              | ✓      | ✓     |
 | Nargs (`.nargs(N)` → consume N values per occurrence)                                              | ✓      | ✓     |
-| Conditional requirements (`cmd.required_if("output", "save")`)                                     | ✓      | ✓     |
+| Conditional requirements (`command.required_if("output", "save")`)                                 | ✓      | ✓     |
 | Numeric range validation (`.range(1, 65535)`)                                                      | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                    | ✓      | ✓     |
 | Aliases (`.aliases(["color"])` for `--colour` / `--color`)                                         | ✓      | ✓     |
@@ -191,21 +191,21 @@ examples/
 ### 4.3 API Design (Current)
 
 ```mojo
-from argmojo import Command, Arg
+from argmojo import Command, Argument
 
 fn main() raises:
-    var cmd = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
+    var command = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
 
     # Positional arguments
-    cmd.add_arg(Arg("pattern", help="Search pattern").required().positional())
-    cmd.add_arg(Arg("path", help="Search path").positional().default("."))
+    command.add_argument(Argument("pattern", help="Search pattern").required().positional())
+    command.add_argument(Argument("path", help="Search path").positional().default("."))
 
     # Optional arguments
-    cmd.add_arg(Arg("ling", help="Use Yuhao Lingming encoding").long("ling").short("l").flag())
-    cmd.add_arg(Arg("ignore-case", help="Case insensitive search").long("ignore-case").short("i").flag())
-    cmd.add_arg(Arg("max-depth", help="Maximum directory depth").long("max-depth").short("d").takes_value())
+    command.add_argument(Argument("ling", help="Use Yuhao Lingming encoding").long("ling").short("l").flag())
+    command.add_argument(Argument("ignore-case", help="Case insensitive search").long("ignore-case").short("i").flag())
+    command.add_argument(Argument("max-depth", help="Maximum directory depth").long("max-depth").short("d").takes_value())
 
-    var result = cmd.parse()
+    var result = command.parse()
 
     var pattern = result.get_string("pattern")
     var use_ling = result.get_flag("ling")
@@ -230,7 +230,7 @@ fn main() raises:
 -vvv                # Count flag → verbose = 3
 
 # Positional arguments
-pattern             # By order of add_arg() calls
+pattern             # By order of add_argument() calls
 
 # Special
 --                  # Stop parsing options; rest becomes positional
@@ -243,7 +243,7 @@ pattern             # By order of add_arg() calls
 ### Phase 1: Skeleton
 
 - [x] Establish module structure
-- [x] Implement `Arg` struct and builder methods
+- [x] Implement `Argument` struct and builder methods
 - [x] Implement basic `Command` struct
 - [x] Implement a small demo CLI tool to test the library
 
@@ -260,15 +260,15 @@ pattern             # By order of add_arg() calls
 
 ### Phase 3: Relationships & Validation (for v0.2)
 
-- [x] **Mutually exclusive flags** — `cmd.mutually_exclusive(["json", "yaml", "toml"])`
-- [x] **Flags required together** — `cmd.required_together(["username", "password"])`
+- [x] **Mutually exclusive flags** — `command.mutually_exclusive(["json", "yaml", "toml"])`
+- [x] **Flags required together** — `command.required_together(["username", "password"])`
 - [x] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse BooleanOptionalAction)
 - [x] **Long option prefix matching** — `--verb` auto-resolves to `--verbose` when unambiguous (argparse `allow_abbrev`)
 - [x] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects repeated options into a list (argparse `append`, cobra `StringArrayVar`, clap `Append`)
-- [x] **One-required group** — `cmd.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
+- [x] **One-required group** — `command.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
 - [x] **Value delimiter** — `--tag a,b,c` splits by delimiter into `["a", "b", "c"]` (cobra `StringSliceVar`, clap `value_delimiter`)
 - [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help` (common in Windows CLI tools, Java, MySQL, curl)
-- [x] **Help on no args** — `cmd.help_on_no_args()` shows help when invoked with no arguments (like git/docker/cargo)
+- [x] **Help on no args** — `command.help_on_no_args()` shows help when invoked with no arguments (like git/docker/cargo)
 - [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
 - [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
 - [x] **nargs (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
@@ -307,14 +307,14 @@ Target API:
 
 ```mojo
 var app = Command("app", "My CLI tool", version="0.3.0")
-app.add_arg(Arg("verbose", help="Verbose output").long("verbose").short("v").flag())
+app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
 
 var search = Command("search", "Search for patterns")
-search.add_arg(Arg("pattern", help="Search pattern").required().positional())
-search.add_arg(Arg("max-depth", help="Max depth").long("max-depth").short("d").takes_value())
+search.add_argument(Argument("pattern", help="Search pattern").required().positional())
+search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").takes_value())
 
 var init = Command("init", "Initialize a new project")
-init.add_arg(Arg("name", help="Project name").required().positional())
+init.add_argument(Argument("name", help="Project name").required().positional())
 
 app.add_subcommand(search)
 app.add_subcommand(init)
@@ -335,7 +335,7 @@ if result.subcommand == "search":
 
 #### Step 3 — Global (persistent) flags
 
-- [x] Add `.persistent()` builder method on `Arg` (sets `is_persistent: Bool`)
+- [x] Add `.persistent()` builder method on `Argument` (sets `is_persistent: Bool`)
 - [x] Before child parse, inject copies of parent's persistent args into the child's arg list (or make child parser aware of them)
 - [x] Root-level persistent flag values are parsed before dispatch and merged into child result
 - [x] Conflict policy: reject duplicate long/short names between parent persistent args and child local args at registration time (`add_subcommand` raises)
@@ -411,7 +411,7 @@ if result.subcommand == "search":
 - [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
 - [ ] **Default-if-present (const)** — `--opt` (no value) → use const; `--opt val` → use val; absent → use default (argparse `const`)
 - [ ] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
-- [ ] **Argument parents** — share a common set of Arg definitions across multiple Commands (argparse `parents`)
+- [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)

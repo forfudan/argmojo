@@ -19,7 +19,7 @@ Covers:
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
-from argmojo import Arg, Command, ParseResult
+from argmojo import Argument, Command, ParseResult
 
 
 # ── Persistent flag on root without any subcommand ─────────────────────────
@@ -28,22 +28,30 @@ from argmojo import Arg, Command, ParseResult
 fn test_persistent_flag_on_root_no_subcommand() raises:
     """A persistent flag still works as a plain root flag when no subcommand
     is involved."""
-    var cmd = Command("app", "")
-    cmd.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    var command = Command("app", "")
+    command.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
-    var r = cmd.parse_args(["app", "--verbose"])
+    var r = command.parse_args(["app", "--verbose"])
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
     print("  ✓ test_persistent_flag_on_root_no_subcommand")
 
 
 fn test_persistent_flag_absent_on_root() raises:
     """Absent persistent flag defaults to False on root."""
-    var cmd = Command("app", "")
-    cmd.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    var command = Command("app", "")
+    command.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
-    var r = cmd.parse_args(["app"])
+    var r = command.parse_args(["app"])
     assert_false(r.get_flag("verbose"), msg="absent verbose should be False")
     print("  ✓ test_persistent_flag_absent_on_root")
 
@@ -55,11 +63,15 @@ fn test_persistent_flag_before_subcommand_in_root_result() raises:
     """Persistent flag placed before the subcommand token is stored in the root
     result."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "--verbose", "search", "pattern"])
@@ -72,11 +84,15 @@ fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
     """Persistent flag placed before the subcommand token is pushed down into
     the child result so sub_result.get_flag() also works."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "--verbose", "search", "pattern"])
@@ -95,11 +111,15 @@ fn test_persistent_flag_after_subcommand_in_child_result() raises:
     """Persistent flag placed after the subcommand token is parsed by the child
     (injected) and stored in the child result."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "search", "--verbose", "pattern"])
@@ -114,11 +134,15 @@ fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
     """Persistent flag placed after the subcommand token is also bubbled up to
     the root result so root_result.get_flag() always works."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "search", "--verbose", "pattern"])
@@ -133,11 +157,15 @@ fn test_persistent_short_flag_after_subcommand() raises:
     """The short form of a persistent flag also bubbles up from after-subcommand
     position."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "search", "-v", "pattern"])
@@ -158,9 +186,11 @@ fn test_persistent_value_option_after_subcommand() raises:
     """A persistent value-taking option placed after the subcommand token is
     injected into the child, parsed, and synced both ways."""
     var app = Command("app", "")
-    app.add_arg(Arg("output", help="").long("output").short("o").persistent())
+    app.add_argument(
+        Argument("output", help="").long("output").short("o").persistent()
+    )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "search", "--output", "json", "pattern"])
@@ -173,11 +203,15 @@ fn test_persistent_flag_absent_defaults_false_in_both() raises:
     """When a persistent flag is not provided at all, both root and child
     results return False."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var r = app.parse_args(["app", "search", "pattern"])
@@ -198,11 +232,11 @@ fn test_non_persistent_root_flag_not_injected_into_child() raises:
     """A non-persistent root flag placed after the subcommand token is NOT
     recognised by the child and causes an unknown-option error."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("root-only", help="").long("root-only").flag()
+    app.add_argument(
+        Argument("root-only", help="").long("root-only").flag()
     )  # NOT persistent
     var search = Command("search", "")
-    search.add_arg(Arg("pattern", help="").positional().required())
+    search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
     var raised = False
@@ -224,10 +258,12 @@ fn test_persistent_conflict_long_name_raises() raises:
     """add_subcommand() raises when a persistent parent long_name conflicts
     with a child long_name."""
     var app = Command("app", "")
-    app.add_arg(Arg("verbose", help="").long("verbose").flag().persistent())
+    app.add_argument(
+        Argument("verbose", help="").long("verbose").flag().persistent()
+    )
     var search = Command("search", "")
-    search.add_arg(
-        Arg("verbose", help="").long("verbose").flag()
+    search.add_argument(
+        Argument("verbose", help="").long("verbose").flag()
     )  # same long name!
 
     var raised = False
@@ -246,12 +282,16 @@ fn test_persistent_conflict_short_name_raises() raises:
     """add_subcommand() raises when a persistent parent short_name conflicts
     with a child short_name."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var search = Command("search", "")
-    search.add_arg(
-        Arg("version", help="").long("ver").short("v").flag()
+    search.add_argument(
+        Argument("version", help="").long("ver").short("v").flag()
     )  # same short -v!
 
     var raised = False
@@ -272,12 +312,12 @@ fn test_no_conflict_for_non_persistent_same_name() raises:
     """No conflict is raised when a non-persistent root arg shares a name with
     a child arg (only persistent args are checked)."""
     var app = Command("app", "")
-    app.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag()
+    app.add_argument(
+        Argument("verbose", help="").long("verbose").short("v").flag()
     )  # NOT persistent
     var search = Command("search", "")
-    search.add_arg(
-        Arg("verbose", help="").long("verbose").flag()
+    search.add_argument(
+        Argument("verbose", help="").long("verbose").flag()
     )  # same name, OK
 
     app.add_subcommand(search^)  # must not raise

@@ -1,6 +1,6 @@
 """Demo: persistent (global) flags with argmojo.
 
-Persistent flags are declared with .persistent() on the Arg builder.
+Persistent flags are declared with .persistent() on the Argument builder.
 They are automatically injected into every subcommand so the user can
 place them either BEFORE or AFTER the subcommand token — both work.
 
@@ -17,7 +17,7 @@ Run one of them:
 """
 
 from sys import argv
-from argmojo import Arg, Command
+from argmojo import Argument, Command
 
 
 fn build_app() raises -> Command:
@@ -25,15 +25,15 @@ fn build_app() raises -> Command:
     var app = Command("app", "Demo app with persistent flags", version="0.1.0")
 
     # ── Persistent flags (available everywhere) ──────────────────────────
-    app.add_arg(
-        Arg("verbose", help="Enable verbose/debug output")
+    app.add_argument(
+        Argument("verbose", help="Enable verbose/debug output")
         .long("verbose")
         .short("v")
         .flag()
         .persistent()
     )
-    app.add_arg(
-        Arg("output", help="Output format (json|text|yaml)")
+    app.add_argument(
+        Argument("output", help="Output format (json|text|yaml)")
         .long("output")
         .short("o")
         .choices(["json", "text", "yaml"])
@@ -43,11 +43,13 @@ fn build_app() raises -> Command:
 
     # ── sub: search ──────────────────────────────────────────────────────
     var search = Command("search", "Search for a pattern in files")
-    search.add_arg(
-        Arg("pattern", help="Pattern to search for").positional().required()
+    search.add_argument(
+        Argument("pattern", help="Pattern to search for")
+        .positional()
+        .required()
     )
-    search.add_arg(
-        Arg("case-insensitive", help="Ignore case")
+    search.add_argument(
+        Argument("case-insensitive", help="Ignore case")
         .long("case-insensitive")
         .short("i")
         .flag()
@@ -56,11 +58,14 @@ fn build_app() raises -> Command:
 
     # ── sub: index ───────────────────────────────────────────────────────
     var index = Command("index", "Build or update the search index")
-    index.add_arg(
-        Arg("path", help="Directory to index").positional().default(".")
+    index.add_argument(
+        Argument("path", help="Directory to index").positional().default(".")
     )
-    index.add_arg(
-        Arg("force", help="Force full re-index").long("force").short("f").flag()
+    index.add_argument(
+        Argument("force", help="Force full re-index")
+        .long("force")
+        .short("f")
+        .flag()
     )
     app.add_subcommand(index^)
 
@@ -140,12 +145,16 @@ fn demo_conflict_detection() raises:
         "    Registering a subcommand that conflicts with a persistent flag..."
     )
     var app2 = Command("app", "")
-    app2.add_arg(
-        Arg("verbose", help="").long("verbose").short("v").flag().persistent()
+    app2.add_argument(
+        Argument("verbose", help="")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
     )
     var conflict_child = Command("sub", "")
-    conflict_child.add_arg(
-        Arg("verbose", help="local --verbose").long("verbose").flag()
+    conflict_child.add_argument(
+        Argument("verbose", help="local --verbose").long("verbose").flag()
     )
     var caught = False
     try:

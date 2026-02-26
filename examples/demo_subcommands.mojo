@@ -13,33 +13,40 @@ Usage:
     pixi run demo_subcommands
 """
 
-from argmojo import Arg, Command, ParseResult
+from argmojo import Argument, Command, ParseResult
 
 
-fn build_app() -> Command:
+fn build_app() raises -> Command:
     """Constructs the complete app command tree."""
     var app = Command("kido", "A fast project scaffold tool.", version="0.3.0")
 
     # Root-level flag (future: will become persistent in Step 3).
-    app.add_arg(
-        Arg("verbose", help="Verbose output").long("verbose").short("v").flag()
+    app.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long("verbose")
+        .short("v")
+        .flag()
     )
 
     # ── search subcommand ────────────────────────────────────────────────
     var search = Command("search", "Search for patterns in source files")
-    search.add_arg(
-        Arg("pattern", help="Search pattern (regex)").positional().required()
+    search.add_argument(
+        Argument("pattern", help="Search pattern (regex)")
+        .positional()
+        .required()
     )
-    search.add_arg(Arg("path", help="Search path").positional().default("."))
-    search.add_arg(
-        Arg("max-depth", help="Maximum directory depth")
+    search.add_argument(
+        Argument("path", help="Search path").positional().default(".")
+    )
+    search.add_argument(
+        Argument("max-depth", help="Maximum directory depth")
         .long("max-depth")
         .short("d")
         .metavar("N")
         .range(1, 100)
     )
-    search.add_arg(
-        Arg("ignore-case", help="Case-insensitive match")
+    search.add_argument(
+        Argument("ignore-case", help="Case-insensitive match")
         .long("ignore-case")
         .short("i")
         .flag()
@@ -47,29 +54,31 @@ fn build_app() -> Command:
 
     # ── init subcommand ──────────────────────────────────────────────────
     var init = Command("init", "Initialise a new project from a template")
-    init.add_arg(Arg("name", help="Project name").required().positional())
-    init.add_arg(
-        Arg("template", help="Template name")
+    init.add_argument(
+        Argument("name", help="Project name").required().positional()
+    )
+    init.add_argument(
+        Argument("template", help="Template name")
         .long("template")
         .short("t")
         .default("default")
     )
-    init.add_arg(
-        Arg("dry-run", help="Preview changes without writing files")
+    init.add_argument(
+        Argument("dry-run", help="Preview changes without writing files")
         .long("dry-run")
         .flag()
     )
 
     # ── build subcommand ─────────────────────────────────────────────────
     var build = Command("build", "Compile and package the project")
-    build.add_arg(
-        Arg("release", help="Enable release optimisations")
+    build.add_argument(
+        Argument("release", help="Enable release optimisations")
         .long("release")
         .flag()
     )
     var targets: List[String] = ["native", "wasm", "arm"]
-    build.add_arg(
-        Arg("target", help="Compilation target")
+    build.add_argument(
+        Argument("target", help="Compilation target")
         .long("target")
         .choices(targets^)
         .default("native")
@@ -162,7 +171,9 @@ fn main() raises:
         "$ kido -- search   (-- stops dispatch; 'search' is a root positional)"
     )
     var app6 = build_app()
-    app6.add_arg(Arg("fallback", help="Fallback positional").positional())
+    app6.add_argument(
+        Argument("fallback", help="Fallback positional").positional()
+    )
     var a6: List[String] = ["kido", "--", "search"]
     var r6 = app6.parse_args(a6)
     print("  subcommand : '" + r6.subcommand + "'  (empty)")

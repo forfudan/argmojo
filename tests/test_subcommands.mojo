@@ -36,20 +36,20 @@ Step 2b: Validates the auto-registered 'help' subcommand:
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
-from argmojo import Arg, Command, ParseResult
+from argmojo import Argument, Command, ParseResult
 
 # ── Step 0: _apply_defaults() behavior ───────────────────────────────────────
 
 
 fn test_defaults_named_arg() raises:
     """Tests that a named arg with a default gets filled when not provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("format", help="Output format").long("format").default("json")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Output format").long("format").default("json")
     )
 
     var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("format"), "json")
     print("  ✓ test_defaults_named_arg")
 
@@ -57,12 +57,16 @@ fn test_defaults_named_arg() raises:
 fn test_defaults_positional_arg() raises:
     """Tests that a positional arg with a default gets filled when not provided.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("pattern", help="Pattern").positional().required())
-    cmd.add_arg(Arg("path", help="Path").positional().default("."))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    command.add_argument(
+        Argument("path", help="Path").positional().default(".")
+    )
 
     var args: List[String] = ["test", "hello"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), ".")
     print("  ✓ test_defaults_positional_arg")
@@ -70,26 +74,30 @@ fn test_defaults_positional_arg() raises:
 
 fn test_defaults_not_applied_when_provided() raises:
     """Tests that defaults do not overwrite explicitly provided values."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("format", help="Output format").long("format").default("json")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Output format").long("format").default("json")
     )
 
     var args: List[String] = ["test", "--format", "csv"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("format"), "csv")
     print("  ✓ test_defaults_not_applied_when_provided")
 
 
 fn test_defaults_multiple_positional() raises:
     """Tests defaults with multiple positional args where some are provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("src", help="Source").positional().default("a.txt"))
-    cmd.add_arg(Arg("dst", help="Dest").positional().default("b.txt"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("src", help="Source").positional().default("a.txt")
+    )
+    command.add_argument(
+        Argument("dst", help="Dest").positional().default("b.txt")
+    )
 
     # Provide only the first positional.
     var args: List[String] = ["test", "input.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("src"), "input.txt")
     assert_equal(result.get_string("dst"), "b.txt")
     print("  ✓ test_defaults_multiple_positional")
@@ -100,13 +108,15 @@ fn test_defaults_multiple_positional() raises:
 
 fn test_validate_required_missing() raises:
     """Tests that a missing required arg raises an error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("output", help="Output file").long("output").required())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output file").long("output").required()
+    )
 
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -121,11 +131,13 @@ fn test_validate_required_missing() raises:
 
 fn test_validate_required_provided() raises:
     """Tests that providing a required arg passes validation."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("output", help="Output file").long("output").required())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output file").long("output").required()
+    )
 
     var args: List[String] = ["test", "--output", "out.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_validate_required_provided")
 
@@ -135,13 +147,13 @@ fn test_validate_required_provided() raises:
 
 fn test_validate_too_many_positionals() raises:
     """Tests that too many positional args fails validation."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("name", help="Name").positional())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("name", help="Name").positional())
 
     var args: List[String] = ["test", "alice", "bob"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -158,16 +170,16 @@ fn test_validate_too_many_positionals() raises:
 
 fn test_validate_exclusive_conflict() raises:
     """Tests that mutually exclusive args in conflict raise an error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long("json").flag())
+    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
     var group: List[String] = ["json", "yaml"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json", "--yaml"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         assert_true(
@@ -180,14 +192,14 @@ fn test_validate_exclusive_conflict() raises:
 
 fn test_validate_exclusive_ok() raises:
     """Tests that providing only one from exclusive group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long("json").flag())
+    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
     var group: List[String] = ["json", "yaml"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("json"))
     print("  ✓ test_validate_exclusive_ok")
 
@@ -197,16 +209,16 @@ fn test_validate_exclusive_ok() raises:
 
 fn test_validate_together_partial() raises:
     """Tests that providing only some of a required-together group fails."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("user", help="User").long("user"))
-    cmd.add_arg(Arg("pass", help="Pass").long("pass"))
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("user", help="User").long("user"))
+    command.add_argument(Argument("pass", help="Pass").long("pass"))
     var group: List[String] = ["user", "pass"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["test", "--user", "alice"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         assert_true(
@@ -223,16 +235,16 @@ fn test_validate_together_partial() raises:
 
 fn test_validate_one_required_none() raises:
     """Tests that providing none from a one-required group fails."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long("json").flag())
+    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
     var group: List[String] = ["json", "yaml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         assert_true(
@@ -248,15 +260,15 @@ fn test_validate_one_required_none() raises:
 
 fn test_validate_conditional_triggered() raises:
     """Tests that conditional requirement fires when condition is present."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output").long("output"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("save", help="Save").long("save").flag())
+    command.add_argument(Argument("output", help="Output").long("output"))
+    command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         assert_true(
@@ -269,13 +281,13 @@ fn test_validate_conditional_triggered() raises:
 
 fn test_validate_conditional_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output").long("output"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("save", help="Save").long("save").flag())
+    command.add_argument(Argument("output", help="Output").long("output"))
+    command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save", "--output", "out.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("save"))
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_validate_conditional_satisfied")
@@ -286,13 +298,15 @@ fn test_validate_conditional_satisfied() raises:
 
 fn test_validate_range_out_of_bounds() raises:
     """Tests that a value outside numeric range fails validation."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("port", help="Port").long("port").range(1, 100))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Port").long("port").range(1, 100)
+    )
 
     var args: List[String] = ["test", "--port", "200"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         assert_true(
@@ -305,11 +319,13 @@ fn test_validate_range_out_of_bounds() raises:
 
 fn test_validate_range_in_bounds() raises:
     """Tests that a value within numeric range passes validation."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("port", help="Port").long("port").range(1, 100))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Port").long("port").range(1, 100)
+    )
 
     var args: List[String] = ["test", "--port", "50"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("port"), "50")
     print("  ✓ test_validate_range_in_bounds")
 
@@ -324,15 +340,15 @@ fn test_defaults_then_validation_combined() raises:
     neither should NOT trigger required-together error (neither is present).
     Providing just one should trigger the error.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("user", help="User").long("user"))
-    cmd.add_arg(Arg("pass", help="Pass").long("pass"))
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("user", help="User").long("user"))
+    command.add_argument(Argument("pass", help="Pass").long("pass"))
     var group: List[String] = ["user", "pass"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     # Providing neither — no error (required-together only fires if some present).
     var args1: List[String] = ["test"]
-    var result = cmd.parse_args(args1)
+    var result = command.parse_args(args1)
     assert_false(result.has("user"))
     assert_false(result.has("pass"))
     print("  ✓ test_defaults_then_validation_combined")
@@ -340,14 +356,14 @@ fn test_defaults_then_validation_combined() raises:
 
 fn test_full_parse_with_defaults_and_range() raises:
     """Tests that default values also pass range validation."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("port", help="Port").long("port").range(1, 100).default("50")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Port").long("port").range(1, 100).default("50")
     )
 
     # Not providing --port should use default "50" which is in range.
     var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("port"), "50")
     print("  ✓ test_full_parse_with_defaults_and_range")
 
@@ -409,9 +425,11 @@ fn test_add_subcommand_preserves_child_args() raises:
     """
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
-    search.add_arg(
-        Arg("max-depth", help="Max depth").long("max-depth").short("d")
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    search.add_argument(
+        Argument("max-depth", help="Max depth").long("max-depth").short("d")
     )
     app.add_subcommand(search^)
     assert_equal(len(app.subcommands), 2)
@@ -527,12 +545,12 @@ fn test_parseresult_copy_preserves_subcommand() raises:
 fn test_parse_without_subcommands_unaffected() raises:
     """Tests that parse_args() results are unchanged when no subcommands exist.
     """
-    var cmd = Command("app", "My app")
-    cmd.add_arg(
-        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    var command = Command("app", "My app")
+    command.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     var args: List[String] = ["app", "--verbose"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
@@ -546,7 +564,9 @@ fn test_dispatch_basic() raises:
     """Tests basic subcommand dispatch: app search pattern."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
@@ -561,11 +581,13 @@ fn test_dispatch_basic() raises:
 fn test_dispatch_root_flag_before_subcommand() raises:
     """Tests that root flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
-    app.add_arg(
-        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    app.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "--verbose", "search", "hello"]
@@ -580,11 +602,13 @@ fn test_dispatch_root_flag_before_subcommand() raises:
 fn test_dispatch_root_short_flag_before_subcommand() raises:
     """Tests that root short flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
-    app.add_arg(
-        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    app.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "-v", "search", "hello"]
@@ -600,8 +624,12 @@ fn test_dispatch_child_flag() raises:
     """Tests that child flags are parsed by the child command."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
-    search.add_arg(Arg("max-depth", help="Depth").long("max-depth").short("d"))
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    search.add_argument(
+        Argument("max-depth", help="Depth").long("max-depth").short("d")
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "--max-depth", "3", "hello"]
@@ -617,8 +645,12 @@ fn test_dispatch_child_flag_short() raises:
     """Tests that child short flags are parsed by the child command."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
-    search.add_arg(Arg("max-depth", help="Depth").long("max-depth").short("d"))
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    search.add_argument(
+        Argument("max-depth", help="Depth").long("max-depth").short("d")
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "-d", "5", "hello"]
@@ -634,10 +666,10 @@ fn test_dispatch_double_dash_stops_dispatch() raises:
     """Tests that -- before subcommand name prevents dispatch."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional())
+    search.add_argument(Argument("pattern", help="Pattern").positional())
     app.add_subcommand(search^)
     # "search" is registered but -- forces it to be a positional on root.
-    app.add_arg(Arg("arg1", help="First arg").positional())
+    app.add_argument(Argument("arg1", help="First arg").positional())
 
     var args: List[String] = ["app", "--", "search"]
     var result = app.parse_args(args)
@@ -653,7 +685,7 @@ fn test_dispatch_unknown_token_is_positional() raises:
     var app = Command("app", "My app")
     var search = Command("search", "Search")
     app.add_subcommand(search^)
-    app.add_arg(Arg("name", help="Name").positional())
+    app.add_argument(Argument("name", help="Name").positional())
 
     var args: List[String] = ["app", "hello"]
     var result = app.parse_args(args)
@@ -666,9 +698,11 @@ fn test_dispatch_two_subcommands_route_first() raises:
     """Tests routing to the first of two registered subcommands."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     var init = Command("init", "Init")
-    init.add_arg(Arg("name", help="Name").positional().required())
+    init.add_argument(Argument("name", help="Name").positional().required())
     app.add_subcommand(search^)
     app.add_subcommand(init^)
 
@@ -683,9 +717,11 @@ fn test_dispatch_two_subcommands_route_second() raises:
     """Tests routing to the second of two registered subcommands."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     var init = Command("init", "Init")
-    init.add_arg(Arg("name", help="Name").positional().required())
+    init.add_argument(Argument("name", help="Name").positional().required())
     app.add_subcommand(search^)
     app.add_subcommand(init^)
 
@@ -700,7 +736,9 @@ fn test_dispatch_child_validation_error() raises:
     """Tests that missing required child arg raises an error."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search"]
@@ -725,8 +763,10 @@ fn test_dispatch_child_default_value() raises:
     """
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
-    search.add_arg(Arg("path", help="Path").positional().default("."))
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    search.add_argument(Argument("path", help="Path").positional().default("."))
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
@@ -742,7 +782,7 @@ fn test_dispatch_no_subcommand_when_none_match() raises:
     var app = Command("app", "My app")
     var search = Command("search", "Search")
     app.add_subcommand(search^)
-    app.add_arg(Arg("file", help="File").positional())
+    app.add_argument(Argument("file", help="File").positional())
 
     var args: List[String] = ["app", "myfile.txt"]
     var result = app.parse_args(args)
@@ -754,9 +794,13 @@ fn test_dispatch_no_subcommand_when_none_match() raises:
 fn test_dispatch_root_still_validates_own_required() raises:
     """Tests that root still validates its own required args after dispatch."""
     var app = Command("app", "My app")
-    app.add_arg(Arg("token", help="API token").long("token").required())
+    app.add_argument(
+        Argument("token", help="API token").long("token").required()
+    )
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
@@ -774,12 +818,12 @@ fn test_dispatch_root_still_validates_own_required() raises:
 fn test_dispatch_child_receives_no_root_tokens() raises:
     """Tests tokens before subcommand are NOT forwarded to the child."""
     var app = Command("app", "My app")
-    app.add_arg(
-        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    app.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     var sub = Command("run", "Run")
     # Child only registers a positional; --verbose is NOT a child arg.
-    sub.add_arg(Arg("script", help="Script").positional())
+    sub.add_argument(Argument("script", help="Script").positional())
     app.add_subcommand(sub^)
 
     var args: List[String] = ["app", "--verbose", "run", "main.mojo"]
@@ -885,7 +929,9 @@ fn test_dispatch_unaffected_by_help_sub() raises:
     """Tests that normal dispatch still works when 'help' sub is auto-added."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
-    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "TODO"]
@@ -900,7 +946,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     """Tests that with help disabled, 'help' token is treated as a positional.
     """
     var app = Command("app", "My app")
-    app.add_arg(Arg("query", help="Query").positional())
+    app.add_argument(Argument("query", help="Query").positional())
     app.disable_help_subcommand()
     app.add_subcommand(Command("init", "Init")^)
 

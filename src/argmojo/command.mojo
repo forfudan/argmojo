@@ -2,8 +2,8 @@
 
 from sys import argv, exit, stderr
 
-from .arg import Arg
-from .result import ParseResult
+from .argument import Argument
+from .parse_result import ParseResult
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
@@ -123,10 +123,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
     Example:
 
     ```mojo
-    from argmojo import Command, Arg
-    var cmd = Command("myapp", "A sample application")
-    cmd.add_arg(Arg("verbose", help="Enable verbose output").long("verbose").short("v").flag())
-    var result = cmd.parse()
+    from argmojo import Command, Argument
+    var command = Command("myapp", "A sample application")
+    command.add_argument(Argument("verbose", help="Enable verbose output").long("verbose").short("v").flag())
+    var result = command.parse()
     ```
     """
 
@@ -136,7 +136,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """A short description of the command, shown in help text."""
     var version: String
     """Version string for --version output."""
-    var args: List[Arg]
+    var args: List[Argument]
     """Registered argument definitions."""
     var subcommands: List[Command]
     """Registered subcommand definitions. Each is a full Command instance."""
@@ -194,7 +194,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self.name = name
         self.description = description
         self.version = version
-        self.args = List[Arg]()
+        self.args = List[Argument]()
         self.subcommands = List[Command]()
         self._exclusive_groups = List[List[String]]()
         self._required_groups = List[List[String]]()
@@ -276,22 +276,22 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # Builder methods for configuring the command
     # ===------------------------------------------------------------------=== #
 
-    fn add_arg(mut self, var arg: Arg):
+    fn add_argument(mut self, var argument: Argument):
         """Registers an argument definition.
 
         Args:
-            arg: The Arg to register.
+            argument: The Argument to register.
 
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("verbose", help="Enable verbose output"))
-        var result = cmd.parse()
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("verbose", help="Enable verbose output"))
+        var result = command.parse()
         ```
         """
-        self.args.append(arg^)
+        self.args.append(argument^)
 
     fn add_subcommand(mut self, var sub: Command) raises:
         """Registers a subcommand.
@@ -311,15 +311,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
+        from argmojo import Command, Argument
 
         var app = Command("app", "My CLI tool", version="0.3.0")
 
         var search = Command("search", "Search for patterns")
-        search.add_arg(Arg("pattern", help="Search pattern").required().positional())
+        search.add_argument(Argument("pattern", help="Search pattern").required().positional())
 
         var init = Command("init", "Initialize a new project")
-        init.add_arg(Arg("name", help="Project name").required().positional())
+        init.add_argument(Argument("name", help="Project name").required().positional())
 
         app.add_subcommand(search^)
         app.add_subcommand(init^)
@@ -420,10 +420,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("calc", "Calculator")
-        cmd.allow_negative_numbers()
-        cmd.add_arg(Arg("expr", help="Expression").positional().required())
+        from argmojo import Command, Argument
+        var command = Command("calc", "Calculator")
+        command.allow_negative_numbers()
+        command.add_argument(Argument("expr", help="Expression").positional().required())
         # Now: calc -9.5  →  positionals = ["-9.5"]
         ```
         """
@@ -441,12 +441,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("json", help="Output as JSON").long("json").flag())
-        cmd.add_arg(Arg("yaml", help="Output as YAML").long("yaml").flag())
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
         var format_excl: List[String] = ["json", "yaml"]
-        cmd.mutually_exclusive(format_excl^)
+        command.mutually_exclusive(format_excl^)
         ```
         """
         self._exclusive_groups.append(names^)
@@ -463,12 +463,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("username", help="Auth username").long("username").short("u"))
-        cmd.add_arg(Arg("password", help="Auth password").long("password").short("p"))
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("username", help="Auth username").long("username").short("u"))
+        command.add_argument(Argument("password", help="Auth password").long("password").short("p"))
         var auth_group: List[String] = ["username", "password"]
-        cmd.required_together(auth_group^)
+        command.required_together(auth_group^)
         ```
         """
         self._required_groups.append(names^)
@@ -485,12 +485,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("json", help="Output as JSON").long("json").flag())
-        cmd.add_arg(Arg("yaml", help="Output as YAML").long("yaml").flag())
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
         var format_group: List[String] = ["json", "yaml"]
-        cmd.one_required(format_group^)
+        command.one_required(format_group^)
         ```
         """
         self._one_required_groups.append(names^)
@@ -508,11 +508,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-        cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-        cmd.required_if("output", "save")
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("save", help="Save results").long("save").flag())
+        command.add_argument(Argument("output", help="Output path").long("output").short("o"))
+        command.required_if("output", "save")
         ```
         """
         var pair: List[String] = [target, condition]
@@ -527,10 +527,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("file", help="Input file").long("file").required())
-        cmd.help_on_no_args()
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("file", help="Input file").long("file").required())
+        command.help_on_no_args()
         ```
         """
         self._help_on_no_args = True
@@ -555,8 +555,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.header_color("YELLOW")
+        var command = Command("myapp", "A sample application")
+        command.header_color("YELLOW")
         ```
         """
         self._header_color = _resolve_color(name)
@@ -578,8 +578,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.arg_color("GREEN")
+        var command = Command("myapp", "A sample application")
+        command.arg_color("GREEN")
         ```
         """
         self._arg_color = _resolve_color(name)
@@ -601,8 +601,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.warn_color("YELLOW")  # change from default orange
+        var command = Command("myapp", "A sample application")
+        command.warn_color("YELLOW")  # change from default orange
         ```
         """
         self._warn_color = _resolve_color(name)
@@ -624,8 +624,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.error_color("MAGENTA")  # change from default red
+        var command = Command("myapp", "A sample application")
+        command.error_color("MAGENTA")  # change from default red
         ```
         """
         self._error_color = _resolve_color(name)
@@ -826,7 +826,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + opts
                             )
 
-                var matched: Arg = self._find_by_long(key)
+                var matched: Argument = self._find_by_long(key)
                 # Emit deprecation warning if applicable.
                 if matched.deprecated_msg:
                     self._warn(
@@ -1390,7 +1390,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # Argument lookup helpers
     # ===------------------------------------------------------------------=== #
 
-    fn _find_by_long(self, name: String) raises -> Arg:
+    fn _find_by_long(self, name: String) raises -> Argument:
         """Finds an argument definition by its long name, alias, or unambiguous prefix.
 
         Resolution order:
@@ -1403,7 +1403,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             name: The long option name (without '--'), or an unambiguous prefix.
 
         Returns:
-            The matching Arg.
+            The matching Argument.
 
         Raises:
             Error if no argument matches or the prefix is ambiguous.
@@ -1461,14 +1461,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
             "unreachable"
         )  # _error() always raises; satisfies Mojo's return checker
 
-    fn _find_by_short(self, name: String) raises -> Arg:
+    fn _find_by_short(self, name: String) raises -> Argument:
         """Finds an argument definition by its short name.
 
         Args:
             name: The short option name (without '-').
 
         Returns:
-            The matching Arg.
+            The matching Argument.
 
         Raises:
             Error if no argument matches.
@@ -1516,7 +1516,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 break
         return "'" + name + "'"
 
-    fn _validate_choices(self, arg: Arg, value: String) raises:
+    fn _validate_choices(self, arg: Argument, value: String) raises:
         """Validates that the value is in the allowed choices.
 
         Args:
@@ -1547,7 +1547,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         )
 
     fn _store_append_value(
-        self, arg: Arg, value: String, mut result: ParseResult
+        self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a value for an append-type argument, handling delimiter splitting.
 
@@ -1574,7 +1574,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result.lists[arg.name].append(value)
 
     fn _store_map_value(
-        self, arg: Arg, value: String, mut result: ParseResult
+        self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a key=value pair for a map-type argument.
 
