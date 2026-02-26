@@ -623,6 +623,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
     #    ├─ Conditional requirements
     #    └─ Numeric range constraints
     # 6. Return ParseResult.
+
+    # ===------------------------------------------------------------------=== #
+    # Private output helpers
+    # ===------------------------------------------------------------------=== #
+
+    fn _warn(self, msg: String):
+        """Prints a coloured warning message to stderr."""
+        print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
+
+    fn _error(self, msg: String) raises:
+        """Prints a coloured error message to stderr then raises.
+
+        All parse-time errors funnel through this method so that callers
+        of both ``parse()`` and ``parse_args()`` always see coloured output
+        while tests can still catch the raised ``Error`` normally.
+        """
+        print(self._error_color + "error: " + msg + _RESET, file=stderr)
+        raise Error(msg)
+
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
 
@@ -641,11 +660,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             raw.append(String(raw_variadic[i]))
         try:
             return self.parse_args(raw)
-        except e:
-            print(
-                self._error_color + "error: " + String(e) + _RESET,
-                file=stderr,
-            )
+        except:
+            # Error message was already printed to stderr by _error().
             exit(2)
             # Unreachable — exit() terminates the process — but the
             # compiler does not model exit() as @noreturn yet.
@@ -758,7 +774,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 if j > 0:
                                     opts += ", "
                                 opts += "'--no-" + neg_candidates[j] + "'"
-                            raise Error(
+                            self._error(
                                 "Ambiguous option '--no-"
                                 + base_key
                                 + "' could match: "
@@ -768,14 +784,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var matched: Arg = self._find_by_long(key)
                 # Emit deprecation warning if applicable.
                 if matched.deprecated_msg:
-                    print(
-                        self._warn_color
-                        + "Warning: '--"
+                    self._warn(
+                        "'--"
                         + key
                         + "' is deprecated: "
                         + matched.deprecated_msg
-                        + _RESET,
-                        file=stderr,
                     )
                 if is_negation:
                     result.flags[matched.name] = False
@@ -792,7 +805,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 elif matched.nargs_count > 0:
                     # nargs: consume exactly N values.
                     if has_eq:
-                        raise Error(
+                        self._error(
                             "Option '--"
                             + key
                             + "' takes "
@@ -804,7 +817,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     for _n in range(matched.nargs_count):
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '--"
                                 + key
                                 + "' requires "
@@ -817,7 +830,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     if not has_eq:
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '--" + key + "' requires a value"
                             )
                         value = raw_args[i]
@@ -857,14 +870,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     var matched = self._find_by_short(key)
                     # Emit deprecation warning if applicable.
                     if matched.deprecated_msg:
-                        print(
-                            self._warn_color
-                            + "Warning: '-"
+                        self._warn(
+                            "'-"
                             + key
                             + "' is deprecated: "
                             + matched.deprecated_msg
-                            + _RESET,
-                            file=stderr,
                         )
                     if matched.is_count:
                         var cur: Int = 0
@@ -882,7 +892,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         for _n in range(matched.nargs_count):
                             i += 1
                             if i >= len(raw_args):
-                                raise Error(
+                                self._error(
                                     "Option '-"
                                     + key
                                     + "' requires "
@@ -894,7 +904,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     else:
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '-" + key + "' requires a value"
                             )
                         var val = raw_args[i]
@@ -923,14 +933,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         var m = self._find_by_short(ch)
                         # Emit deprecation warning if applicable.
                         if m.deprecated_msg:
-                            print(
-                                self._warn_color
-                                + "Warning: '-"
+                            self._warn(
+                                "'-"
                                 + ch
                                 + "' is deprecated: "
                                 + m.deprecated_msg
-                                + _RESET,
-                                file=stderr,
                             )
                         if m.is_count:
                             var cur: Int = 0
@@ -951,7 +958,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             for _n in range(m.nargs_count):
                                 i += 1
                                 if i >= len(raw_args):
-                                    raise Error(
+                                    self._error(
                                         "Option '-"
                                         + ch
                                         + "' requires "
@@ -968,7 +975,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             if len(val) == 0:
                                 i += 1
                                 if i >= len(raw_args):
-                                    raise Error(
+                                    self._error(
                                         "Option '-" + ch + "' requires a value"
                                     )
                                 val = raw_args[i]
@@ -987,14 +994,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # attached value (e.g., -ofile.txt).
                     # Emit deprecation warning if applicable.
                     if first_match.deprecated_msg:
-                        print(
-                            self._warn_color
-                            + "Warning: '-"
+                        self._warn(
+                            "'-"
                             + first_char
                             + "' is deprecated: "
                             + first_match.deprecated_msg
-                            + _RESET,
-                            file=stderr,
                         )
                     if first_match.nargs_count > 0:
                         # nargs: consume N values from argv (ignore attached).
@@ -1003,7 +1007,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         for _n in range(first_match.nargs_count):
                             i += 1
                             if i >= len(raw_args):
-                                raise Error(
+                                self._error(
                                     "Option '-"
                                     + first_char
                                     + "' requires "
@@ -1127,14 +1131,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.is_required and not result.has(a.name):
-                raise Error(
+                self._error(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
         if expected_count > 0 and len(result.positionals) > expected_count:
-            raise Error(
+            self._error(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
@@ -1154,7 +1158,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     if f > 0:
                         names_str += ", "
                     names_str += self._display_name(found[f])
-                raise Error("Arguments are mutually exclusive: " + names_str)
+                self._error("Arguments are mutually exclusive: " + names_str)
 
         # Validate required-together groups.
         for g in range(len(self._required_groups)):
@@ -1177,7 +1181,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     if p > 0:
                         provided_str += ", "
                     provided_str += self._display_name(provided[p])
-                raise Error(
+                self._error(
                     "Arguments required together: "
                     + missing_str
                     + " required when "
@@ -1201,7 +1205,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     names_str += self._display_name(
                         self._one_required_groups[g][n]
                     )
-                raise Error(
+                self._error(
                     "At least one of the following arguments is required: "
                     + names_str
                 )
@@ -1211,7 +1215,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             var target = self._conditional_reqs[g][0]
             var condition = self._conditional_reqs[g][1]
             if result.has(condition) and not result.has(target):
-                raise Error(
+                self._error(
                     "Argument "
                     + self._display_name(target)
                     + " is required when "
@@ -1227,11 +1231,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if a.is_append:
                     var lst = result.get_list(a.name)
                     for k in range(len(lst)):
-                        var v: Int
+                        var v: Int = (
+                            0  # _error() raises in except, so 0 is never used
+                        )
                         try:
                             v = atol(lst[k])
                         except:
-                            raise Error(
+                            self._error(
                                 "Expected an integer for "
                                 + self._display_name(a.name)
                                 + ", got '"
@@ -1242,7 +1248,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             var display = String("'") + a.name + "'"
                             if a.long_name:
                                 display = "'--" + a.long_name + "'"
-                            raise Error(
+                            self._error(
                                 "Value "
                                 + String(v)
                                 + " for "
@@ -1259,11 +1265,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         raw = result.get_string(a.name)
                     except:
                         continue
-                    var v: Int
+                    var v: Int = (
+                        0  # _error() raises in except, so 0 is never used
+                    )
                     try:
                         v = atol(raw)
                     except:
-                        raise Error(
+                        self._error(
                             "Expected an integer for "
                             + self._display_name(a.name)
                             + ", got '"
@@ -1274,7 +1282,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         var display = String("'") + a.name + "'"
                         if a.long_name:
                             display = "'--" + a.long_name + "'"
-                        raise Error(
+                        self._error(
                             "Value "
                             + String(v)
                             + " for "
@@ -1352,11 +1360,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if j > 0:
                     opts += ", "
                 opts += "'--" + candidates[j] + "'"
-            raise Error(
+            self._error(
                 "Ambiguous option '--" + name + "' could match: " + opts
             )
 
-        raise Error("Unknown option '--" + name + "'")
+        self._error("Unknown option '--" + name + "'")
+        raise Error(
+            "unreachable"
+        )  # _error() always raises; satisfies Mojo's return checker
 
     fn _find_by_short(self, name: String) raises -> Arg:
         """Finds an argument definition by its short name.
@@ -1373,7 +1384,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(self.args)):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
-        raise Error("Unknown option '-" + name + "'")
+        self._error("Unknown option '-" + name + "'")
+        raise Error(
+            "unreachable"
+        )  # _error() always raises; satisfies Mojo's return checker
 
     fn _find_subcommand(self, name: String) -> Int:
         """Returns the index of the registered subcommand matching ``name``.
@@ -1430,7 +1444,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if i > 0:
                 allowed += ", "
             allowed += "'" + arg.choice_values[i] + "'"
-        raise Error(
+        self._error(
             "Invalid value '"
             + value
             + "' for argument '"
@@ -1487,31 +1501,38 @@ struct Command(Copyable, Movable, Stringable, Writable):
         if arg.name not in result.lists:
             result.lists[arg.name] = List[String]()
 
-        fn _parse_kv(
-            arg_name: String, piece: String, mut result: ParseResult
-        ) raises:
-            var eq = piece.find("=")
-            if eq < 0:
-                raise Error(
-                    "Invalid key=value format '"
-                    + piece
-                    + "' for argument '"
-                    + arg_name
-                    + "'"
-                )
-            var k = String(piece[:eq])
-            var v = String(piece[eq + 1 :])
-            result.maps[arg_name][k] = v
-            result.lists[arg_name].append(piece)
-
         if arg.delimiter_char:
             var parts = value.split(arg.delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:
-                    _parse_kv(arg.name, piece, result)
+                    var eq = piece.find("=")
+                    if eq < 0:
+                        self._error(
+                            "Invalid key=value format '"
+                            + piece
+                            + "' for argument '"
+                            + arg.name
+                            + "'"
+                        )
+                    var k = String(piece[:eq])
+                    var v = String(piece[eq + 1 :])
+                    result.maps[arg.name][k] = v
+                    result.lists[arg.name].append(piece)
         else:
-            _parse_kv(arg.name, value, result)
+            var eq = value.find("=")
+            if eq < 0:
+                self._error(
+                    "Invalid key=value format '"
+                    + value
+                    + "' for argument '"
+                    + arg.name
+                    + "'"
+                )
+            var k = String(value[:eq])
+            var v = String(value[eq + 1 :])
+            result.maps[arg.name][k] = v
+            result.lists[arg.name].append(value)
 
     fn _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.

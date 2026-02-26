@@ -48,7 +48,7 @@ These features appear across multiple libraries and depend only on string operat
 | One-required group                 | —        | —     | ✓     | ✓    |                        | **Done**      |
 | Value delimiter (`--tag a,b,c`)    | —        | —     | ✓     | ✓    |                        | **Done**      |
 | Colored help (customisable)        | —        | ✓     | —     | ✓    | pixi                   | **Done**      |
-| Colored warning and error messages | -        | ✓     | -     | ✓    |                        | Phase 3       |
+| Colored warning and error messages | -        | ✓     | -     | ✓    |                        | **Done**      |
 | nargs (multi-value per option)     | ✓        | ✓     | —     | ✓    |                        | **Done**      |
 | Conditional requirement            | —        | —     | ✓     | ✓    |                        | **Done**      |
 | Numeric range validation           | —        | —     | —     | —    |                        | **Done**      |
@@ -147,44 +147,45 @@ examples/
 
 ### 4.2 What's Already Done ✓
 
-| Feature                                                               | Status | Tests |
-| --------------------------------------------------------------------- | ------ | ----- |
-| `Arg` struct with builder pattern                                     | ✓      | —     |
-| `Command` struct with `add_arg()`                                     | ✓      | —     |
-| `ParseResult` with `get_flag()`, `get_string()`, `get_int()`, `has()` | ✓      | ✓     |
-| Long flags `--verbose`                                                | ✓      | ✓     |
-| Short flags `-v`                                                      | ✓      | ✓     |
-| Key-value `--key value`, `--key=value`, `-k value`                    | ✓      | ✓     |
-| Positional arguments                                                  | ✓      | ✓     |
-| Default values for positional and named args                          | ✓      | ✓     |
-| Required argument validation                                          | ✓      | —     |
-| `--` stop marker                                                      | ✓      | ✓     |
-| Auto `--help` / `-h` with generated help text                         | ✓      | —     |
-| Auto `--version` / `-V`                                               | ✓      | —     |
-| Demo binary (`mojo build`)                                            | ✓      | —     |
-| Short flag merging (`-abc` → `-a -b -c`)                              | ✓      | ✓     |
-| Short option with attached value (`-ofile.txt`)                       | ✓      | ✓     |
-| Choices validation (`.choices()`)                                     | ✓      | ✓     |
-| Metavar (`.metavar("FILE")`)                                          | ✓      | ✓     |
-| Hidden arguments (`.hidden()`)                                        | ✓      | ✓     |
-| Count action (`-vvv` → 3)                                             | ✓      | ✓     |
-| Positional arg count validation                                       | ✓      | ✓     |
-| Clean exit for `--help` / `--version`                                 | ✓      | —     |
-| Mutually exclusive groups                                             | ✓      | ✓     |
-| Required-together groups                                              | ✓      | ✓     |
-| Negatable flags (`.negatable()` → `--no-X`)                           | ✓      | ✓     |
-| Long option prefix matching (`--verb` → `--verbose`)                  | ✓      | ✓     |
-| Append / collect action (`--tag x --tag y` → list)                    | ✓      | ✓     |
-| One-required groups (`cmd.one_required(["json", "yaml"])`)            | ✓      | ✓     |
-| Value delimiter (`.delimiter(",")` → split into list)                 | ✓      | ✓     |
-| Nargs (`.nargs(N)` → consume N values per occurrence)                 | ✓      | ✓     |
-| Conditional requirements (`cmd.required_if("output", "save")`)        | ✓      | ✓     |
-| Numeric range validation (`.range(1, 65535)`)                         | ✓      | ✓     |
-| Key-value map option (`.map_option()` → `Dict[String, String]`)       | ✓      | ✓     |
-| Aliases (`.aliases(["color"])` for `--colour` / `--color`)            | ✓      | ✓     |
-| Deprecated arguments (`.deprecated("msg")` → stderr warning)          | ✓      | ✓     |
-| Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals) | ✓      | ✓     |
-| Subcommand data model (`add_subcommand()`, dispatch, `help` sub)      | ✓      | ✓     |
+| Feature                                                                                            | Status | Tests |
+| -------------------------------------------------------------------------------------------------- | ------ | ----- |
+| `Arg` struct with builder pattern                                                                  | ✓      | —     |
+| `Command` struct with `add_arg()`                                                                  | ✓      | —     |
+| `ParseResult` with `get_flag()`, `get_string()`, `get_int()`, `has()`                              | ✓      | ✓     |
+| Long flags `--verbose`                                                                             | ✓      | ✓     |
+| Short flags `-v`                                                                                   | ✓      | ✓     |
+| Key-value `--key value`, `--key=value`, `-k value`                                                 | ✓      | ✓     |
+| Positional arguments                                                                               | ✓      | ✓     |
+| Default values for positional and named args                                                       | ✓      | ✓     |
+| Required argument validation                                                                       | ✓      | —     |
+| `--` stop marker                                                                                   | ✓      | ✓     |
+| Auto `--help` / `-h` with generated help text                                                      | ✓      | —     |
+| Auto `--version` / `-V`                                                                            | ✓      | —     |
+| Demo binary (`mojo build`)                                                                         | ✓      | —     |
+| Short flag merging (`-abc` → `-a -b -c`)                                                           | ✓      | ✓     |
+| Short option with attached value (`-ofile.txt`)                                                    | ✓      | ✓     |
+| Choices validation (`.choices()`)                                                                  | ✓      | ✓     |
+| Metavar (`.metavar("FILE")`)                                                                       | ✓      | ✓     |
+| Hidden arguments (`.hidden()`)                                                                     | ✓      | ✓     |
+| Count action (`-vvv` → 3)                                                                          | ✓      | ✓     |
+| Positional arg count validation                                                                    | ✓      | ✓     |
+| Clean exit for `--help` / `--version`                                                              | ✓      | —     |
+| Mutually exclusive groups                                                                          | ✓      | ✓     |
+| Required-together groups                                                                           | ✓      | ✓     |
+| Negatable flags (`.negatable()` → `--no-X`)                                                        | ✓      | ✓     |
+| Long option prefix matching (`--verb` → `--verbose`)                                               | ✓      | ✓     |
+| Append / collect action (`--tag x --tag y` → list)                                                 | ✓      | ✓     |
+| One-required groups (`cmd.one_required(["json", "yaml"])`)                                         | ✓      | ✓     |
+| Value delimiter (`.delimiter(",")` → split into list)                                              | ✓      | ✓     |
+| Nargs (`.nargs(N)` → consume N values per occurrence)                                              | ✓      | ✓     |
+| Conditional requirements (`cmd.required_if("output", "save")`)                                     | ✓      | ✓     |
+| Numeric range validation (`.range(1, 65535)`)                                                      | ✓      | ✓     |
+| Key-value map option (`.map_option()` → `Dict[String, String]`)                                    | ✓      | ✓     |
+| Aliases (`.aliases(["color"])` for `--colour` / `--color`)                                         | ✓      | ✓     |
+| Deprecated arguments (`.deprecated("msg")` → stderr warning)                                       | ✓      | ✓     |
+| Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals)                              | ✓      | ✓     |
+| Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                   | ✓      | ✓     |
+| Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr) | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -390,7 +391,7 @@ if result.subcommand == "search":
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
-- [ ] **Colored error output** — ANSI styled error messages (help output already colored)
+- [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
 - [ ] **Usage line customisation** — override the auto-generated usage string
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
