@@ -55,6 +55,7 @@ These features appear across multiple libraries and depend only on string operat
 | Aliases for long names            | —        | —     | ✓     | ✓    |                        | **Done**      |
 | Deprecated arguments              | ✓ (3.13) | —     | ✓     | —    |                        | **Done**      |
 | Subcommands                       | ✓        | ✓     | ✓     | ✓    |                        | Phase 4       |
+| Auto-added `help` subcommand      | —        | —     | ✓     | ✓    | git, cargo, kubectl    | Phase 4       |
 | Response file (`@args.txt`)       | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |
 | Argument parents (shared args)    | ✓        | —     | —     | —    |                        | Phase 5       |
 | Interactive prompting             | —        | ✓     | —     | —    |                        | Phase 5       |
@@ -291,7 +292,7 @@ Before adding subcommand routing, clean up `parse_args()` so root and child can 
 - [x] Add `subcommands: List[Command]` field on `Command` (Matryoshka doll :D)
 - [x] Add `add_subcommand(mut self, sub: Command)` builder method
 - [x] Add `subcommand: String` field on `ParseResult` (name of selected subcommand, empty if none)
-- [x] Add `subcommand_result: Optional[ParseResult]` or similar on `ParseResult` to hold child results
+- [x] Add `subcommand_result: List[ParseResult]` or similar on `ParseResult` to hold child results
 
 Target API:
 
@@ -315,13 +316,13 @@ if result.subcommand == "search":
     var pattern = sub.get_string("pattern")
 ```
 
-#### Step 2 — Parse routing
+#### Step 2 — Parse routing (I need to be very careful)
 
-- [ ] In `parse_args()`, when the current token is not an option and subcommands are registered, check if it matches a subcommand name
-- [ ] On match: record `result.subcommand = name`, build child argv (remaining tokens), call `child.parse_args(child_argv)`, store child result
-- [ ] On no match and subcommands exist: treat as positional (existing behavior) or error depending on policy
-- [ ] `--` before subcommand boundary: all subsequent tokens are positional for root, no subcommand dispatch
-- [ ] Handle `app help <sub>` as equivalent to `app <sub> --help`
+- [x] In `parse_args()`, when the current token is not an option and subcommands are registered, check if it matches a subcommand name
+- [x] On match: record `result.subcommand = name`, build child argv (remaining tokens), call `child.parse_args(child_argv)`, store child result
+- [x] On no match and subcommands exist: treat as positional (existing behavior)
+- [x] `--` before subcommand boundary: all subsequent tokens are positional for root, no subcommand dispatch
+- [x] Handle `app help <sub>` as equivalent to `app <sub> --help` via auto-registered `help` subcommand (strategy B); `_is_help_subcommand` flag; `.disable_help_subcommand()` opt-out API
 
 #### Step 3 — Global (persistent) flags
 
@@ -334,7 +335,8 @@ if result.subcommand == "search":
 
 - [ ] Root `_generate_help()` appends a "Commands:" section listing subcommand names + descriptions (aligned like options)
 - [ ] `app <sub> --help` delegates to `sub._generate_help()` directly
-- [ ] `app help <sub>` recognized as special routing in parse loop
+- [x] `app help <sub>` routing via auto-registered real subcommand: `add_subcommand()` auto-inserts a `help` Command with `_is_help_subcommand = True`; dispatch path detects the flag and routes to sibling help
+- [x] `.disable_help_subcommand()` opt-out API on `Command`
 - [ ] Child help includes inherited persistent flags under a "Global Options:" heading
 - [ ] Usage line shows full command path: `app search [OPTIONS] PATTERN`
 
@@ -354,18 +356,25 @@ if result.subcommand == "search":
 - [x] Step 1: `has_subcommand_result()` / `get_subcommand_result()` lifecycle
 - [x] Step 1: `ParseResult.__copyinit__` preserves subcommand data
 - [x] Step 1: `parse_args()` unchanged when no subcommands registered
-- [ ] Step 2+: Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
-- [ ] Step 2+: Global flag: `app --verbose search pattern` → root flag verbose=true, child positional
-- [ ] Step 2+: Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
-- [ ] Step 4: Help: `app --help` lists commands; `app search --help` shows child help
-- [ ] Step 4: `app help search` equivalent to `app search --help`
-- [ ] Step 5: Unknown subcommand error
-- [ ] Step 2: `--` stops subcommand dispatch: `app -- search` → positional "search" on root
-- [ ] Step 3: Persistent flag inheritance and conflict detection
+- [x] Step 2: Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
+- [x] Step 2: Root flag: `app --verbose search pattern` → root flag verbose=true, child positional
+- [x] Step 2: Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
+- [x] Step 2: `--` stops subcommand dispatch: `app -- search` → positional "search" on root
+- [x] Step 2: Unknown token with subcommands registered → positional on root
+- [x] Step 2: Child validation errors propagate
+- [x] Step 2: Root still validates own required args after dispatch
+- [x] Step 2b: `help` subcommand auto-added on first `add_subcommand()` call
+- [x] Step 2b: Only added once even with multiple `add_subcommand()` calls
+- [x] Step 2b: `help` appears after user subcommands in the list
+- [x] Step 2b: `_is_help_subcommand` flag set on auto-entry, not on user subs
+- [x] Step 2b: `disable_help_subcommand()` before `add_subcommand()` prevents insertion
+- [x] Step 2b: `disable_help_subcommand()` after `add_subcommand()` removes it
+- [x] Step 2b: Normal dispatch unaffected by the presence of auto-added help sub
+- [x] Step 2b: With help disabled, token `"help"` becomes a root positional
 
 #### Step 7 — Documentation & examples
 
-- [x] Add `examples/demo_subcommands.mojo` demonstrating Step 1 data model & API surface
+- [x] Add `examples/demo_subcommands.mojo` demonstrating Step 2 + Step 2b routing (search / init / build + help subcommand inspection)
 - [ ] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
 - [ ] Update user manual with subcommand usage patterns
 - [ ] Document persistent flag behavior and conflict rules

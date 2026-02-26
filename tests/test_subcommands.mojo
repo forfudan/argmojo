@@ -6,12 +6,32 @@ the defaults and validation paths directly through parse_args(), ensuring
 no regression from the refactor.
 
 Step 1: Validates the data model & API surface for subcommand support:
-  - Command.subcommands field (List[Command])
-  - Command.add_subcommand() builder method
+  - Command.subcommands field (List[Command]) and add_subcommand()
   - ParseResult.subcommand field (String, defaults to "")
   - ParseResult.has_subcommand_result() / get_subcommand_result()
   - ParseResult.__copyinit__ preserves subcommand data
   - parse_args() unchanged when no subcommands are registered
+
+Step 2: Validates parse-time subcommand routing:
+  - Basic dispatch: subcommand token → child parse_args()
+  - Root flags before subcommand parsed by root
+  - Child flags/positionals parsed by child
+  - ``--`` stops dispatch; subsequent tokens are root positionals
+  - Unknown token with subcommands registered → root positional
+  - Routing to first / second of multiple subcommands
+  - Child validation errors propagate
+  - Child default values applied
+  - Root still validates its own required args after dispatch
+  - Root tokens not forwarded to child
+
+Step 2b: Validates the auto-registered 'help' subcommand:
+  - help subcommand auto-added on first add_subcommand() call
+  - Only added once even with multiple add_subcommand() calls
+  - help appears after user subcommands in the list
+  - _is_help_subcommand flag is set correctly
+  - disable_help_subcommand() before add_subcommand() prevents insertion
+  - disable_help_subcommand() after add_subcommand() removes it
+  - Normal dispatch is unaffected by the presence of help subcommand
 """
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
@@ -343,18 +363,29 @@ fn test_command_subcommands_empty_initially() raises:
 
 
 fn test_add_subcommand_single() raises:
-    """Tests that add_subcommand() appends one subcommand to the list."""
+    """Tests that add_subcommand() appends one subcommand to the list.
+
+    After the first add_subcommand() call the auto-added 'help' subcommand
+    is also present at index 0, so the total count is 2.
+    """
     var app = Command("app", "My app")
     var search = Command("search", "Search for patterns")
     app.add_subcommand(search^)
-    assert_equal(len(app.subcommands), 1)
-    assert_equal(app.subcommands[0].name, "search")
-    assert_equal(app.subcommands[0].description, "Search for patterns")
+    # help (index 0) + search (index 1).
+    assert_equal(len(app.subcommands), 2)
+    var idx = app._find_subcommand("search")
+    assert_true(idx >= 0)
+    assert_equal(app.subcommands[idx].name, "search")
+    assert_equal(app.subcommands[idx].description, "Search for patterns")
     print("  ✓ test_add_subcommand_single")
 
 
 fn test_add_subcommand_multiple() raises:
-    """Tests that multiple subcommands can be registered and are ordered."""
+    """Tests that multiple subcommands can be registered and are ordered.
+
+    'help' is auto-inserted at index 0; user subcommands follow in
+    registration order.
+    """
     var app = Command("app", "My app")
     var search = Command("search", "Search for patterns")
     var init = Command("init", "Initialize a new project")
@@ -362,15 +393,20 @@ fn test_add_subcommand_multiple() raises:
     app.add_subcommand(search^)
     app.add_subcommand(init^)
     app.add_subcommand(build^)
-    assert_equal(len(app.subcommands), 3)
-    assert_equal(app.subcommands[0].name, "search")
-    assert_equal(app.subcommands[1].name, "init")
-    assert_equal(app.subcommands[2].name, "build")
+    # help [0], search [1], init [2], build [3].
+    assert_equal(len(app.subcommands), 4)
+    assert_equal(app.subcommands[0].name, "help")
+    assert_equal(app.subcommands[1].name, "search")
+    assert_equal(app.subcommands[2].name, "init")
+    assert_equal(app.subcommands[3].name, "build")
     print("  ✓ test_add_subcommand_multiple")
 
 
 fn test_add_subcommand_preserves_child_args() raises:
-    """Tests that a subcommand's own arg definitions survive transfer."""
+    """Tests that a subcommand's own arg definitions survive transfer.
+
+    Total count is 2 (help at [0] + search at [1]).
+    """
     var app = Command("app", "My app")
     var search = Command("search", "Search")
     search.add_arg(Arg("pattern", help="Pattern").positional().required())
@@ -378,10 +414,11 @@ fn test_add_subcommand_preserves_child_args() raises:
         Arg("max-depth", help="Max depth").long("max-depth").short("d")
     )
     app.add_subcommand(search^)
-    assert_equal(len(app.subcommands), 1)
-    assert_equal(len(app.subcommands[0].args), 2)
-    assert_equal(app.subcommands[0].args[0].name, "pattern")
-    assert_equal(app.subcommands[0].args[1].name, "max-depth")
+    assert_equal(len(app.subcommands), 2)
+    var idx = app._find_subcommand("search")
+    assert_equal(len(app.subcommands[idx].args), 2)
+    assert_equal(app.subcommands[idx].args[0].name, "pattern")
+    assert_equal(app.subcommands[idx].args[1].name, "max-depth")
     print("  ✓ test_add_subcommand_preserves_child_args")
 
 
@@ -391,7 +428,8 @@ fn test_subcommand_has_own_version() raises:
     var sub = Command("serve", "Start server", version="2.0.0-beta")
     app.add_subcommand(sub^)
     assert_equal(app.version, "1.0.0")
-    assert_equal(app.subcommands[0].version, "2.0.0-beta")
+    var idx = app._find_subcommand("serve")
+    assert_equal(app.subcommands[idx].version, "2.0.0-beta")
     print("  ✓ test_subcommand_has_own_version")
 
 
@@ -499,6 +537,379 @@ fn test_parse_without_subcommands_unaffected() raises:
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
     print("  ✓ test_parse_without_subcommands_unaffected")
+
+
+# ── Step 2: Parse routing ─────────────────────────────────────────────────────
+
+
+fn test_dispatch_basic() raises:
+    """Tests basic subcommand dispatch: app search pattern."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "hello"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "search")
+    assert_true(result.has_subcommand_result())
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("pattern"), "hello")
+    print("  ✓ test_dispatch_basic")
+
+
+fn test_dispatch_root_flag_before_subcommand() raises:
+    """Tests that root flags before subcommand are parsed by root."""
+    var app = Command("app", "My app")
+    app.add_arg(
+        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    )
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "--verbose", "search", "hello"]
+    var result = app.parse_args(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.subcommand, "search")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("pattern"), "hello")
+    print("  ✓ test_dispatch_root_flag_before_subcommand")
+
+
+fn test_dispatch_root_short_flag_before_subcommand() raises:
+    """Tests that root short flags before subcommand are parsed by root."""
+    var app = Command("app", "My app")
+    app.add_arg(
+        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    )
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "-v", "search", "hello"]
+    var result = app.parse_args(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.subcommand, "search")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("pattern"), "hello")
+    print("  ✓ test_dispatch_root_short_flag_before_subcommand")
+
+
+fn test_dispatch_child_flag() raises:
+    """Tests that child flags are parsed by the child command."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_arg(Arg("max-depth", help="Depth").long("max-depth").short("d"))
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "--max-depth", "3", "hello"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "search")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("max-depth"), "3")
+    assert_equal(sub.get_string("pattern"), "hello")
+    print("  ✓ test_dispatch_child_flag")
+
+
+fn test_dispatch_child_flag_short() raises:
+    """Tests that child short flags are parsed by the child command."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_arg(Arg("max-depth", help="Depth").long("max-depth").short("d"))
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "-d", "5", "hello"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "search")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("max-depth"), "5")
+    assert_equal(sub.get_string("pattern"), "hello")
+    print("  ✓ test_dispatch_child_flag_short")
+
+
+fn test_dispatch_double_dash_stops_dispatch() raises:
+    """Tests that -- before subcommand name prevents dispatch."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional())
+    app.add_subcommand(search^)
+    # "search" is registered but -- forces it to be a positional on root.
+    app.add_arg(Arg("arg1", help="First arg").positional())
+
+    var args: List[String] = ["app", "--", "search"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_false(result.has_subcommand_result())
+    assert_equal(result.get_string("arg1"), "search")
+    print("  ✓ test_dispatch_double_dash_stops_dispatch")
+
+
+fn test_dispatch_unknown_token_is_positional() raises:
+    """Tests that an unknown token (no subcommand match) is treated as positional.
+    """
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    app.add_subcommand(search^)
+    app.add_arg(Arg("name", help="Name").positional())
+
+    var args: List[String] = ["app", "hello"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_equal(result.get_string("name"), "hello")
+    print("  ✓ test_dispatch_unknown_token_is_positional")
+
+
+fn test_dispatch_two_subcommands_route_first() raises:
+    """Tests routing to the first of two registered subcommands."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    var init = Command("init", "Init")
+    init.add_arg(Arg("name", help="Name").positional().required())
+    app.add_subcommand(search^)
+    app.add_subcommand(init^)
+
+    var args: List[String] = ["app", "search", "foo"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "search")
+    assert_equal(result.get_subcommand_result().get_string("pattern"), "foo")
+    print("  ✓ test_dispatch_two_subcommands_route_first")
+
+
+fn test_dispatch_two_subcommands_route_second() raises:
+    """Tests routing to the second of two registered subcommands."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    var init = Command("init", "Init")
+    init.add_arg(Arg("name", help="Name").positional().required())
+    app.add_subcommand(search^)
+    app.add_subcommand(init^)
+
+    var args: List[String] = ["app", "init", "myproject"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "init")
+    assert_equal(result.get_subcommand_result().get_string("name"), "myproject")
+    print("  ✓ test_dispatch_two_subcommands_route_second")
+
+
+fn test_dispatch_child_validation_error() raises:
+    """Tests that missing required child arg raises an error."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search"]
+    var caught = False
+    try:
+        _ = app.parse_args(args)
+    except e:
+        caught = True
+        assert_true(
+            "Required argument" in String(e),
+            msg="Error should mention 'Required argument'",
+        )
+    assert_true(caught, msg="Should have raised for missing child required arg")
+    print("  ✓ test_dispatch_child_validation_error")
+
+
+fn test_dispatch_child_default_value() raises:
+    """Tests that child defaults are applied during child parse.
+
+    Required positionals are declared first so the single token fills
+    'pattern'; 'path' then falls back to its default '.'.
+    """
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    search.add_arg(Arg("path", help="Path").positional().default("."))
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "hello"]
+    var result = app.parse_args(args)
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("pattern"), "hello")
+    assert_equal(sub.get_string("path"), ".")
+    print("  ✓ test_dispatch_child_default_value")
+
+
+fn test_dispatch_no_subcommand_when_none_match() raises:
+    """Tests that subcommand field stays empty when no token matches."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    app.add_subcommand(search^)
+    app.add_arg(Arg("file", help="File").positional())
+
+    var args: List[String] = ["app", "myfile.txt"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_false(result.has_subcommand_result())
+    print("  ✓ test_dispatch_no_subcommand_when_none_match")
+
+
+fn test_dispatch_root_still_validates_own_required() raises:
+    """Tests that root still validates its own required args after dispatch."""
+    var app = Command("app", "My app")
+    app.add_arg(Arg("token", help="API token").long("token").required())
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "hello"]
+    var caught = False
+    try:
+        _ = app.parse_args(args)
+    except e:
+        caught = True
+        assert_true("Required argument" in String(e))
+        assert_true("token" in String(e))
+    assert_true(caught, msg="Root required arg should still be validated")
+    print("  ✓ test_dispatch_root_still_validates_own_required")
+
+
+fn test_dispatch_child_receives_no_root_tokens() raises:
+    """Tests tokens before subcommand are NOT forwarded to the child."""
+    var app = Command("app", "My app")
+    app.add_arg(
+        Arg("verbose", help="Verbose").long("verbose").short("v").flag()
+    )
+    var sub = Command("run", "Run")
+    # Child only registers a positional; --verbose is NOT a child arg.
+    sub.add_arg(Arg("script", help="Script").positional())
+    app.add_subcommand(sub^)
+
+    var args: List[String] = ["app", "--verbose", "run", "main.mojo"]
+    var result = app.parse_args(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.subcommand, "run")
+    var child = result.get_subcommand_result()
+    assert_equal(child.get_string("script"), "main.mojo")
+    # --verbose is not in child result (child doesn't know about it).
+    assert_false(child.has("verbose"))
+    print("  ✓ test_dispatch_child_receives_no_root_tokens")
+
+
+# ── Step 2b: auto-registered 'help' subcommand ───────────────────────────────
+
+
+fn test_help_sub_auto_added() raises:
+    """Tests that add_subcommand() automatically inserts a 'help' subcommand."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    app.add_subcommand(search^)
+
+    # Should have 2 entries: 'help' (index 0) + 'search' (index 1).
+    assert_equal(len(app.subcommands), 2)
+    var help_idx = app._find_subcommand("help")
+    assert_true(help_idx >= 0)
+    assert_true(app.subcommands[help_idx]._is_help_subcommand)
+    print("  ✓ test_help_sub_auto_added")
+
+
+fn test_help_sub_added_only_once() raises:
+    """Tests that 'help' is not duplicated on multiple add_subcommand() calls.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("init", "Init")^)
+    app.add_subcommand(Command("build", "Build")^)
+
+    # 3 user subs + 1 help = 4 total.
+    assert_equal(len(app.subcommands), 4)
+    var count = 0
+    for i in range(len(app.subcommands)):
+        if app.subcommands[i].name == "help":
+            count += 1
+    assert_equal(count, 1)
+    print("  ✓ test_help_sub_added_only_once")
+
+
+fn test_help_sub_appears_after_user_subs() raises:
+    """Tests that 'help' is at index 0 and user subs follow in order."""
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("init", "Init")^)
+
+    # help [0], search [1], init [2].
+    assert_equal(app.subcommands[0].name, "help")
+    assert_equal(app.subcommands[1].name, "search")
+    assert_equal(app.subcommands[2].name, "init")
+    print("  ✓ test_help_sub_appears_after_user_subs")
+
+
+fn test_help_sub_flag_on_user_subs() raises:
+    """Tests that user-registered subcommands do NOT have the flag set."""
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+
+    var search_idx = app._find_subcommand("search")
+    assert_true(search_idx >= 0)
+    assert_false(app.subcommands[search_idx]._is_help_subcommand)
+    print("  ✓ test_help_sub_flag_on_user_subs")
+
+
+fn test_disable_help_sub_before_add() raises:
+    """Tests that disable_help_subcommand() before add_subcommand() prevents insertion.
+    """
+    var app = Command("app", "My app")
+    app.disable_help_subcommand()
+    app.add_subcommand(Command("search", "Search")^)
+
+    # Only 1 subcommand — no 'help'.
+    assert_equal(len(app.subcommands), 1)
+    assert_equal(app._find_subcommand("help"), -1)
+    print("  ✓ test_disable_help_sub_before_add")
+
+
+fn test_disable_help_sub_after_add() raises:
+    """Tests that disable_help_subcommand() after add_subcommand() removes it.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    # 'help' is now present.
+    assert_equal(len(app.subcommands), 2)
+
+    app.disable_help_subcommand()
+    # 'help' should be gone; only 'search' remains.
+    assert_equal(len(app.subcommands), 1)
+    assert_equal(app.subcommands[0].name, "search")
+    assert_equal(app._find_subcommand("help"), -1)
+    print("  ✓ test_disable_help_sub_after_add")
+
+
+fn test_dispatch_unaffected_by_help_sub() raises:
+    """Tests that normal dispatch still works when 'help' sub is auto-added."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_arg(Arg("pattern", help="Pattern").positional().required())
+    app.add_subcommand(search^)
+
+    var args: List[String] = ["app", "search", "TODO"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "search")
+    var child = result.get_subcommand_result()
+    assert_equal(child.get_string("pattern"), "TODO")
+    print("  ✓ test_dispatch_unaffected_by_help_sub")
+
+
+fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
+    """Tests that with help disabled, 'help' token is treated as a positional.
+    """
+    var app = Command("app", "My app")
+    app.add_arg(Arg("query", help="Query").positional())
+    app.disable_help_subcommand()
+    app.add_subcommand(Command("init", "Init")^)
+
+    # "help" should be treated as a root positional, not dispatch.
+    var args: List[String] = ["app", "help"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_equal(result.positionals[0], "help")
+    print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────

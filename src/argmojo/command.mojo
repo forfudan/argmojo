@@ -104,6 +104,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """ANSI code for deprecation warning messages (default: orange)."""
     var _error_color: String
     """ANSI code for parse error messages (default: red)."""
+    var _is_help_subcommand: Bool
+    """True for the auto-inserted 'help' pseudo-subcommand.
+    Never set this manually; use `add_subcommand()` to register subcommands and
+    `disable_help_subcommand()` to opt out.
+    """
+    var _help_subcommand_enabled: Bool
+    """When True (default), auto-insert a 'help' subcommand on first 
+    `add_subcommand()` call."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -132,6 +140,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
         self._help_on_no_args = False
+        self._is_help_subcommand = False
+        self._help_subcommand_enabled = True
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -153,6 +163,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._one_required_groups = move._one_required_groups^
         self._conditional_reqs = move._conditional_reqs^
         self._help_on_no_args = move._help_on_no_args
+        self._is_help_subcommand = move._is_help_subcommand
+        self._help_subcommand_enabled = move._help_subcommand_enabled
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -189,6 +201,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(copy._conditional_reqs)):
             self._conditional_reqs.append(copy._conditional_reqs[i].copy())
         self._help_on_no_args = copy._help_on_no_args
+        self._is_help_subcommand = copy._is_help_subcommand
+        self._help_subcommand_enabled = copy._help_subcommand_enabled
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -243,7 +257,46 @@ struct Command(Copyable, Movable, Stringable, Writable):
         app.add_subcommand(init^)
         ```
         """
+        # Auto-register the 'help' subcommand as the first entry once.
+        # This keeps help discoverable at a fixed position (index 0) while
+        # user-defined subcommands remain in registration order after it.
+        # Disabled via disable_help_subcommand(); guard prevents duplicates.
+        if self._help_subcommand_enabled and self._find_subcommand("help") < 0:
+            var h = Command("help", "Show help for a subcommand")
+            h._is_help_subcommand = True
+            self.subcommands.append(h^)
         self.subcommands.append(sub^)
+
+    fn disable_help_subcommand(mut self):
+        """Opts out of the auto-added ``help`` subcommand.
+
+        By default, the first call to ``add_subcommand()`` automatically
+        registers a ``help`` subcommand so that ``app help <sub>`` works as
+        an alias for ``app <sub> --help``.
+
+        Call this before or after ``add_subcommand()`` to suppress the
+        feature — useful when ``"help"`` is a legitimate first positional
+        value (e.g. a search pattern or entity name).  After disabling, use
+        ``app <sub> --help`` directly.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("search", "Search engine")
+        app.disable_help_subcommand()   # "help" is a valid search query
+        # Now: `search help init`  →  positionals ["help", "init"] on root,
+        #    so that you can do something like: search "help" in path "init".
+        #    `search init --help`  →  shows init's help page
+        ```
+        """
+        self._help_subcommand_enabled = False
+        # Remove any already-inserted help subcommand.
+        var new_subs = List[Command]()
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                new_subs.append(self.subcommands[i].copy())
+        self.subcommands = new_subs^
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -469,7 +522,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
     #    │  Parse short option(s)
     #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
     #    │   └─ Multi-short: merged flags and attached value forms.
-    #    └─ Otherwise: treat as positional argument.
+    #    └─ Otherwise (bare word):
+    #       ├─ Subcommands registered + "help <sub>": print child help & exit.
+    #       ├─ Subcommands registered + token matches subcommand name:
+    #       │   build child argv, call child.parse_args(), store result, break.
+    #       └─ Otherwise: treat as positional argument.
     # 4. Apply defaults for missing args (named + positional slots).
     # 5. Validate:
     #    ├─ Required args
@@ -865,7 +922,46 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     i += 1
                     continue
 
-            # Positional argument.
+            # Positional argument — check for subcommand dispatch first.
+            if len(self.subcommands) > 0:
+                # Exact subcommand name match → dispatch.
+                var sub_idx = self._find_subcommand(arg)
+                if sub_idx >= 0:
+                    # Build child argv: ["parent sub", remaining tokens...].
+                    var child_argv = List[String]()
+                    child_argv.append(self.name + " " + arg)
+                    for k in range(i + 1, len(raw_args)):
+                        child_argv.append(raw_args[k])
+                    # Auto-registered 'help' subcommand: display sibling help.
+                    if self.subcommands[sub_idx]._is_help_subcommand:
+                        if len(child_argv) > 1:
+                            var target_idx = self._find_subcommand(
+                                child_argv[1]
+                            )
+                            if (
+                                target_idx >= 0
+                                and not self.subcommands[
+                                    target_idx
+                                ]._is_help_subcommand
+                            ):
+                                print(
+                                    self.subcommands[
+                                        target_idx
+                                    ]._generate_help()
+                                )
+                                exit(0)
+                        # No target, unknown, or self-referential → root help.
+                        print(self._generate_help())
+                        exit(0)
+                    var child_result = self.subcommands[sub_idx].parse_args(
+                        child_argv
+                    )
+                    result.subcommand = arg
+                    result._subcommand_results.append(child_result^)
+                    # All remaining tokens were consumed by the child.
+                    i = len(raw_args)
+                    continue
+
             result.positionals.append(arg)
             i += 1
 
@@ -1175,6 +1271,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
         raise Error("Unknown option '-" + name + "'")
+
+    fn _find_subcommand(self, name: String) -> Int:
+        """Returns the index of the registered subcommand matching ``name``.
+
+        Args:
+            name: Subcommand name to look up.
+
+        Returns:
+            The index into ``self.subcommands``, or ``-1`` if not found.
+        """
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i].name == name:
+                return i
+        return -1
 
     fn _display_name(self, name: String) -> String:
         """Returns a user-facing display string for an argument.
