@@ -68,10 +68,10 @@ Then, you can install ArgMojo using any of these methods:
 
 The following table summarizes the package versions and their corresponding Mojo versions:
 
-| libary    | version | Mojo version | package manager |
-| --------- | ------- | ------------ | --------------- |
-| `argmojo` | v0.1.0  | ==v0.26.1    | pixi            |
-| `argmojo` | v0.2.0  | ==v0.26.1    | pixi            |
+| `argmojo` version | `mojo` version | package manager |
+| ----------------- | -------------- | --------------- |
+| 0.1.0             | ==0.26.1       | pixi            |
+| 0.2.0             | ==0.26.1       | pixi            |
 
 ## Quick Start
 
