@@ -173,6 +173,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
     no registered short option uses a digit character (auto-detect).
     Enable explicitly via `allow_negative_numbers()` when you have a digit
     short option and still need negative-number literals to pass through."""
+    var _tips: List[String]
+    """User-defined tips shown at the bottom of the help message.
+    Add entries via ``add_tip()``.  Each tip is printed on its own line
+    prefixed with the same bold ``Tip:`` label as the built-in hint."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -204,6 +208,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
         self._allow_negative_numbers = False
+        self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -228,6 +233,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
         self._allow_negative_numbers = move._allow_negative_numbers
+        self._tips = move._tips^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -267,6 +273,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
         self._allow_negative_numbers = copy._allow_negative_numbers
+        self._tips = copy._tips.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -428,6 +435,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```
         """
         self._allow_negative_numbers = True
+
+    fn add_tip(mut self, tip: String):
+        """Adds a custom tip line to the bottom of the help message.
+
+        Each tip is printed on its own line below the built-in ``--``
+        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
+        documenting shell idioms, environment variables, or any other
+        usage notes that don't fit in argument help strings.
+
+        Args:
+            tip: The tip text to display.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_tip("Set MYAPP_DEBUG=1 to enable debug logging.")
+        command.add_tip("Config file: ~/.config/myapp/config.toml")
+        ```
+        """
+        self._tips.append(tip)
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -726,6 +755,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         Raises:
             Error on invalid or missing arguments.
+
+        Notes:
+
+        The modifier for `self` is `read` but not `mut`. This ensures that the
+        parsing process does not mutate the Command instance itself, which
+        prevents contamination and conflicts between multiple parses, e.g.,
+        in testing scenarios, REPL usage, and autocompletion.
         """
         var result = ParseResult()
 
@@ -1829,17 +1865,46 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += line + "\n"
 
         # Tip: show '--' separator hint when positional args are registered.
+        # When negative numbers are already handled automatically (either via
+        # explicit allow_negative_numbers() or auto-detect: no digit short
+        # options), the example changes to a generic dash-prefixed value
+        # rather than '-9.5', since that case no longer needs '--'.
         if has_positional:
-            s += (
-                "\n"
-                + H
-                + "Tip:"
-                + _RESET
-                + " Use '--' to pass values that start with '-' (e.g.,"
-                " negative numbers):  "
-                + self.name
-                + " -- -9.5\n"
-            )
+            var neg_auto = self._allow_negative_numbers
+            if not neg_auto:
+                var has_digit_short = False
+                for _ti in range(len(self.args)):
+                    var sc = self.args[_ti].short_name
+                    if len(sc) == 1 and sc[0:1] >= "0" and sc[0:1] <= "9":
+                        has_digit_short = True
+                        break
+                neg_auto = not has_digit_short
+            if neg_auto:
+                s += (
+                    "\n"
+                    + H
+                    + "Tip:"
+                    + _RESET
+                    + " Use '--' to pass values starting with '-' as"
+                    " positionals:  "
+                    + self.name
+                    + " -- -my-value\n"
+                )
+            else:
+                s += (
+                    "\n"
+                    + H
+                    + "Tip:"
+                    + _RESET
+                    + " Use '--' to pass values that start with '-' (e.g.,"
+                    " negative numbers):  "
+                    + self.name
+                    + " -- -9.5\n"
+                )
+
+        # User-defined tips — always shown when present.
+        for _ti in range(len(self._tips)):
+            s += H + "Tip:" + _RESET + " " + self._tips[_ti] + "\n"
 
         return s
 

@@ -201,6 +201,10 @@ fn main() raises:
         .deprecated("Use --format instead")
     )
 
+    # ── Show tips ───────────────────────────────────────
+    command.add_tip("Expressions starting with `-` are accepted.")
+    command.add_tip("Use quotes if you use spaces in expressions.")
+
     # ── Show help when invoked with no arguments ─────────────────────────
     command.help_on_no_args()
 
