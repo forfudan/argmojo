@@ -2,63 +2,7 @@
 
 
 comptime Arg = Argument
-"""A command-line argument with its metadata and constraints.
-
-Use the builder pattern to configure the argument and add it to a Command.
-
-Examples:
-
-```mojo
-from argmojo import Command, Argument
-
-# Boolean flag  →  result.get_flag("verbose")
-_ = Argument("verbose", help="...").long("verbose").short("v").flag()
-
-# Key-value option  →  result.get_string("output")
-_ = Argument("output", help="...").long("output").short("o")
-
-# Key-value with default  →  result.get_string("format")
-_ = Argument("format", help="...").long("format").default("json")
-
-# Restrict to a set of values
-_ = Argument("level", help="...").long("level").choices(["debug","info","warn"])
-
-# Positional (matched by order)  →  result.get_string("path")
-_ = Argument("path", help="...").positional().required()
-_ = Argument("dest", help="...").positional().default(".")
-
-# Count flag  (-vvv → 3)  →  result.get_count("verbose")
-_ = Argument("verbose", help="...").long("verbose").short("v").count()
-
-# Negatable flag  (--color / --no-color)  →  result.get_flag("color")
-_ = Argument("color", help="...").long("color").flag().negatable()
-
-# Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
-_ = Argument("tag", help="...").long("tag").short("t").append()
-
-# Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
-_ = Argument("env", help="...").long("env").delimiter(",")
-
-# Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
-_ = Argument("point", help="...").long("point").nargs(2)
-
-# Numeric range validation  →  result.get_int("port")
-_ = Argument("port", help="...").long("port").range(1, 65535)
-
-# Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
-_ = Argument("def", help="...").long("define").short("D").map_option()
-
-# Aliases  (--colour and --color both work)
-_ = Argument("colour", help="...").long("colour").aliases(["color"])
-
-# Deprecated argument  (still works but prints a warning to stderr)
-_ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
-
-# Display helpers
-_ = Argument("file", help="...").long("file").metavar("PATH")  # help: --file PATH
-_ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
-```
-"""
+"""Shorthand alias for `Argument`."""
 
 
 struct Argument(Copyable, Movable, Stringable, Writable):
@@ -279,7 +223,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # ===------------------------------------------------------------------=== #
 
     fn long(var self, name: String) -> Self:
-        """Sets the long option name (e.g., 'lingming' for --lingming).
+        """Sets the long option name (e.g., 'verbose' for --verbose).
 
         Args:
             name: The long option name without the '--' prefix.

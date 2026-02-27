@@ -4,7 +4,7 @@ from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
-# ── Phase 2: Hidden arguments ────────────────────────────────────────────────
+# ── Hidden arguments ──────────────────────────────────────────────────────────────
 
 
 fn test_hidden_not_in_help() raises:
@@ -47,10 +47,7 @@ fn test_hidden_still_works() raises:
     print("  ✓ test_hidden_still_works")
 
 
-# ── Phase 2: Metavar ─────────────────────────────────────────────────────────
-
-
-# ── Phase 2: Metavar ─────────────────────────────────────────────────────────
+# ── Metavar ──────────────────────────────────────────────────────────────────────
 
 
 fn test_metavar_in_help() raises:
@@ -92,7 +89,7 @@ fn test_choices_in_help() raises:
     print("  ✓ test_choices_in_help")
 
 
-# ── Phase 2: Count action ────────────────────────────────────────────────────
+# ── Count action ──────────────────────────────────────────────────────────────────
 
 
 fn test_negatable_in_help() raises:
@@ -135,11 +132,6 @@ fn test_append_in_help() raises:
         msg="append arg with metavar should show ENV... in help",
     )
     print("  ✓ test_append_in_help")
-
-
-# ===------------------------------------------------------------------=== #
-# One-required group tests
-# ===------------------------------------------------------------------=== #
 
 
 # ===------------------------------------------------------------------=== #
@@ -549,7 +541,7 @@ fn test_nargs_with_metavar() raises:
     print("  ✓ test_nargs_with_metavar")
 
 
-# ── Phase 4 Step 4: Subcommand help UX ───────────────────────────────────────
+# ── Subcommand help UX ───────────────────────────────────────────────────────────
 
 
 fn test_root_help_shows_commands_section() raises:

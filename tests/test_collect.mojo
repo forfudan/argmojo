@@ -4,7 +4,7 @@ from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
-# ── Phase 3: Append / collect action ─────────────────────────────────────────
+# ── Append / collect action ──────────────────────────────────────────────────────
 
 
 fn test_append_single() raises:
@@ -405,11 +405,6 @@ fn test_delimiter_trailing_comma() raises:
     assert_equal(tags[0], "a")
     assert_equal(tags[1], "b")
     print("  ✓ test_delimiter_trailing_comma")
-
-
-# ===------------------------------------------------------------------=== #
-# Help system improvements
-# ===------------------------------------------------------------------=== #
 
 
 # ===------------------------------------------------------------------=== #

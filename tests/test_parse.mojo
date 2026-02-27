@@ -200,10 +200,7 @@ fn test_has() raises:
     print("  ✓ test_has")
 
 
-# ── Phase 2: Short flag merging ──────────────────────────────────────────────
-
-
-# ── Phase 2: Short flag merging ──────────────────────────────────────────────
+# ── Short flag merging ────────────────────────────────────────────────────────────
 
 
 fn test_merged_short_flags() raises:
@@ -251,10 +248,7 @@ fn test_merged_flags_with_trailing_value() raises:
     print("  ✓ test_merged_flags_with_trailing_value")
 
 
-# ── Phase 2: Attached short value ────────────────────────────────────────────
-
-
-# ── Phase 2: Attached short value ────────────────────────────────────────────
+# ── Attached short value ─────────────────────────────────────────────────────────
 
 
 fn test_attached_short_value() raises:
@@ -283,10 +277,7 @@ fn test_merged_flags_with_attached_value() raises:
     print("  ✓ test_merged_flags_with_attached_value")
 
 
-# ── Phase 2: Choices validation ──────────────────────────────────────────────
-
-
-# ── Phase 2: Choices validation ──────────────────────────────────────────────
+# ── Choices validation ───────────────────────────────────────────────────────────
 
 
 fn test_choices_valid() raises:
@@ -352,10 +343,7 @@ fn test_choices_with_short_attached() raises:
     print("  ✓ test_choices_with_short_attached")
 
 
-# ── Phase 2: Hidden arguments ────────────────────────────────────────────────
-
-
-# ── Phase 2: Count action ────────────────────────────────────────────────────
+# ── Count action ─────────────────────────────────────────────────────────────────
 
 
 fn test_count_single() raises:
@@ -438,10 +426,7 @@ fn test_count_default_zero() raises:
     print("  ✓ test_count_default_zero")
 
 
-# ── Phase 2: Positional arg count validation ─────────────────────────────────
-
-
-# ── Phase 2: Positional arg count validation ─────────────────────────────────
+# ── Positional arg count validation ──────────────────────────────────────────────
 
 
 fn test_too_many_positionals() raises:
@@ -485,10 +470,7 @@ fn test_exact_positionals_ok() raises:
     print("  ✓ test_exact_positionals_ok")
 
 
-# ── Phase 3: Mutually exclusive groups ────────────────────────────────────────
-
-
-# ── Phase 3: Negatable flags (--no-X) ────────────────────────────────────────
+# ── Negatable flags (--no-X) ─────────────────────────────────────────────────────
 
 
 fn test_negatable_positive() raises:
@@ -686,9 +668,6 @@ fn test_prefix_match_negatable() raises:
         result.has("color"), msg="color should be present after --no-col"
     )
     print("  ✓ test_prefix_match_negatable")
-
-
-# ── Phase 3: Append / collect action ─────────────────────────────────────────
 
 
 fn main() raises:

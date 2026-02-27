@@ -4,7 +4,7 @@ from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
-# ── Phase 3: Mutually exclusive groups ────────────────────────────────────────
+# ── Mutually exclusive groups ────────────────────────────────────────────────────
 
 
 fn test_exclusive_one_provided() raises:
@@ -111,10 +111,7 @@ fn test_exclusive_value_args() raises:
     print("  ✓ test_exclusive_value_args")
 
 
-# ── Phase 3: Required-together groups ─────────────────────────────────────────
-
-
-# ── Phase 3: Required-together groups ─────────────────────────────────────────
+# ── Required-together groups ─────────────────────────────────────────────────────
 
 
 fn test_required_together_all_provided() raises:
@@ -219,9 +216,6 @@ fn test_required_together_three_args() raises:
         )
     assert_true(caught, msg="Should have raised error for partial group")
     print("  ✓ test_required_together_three_args")
-
-
-# ── Phase 3: Negatable flags (--no-X) ────────────────────────────────────────
 
 
 # ===------------------------------------------------------------------=== #

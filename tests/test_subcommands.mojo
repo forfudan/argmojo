@@ -1,4 +1,4 @@
-"""Tests for argmojo — Phase 4 subcommand support.
+"""Tests for argmojo subcommand support.
 
 Step 0: Validates that the _apply_defaults() and _validate() extraction
 from parse_args() preserves all existing behavior. These tests exercise
@@ -962,7 +962,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
 
 
-# ── Phase 4 Step 5: Error handling ───────────────────────────────────────────
+# ── Error handling ───────────────────────────────────────────────────────────
 
 
 fn test_unknown_subcommand_error_no_positionals() raises:
@@ -1064,7 +1064,7 @@ fn test_unknown_subcommand_error_excludes_help_sub() raises:
     print("  ✓ test_unknown_subcommand_error_excludes_help_sub")
 
 
-# ── Phase 4 Step 6: Positional + subcommand guard ────────────────────────────
+# ── Positional + subcommand guard ────────────────────────────────────────────
 
 
 fn test_add_positional_after_subcommand_raises() raises:

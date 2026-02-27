@@ -203,9 +203,9 @@ argmojo/
 ├── src/
 │   └── argmojo/                       # Main package
 │       ├── __init__.mojo              # Package exports
-│       ├── arg.mojo                   # Argument struct (argument definition)
+│       ├── argument.mojo              # Argument struct (argument definition)
 │       ├── command.mojo               # Command struct (parsing logic)
-│       └── result.mojo                # ParseResult struct (parsed values)
+│       └── parse_result.mojo          # ParseResult struct (parsed values)
 ├── tests/                             # Test suites (241 tests)
 │   ├── test_parse.mojo
 │   ├── test_groups.mojo
