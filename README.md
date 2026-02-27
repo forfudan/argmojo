@@ -210,8 +210,7 @@ pixi run clean
 ```txt
 argmojo/
 ├── docs/                              # Documentation
-│   ├── user_manual.md                 # User manual with detailed examples
-│   └── argmojo_overall_planning.md
+│   └── user_manual.md                 # User manual with detailed examples
 ├── examples/
 │   ├── grep.mojo                      # grep-like CLI (no subcommands)
 │   └── git.mojo                       # git-like CLI (with subcommands)
