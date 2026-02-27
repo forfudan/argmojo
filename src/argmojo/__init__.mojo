@@ -1,5 +1,5 @@
 """ArgMojo: A command-line argument parser library for Mojo."""
 
-from .arg import Arg
+from .argument import Argument, Arg
 from .command import Command
-from .result import ParseResult
+from .parse_result import ParseResult

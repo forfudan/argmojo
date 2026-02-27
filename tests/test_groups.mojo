@@ -2,22 +2,28 @@
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
-from argmojo import Arg, Command, ParseResult
+from argmojo import Argument, Command, ParseResult
 
-# ── Phase 3: Mutually exclusive groups ────────────────────────────────────────
+# ── Mutually exclusive groups ────────────────────────────────────────────────────
 
 
 fn test_exclusive_one_provided() raises:
     """Tests that providing one arg from an exclusive group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
+    command.add_argument(
+        Argument("toml", help="TOML output").long("toml").flag()
+    )
     var group: List[String] = ["json", "yaml", "toml"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
     print("  ✓ test_exclusive_one_provided")
@@ -25,14 +31,18 @@ fn test_exclusive_one_provided() raises:
 
 fn test_exclusive_none_provided() raises:
     """Tests that providing no arg from an exclusive group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
     var group: List[String] = ["json", "yaml"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
     print("  ✓ test_exclusive_none_provided")
@@ -40,17 +50,23 @@ fn test_exclusive_none_provided() raises:
 
 fn test_exclusive_conflict() raises:
     """Tests that providing two args from an exclusive group raises an error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
+    command.add_argument(
+        Argument("toml", help="TOML output").long("toml").flag()
+    )
     var group: List[String] = ["json", "yaml", "toml"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json", "--yaml"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -72,16 +88,18 @@ fn test_exclusive_conflict() raises:
 
 fn test_exclusive_value_args() raises:
     """Tests mutually exclusive with value-taking args."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("input", help="Input file").long("input"))
-    cmd.add_arg(Arg("stdin", help="Read stdin").long("stdin").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("input", help="Input file").long("input"))
+    command.add_argument(
+        Argument("stdin", help="Read stdin").long("stdin").flag()
+    )
     var group: List[String] = ["input", "stdin"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--input", "file.txt", "--stdin"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -93,19 +111,20 @@ fn test_exclusive_value_args() raises:
     print("  ✓ test_exclusive_value_args")
 
 
-# ── Phase 3: Required-together groups ─────────────────────────────────────────
-
-
-# ── Phase 3: Required-together groups ─────────────────────────────────────────
+# ── Required-together groups ─────────────────────────────────────────────────────
 
 
 fn test_required_together_all_provided() raises:
     """Tests that providing all args from a required-together group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("username", help="User").long("username").short("u")
+    )
+    command.add_argument(
+        Argument("password", help="Pass").long("password").short("p")
+    )
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = [
         "test",
@@ -114,7 +133,7 @@ fn test_required_together_all_provided() raises:
         "--password",
         "secret",
     ]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("username"), "admin")
     assert_equal(result.get_string("password"), "secret")
     print("  ✓ test_required_together_all_provided")
@@ -122,14 +141,18 @@ fn test_required_together_all_provided() raises:
 
 fn test_required_together_none_provided() raises:
     """Tests that providing none from a required-together group is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("username", help="User").long("username").short("u")
+    )
+    command.add_argument(
+        Argument("password", help="Pass").long("password").short("p")
+    )
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_false(result.has("username"), msg="username should not be set")
     assert_false(result.has("password"), msg="password should not be set")
     print("  ✓ test_required_together_none_provided")
@@ -138,16 +161,20 @@ fn test_required_together_none_provided() raises:
 fn test_required_together_partial() raises:
     """Tests that providing only some from a required-together group raises an
     error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("username", help="User").long("username").short("u"))
-    cmd.add_arg(Arg("password", help="Pass").long("password").short("p"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("username", help="User").long("username").short("u")
+    )
+    command.add_argument(
+        Argument("password", help="Pass").long("password").short("p")
+    )
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["test", "--username", "admin"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -165,17 +192,17 @@ fn test_required_together_partial() raises:
 
 fn test_required_together_three_args() raises:
     """Tests required-together with three arguments, only one provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("host", help="Host").long("host"))
-    cmd.add_arg(Arg("port", help="Port").long("port"))
-    cmd.add_arg(Arg("proto", help="Protocol").long("proto"))
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("host", help="Host").long("host"))
+    command.add_argument(Argument("port", help="Port").long("port"))
+    command.add_argument(Argument("proto", help="Protocol").long("proto"))
     var group: List[String] = ["host", "port", "proto"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["test", "--host", "localhost"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -191,9 +218,6 @@ fn test_required_together_three_args() raises:
     print("  ✓ test_required_together_three_args")
 
 
-# ── Phase 3: Negatable flags (--no-X) ────────────────────────────────────────
-
-
 # ===------------------------------------------------------------------=== #
 # One-required group tests
 # ===------------------------------------------------------------------=== #
@@ -201,15 +225,21 @@ fn test_required_together_three_args() raises:
 
 fn test_one_required_one_provided() raises:
     """Tests one-required group when exactly one is provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
-    cmd.add_arg(Arg("toml", help="TOML output").long("toml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
+    command.add_argument(
+        Argument("toml", help="TOML output").long("toml").flag()
+    )
     var group: List[String] = ["json", "yaml", "toml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     var args: List[String] = ["test", "--yaml"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("toml"), msg="--toml should be False")
@@ -218,15 +248,19 @@ fn test_one_required_one_provided() raises:
 
 fn test_one_required_multiple_provided() raises:
     """Tests one-required group when multiple from the group are provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
     var group: List[String] = ["json", "yaml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     # Both provided — one_required is satisfied (it only requires at least one).
     var args: List[String] = ["test", "--json", "--yaml"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
     print("  ✓ test_one_required_multiple_provided")
@@ -234,16 +268,20 @@ fn test_one_required_multiple_provided() raises:
 
 fn test_one_required_none_provided() raises:
     """Tests one-required group when none from the group are provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
     var group: List[String] = ["json", "yaml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -265,29 +303,37 @@ fn test_one_required_none_provided() raises:
 
 fn test_one_required_with_value_args() raises:
     """Tests one-required group with value-taking arguments."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("input", help="Input file").long("input").short("i"))
-    cmd.add_arg(Arg("stdin", help="Read from stdin").long("stdin").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("input", help="Input file").long("input").short("i")
+    )
+    command.add_argument(
+        Argument("stdin", help="Read from stdin").long("stdin").flag()
+    )
     var group: List[String] = ["input", "stdin"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     # Providing --input satisfies the group.
     var args: List[String] = ["test", "--input", "data.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("input"), "data.txt")
     print("  ✓ test_one_required_with_value_args")
 
 
 fn test_one_required_with_short_option() raises:
     """Tests one-required with a short option satisfying the group."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").short("j").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").short("y").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").short("j").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").short("y").flag()
+    )
     var group: List[String] = ["json", "yaml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     var args: List[String] = ["test", "-j"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("json"), msg="-j should satisfy one_required")
     print("  ✓ test_one_required_with_short_option")
 
@@ -295,16 +341,20 @@ fn test_one_required_with_short_option() raises:
 fn test_one_required_error_shows_display_names() raises:
     """Tests that the error message shows --long or -s names, not internal names.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("output-json", help="JSON").long("json").flag())
-    cmd.add_arg(Arg("output-yaml", help="YAML").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output-json", help="JSON").long("json").flag()
+    )
+    command.add_argument(
+        Argument("output-yaml", help="YAML").long("yaml").flag()
+    )
     var group: List[String] = ["output-json", "output-yaml"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -318,25 +368,29 @@ fn test_one_required_error_shows_display_names() raises:
 fn test_one_required_combined_with_exclusive() raises:
     """Tests one-required combined with mutually exclusive (exactly one pattern).
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON output").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML output").long("yaml").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long("json").flag()
+    )
+    command.add_argument(
+        Argument("yaml", help="YAML output").long("yaml").flag()
+    )
     # Must provide at least one, but not both.
     var excl_group: List[String] = ["json", "yaml"]
     var req_group: List[String] = ["json", "yaml"]
-    cmd.mutually_exclusive(excl_group^)
-    cmd.one_required(req_group^)
+    command.mutually_exclusive(excl_group^)
+    command.one_required(req_group^)
 
     # Providing one is fine.
     var args1: List[String] = ["test", "--json"]
-    var result1 = cmd.parse_args(args1)
+    var result1 = command.parse_args(args1)
     assert_true(result1.get_flag("json"), msg="--json should be True")
 
     # Providing none fails (one-required).
     var caught_none = False
     var args2: List[String] = ["test"]
     try:
-        _ = cmd.parse_args(args2)
+        _ = command.parse_args(args2)
     except:
         caught_none = True
     assert_true(caught_none, msg="Should error when none provided")
@@ -345,7 +399,7 @@ fn test_one_required_combined_with_exclusive() raises:
     var caught_both = False
     var args3: List[String] = ["test", "--json", "--yaml"]
     try:
-        _ = cmd.parse_args(args3)
+        _ = command.parse_args(args3)
     except:
         caught_both = True
     assert_true(caught_both, msg="Should error when both provided")
@@ -354,19 +408,21 @@ fn test_one_required_combined_with_exclusive() raises:
 
 fn test_one_required_multiple_groups() raises:
     """Tests multiple one-required groups."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("json", help="JSON").long("json").flag())
-    cmd.add_arg(Arg("yaml", help="YAML").long("yaml").flag())
-    cmd.add_arg(Arg("input", help="Input file").long("input"))
-    cmd.add_arg(Arg("stdin", help="Read stdin").long("stdin").flag())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long("json").flag())
+    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
+    command.add_argument(Argument("input", help="Input file").long("input"))
+    command.add_argument(
+        Argument("stdin", help="Read stdin").long("stdin").flag()
+    )
     var format_group: List[String] = ["json", "yaml"]
     var source_group: List[String] = ["input", "stdin"]
-    cmd.one_required(format_group^)
-    cmd.one_required(source_group^)
+    command.one_required(format_group^)
+    command.one_required(source_group^)
 
     # Satisfying both groups.
     var args1: List[String] = ["test", "--yaml", "--input", "f.txt"]
-    var result1 = cmd.parse_args(args1)
+    var result1 = command.parse_args(args1)
     assert_true(result1.get_flag("yaml"), msg="--yaml should be True")
     assert_equal(result1.get_string("input"), "f.txt")
 
@@ -374,7 +430,7 @@ fn test_one_required_multiple_groups() raises:
     var caught = False
     var args2: List[String] = ["test", "--json"]
     try:
-        _ = cmd.parse_args(args2)
+        _ = command.parse_args(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -388,15 +444,17 @@ fn test_one_required_multiple_groups() raises:
 
 fn test_one_required_with_append_arg() raises:
     """Tests one-required group with an append-type argument."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("tag", help="Add a tag").long("tag").append())
-    cmd.add_arg(Arg("label", help="Add a label").long("label").append())
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("tag", help="Add a tag").long("tag").append())
+    command.add_argument(
+        Argument("label", help="Add a label").long("label").append()
+    )
     var group: List[String] = ["tag", "label"]
-    cmd.one_required(group^)
+    command.one_required(group^)
 
     # Providing --tag satisfies the group.
     var args: List[String] = ["test", "--tag", "v1"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "v1")
@@ -410,13 +468,17 @@ fn test_one_required_with_append_arg() raises:
 
 fn test_conditional_req_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save", "--output", "out.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_true(result.get_flag("save"), msg="--save should be True")
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_conditional_req_satisfied")
@@ -425,14 +487,18 @@ fn test_conditional_req_satisfied() raises:
 fn test_conditional_req_condition_absent() raises:
     """Tests that conditional requirement is skipped when condition is absent.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.required_if("output", "save")
 
     # --save not provided → --output not required → should pass
     var args: List[String] = ["test"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_false(result.has("save"), msg="save should not be present")
     assert_false(result.has("output"), msg="output should not be present")
     print("  ✓ test_conditional_req_condition_absent")
@@ -440,16 +506,20 @@ fn test_conditional_req_condition_absent() raises:
 
 fn test_conditional_req_violated() raises:
     """Tests that providing condition without target raises an error."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.required_if("output", "save")
 
     # --save provided but --output missing → error
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -471,14 +541,18 @@ fn test_conditional_req_violated() raises:
 
 fn test_conditional_req_target_alone_ok() raises:
     """Tests that providing target without condition is fine."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.required_if("output", "save")
 
     # --output provided without --save → should be fine
     var args: List[String] = ["test", "--output", "out.txt"]
-    var result = cmd.parse_args(args)
+    var result = command.parse_args(args)
     assert_equal(result.get_string("output"), "out.txt")
     assert_false(result.has("save"), msg="save should not be present")
     print("  ✓ test_conditional_req_target_alone_ok")
@@ -486,14 +560,20 @@ fn test_conditional_req_target_alone_ok() raises:
 
 fn test_conditional_req_multiple_rules() raises:
     """Tests multiple conditional requirements on the same command."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output"))
-    cmd.add_arg(Arg("compress", help="Compress output").long("compress").flag())
-    cmd.add_arg(Arg("format", help="Compression format").long("format"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").flag()
+    )
+    command.add_argument(Argument("output", help="Output path").long("output"))
+    command.add_argument(
+        Argument("compress", help="Compress output").long("compress").flag()
+    )
+    command.add_argument(
+        Argument("format", help="Compression format").long("format")
+    )
     # --output required when --save, --format required when --compress
-    cmd.required_if("output", "save")
-    cmd.required_if("format", "compress")
+    command.required_if("output", "save")
+    command.required_if("format", "compress")
 
     # Providing --save + --output + --compress + --format → OK
     var args1: List[String] = [
@@ -505,25 +585,29 @@ fn test_conditional_req_multiple_rules() raises:
         "--format",
         "gzip",
     ]
-    var result1 = cmd.parse_args(args1)
+    var result1 = command.parse_args(args1)
     assert_equal(result1.get_string("output"), "out.txt")
     assert_equal(result1.get_string("format"), "gzip")
 
     # Providing --compress without --format → error
-    var cmd2 = Command("test", "Test app")
-    cmd2.add_arg(Arg("save", help="Save results").long("save").flag())
-    cmd2.add_arg(Arg("output", help="Output path").long("output"))
-    cmd2.add_arg(
-        Arg("compress", help="Compress output").long("compress").flag()
+    var command2 = Command("test", "Test app")
+    command2.add_argument(
+        Argument("save", help="Save results").long("save").flag()
     )
-    cmd2.add_arg(Arg("format", help="Compression format").long("format"))
-    cmd2.required_if("output", "save")
-    cmd2.required_if("format", "compress")
+    command2.add_argument(Argument("output", help="Output path").long("output"))
+    command2.add_argument(
+        Argument("compress", help="Compress output").long("compress").flag()
+    )
+    command2.add_argument(
+        Argument("format", help="Compression format").long("format")
+    )
+    command2.required_if("output", "save")
+    command2.required_if("format", "compress")
 
     var args2: List[String] = ["test", "--compress"]
     var caught = False
     try:
-        _ = cmd2.parse_args(args2)
+        _ = command2.parse_args(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -541,16 +625,20 @@ fn test_conditional_req_multiple_rules() raises:
 
 fn test_conditional_req_with_short_option() raises:
     """Tests conditional requirement works with short options."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("save", help="Save results").long("save").short("s").flag())
-    cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-    cmd.required_if("output", "save")
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long("save").short("s").flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.required_if("output", "save")
 
     # Using short -s triggers the conditional requirement
     var args: List[String] = ["test", "-s"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -562,7 +650,7 @@ fn test_conditional_req_with_short_option() raises:
 
     # Using -s -o file.txt satisfies it
     var args2: List[String] = ["test", "-s", "-o", "out.txt"]
-    var result = cmd.parse_args(args2)
+    var result = command.parse_args(args2)
     assert_true(result.get_flag("save"), msg="-s should set save")
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_conditional_req_with_short_option")
@@ -570,16 +658,18 @@ fn test_conditional_req_with_short_option() raises:
 
 fn test_conditional_req_with_value_condition() raises:
     """Tests conditional requirement where condition is a value arg."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(Arg("format", help="Output format").long("format"))
-    cmd.add_arg(Arg("output", help="Output file").long("output"))
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Output format").long("format")
+    )
+    command.add_argument(Argument("output", help="Output file").long("output"))
     # --output is required whenever --format is provided
-    cmd.required_if("output", "format")
+    command.required_if("output", "format")
 
     var args: List[String] = ["test", "--format", "json"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)
@@ -591,18 +681,20 @@ fn test_conditional_req_with_value_condition() raises:
 
 fn test_conditional_req_error_uses_display_names() raises:
     """Tests that error message uses --long names, not internal names."""
-    var cmd = Command("test", "Test app")
-    cmd.add_arg(
-        Arg("do-save", help="Save results").long("save").short("s").flag()
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("do-save", help="Save results").long("save").short("s").flag()
     )
-    cmd.add_arg(Arg("out-path", help="Output path").long("output").short("o"))
+    command.add_argument(
+        Argument("out-path", help="Output path").long("output").short("o")
+    )
     # Internal names differ from long names
-    cmd.required_if("out-path", "do-save")
+    command.required_if("out-path", "do-save")
 
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = cmd.parse_args(args)
+        _ = command.parse_args(args)
     except e:
         caught = True
         var msg = String(e)

@@ -2,8 +2,8 @@
 
 from sys import argv, exit, stderr
 
-from .arg import Arg
-from .result import ParseResult
+from .argument import Argument
+from .parse_result import ParseResult
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
@@ -24,6 +24,60 @@ comptime _DEFAULT_HEADER_COLOR = _YELLOW
 comptime _DEFAULT_ARG_COLOR = _MAGENTA
 comptime _DEFAULT_WARN_COLOR = _ORANGE
 comptime _DEFAULT_ERROR_COLOR = _RED
+
+
+fn _looks_like_number(token: String) -> Bool:
+    """Returns True if *token* is a negative-number literal.
+
+    Recognises the forms ``-N``, ``-N.N``, ``-.N``, ``-NeX``, ``-N.NeX``,
+    and the corresponding ``-Ne+X`` / ``-Ne-X`` variants (same grammar as
+    Python / argparse numeric detection).
+    """
+    if len(token) < 2 or token[0:1] != "-":
+        return False
+    var j = 1
+    # Optional leading '.' after minus (e.g. -.5).
+    if token[j : j + 1] == ".":
+        j += 1
+        if j >= len(token) or not (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            return False
+    elif not (token[j : j + 1] >= "0" and token[j : j + 1] <= "9"):
+        return False
+    # Integer digits.
+    while j < len(token) and (
+        token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+    ):
+        j += 1
+    # Optional fractional part.
+    if j < len(token) and token[j : j + 1] == ".":
+        j += 1
+        while j < len(token) and (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            j += 1
+    # Optional exponent.
+    if j < len(token) and (token[j : j + 1] == "e" or token[j : j + 1] == "E"):
+        j += 1
+        if j < len(token) and (
+            token[j : j + 1] == "+" or token[j : j + 1] == "-"
+        ):
+            j += 1
+        if j >= len(token) or not (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            return False
+        while j < len(token) and (
+            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        ):
+            j += 1
+    return j == len(token)
+
+
+fn _is_ascii_digit(ch: String) -> Bool:
+    """Returns True if *ch* is a single ASCII digit character ('0'-'9')."""
+    return ch >= "0" and ch <= "9"
 
 
 fn _resolve_color(name: String) raises -> String:
@@ -63,16 +117,16 @@ fn _resolve_color(name: String) raises -> String:
     )
 
 
-struct Command(Stringable, Writable):
+struct Command(Copyable, Movable, Stringable, Writable):
     """Defines a CLI command prototype with its arguments and handles parsing.
 
     Example:
 
     ```mojo
-    from argmojo import Command, Arg
-    var cmd = Command("myapp", "A sample application")
-    cmd.add_arg(Arg("verbose", help="Enable verbose output").long("verbose").short("v").flag())
-    var result = cmd.parse()
+    from argmojo import Command, Argument
+    var command = Command("myapp", "A sample application")
+    command.add_argument(Argument("verbose", help="Enable verbose output").long("verbose").short("v").flag())
+    var result = command.parse()
     ```
     """
 
@@ -82,8 +136,10 @@ struct Command(Stringable, Writable):
     """A short description of the command, shown in help text."""
     var version: String
     """Version string for --version output."""
-    var args: List[Arg]
+    var args: List[Argument]
     """Registered argument definitions."""
+    var subcommands: List[Command]
+    """Registered subcommand definitions. Each is a full Command instance."""
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
     var _required_groups: List[List[String]]
@@ -102,6 +158,30 @@ struct Command(Stringable, Writable):
     """ANSI code for deprecation warning messages (default: orange)."""
     var _error_color: String
     """ANSI code for parse error messages (default: red)."""
+    var _is_help_subcommand: Bool
+    """True for the auto-inserted 'help' pseudo-subcommand.
+    Never set this manually; use `add_subcommand()` to register subcommands and
+    `disable_help_subcommand()` to opt out.
+    """
+    var _help_subcommand_enabled: Bool
+    """When True (default), auto-insert a 'help' subcommand on first 
+    `add_subcommand()` call."""
+    var _allow_negative_numbers: Bool
+    """When True, tokens matching negative-number format (-N, -N.N, -NeX)
+    are always treated as positional arguments.
+    When False (default), the same treatment applies automatically whenever
+    no registered short option uses a digit character (auto-detect).
+    Enable explicitly via `allow_negative_numbers()` when you have a digit
+    short option and still need negative-number literals to pass through."""
+    var _allow_positional_with_subcommands: Bool
+    """When True, allows mixing positional arguments with subcommands.
+    By default (False), registering a positional arg on a Command that already 
+    has subcommands (or vice versa) raises an Error at registration time.
+    Call `allow_positional_with_subcommands()` to opt in explicitly."""
+    var _tips: List[String]
+    """User-defined tips shown at the bottom of the help message.
+    Add entries via ``add_tip()``.  Each tip is printed on its own line
+    prefixed with the same bold ``Tip:`` label as the built-in hint."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -123,37 +203,333 @@ struct Command(Stringable, Writable):
         self.name = name
         self.description = description
         self.version = version
-        self.args = List[Arg]()
+        self.args = List[Argument]()
+        self.subcommands = List[Command]()
         self._exclusive_groups = List[List[String]]()
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
         self._help_on_no_args = False
+        self._is_help_subcommand = False
+        self._help_subcommand_enabled = True
+        self._allow_negative_numbers = False
+        self._allow_positional_with_subcommands = False
+        self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
 
+    fn __moveinit__(out self, deinit move: Self):
+        """Moves a Command, transferring ownership of all fields.
+
+        Args:
+            move: The Command to move from.
+        """
+        self.name = move.name^
+        self.description = move.description^
+        self.version = move.version^
+        self.args = move.args^
+        self.subcommands = move.subcommands^
+        self._exclusive_groups = move._exclusive_groups^
+        self._required_groups = move._required_groups^
+        self._one_required_groups = move._one_required_groups^
+        self._conditional_reqs = move._conditional_reqs^
+        self._help_on_no_args = move._help_on_no_args
+        self._is_help_subcommand = move._is_help_subcommand
+        self._help_subcommand_enabled = move._help_subcommand_enabled
+        self._allow_negative_numbers = move._allow_negative_numbers
+        self._allow_positional_with_subcommands = (
+            move._allow_positional_with_subcommands
+        )
+        self._tips = move._tips^
+        self._header_color = move._header_color^
+        self._arg_color = move._arg_color^
+        self._warn_color = move._warn_color^
+        self._error_color = move._error_color^
+
+    fn __copyinit__(out self, copy: Self):
+        """Creates a deep copy of a Command.
+
+        All field data — including registered args and subcommands — is
+        duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
+        moves rather than copies, so this is only triggered when a
+        ``Command`` value is assigned via ``=``.
+
+        Args:
+            copy: The Command to copy from.
+        """
+        self.name = copy.name
+        self.description = copy.description
+        self.version = copy.version
+        self.args = copy.args.copy()
+        self.subcommands = copy.subcommands.copy()
+        self._exclusive_groups = List[List[String]]()
+        for i in range(len(copy._exclusive_groups)):
+            self._exclusive_groups.append(copy._exclusive_groups[i].copy())
+        self._required_groups = List[List[String]]()
+        for i in range(len(copy._required_groups)):
+            self._required_groups.append(copy._required_groups[i].copy())
+        self._one_required_groups = List[List[String]]()
+        for i in range(len(copy._one_required_groups)):
+            self._one_required_groups.append(
+                copy._one_required_groups[i].copy()
+            )
+        self._conditional_reqs = List[List[String]]()
+        for i in range(len(copy._conditional_reqs)):
+            self._conditional_reqs.append(copy._conditional_reqs[i].copy())
+        self._help_on_no_args = copy._help_on_no_args
+        self._is_help_subcommand = copy._is_help_subcommand
+        self._help_subcommand_enabled = copy._help_subcommand_enabled
+        self._allow_negative_numbers = copy._allow_negative_numbers
+        self._allow_positional_with_subcommands = (
+            copy._allow_positional_with_subcommands
+        )
+        self._tips = copy._tips.copy()
+        self._header_color = copy._header_color
+        self._arg_color = copy._arg_color
+        self._warn_color = copy._warn_color
+        self._error_color = copy._error_color
+
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the command
     # ===------------------------------------------------------------------=== #
 
-    fn add_arg(mut self, var arg: Arg):
+    fn add_argument(mut self, var argument: Argument) raises:
         """Registers an argument definition.
 
+        Raises:
+            Error if adding a positional argument to a Command that already
+            has subcommands registered, unless
+            ``allow_positional_with_subcommands()`` has been called.
+
         Args:
-            arg: The Arg to register.
+            argument: The Argument to register.
 
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("verbose", help="Enable verbose output"))
-        var result = cmd.parse()
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("verbose", help="Enable verbose output"))
+        var result = command.parse()
         ```
         """
-        self.args.append(arg^)
+        # Guard: positional args + subcommands require explicit opt-in.
+        if (
+            argument.is_positional
+            and len(self.subcommands) > 0
+            and not self._allow_positional_with_subcommands
+        ):
+            self._error(
+                "Cannot add positional argument '"
+                + argument.name
+                + "' to '"
+                + self.name
+                + "' which already has subcommands. Call"
+                " allow_positional_with_subcommands() to opt in"
+            )
+        self.args.append(argument^)
+
+    fn add_subcommand(mut self, var sub: Command) raises:
+        """Registers a subcommand.
+
+        A subcommand is a full ``Command`` instance that handles a specific verb
+        (e.g. ``app search …``, ``app init …``).  After parsing, the selected
+        subcommand name is stored in ``result.subcommand`` and its own parsed
+        values are available via ``result.get_subcommand_result()``.
+
+        Args:
+            sub: The subcommand ``Command`` to register.
+
+        Raises:
+            Error if a persistent argument on this command shares a ``long_name``
+            or ``short_name`` with any local argument on ``sub``.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+
+        var app = Command("app", "My CLI tool", version="0.3.0")
+
+        var search = Command("search", "Search for patterns")
+        search.add_argument(Argument("pattern", help="Search pattern").required().positional())
+
+        var init = Command("init", "Initialize a new project")
+        init.add_argument(Argument("name", help="Project name").required().positional())
+
+        app.add_subcommand(search^)
+        app.add_subcommand(init^)
+        ```
+        """
+        # Guard: subcommands + positional args require explicit opt-in.
+        if not self._allow_positional_with_subcommands:
+            for _pi in range(len(self.args)):
+                if self.args[_pi].is_positional:
+                    self._error(
+                        "Cannot add subcommand '"
+                        + sub.name
+                        + "' to '"
+                        + self.name
+                        + "' which already has positional argument '"
+                        + self.args[_pi].name
+                        + "'. Call"
+                        " allow_positional_with_subcommands() to opt in"
+                    )
+        # Conflict check: persistent parent args must not share names with
+        # any local arg in the child — that would make the option ambiguous
+        # after injection.
+        for pi in range(len(self.args)):
+            if not self.args[pi].is_persistent:
+                continue
+            var pa = self.args[pi].copy()
+            for ci in range(len(sub.args)):
+                var ca = sub.args[ci].copy()
+                if (
+                    pa.long_name
+                    and ca.long_name
+                    and pa.long_name == ca.long_name
+                ):
+                    self._error(
+                        "Persistent flag '--"
+                        + pa.long_name
+                        + "' on '"
+                        + self.name
+                        + "' conflicts with '--"
+                        + ca.long_name
+                        + "' on subcommand '"
+                        + sub.name
+                        + "'"
+                    )
+                if (
+                    pa.short_name
+                    and ca.short_name
+                    and pa.short_name == ca.short_name
+                ):
+                    self._error(
+                        "Persistent flag '-"
+                        + pa.short_name
+                        + "' on '"
+                        + self.name
+                        + "' conflicts with '-"
+                        + ca.short_name
+                        + "' on subcommand '"
+                        + sub.name
+                        + "'"
+                    )
+        # Auto-register the 'help' subcommand as the first entry once.
+        # This keeps help discoverable at a fixed position (index 0) while
+        # user-defined subcommands remain in registration order after it.
+        # Disabled via disable_help_subcommand(); guard prevents duplicates.
+        if self._help_subcommand_enabled and self._find_subcommand("help") < 0:
+            var h = Command("help", "Show help for a subcommand")
+            h._is_help_subcommand = True
+            self.subcommands.append(h^)
+        self.subcommands.append(sub^)
+
+    fn disable_help_subcommand(mut self):
+        """Opts out of the auto-added ``help`` subcommand.
+
+        By default, the first call to ``add_subcommand()`` automatically
+        registers a ``help`` subcommand so that ``app help <sub>`` works as
+        an alias for ``app <sub> --help``.
+
+        Call this before or after ``add_subcommand()`` to suppress the
+        feature — useful when ``"help"`` is a legitimate first positional
+        value (e.g. a search pattern or entity name).  After disabling, use
+        ``app <sub> --help`` directly.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("search", "Search engine")
+        app.disable_help_subcommand()   # "help" is a valid search query
+        # Now: `search help init`  →  positionals ["help", "init"] on root,
+        #    so that you can do something like: search "help" in path "init".
+        #    `search init --help`  →  shows init's help page
+        ```
+        """
+        self._help_subcommand_enabled = False
+        # Remove any already-inserted help subcommand.
+        var new_subs = List[Command]()
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                new_subs.append(self.subcommands[i].copy())
+        self.subcommands = new_subs^
+
+    fn allow_negative_numbers(mut self):
+        """Treats tokens that look like negative numbers as positional arguments.
+
+        By default ArgMojo already auto-detects negative-number tokens
+        (``-9``, ``-3.14``, ``-1.5e10``) and passes them through as
+        positionals **when no registered short option starts with a digit**.
+        Call this method explicitly when you have registered a digit short
+        option (e.g., ``-3`` for ``--triple``) and still need negative-number
+        literals to be treated as positionals.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("calc", "Calculator")
+        command.allow_negative_numbers()
+        command.add_argument(Argument("expr", help="Expression").positional().required())
+        # Now: calc -10.18  →  positionals = ["-10.18"]
+        ```
+        """
+        self._allow_negative_numbers = True
+
+    fn allow_positional_with_subcommands(mut self):
+        """Allows a Command to have both positional args and subcommands.
+
+        By default, ArgMojo follows the convention of cobra (Go) and clap
+        (Rust): a Command with subcommands cannot also have positional
+        arguments, because the parser cannot unambiguously distinguish a
+        subcommand name from a positional value.
+
+        Call this method **before** registering positional args and
+        subcommands to opt in to the mixed mode.  In mixed mode, a token
+        that exactly matches a registered subcommand name is dispatched;
+        any other token falls through to the positional list.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var app = Command("tool", "Flexible tool")
+        app.allow_positional_with_subcommands()
+        app.add_argument(Argument("target", help="Default target").positional())
+        var sub = Command("build", "Build the project")
+        app.add_subcommand(sub^)
+        # Now: tool build    → dispatch to 'build' subcommand
+        #      tool foo.txt  → positional "foo.txt"
+        ```
+        """
+        self._allow_positional_with_subcommands = True
+
+    fn add_tip(mut self, tip: String):
+        """Adds a custom tip line to the bottom of the help message.
+
+        Each tip is printed on its own line below the built-in ``--``
+        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
+        documenting shell idioms, environment variables, or any other
+        usage notes that don't fit in argument help strings.
+
+        Args:
+            tip: The tip text to display.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_tip("Set MYAPP_DEBUG=1 to enable debug logging.")
+        command.add_tip("Config file: ~/.config/myapp/config.toml")
+        ```
+        """
+        self._tips.append(tip)
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -167,12 +543,12 @@ struct Command(Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("json", help="Output as JSON").long("json").flag())
-        cmd.add_arg(Arg("yaml", help="Output as YAML").long("yaml").flag())
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
         var format_excl: List[String] = ["json", "yaml"]
-        cmd.mutually_exclusive(format_excl^)
+        command.mutually_exclusive(format_excl^)
         ```
         """
         self._exclusive_groups.append(names^)
@@ -189,12 +565,12 @@ struct Command(Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("username", help="Auth username").long("username").short("u"))
-        cmd.add_arg(Arg("password", help="Auth password").long("password").short("p"))
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("username", help="Auth username").long("username").short("u"))
+        command.add_argument(Argument("password", help="Auth password").long("password").short("p"))
         var auth_group: List[String] = ["username", "password"]
-        cmd.required_together(auth_group^)
+        command.required_together(auth_group^)
         ```
         """
         self._required_groups.append(names^)
@@ -211,12 +587,12 @@ struct Command(Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("json", help="Output as JSON").long("json").flag())
-        cmd.add_arg(Arg("yaml", help="Output as YAML").long("yaml").flag())
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
         var format_group: List[String] = ["json", "yaml"]
-        cmd.one_required(format_group^)
+        command.one_required(format_group^)
         ```
         """
         self._one_required_groups.append(names^)
@@ -234,11 +610,11 @@ struct Command(Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("save", help="Save results").long("save").flag())
-        cmd.add_arg(Arg("output", help="Output path").long("output").short("o"))
-        cmd.required_if("output", "save")
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("save", help="Save results").long("save").flag())
+        command.add_argument(Argument("output", help="Output path").long("output").short("o"))
+        command.required_if("output", "save")
         ```
         """
         var pair: List[String] = [target, condition]
@@ -253,10 +629,10 @@ struct Command(Stringable, Writable):
         Example:
 
         ```mojo
-        from argmojo import Command, Arg
-        var cmd = Command("myapp", "A sample application")
-        cmd.add_arg(Arg("file", help="Input file").long("file").required())
-        cmd.help_on_no_args()
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("file", help="Input file").long("file").required())
+        command.help_on_no_args()
         ```
         """
         self._help_on_no_args = True
@@ -281,8 +657,8 @@ struct Command(Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.header_color("YELLOW")
+        var command = Command("myapp", "A sample application")
+        command.header_color("YELLOW")
         ```
         """
         self._header_color = _resolve_color(name)
@@ -304,8 +680,8 @@ struct Command(Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.arg_color("GREEN")
+        var command = Command("myapp", "A sample application")
+        command.arg_color("GREEN")
         ```
         """
         self._arg_color = _resolve_color(name)
@@ -327,8 +703,8 @@ struct Command(Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.warn_color("YELLOW")  # change from default orange
+        var command = Command("myapp", "A sample application")
+        command.warn_color("YELLOW")  # change from default orange
         ```
         """
         self._warn_color = _resolve_color(name)
@@ -350,8 +726,8 @@ struct Command(Stringable, Writable):
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("myapp", "A sample application")
-        cmd.error_color("MAGENTA")  # change from default red
+        var command = Command("myapp", "A sample application")
+        command.error_color("MAGENTA")  # change from default red
         ```
         """
         self._error_color = _resolve_color(name)
@@ -379,7 +755,11 @@ struct Command(Stringable, Writable):
     #    │  Parse short option(s)
     #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
     #    │   └─ Multi-short: merged flags and attached value forms.
-    #    └─ Otherwise: treat as positional argument.
+    #    └─ Otherwise (bare word):
+    #       ├─ Subcommands registered + "help <sub>": print child help & exit.
+    #       ├─ Subcommands registered + token matches subcommand name:
+    #       │   build child argv, call child.parse_args(), store result, break.
+    #       └─ Otherwise: treat as positional argument.
     # 4. Apply defaults for missing args (named + positional slots).
     # 5. Validate:
     #    ├─ Required args
@@ -390,6 +770,30 @@ struct Command(Stringable, Writable):
     #    ├─ Conditional requirements
     #    └─ Numeric range constraints
     # 6. Return ParseResult.
+
+    # ===------------------------------------------------------------------=== #
+    # Private output helpers
+    # ===------------------------------------------------------------------=== #
+
+    fn _warn(self, msg: String):
+        """Prints a coloured warning message to stderr."""
+        print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
+
+    fn _error(self, msg: String) raises:
+        """Prints a coloured error message to stderr then raises.
+
+        All parse-time errors funnel through this method so that callers
+        of both ``parse()`` and ``parse_args()`` always see coloured output
+        while tests can still catch the raised ``Error`` normally.
+        The command name is included in the stderr output so that errors
+        from subcommands show the full path (e.g. ``app search: ...``).
+        """
+        print(
+            self._error_color + "error: " + self.name + ": " + msg + _RESET,
+            file=stderr,
+        )
+        raise Error(msg)
+
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
 
@@ -408,11 +812,8 @@ struct Command(Stringable, Writable):
             raw.append(String(raw_variadic[i]))
         try:
             return self.parse_args(raw)
-        except e:
-            print(
-                self._error_color + "error: " + String(e) + _RESET,
-                file=stderr,
-            )
+        except:
+            # Error message was already printed to stderr by _error().
             exit(2)
             # Unreachable — exit() terminates the process — but the
             # compiler does not model exit() as @noreturn yet.
@@ -432,6 +833,13 @@ struct Command(Stringable, Writable):
 
         Raises:
             Error on invalid or missing arguments.
+
+        Notes:
+
+        The modifier for `self` is `read` but not `mut`. This ensures that the
+        parsing process does not mutate the Command instance itself, which
+        prevents contamination and conflicts between multiple parses, e.g.,
+        in testing scenarios, REPL usage, and autocompletion.
         """
         var result = ParseResult()
 
@@ -525,24 +933,21 @@ struct Command(Stringable, Writable):
                                 if j > 0:
                                     opts += ", "
                                 opts += "'--no-" + neg_candidates[j] + "'"
-                            raise Error(
+                            self._error(
                                 "Ambiguous option '--no-"
                                 + base_key
                                 + "' could match: "
                                 + opts
                             )
 
-                var matched: Arg = self._find_by_long(key)
+                var matched: Argument = self._find_by_long(key)
                 # Emit deprecation warning if applicable.
                 if matched.deprecated_msg:
-                    print(
-                        self._warn_color
-                        + "Warning: '--"
+                    self._warn(
+                        "'--"
                         + key
                         + "' is deprecated: "
                         + matched.deprecated_msg
-                        + _RESET,
-                        file=stderr,
                     )
                 if is_negation:
                     result.flags[matched.name] = False
@@ -559,7 +964,7 @@ struct Command(Stringable, Writable):
                 elif matched.nargs_count > 0:
                     # nargs: consume exactly N values.
                     if has_eq:
-                        raise Error(
+                        self._error(
                             "Option '--"
                             + key
                             + "' takes "
@@ -571,7 +976,7 @@ struct Command(Stringable, Writable):
                     for _n in range(matched.nargs_count):
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '--"
                                 + key
                                 + "' requires "
@@ -584,7 +989,7 @@ struct Command(Stringable, Writable):
                     if not has_eq:
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '--" + key + "' requires a value"
                             )
                         value = raw_args[i]
@@ -600,6 +1005,23 @@ struct Command(Stringable, Writable):
 
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
             if arg.startswith("-") and len(arg) > 1:
+                # ── Negative-number detection (argparse-style) ──────────────
+                # A token like "-10.18e3" is treated as a positional value when:
+                #   (a) allow_negative_numbers() was called explicitly, OR
+                #   (b) the token looks numeric AND no registered short option
+                #       uses a digit character (auto-detect, no naming clash).
+                if _looks_like_number(arg):
+                    var has_digit_short = False
+                    for _ni in range(len(self.args)):
+                        var sn = self.args[_ni].short_name
+                        if sn >= "0" and sn <= "9":
+                            has_digit_short = True
+                            break
+                    if self._allow_negative_numbers or not has_digit_short:
+                        result.positionals.append(arg)
+                        i += 1
+                        continue
+                # ────────────────────────────────────────────────────────────
                 var key = String(arg[1:])
 
                 # Single-char short option: -f or -k value
@@ -607,14 +1029,11 @@ struct Command(Stringable, Writable):
                     var matched = self._find_by_short(key)
                     # Emit deprecation warning if applicable.
                     if matched.deprecated_msg:
-                        print(
-                            self._warn_color
-                            + "Warning: '-"
+                        self._warn(
+                            "'-"
                             + key
                             + "' is deprecated: "
                             + matched.deprecated_msg
-                            + _RESET,
-                            file=stderr,
                         )
                     if matched.is_count:
                         var cur: Int = 0
@@ -632,7 +1051,7 @@ struct Command(Stringable, Writable):
                         for _n in range(matched.nargs_count):
                             i += 1
                             if i >= len(raw_args):
-                                raise Error(
+                                self._error(
                                     "Option '-"
                                     + key
                                     + "' requires "
@@ -644,7 +1063,7 @@ struct Command(Stringable, Writable):
                     else:
                         i += 1
                         if i >= len(raw_args):
-                            raise Error(
+                            self._error(
                                 "Option '-" + key + "' requires a value"
                             )
                         var val = raw_args[i]
@@ -673,14 +1092,11 @@ struct Command(Stringable, Writable):
                         var m = self._find_by_short(ch)
                         # Emit deprecation warning if applicable.
                         if m.deprecated_msg:
-                            print(
-                                self._warn_color
-                                + "Warning: '-"
+                            self._warn(
+                                "'-"
                                 + ch
                                 + "' is deprecated: "
                                 + m.deprecated_msg
-                                + _RESET,
-                                file=stderr,
                             )
                         if m.is_count:
                             var cur: Int = 0
@@ -701,7 +1117,7 @@ struct Command(Stringable, Writable):
                             for _n in range(m.nargs_count):
                                 i += 1
                                 if i >= len(raw_args):
-                                    raise Error(
+                                    self._error(
                                         "Option '-"
                                         + ch
                                         + "' requires "
@@ -718,7 +1134,7 @@ struct Command(Stringable, Writable):
                             if len(val) == 0:
                                 i += 1
                                 if i >= len(raw_args):
-                                    raise Error(
+                                    self._error(
                                         "Option '-" + ch + "' requires a value"
                                     )
                                 val = raw_args[i]
@@ -737,14 +1153,11 @@ struct Command(Stringable, Writable):
                     # attached value (e.g., -ofile.txt).
                     # Emit deprecation warning if applicable.
                     if first_match.deprecated_msg:
-                        print(
-                            self._warn_color
-                            + "Warning: '-"
+                        self._warn(
+                            "'-"
                             + first_char
                             + "' is deprecated: "
                             + first_match.deprecated_msg
-                            + _RESET,
-                            file=stderr,
                         )
                     if first_match.nargs_count > 0:
                         # nargs: consume N values from argv (ignore attached).
@@ -753,7 +1166,7 @@ struct Command(Stringable, Writable):
                         for _n in range(first_match.nargs_count):
                             i += 1
                             if i >= len(raw_args):
-                                raise Error(
+                                self._error(
                                     "Option '-"
                                     + first_char
                                     + "' requires "
@@ -775,13 +1188,141 @@ struct Command(Stringable, Writable):
                     i += 1
                     continue
 
-            # Positional argument.
+            # Positional argument — check for subcommand dispatch first.
+            if len(self.subcommands) > 0:
+                # Exact subcommand name match → dispatch.
+                var sub_idx = self._find_subcommand(arg)
+                if sub_idx >= 0:
+                    # Build child argv: ["parent sub", remaining tokens...].
+                    var child_argv = List[String]()
+                    child_argv.append(self.name + " " + arg)
+                    for k in range(i + 1, len(raw_args)):
+                        child_argv.append(raw_args[k])
+                    # Auto-registered 'help' subcommand: display sibling help.
+                    if self.subcommands[sub_idx]._is_help_subcommand:
+                        if len(child_argv) > 1:
+                            var target_idx = self._find_subcommand(
+                                child_argv[1]
+                            )
+                            if (
+                                target_idx >= 0
+                                and not self.subcommands[
+                                    target_idx
+                                ]._is_help_subcommand
+                            ):
+                                print(
+                                    self.subcommands[
+                                        target_idx
+                                    ]._generate_help()
+                                )
+                                exit(0)
+                        # No target, unknown, or self-referential → root help.
+                        print(self._generate_help())
+                        exit(0)
+                    # Build a child copy with persistent args injected so they
+                    # are recognised wherever the user places them on the line.
+                    var child_copy = self.subcommands[sub_idx].copy()
+                    # Set full command path so child help/errors show "app sub".
+                    child_copy.name = self.name + " " + arg
+                    for _pi in range(len(self.args)):
+                        if self.args[_pi].is_persistent:
+                            child_copy.args.append(self.args[_pi].copy())
+                    var child_result = child_copy.parse_args(child_argv)
+                    # Bubble up persistent values from child to root result so
+                    # that root_result.get_flag("x") always works regardless of
+                    # whether the flag appeared before or after the subcommand
+                    # token. (If root already parsed the flag before reaching
+                    # the subcommand token, its value takes precedence.)
+                    # Also push down root-parsed persistent values to child
+                    # result so that sub_result.get_flag("x") always works too.
+                    for _pi in range(len(self.args)):
+                        if not self.args[_pi].is_persistent:
+                            continue
+                        var _pn = self.args[_pi].name
+                        # Bubble up: child parsed flag after subcommand token.
+                        if (
+                            _pn in child_result.flags
+                            and _pn not in result.flags
+                        ):
+                            result.flags[_pn] = child_result.flags[_pn]
+                        if (
+                            _pn in child_result.values
+                            and _pn not in result.values
+                        ):
+                            result.values[_pn] = child_result.values[_pn]
+                        if (
+                            _pn in child_result.counts
+                            and _pn not in result.counts
+                        ):
+                            result.counts[_pn] = child_result.counts[_pn]
+                        # Push down: root parsed flag before subcommand token.
+                        if (
+                            _pn in result.flags
+                            and _pn not in child_result.flags
+                        ):
+                            child_result.flags[_pn] = result.flags[_pn]
+                        if (
+                            _pn in result.values
+                            and _pn not in child_result.values
+                        ):
+                            child_result.values[_pn] = result.values[_pn]
+                        if (
+                            _pn in result.counts
+                            and _pn not in child_result.counts
+                        ):
+                            child_result.counts[_pn] = result.counts[_pn]
+                    result.subcommand = arg
+                    result._subcommand_results.append(child_result^)
+                    # All remaining tokens were consumed by the child.
+                    i = len(raw_args)
+                    continue
+                else:
+                    # No matching subcommand found.  When positionals are
+                    # not allowed (the usual case), produce a helpful error.
+                    # When allow_positional_with_subcommands is set, fall
+                    # through to positional handling below.
+                    if not self._allow_positional_with_subcommands:
+                        var avail = String("")
+                        var first = True
+                        for _si in range(len(self.subcommands)):
+                            if not self.subcommands[_si]._is_help_subcommand:
+                                if not first:
+                                    avail += ", "
+                                avail += self.subcommands[_si].name
+                                first = False
+                        self._error(
+                            "Unknown command '"
+                            + arg
+                            + "'. Available commands: "
+                            + avail
+                        )
+
             result.positionals.append(arg)
             i += 1
 
-        # === DEFAULTS APPLICATION PHASE === #
+        # Apply defaults and validate constraints.
+        self._apply_defaults(result)
+        self._validate(result)
 
-        # Apply defaults for arguments not provided.
+        return result^
+
+    # ===------------------------------------------------------------------=== #
+    # Defaults & validation helpers (extracted for subcommand reuse)
+    # ===------------------------------------------------------------------=== #
+
+    fn _apply_defaults(self, mut result: ParseResult):
+        """Fills in default values for arguments not provided by the user.
+
+        For positional arguments, defaults are placed into the correct slot.
+        For named arguments, the default is stored in `result.values`.
+
+        Args:
+            result: The parse result to mutate in-place.
+
+        Notes:
+
+        This method is made standalone so that subcommands can reuse it.
+        """
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.has_default and not result.has(a.name):
@@ -796,20 +1337,36 @@ struct Command(Stringable, Writable):
                 else:
                     result.values[a.name] = a.default_value
 
-        # === VALIDATION PHASE === #
+    fn _validate(self, result: ParseResult) raises:
+        """Runs all post-parse validation checks on the result.
 
+        Checks (in order):
+        1. Required arguments are present.
+        2. Positional argument count is not exceeded.
+        3. Mutually exclusive groups have at most one member set.
+        4. Required-together groups are all-or-nothing.
+        5. One-required groups have at least one member set.
+        6. Conditional requirements are satisfied.
+        7. Numeric range constraints are met.
+
+        Args:
+            result: The parse result to validate.
+
+        Raises:
+            Error if any validation check fails.
+        """
         # Validate required arguments.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.is_required and not result.has(a.name):
-                raise Error(
+                self._error(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
         if expected_count > 0 and len(result.positionals) > expected_count:
-            raise Error(
+            self._error(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
@@ -829,7 +1386,7 @@ struct Command(Stringable, Writable):
                     if f > 0:
                         names_str += ", "
                     names_str += self._display_name(found[f])
-                raise Error("Arguments are mutually exclusive: " + names_str)
+                self._error("Arguments are mutually exclusive: " + names_str)
 
         # Validate required-together groups.
         for g in range(len(self._required_groups)):
@@ -852,7 +1409,7 @@ struct Command(Stringable, Writable):
                     if p > 0:
                         provided_str += ", "
                     provided_str += self._display_name(provided[p])
-                raise Error(
+                self._error(
                     "Arguments required together: "
                     + missing_str
                     + " required when "
@@ -876,7 +1433,7 @@ struct Command(Stringable, Writable):
                     names_str += self._display_name(
                         self._one_required_groups[g][n]
                     )
-                raise Error(
+                self._error(
                     "At least one of the following arguments is required: "
                     + names_str
                 )
@@ -886,7 +1443,7 @@ struct Command(Stringable, Writable):
             var target = self._conditional_reqs[g][0]
             var condition = self._conditional_reqs[g][1]
             if result.has(condition) and not result.has(target):
-                raise Error(
+                self._error(
                     "Argument "
                     + self._display_name(target)
                     + " is required when "
@@ -902,11 +1459,13 @@ struct Command(Stringable, Writable):
                 if a.is_append:
                     var lst = result.get_list(a.name)
                     for k in range(len(lst)):
-                        var v: Int
+                        var v: Int = (
+                            0  # _error() raises in except, so 0 is never used
+                        )
                         try:
                             v = atol(lst[k])
                         except:
-                            raise Error(
+                            self._error(
                                 "Expected an integer for "
                                 + self._display_name(a.name)
                                 + ", got '"
@@ -917,7 +1476,7 @@ struct Command(Stringable, Writable):
                             var display = String("'") + a.name + "'"
                             if a.long_name:
                                 display = "'--" + a.long_name + "'"
-                            raise Error(
+                            self._error(
                                 "Value "
                                 + String(v)
                                 + " for "
@@ -934,11 +1493,13 @@ struct Command(Stringable, Writable):
                         raw = result.get_string(a.name)
                     except:
                         continue
-                    var v: Int
+                    var v: Int = (
+                        0  # _error() raises in except, so 0 is never used
+                    )
                     try:
                         v = atol(raw)
                     except:
-                        raise Error(
+                        self._error(
                             "Expected an integer for "
                             + self._display_name(a.name)
                             + ", got '"
@@ -949,7 +1510,7 @@ struct Command(Stringable, Writable):
                         var display = String("'") + a.name + "'"
                         if a.long_name:
                             display = "'--" + a.long_name + "'"
-                        raise Error(
+                        self._error(
                             "Value "
                             + String(v)
                             + " for "
@@ -961,9 +1522,11 @@ struct Command(Stringable, Writable):
                             + "]"
                         )
 
-        return result^
+    # ===------------------------------------------------------------------=== #
+    # Argument lookup helpers
+    # ===------------------------------------------------------------------=== #
 
-    fn _find_by_long(self, name: String) raises -> Arg:
+    fn _find_by_long(self, name: String) raises -> Argument:
         """Finds an argument definition by its long name, alias, or unambiguous prefix.
 
         Resolution order:
@@ -976,7 +1539,7 @@ struct Command(Stringable, Writable):
             name: The long option name (without '--'), or an unambiguous prefix.
 
         Returns:
-            The matching Arg.
+            The matching Argument.
 
         Raises:
             Error if no argument matches or the prefix is ambiguous.
@@ -1025,20 +1588,23 @@ struct Command(Stringable, Writable):
                 if j > 0:
                     opts += ", "
                 opts += "'--" + candidates[j] + "'"
-            raise Error(
+            self._error(
                 "Ambiguous option '--" + name + "' could match: " + opts
             )
 
-        raise Error("Unknown option '--" + name + "'")
+        self._error("Unknown option '--" + name + "'")
+        raise Error(
+            "unreachable"
+        )  # _error() always raises; satisfies Mojo's return checker
 
-    fn _find_by_short(self, name: String) raises -> Arg:
+    fn _find_by_short(self, name: String) raises -> Argument:
         """Finds an argument definition by its short name.
 
         Args:
             name: The short option name (without '-').
 
         Returns:
-            The matching Arg.
+            The matching Argument.
 
         Raises:
             Error if no argument matches.
@@ -1046,7 +1612,24 @@ struct Command(Stringable, Writable):
         for i in range(len(self.args)):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
-        raise Error("Unknown option '-" + name + "'")
+        self._error("Unknown option '-" + name + "'")
+        raise Error(
+            "unreachable"
+        )  # _error() always raises; satisfies Mojo's return checker
+
+    fn _find_subcommand(self, name: String) -> Int:
+        """Returns the index of the registered subcommand matching ``name``.
+
+        Args:
+            name: Subcommand name to look up.
+
+        Returns:
+            The index into ``self.subcommands``, or ``-1`` if not found.
+        """
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i].name == name:
+                return i
+        return -1
 
     fn _display_name(self, name: String) -> String:
         """Returns a user-facing display string for an argument.
@@ -1069,7 +1652,7 @@ struct Command(Stringable, Writable):
                 break
         return "'" + name + "'"
 
-    fn _validate_choices(self, arg: Arg, value: String) raises:
+    fn _validate_choices(self, arg: Argument, value: String) raises:
         """Validates that the value is in the allowed choices.
 
         Args:
@@ -1089,7 +1672,7 @@ struct Command(Stringable, Writable):
             if i > 0:
                 allowed += ", "
             allowed += "'" + arg.choice_values[i] + "'"
-        raise Error(
+        self._error(
             "Invalid value '"
             + value
             + "' for argument '"
@@ -1100,7 +1683,7 @@ struct Command(Stringable, Writable):
         )
 
     fn _store_append_value(
-        self, arg: Arg, value: String, mut result: ParseResult
+        self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a value for an append-type argument, handling delimiter splitting.
 
@@ -1127,7 +1710,7 @@ struct Command(Stringable, Writable):
             result.lists[arg.name].append(value)
 
     fn _store_map_value(
-        self, arg: Arg, value: String, mut result: ParseResult
+        self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a key=value pair for a map-type argument.
 
@@ -1146,31 +1729,38 @@ struct Command(Stringable, Writable):
         if arg.name not in result.lists:
             result.lists[arg.name] = List[String]()
 
-        fn _parse_kv(
-            arg_name: String, piece: String, mut result: ParseResult
-        ) raises:
-            var eq = piece.find("=")
-            if eq < 0:
-                raise Error(
-                    "Invalid key=value format '"
-                    + piece
-                    + "' for argument '"
-                    + arg_name
-                    + "'"
-                )
-            var k = String(piece[:eq])
-            var v = String(piece[eq + 1 :])
-            result.maps[arg_name][k] = v
-            result.lists[arg_name].append(piece)
-
         if arg.delimiter_char:
             var parts = value.split(arg.delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:
-                    _parse_kv(arg.name, piece, result)
+                    var eq = piece.find("=")
+                    if eq < 0:
+                        self._error(
+                            "Invalid key=value format '"
+                            + piece
+                            + "' for argument '"
+                            + arg.name
+                            + "'"
+                        )
+                    var k = String(piece[:eq])
+                    var v = String(piece[eq + 1 :])
+                    result.maps[arg.name][k] = v
+                    result.lists[arg.name].append(piece)
         else:
-            _parse_kv(arg.name, value, result)
+            var eq = value.find("=")
+            if eq < 0:
+                self._error(
+                    "Invalid key=value format '"
+                    + value
+                    + "' for argument '"
+                    + arg.name
+                    + "'"
+                )
+            var k = String(value[:eq])
+            var v = String(value[eq + 1 :])
+            result.maps[arg.name][k] = v
+            result.lists[arg.name].append(value)
 
     fn _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
@@ -1201,6 +1791,15 @@ struct Command(Stringable, Writable):
                     s += " " + C + "<" + self.args[i].name + ">" + R
                 else:
                     s += " " + C + "[" + self.args[i].name + "]" + R
+
+        # Show <COMMAND> placeholder when subcommands are registered.
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " " + C + "<COMMAND>" + R
 
         s += " " + C + "[OPTIONS]" + R + "\n\n"
 
@@ -1243,10 +1842,13 @@ struct Command(Stringable, Writable):
             s += "\n"
 
         # Options section — two-pass for dynamic padding.
+        # Separate local options from persistent (global) options so they
+        # can be displayed under distinct headings.
         # Pass 1: build plain + coloured left-hand sides.
         var opt_plains = List[String]()
         var opt_colors = List[String]()
         var opt_helps = List[String]()
+        var opt_persistent = List[Bool]()
 
         for i in range(len(self.args)):
             if not self.args[i].is_positional and not self.args[i].is_hidden:
@@ -1334,6 +1936,7 @@ struct Command(Stringable, Writable):
 
                 opt_plains.append(plain)
                 opt_colors.append(colored)
+                opt_persistent.append(self.args[i].is_persistent)
                 # Append deprecation notice to help text if applicable.
                 var help = self.args[i].help_text
                 if self.args[i].deprecated_msg:
@@ -1342,7 +1945,7 @@ struct Command(Stringable, Writable):
                     help += "[deprecated: " + self.args[i].deprecated_msg + "]"
                 opt_helps.append(help)
 
-        # Built-in options.
+        # Built-in options (always shown under local "Options:" section).
         var help_plain = String("  -h, --help")
         var help_colored = (
             "  " + C + "-h" + R + ", " + C + "--help" + R
@@ -1351,28 +1954,129 @@ struct Command(Stringable, Writable):
         var version_colored = "  " + C + "-V" + R + ", " + C + "--version" + R
         opt_plains.append(help_plain)
         opt_colors.append(help_colored)
+        opt_persistent.append(False)
         opt_helps.append(String("Show this help message"))
         opt_plains.append(version_plain)
         opt_colors.append(version_colored)
+        opt_persistent.append(False)
         opt_helps.append(String("Show version"))
 
-        # Determine padding width: max plain-text left-side length + 4.
-        var max_left: Int = 0
+        # Check if there are any persistent (global) options.
+        var has_global = False
+        for k in range(len(opt_persistent)):
+            if opt_persistent[k]:
+                has_global = True
+                break
+
+        # Helper: compute padding width for a subset of options.
+        # Uses the plain-text width of matching entries.
+        var local_max: Int = 0
+        var global_max: Int = 0
         for k in range(len(opt_plains)):
-            if len(opt_plains[k]) > max_left:
-                max_left = len(opt_plains[k])
-        var pad_width = max_left + 4
+            if opt_persistent[k]:
+                if len(opt_plains[k]) > global_max:
+                    global_max = len(opt_plains[k])
+            else:
+                if len(opt_plains[k]) > local_max:
+                    local_max = len(opt_plains[k])
+        var local_pad = local_max + 4
+        var global_pad = global_max + 4
 
         # Pass 2: assemble padded lines using coloured text.
+        # Local options.
         s += H + "Options:" + R + "\n"
         for k in range(len(opt_plains)):
-            var line = opt_colors[k]
-            if opt_helps[k]:
-                var padding = pad_width - len(opt_plains[k])
-                for _p in range(padding):
-                    line += " "
-                line += opt_helps[k]
-            s += line + "\n"
+            if not opt_persistent[k]:
+                var line = opt_colors[k]
+                if opt_helps[k]:
+                    var padding = local_pad - len(opt_plains[k])
+                    for _p in range(padding):
+                        line += " "
+                    line += opt_helps[k]
+                s += line + "\n"
+
+        # Global (persistent) options — shown under a separate heading.
+        if has_global:
+            s += "\n" + H + "Global Options:" + R + "\n"
+            for k in range(len(opt_plains)):
+                if opt_persistent[k]:
+                    var line = opt_colors[k]
+                    if opt_helps[k]:
+                        var padding = global_pad - len(opt_plains[k])
+                        for _p in range(padding):
+                            line += " "
+                        line += opt_helps[k]
+                    s += line + "\n"
+
+        # Commands section — list registered subcommands with descriptions.
+        if has_subcommands:
+            var cmd_plains = List[String]()
+            var cmd_colors = List[String]()
+            var cmd_helps = List[String]()
+            for i in range(len(self.subcommands)):
+                if not self.subcommands[i]._is_help_subcommand:
+                    var plain = String("  ") + self.subcommands[i].name
+                    var colored = (
+                        String("  ") + C + self.subcommands[i].name + R
+                    )
+                    cmd_plains.append(plain)
+                    cmd_colors.append(colored)
+                    cmd_helps.append(self.subcommands[i].description)
+            # Compute padding.
+            var cmd_max: Int = 0
+            for k in range(len(cmd_plains)):
+                if len(cmd_plains[k]) > cmd_max:
+                    cmd_max = len(cmd_plains[k])
+            var cmd_pad = cmd_max + 4
+            s += "\n" + H + "Commands:" + R + "\n"
+            for k in range(len(cmd_plains)):
+                var line = cmd_colors[k]
+                if cmd_helps[k]:
+                    var padding = cmd_pad - len(cmd_plains[k])
+                    for _p in range(padding):
+                        line += " "
+                    line += cmd_helps[k]
+                s += line + "\n"
+
+        # Tip: show '--' separator hint when positional args are registered.
+        # When negative numbers are already handled automatically (either via
+        # explicit allow_negative_numbers() or auto-detect: no digit short
+        # options), the example changes to a generic dash-prefixed value
+        # rather than '-10.18', since that case no longer needs '--'.
+        var tip_lines = List[String]()
+        if has_positional:
+            var neg_auto = self._allow_negative_numbers
+            if not neg_auto:
+                var has_digit_short = False
+                for _ti in range(len(self.args)):
+                    var sc = self.args[_ti].short_name
+                    if len(sc) == 1 and sc[0:1] >= "0" and sc[0:1] <= "9":
+                        has_digit_short = True
+                        break
+                neg_auto = not has_digit_short
+            if neg_auto:
+                tip_lines.append(
+                    "Use '--' to pass values starting with '-' as"
+                    " positionals:  "
+                    + self.name
+                    + " -- -my-value"
+                )
+            else:
+                tip_lines.append(
+                    "Use '--' to pass values that start with '-' (e.g.,"
+                    " negative numbers):  "
+                    + self.name
+                    + " -- -10.18"
+                )
+
+        # User-defined tips — always shown when present.
+        for _ti in range(len(self._tips)):
+            tip_lines.append(self._tips[_ti])
+
+        if len(tip_lines) > 0:
+            s += "\n" + H + "Tips:" + _RESET + "\n"
+            for _ti in range(len(tip_lines)):
+                s += "  " + tip_lines[_ti] + "\n"
 
         return s
 

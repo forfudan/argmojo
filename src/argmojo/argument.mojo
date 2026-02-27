@@ -1,14 +1,66 @@
 """Defines a single command-line argument."""
 
 
-struct Arg(Copyable, Movable, Stringable, Writable):
-    """Defines a command-line argument with its metadata and constraints.
+comptime Arg = Argument
+"""Shorthand alias for `Argument`."""
 
-    Use the builder pattern to configure the argument:
+
+struct Argument(Copyable, Movable, Stringable, Writable):
+    """A command-line argument with its metadata and constraints.
+
+    Use the builder pattern to configure the argument and add it to a Command.
+
+    Examples:
 
     ```mojo
-    from argmojo import Arg
-    var arg = Arg("output", help="Output file path").long("output").short("o").takes_value()
+    from argmojo import Command, Argument
+
+    # Boolean flag  →  result.get_flag("verbose")
+    _ = Argument("verbose", help="...").long("verbose").short("v").flag()
+
+    # Key-value option  →  result.get_string("output")
+    _ = Argument("output", help="...").long("output").short("o")
+
+    # Key-value with default  →  result.get_string("format")
+    _ = Argument("format", help="...").long("format").default("json")
+
+    # Restrict to a set of values
+    _ = Argument("level", help="...").long("level").choices(["debug","info","warn"])
+
+    # Positional (matched by order)  →  result.get_string("path")
+    _ = Argument("path", help="...").positional().required()
+    _ = Argument("dest", help="...").positional().default(".")
+
+    # Count flag  (-vvv → 3)  →  result.get_count("verbose")
+    _ = Argument("verbose", help="...").long("verbose").short("v").count()
+
+    # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
+    _ = Argument("color", help="...").long("color").flag().negatable()
+
+    # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
+    _ = Argument("tag", help="...").long("tag").short("t").append()
+
+    # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
+    _ = Argument("env", help="...").long("env").delimiter(",")
+
+    # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
+    _ = Argument("point", help="...").long("point").nargs(2)
+
+    # Numeric range validation  →  result.get_int("port")
+    _ = Argument("port", help="...").long("port").range(1, 65535)
+
+    # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
+    _ = Argument("def", help="...").long("define").short("D").map_option()
+
+    # Aliases  (--colour and --color both work)
+    _ = Argument("colour", help="...").long("colour").aliases(["color"])
+
+    # Deprecated argument  (still works but prints a warning to stderr)
+    _ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
+
+    # Display helpers
+    _ = Argument("file", help="...").long("file").metavar("PATH")  # help: --file PATH
+    _ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
     ```
     """
 
@@ -58,6 +110,11 @@ struct Arg(Copyable, Movable, Stringable, Writable):
     """Alternative long names that resolve to this argument."""
     var deprecated_msg: String
     """If non-empty, this argument is deprecated; the string is the warning message."""
+    var is_persistent: Bool
+    """If True, this argument is automatically inherited by every subcommand.
+    Persistent flags/options are injected into child command parsers at
+    dispatch time so the user may place them either before or after the
+    subcommand token on the command line."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -93,12 +150,13 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_map = False
         self.alias_names = List[String]()
         self.deprecated_msg = ""
+        self.is_persistent = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
 
         Args:
-            copy: The Arg to copy from.
+            copy: The Argument to copy from.
         """
         self.name = copy.name
         self.help_text = copy.help_text
@@ -127,12 +185,13 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         for i in range(len(copy.alias_names)):
             self.alias_names.append(copy.alias_names[i])
         self.deprecated_msg = copy.deprecated_msg
+        self.is_persistent = copy.is_persistent
 
     fn __moveinit__(out self, deinit move: Self):
-        """Moves the value from another Arg.
+        """Moves the value from another Argument.
 
         Args:
-            move: The Arg to move from.
+            move: The Argument to move from.
         """
         self.name = move.name^
         self.help_text = move.help_text^
@@ -157,13 +216,14 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.is_map = move.is_map
         self.alias_names = move.alias_names^
         self.deprecated_msg = move.deprecated_msg^
+        self.is_persistent = move.is_persistent
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
     # ===------------------------------------------------------------------=== #
 
     fn long(var self, name: String) -> Self:
-        """Sets the long option name (e.g., 'lingming' for --lingming).
+        """Sets the long option name (e.g., 'verbose' for --verbose).
 
         Args:
             name: The long option name without the '--' prefix.
@@ -430,13 +490,39 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         self.deprecated_msg = message
         return self^
 
+    fn persistent(var self) -> Self:
+        """Marks this argument as persistent (inherited by all subcommands).
+
+        A persistent argument defined on a parent command is automatically
+        injected into every child command parser at dispatch time.  The
+        user may therefore place the option either before or after the
+        subcommand token::
+
+            app --verbose search pattern   # --verbose parsed by root
+            app search --verbose pattern   # --verbose parsed by child
+                                           # (injected) and bubbled up
+
+        In both cases ``root_result.get_flag("verbose")`` returns ``True``.
+        The child result also carries the value when the flag appears
+        after the subcommand token.
+
+        Persistent arguments may not share a ``long_name`` or ``short_name``
+        with any local argument of a registered subcommand — ArgMojo raises
+        an error at ``add_subcommand()`` time if a conflict is detected.
+
+        Returns:
+            Self marked as persistent.
+        """
+        self.is_persistent = True
+        return self^
+
     # ===------------------------------------------------------------------=== #
     # String representation methods
     # ===------------------------------------------------------------------=== #
 
     fn __str__(self) -> String:
         """Returns a string representation of this argument definition."""
-        var s = String("Arg(name='") + self.name + "'"
+        var s = String("Argument(name='") + self.name + "'"
         if self.long_name:
             s += ", long='--" + self.long_name + "'"
         if self.short_name:
@@ -459,7 +545,7 @@ struct Arg(Copyable, Movable, Stringable, Writable):
         Args:
             writer: The writer to write to.
         """
-        writer.write("Arg(name='")
+        writer.write("Argument(name='")
         writer.write(self.name)
         writer.write("'")
         if self.long_name:
