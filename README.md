@@ -48,15 +48,30 @@ My goal is to provide a Mojo-idiomatic argument parsing library that can be easi
 
 ## Installation
 
-ArgMojo requires Mojo == 0.26.1 and uses [pixi](https://pixi.sh) for environment management.
+ArgMojo is available in the modular-community `https://repo.prefix.dev/modular-community` package repository. To access this repository, add it to your `channels` list in your `pixi.toml` file:
 
-```bash
-git clone https://github.com/forfudan/argmojo.git
-cd argmojo
-pixi install
+```toml
+channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-community", "conda-forge"]
 ```
 
-I make the Mojo version strictly 0.26.1 because that's the version I developed and tested on, and Mojo is rapidly evolving. Based on my experience, the library will not work every time there's a new Mojo release.
+Then, you can install ArgMojo using any of these methods:
+
+1. From the `pixi` CLI, run the command `pixi add argmojo`. This fetches the latest version and makes it immediately available for import.
+
+1. In the `mojoproject.toml` file of your project, add the following dependency:
+
+    ```toml
+    argmojo = "==0.2.0"
+    ```
+
+    Then run `pixi install` to download and install the package.
+
+The following table summarizes the package versions and their corresponding Mojo versions:
+
+| libary    | version | Mojo version | package manager |
+| --------- | ------- | ------------ | --------------- |
+| `argmojo` | v0.1.0  | ==v0.26.1    | pixi            |
+| `argmojo` | v0.2.0  | ==v0.26.1    | pixi            |
 
 ## Quick Start
 

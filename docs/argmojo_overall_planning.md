@@ -407,6 +407,7 @@ if result.subcommand == "search":
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
+- [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
@@ -421,7 +422,6 @@ if result.subcommand == "search":
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
 - [ ] **REMAINDER nargs** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
-- [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
 
 ### Explicitly Out of Scope
 
