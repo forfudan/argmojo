@@ -171,6 +171,7 @@ fn main() raises:
         "$ kido -- search   (-- stops dispatch; 'search' is a root positional)"
     )
     var app6 = build_app()
+    app6.allow_positional_with_subcommands()
     app6.add_argument(
         Argument("fallback", help="Fallback positional").positional()
     )

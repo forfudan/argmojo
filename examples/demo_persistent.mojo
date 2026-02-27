@@ -171,10 +171,6 @@ fn demo_conflict_detection() raises:
 fn main() raises:
     var app = build_app()
 
-    print("╔══════════════════════════════════════════════════════════════╗")
-    print("║            argmojo — persistent flags demo                   ║")
-    print("╚══════════════════════════════════════════════════════════════╝")
-
     demo_before_subcommand(app)
     demo_after_subcommand(app)
     demo_short_flag(app)

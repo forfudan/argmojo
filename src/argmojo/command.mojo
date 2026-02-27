@@ -173,6 +173,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
     no registered short option uses a digit character (auto-detect).
     Enable explicitly via `allow_negative_numbers()` when you have a digit
     short option and still need negative-number literals to pass through."""
+    var _allow_positional_with_subcommands: Bool
+    """When True, allows mixing positional arguments with subcommands.
+    By default (False), registering a positional arg on a Command that already 
+    has subcommands (or vice versa) raises an Error at registration time.
+    Call `allow_positional_with_subcommands()` to opt in explicitly."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
@@ -208,6 +213,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
         self._allow_negative_numbers = False
+        self._allow_positional_with_subcommands = False
         self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
@@ -233,6 +239,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
         self._allow_negative_numbers = move._allow_negative_numbers
+        self._allow_positional_with_subcommands = (
+            move._allow_positional_with_subcommands
+        )
         self._tips = move._tips^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
@@ -273,6 +282,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
         self._allow_negative_numbers = copy._allow_negative_numbers
+        self._allow_positional_with_subcommands = (
+            copy._allow_positional_with_subcommands
+        )
         self._tips = copy._tips.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
@@ -283,8 +295,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # Builder methods for configuring the command
     # ===------------------------------------------------------------------=== #
 
-    fn add_argument(mut self, var argument: Argument):
+    fn add_argument(mut self, var argument: Argument) raises:
         """Registers an argument definition.
+
+        Raises:
+            Error if adding a positional argument to a Command that already
+            has subcommands registered, unless
+            ``allow_positional_with_subcommands()`` has been called.
 
         Args:
             argument: The Argument to register.
@@ -298,6 +315,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var result = command.parse()
         ```
         """
+        # Guard: positional args + subcommands require explicit opt-in.
+        if (
+            argument.is_positional
+            and len(self.subcommands) > 0
+            and not self._allow_positional_with_subcommands
+        ):
+            self._error(
+                "Cannot add positional argument '"
+                + argument.name
+                + "' to '"
+                + self.name
+                + "' which already has subcommands. Call"
+                " allow_positional_with_subcommands() to opt in"
+            )
         self.args.append(argument^)
 
     fn add_subcommand(mut self, var sub: Command) raises:
@@ -332,6 +363,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
         app.add_subcommand(init^)
         ```
         """
+        # Guard: subcommands + positional args require explicit opt-in.
+        if not self._allow_positional_with_subcommands:
+            for _pi in range(len(self.args)):
+                if self.args[_pi].is_positional:
+                    self._error(
+                        "Cannot add subcommand '"
+                        + sub.name
+                        + "' to '"
+                        + self.name
+                        + "' which already has positional argument '"
+                        + self.args[_pi].name
+                        + "'. Call"
+                        " allow_positional_with_subcommands() to opt in"
+                    )
         # Conflict check: persistent parent args must not share names with
         # any local arg in the child — that would make the option ambiguous
         # after injection.
@@ -431,10 +476,38 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var command = Command("calc", "Calculator")
         command.allow_negative_numbers()
         command.add_argument(Argument("expr", help="Expression").positional().required())
-        # Now: calc -9.5  →  positionals = ["-9.5"]
+        # Now: calc -10.18  →  positionals = ["-10.18"]
         ```
         """
         self._allow_negative_numbers = True
+
+    fn allow_positional_with_subcommands(mut self):
+        """Allows a Command to have both positional args and subcommands.
+
+        By default, ArgMojo follows the convention of cobra (Go) and clap
+        (Rust): a Command with subcommands cannot also have positional
+        arguments, because the parser cannot unambiguously distinguish a
+        subcommand name from a positional value.
+
+        Call this method **before** registering positional args and
+        subcommands to opt in to the mixed mode.  In mixed mode, a token
+        that exactly matches a registered subcommand name is dispatched;
+        any other token falls through to the positional list.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var app = Command("tool", "Flexible tool")
+        app.allow_positional_with_subcommands()
+        app.add_argument(Argument("target", help="Default target").positional())
+        var sub = Command("build", "Build the project")
+        app.add_subcommand(sub^)
+        # Now: tool build    → dispatch to 'build' subcommand
+        #      tool foo.txt  → positional "foo.txt"
+        ```
+        """
+        self._allow_positional_with_subcommands = True
 
     fn add_tip(mut self, tip: String):
         """Adds a custom tip line to the bottom of the help message.
@@ -712,8 +785,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         All parse-time errors funnel through this method so that callers
         of both ``parse()`` and ``parse_args()`` always see coloured output
         while tests can still catch the raised ``Error`` normally.
+        The command name is included in the stderr output so that errors
+        from subcommands show the full path (e.g. ``app search: ...``).
         """
-        print(self._error_color + "error: " + msg + _RESET, file=stderr)
+        print(
+            self._error_color + "error: " + self.name + ": " + msg + _RESET,
+            file=stderr,
+        )
         raise Error(msg)
 
     fn parse(self) raises -> ParseResult:
@@ -928,7 +1006,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
             if arg.startswith("-") and len(arg) > 1:
                 # ── Negative-number detection (argparse-style) ──────────────
-                # A token like "-9.5e3" is treated as a positional value when:
+                # A token like "-10.18e3" is treated as a positional value when:
                 #   (a) allow_negative_numbers() was called explicitly, OR
                 #   (b) the token looks numeric AND no registered short option
                 #       uses a digit character (auto-detect, no naming clash).
@@ -1144,6 +1222,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # Build a child copy with persistent args injected so they
                     # are recognised wherever the user places them on the line.
                     var child_copy = self.subcommands[sub_idx].copy()
+                    # Set full command path so child help/errors show "app sub".
+                    child_copy.name = self.name + " " + arg
                     for _pi in range(len(self.args)):
                         if self.args[_pi].is_persistent:
                             child_copy.args.append(self.args[_pi].copy())
@@ -1196,6 +1276,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # All remaining tokens were consumed by the child.
                     i = len(raw_args)
                     continue
+                else:
+                    # No matching subcommand found.  When positionals are
+                    # not allowed (the usual case), produce a helpful error.
+                    # When allow_positional_with_subcommands is set, fall
+                    # through to positional handling below.
+                    if not self._allow_positional_with_subcommands:
+                        var avail = String("")
+                        var first = True
+                        for _si in range(len(self.subcommands)):
+                            if not self.subcommands[_si]._is_help_subcommand:
+                                if not first:
+                                    avail += ", "
+                                avail += self.subcommands[_si].name
+                                first = False
+                        self._error(
+                            "Unknown command '"
+                            + arg
+                            + "'. Available commands: "
+                            + avail
+                        )
 
             result.positionals.append(arg)
             i += 1
@@ -1692,6 +1792,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     s += " " + C + "[" + self.args[i].name + "]" + R
 
+        # Show <COMMAND> placeholder when subcommands are registered.
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " " + C + "<COMMAND>" + R
+
         s += " " + C + "[OPTIONS]" + R + "\n\n"
 
         # Positional arguments section.
@@ -1733,10 +1842,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += "\n"
 
         # Options section — two-pass for dynamic padding.
+        # Separate local options from persistent (global) options so they
+        # can be displayed under distinct headings.
         # Pass 1: build plain + coloured left-hand sides.
         var opt_plains = List[String]()
         var opt_colors = List[String]()
         var opt_helps = List[String]()
+        var opt_persistent = List[Bool]()
 
         for i in range(len(self.args)):
             if not self.args[i].is_positional and not self.args[i].is_hidden:
@@ -1824,6 +1936,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 opt_plains.append(plain)
                 opt_colors.append(colored)
+                opt_persistent.append(self.args[i].is_persistent)
                 # Append deprecation notice to help text if applicable.
                 var help = self.args[i].help_text
                 if self.args[i].deprecated_msg:
@@ -1832,7 +1945,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     help += "[deprecated: " + self.args[i].deprecated_msg + "]"
                 opt_helps.append(help)
 
-        # Built-in options.
+        # Built-in options (always shown under local "Options:" section).
         var help_plain = String("  -h, --help")
         var help_colored = (
             "  " + C + "-h" + R + ", " + C + "--help" + R
@@ -1841,34 +1954,96 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var version_colored = "  " + C + "-V" + R + ", " + C + "--version" + R
         opt_plains.append(help_plain)
         opt_colors.append(help_colored)
+        opt_persistent.append(False)
         opt_helps.append(String("Show this help message"))
         opt_plains.append(version_plain)
         opt_colors.append(version_colored)
+        opt_persistent.append(False)
         opt_helps.append(String("Show version"))
 
-        # Determine padding width: max plain-text left-side length + 4.
-        var max_left: Int = 0
+        # Check if there are any persistent (global) options.
+        var has_global = False
+        for k in range(len(opt_persistent)):
+            if opt_persistent[k]:
+                has_global = True
+                break
+
+        # Helper: compute padding width for a subset of options.
+        # Uses the plain-text width of matching entries.
+        var local_max: Int = 0
+        var global_max: Int = 0
         for k in range(len(opt_plains)):
-            if len(opt_plains[k]) > max_left:
-                max_left = len(opt_plains[k])
-        var pad_width = max_left + 4
+            if opt_persistent[k]:
+                if len(opt_plains[k]) > global_max:
+                    global_max = len(opt_plains[k])
+            else:
+                if len(opt_plains[k]) > local_max:
+                    local_max = len(opt_plains[k])
+        var local_pad = local_max + 4
+        var global_pad = global_max + 4
 
         # Pass 2: assemble padded lines using coloured text.
+        # Local options.
         s += H + "Options:" + R + "\n"
         for k in range(len(opt_plains)):
-            var line = opt_colors[k]
-            if opt_helps[k]:
-                var padding = pad_width - len(opt_plains[k])
-                for _p in range(padding):
-                    line += " "
-                line += opt_helps[k]
-            s += line + "\n"
+            if not opt_persistent[k]:
+                var line = opt_colors[k]
+                if opt_helps[k]:
+                    var padding = local_pad - len(opt_plains[k])
+                    for _p in range(padding):
+                        line += " "
+                    line += opt_helps[k]
+                s += line + "\n"
+
+        # Global (persistent) options — shown under a separate heading.
+        if has_global:
+            s += "\n" + H + "Global Options:" + R + "\n"
+            for k in range(len(opt_plains)):
+                if opt_persistent[k]:
+                    var line = opt_colors[k]
+                    if opt_helps[k]:
+                        var padding = global_pad - len(opt_plains[k])
+                        for _p in range(padding):
+                            line += " "
+                        line += opt_helps[k]
+                    s += line + "\n"
+
+        # Commands section — list registered subcommands with descriptions.
+        if has_subcommands:
+            var cmd_plains = List[String]()
+            var cmd_colors = List[String]()
+            var cmd_helps = List[String]()
+            for i in range(len(self.subcommands)):
+                if not self.subcommands[i]._is_help_subcommand:
+                    var plain = String("  ") + self.subcommands[i].name
+                    var colored = (
+                        String("  ") + C + self.subcommands[i].name + R
+                    )
+                    cmd_plains.append(plain)
+                    cmd_colors.append(colored)
+                    cmd_helps.append(self.subcommands[i].description)
+            # Compute padding.
+            var cmd_max: Int = 0
+            for k in range(len(cmd_plains)):
+                if len(cmd_plains[k]) > cmd_max:
+                    cmd_max = len(cmd_plains[k])
+            var cmd_pad = cmd_max + 4
+            s += "\n" + H + "Commands:" + R + "\n"
+            for k in range(len(cmd_plains)):
+                var line = cmd_colors[k]
+                if cmd_helps[k]:
+                    var padding = cmd_pad - len(cmd_plains[k])
+                    for _p in range(padding):
+                        line += " "
+                    line += cmd_helps[k]
+                s += line + "\n"
 
         # Tip: show '--' separator hint when positional args are registered.
         # When negative numbers are already handled automatically (either via
         # explicit allow_negative_numbers() or auto-detect: no digit short
         # options), the example changes to a generic dash-prefixed value
-        # rather than '-9.5', since that case no longer needs '--'.
+        # rather than '-10.18', since that case no longer needs '--'.
+        var tip_lines = List[String]()
         if has_positional:
             var neg_auto = self._allow_negative_numbers
             if not neg_auto:
@@ -1880,31 +2055,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         break
                 neg_auto = not has_digit_short
             if neg_auto:
-                s += (
-                    "\n"
-                    + H
-                    + "Tip:"
-                    + _RESET
-                    + " Use '--' to pass values starting with '-' as"
+                tip_lines.append(
+                    "Use '--' to pass values starting with '-' as"
                     " positionals:  "
                     + self.name
-                    + " -- -my-value\n"
+                    + " -- -my-value"
                 )
             else:
-                s += (
-                    "\n"
-                    + H
-                    + "Tip:"
-                    + _RESET
-                    + " Use '--' to pass values that start with '-' (e.g.,"
+                tip_lines.append(
+                    "Use '--' to pass values that start with '-' (e.g.,"
                     " negative numbers):  "
                     + self.name
-                    + " -- -9.5\n"
+                    + " -- -10.18"
                 )
 
         # User-defined tips — always shown when present.
         for _ti in range(len(self._tips)):
-            s += H + "Tip:" + _RESET + " " + self._tips[_ti] + "\n"
+            tip_lines.append(self._tips[_ti])
+
+        if len(tip_lines) > 0:
+            s += "\n" + H + "Tips:" + _RESET + "\n"
+            for _ti in range(len(tip_lines)):
+                s += "  " + tip_lines[_ti] + "\n"
 
         return s
 

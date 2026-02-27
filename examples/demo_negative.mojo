@@ -75,10 +75,10 @@ fn main() raises:
         Argument("operand", help="A numeric operand").positional().required()
     )
 
-    var args4: List[String] = ["calc", "--", "-9.5"]
+    var args4: List[String] = ["calc", "--", "-10.18"]
     var r4 = command4.parse_args(args4)
     print("positionals[0] =", r4.positionals[0])
-    check(r4.positionals[0] == "-9.5", "FAIL case 4")
+    check(r4.positionals[0] == "-10.18", "FAIL case 4")
     print("PASS ✓")
 
     # ── Case 5: digit short opt suppresses auto-detect ────────────────────────

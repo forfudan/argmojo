@@ -1,74 +1,95 @@
-"""Example: a mini CLI to demonstrate argmojo usage.
+"""Example: a full CLI to demonstrate argmojo usage with subcommands.
 
-Showcases: positional args, flags, key-value options, choices,
-count flags, hidden args, negatable flags, mutually exclusive groups,
-required-together groups, long option prefix matching, append/collect,
-one-required groups, value delimiter, multi-value options (nargs),
-conditional requirements, numeric range validation, key-value map options,
-aliases, and deprecated arguments.
+Showcases: subcommands, persistent (global) flags, per-command arguments,
+positional args, flags, key-value options, choices, count flags, hidden
+args, negatable flags, mutually exclusive groups, required-together groups,
+long option prefix matching, append/collect, one-required groups, value
+delimiter, multi-value options (nargs), conditional requirements, numeric
+range validation, key-value map options, aliases, deprecated arguments,
+custom tips, Commands section in help, Global Options heading, full
+command path in child help/errors, and unknown subcommand error.
 
-Long option prefix matching allows abbreviated options:
-  --verb  → --verbose
-  --ling  → --ling      (exact match)
-  --max   → --max-depth (unambiguous prefix)
+Try these:
+  demo --help                   # root help (Commands + Global Options)
+  demo search --help            # child help (full path + inherited globals)
+  demo -vv search --ling "fn main" ./src
+  demo init my-project --template minimal
+  demo export --json --save --output out.txt
 """
 
 from argmojo import Argument, Command
 
 
 fn main() raises:
-    var command = Command(
-        "sou",
+    var app = Command(
+        "demo",
         (
             "A CJK-aware text search tool that supports Pinyin and Yuhao Input"
             " Methods."
         ),
-        version="0.1.0",
+        version="0.2.0",
     )
 
-    # ── Positional arguments ─────────────────────────────────────────────
-    command.add_argument(
+    # ── Persistent (global) flags ────────────────────────────────────────
+    # These are available on ALL subcommands and can appear before or after
+    # the subcommand token.  In the help output they appear under a
+    # separate "Global Options:" heading.
+    app.add_argument(
+        Argument("verbose", help="Increase verbosity (-v, -vv, -vvv)")
+        .long("verbose")
+        .short("v")
+        .count()
+        .persistent()
+    )
+    app.add_argument(
+        Argument("color", help="Enable colored output")
+        .long("color")
+        .flag()
+        .negatable()
+        .persistent()
+    )
+
+    # ── Custom tips ───────────────────────────────────────────────────────────
+    app.add_tip("Expressions starting with `-` are accepted as positionals.")
+    app.add_tip("Use quotes if you use spaces in expressions.")
+
+    # ── search subcommand ─────────────────────────────────────────────────────
+    var search = Command("search", "Search for patterns in source files")
+
+    # Positional arguments
+    search.add_argument(
         Argument("pattern", help="Search pattern").positional().required()
     )
-    command.add_argument(
+    search.add_argument(
         Argument("path", help="Search path").positional().default(".")
     )
 
-    # ── Boolean flags ────────────────────────────────────────────────────
-    command.add_argument(
+    # Boolean flags
+    search.add_argument(
         Argument("ling", help="Use Lingming IME (靈明輸入法) for encoding")
         .long("ling")
         .short("l")
         .flag()
     )
-    command.add_argument(
+    search.add_argument(
         Argument("ignore-case", help="Case-insensitive search")
         .long("ignore-case")
         .short("i")
         .flag()
     )
 
-    # ── Count flag (verbosity) ───────────────────────────────────────────
-    # Use -v, -vv, -vvv or --verbose --verbose to increase verbosity.
-    command.add_argument(
-        Argument("verbose", help="Increase verbosity (-v, -vv, -vvv)")
-        .long("verbose")
-        .short("v")
-        .count()
-    )
-
-    # ── Key-value option with metavar ────────────────────────────────────
-    command.add_argument(
+    # Key-value option with metavar + numeric range
+    search.add_argument(
         Argument("max-depth", help="Maximum directory depth")
         .long("max-depth")
         .short("d")
         .metavar("N")
-        .range(1, 100)  # Numeric range validation
+        .range(1, 100)
     )
 
-    # ── Choices validation ───────────────────────────────────────────────
+    # Choices validation
     var formats: List[String] = ["json", "csv", "table"]
-    command.add_argument(
+    search.add_argument(
         Argument("format", help="Output format")
         .long("format")
         .short("f")
@@ -76,61 +97,107 @@ fn main() raises:
         .default("table")
     )
 
-    # ── Negatable flag ────────────────────────────────────────────────────
-    # --color enables colour, --no-color disables it.
-    command.add_argument(
-        Argument("color", help="Enable colored output")
-        .long("color")
-        .flag()
-        .negatable()
-    )
-
-    # ── Mutually exclusive + one-required group ────────────────────────
-    # Only one of --json / --yaml / --xml may be used,
-    # but at least one is required.
-    command.add_argument(
-        Argument("json", help="Output as JSON").long("json").flag()
-    )
-    command.add_argument(
-        Argument("yaml", help="Output as YAML").long("yaml").flag()
-    )
-    command.add_argument(
-        Argument("xml", help="Output as XML").long("xml").flag()
-    )
-    var format_excl: List[String] = ["json", "yaml", "xml"]
-    var format_req: List[String] = ["json", "yaml", "xml"]
-    command.mutually_exclusive(format_excl^)
-    command.one_required(format_req^)
-
-    # ── Hidden argument (internal / debug) ───────────────────────────────
-    command.add_argument(
-        Argument("debug-index", help="Dump internal index (debug only)")
-        .long("debug-index")
-        .flag()
-        .hidden()
-    )
-
-    # ── Append / collect action ──────────────────────────────────────────
-    # --tag can be used multiple times; values are collected into a list.
-    command.add_argument(
+    # Append / collect action
+    search.add_argument(
         Argument("tag", help="Add a tag (repeatable)")
         .long("tag")
         .short("t")
         .append()
     )
 
-    # ── Value delimiter ──────────────────────────────────────────────────
-    # --env accepts comma-separated values; each is split and collected.
-    command.add_argument(
+    # Value delimiter
+    search.add_argument(
         Argument("env", help="Target environments (comma-separated)")
         .long("env")
         .short("e")
         .delimiter(",")
     )
 
-    # ── Multi-value option (nargs) ───────────────────────────────────────
-    # --point consumes exactly 2 values per occurrence (X Y coordinates).
-    command.add_argument(
+    # Hidden argument (internal / debug)
+    search.add_argument(
+        Argument("debug-index", help="Dump internal index (debug only)")
+        .long("debug-index")
+        .flag()
+        .hidden()
+    )
+
+    app.add_subcommand(search^)
+
+    # ── init subcommand ──────────────────────────────────────────────────
+    var init = Command("init", "Initialise a new project from a template")
+    init.add_argument(
+        Argument("name", help="Project name").positional().required()
+    )
+
+    var templates: List[String] = ["default", "minimal", "full"]
+    init.add_argument(
+        Argument("template", help="Template name")
+        .long("template")
+        .short("t")
+        .choices(templates^)
+        .default("default")
+    )
+    init.add_argument(
+        Argument("dry-run", help="Preview changes without writing files")
+        .long("dry-run")
+        .flag()
+    )
+
+    # Required-together group
+    init.add_argument(
+        Argument("username", help="Auth username").long("username").short("u")
+    )
+    init.add_argument(
+        Argument("password", help="Auth password").long("password").short("p")
+    )
+    var auth_group: List[String] = ["username", "password"]
+    init.required_together(auth_group^)
+
+    app.add_subcommand(init^)
+
+    # ── export subcommand ────────────────────────────────────────────────
+    var export_cmd = Command("export", "Export search results to a file")
+
+    # Mutually exclusive + one-required (exactly-one pattern)
+    export_cmd.add_argument(
+        Argument("json", help="Output as JSON").long("json").flag()
+    )
+    export_cmd.add_argument(
+        Argument("yaml", help="Output as YAML").long("yaml").flag()
+    )
+    export_cmd.add_argument(
+        Argument("xml", help="Output as XML").long("xml").flag()
+    )
+    var excl: List[String] = ["json", "yaml", "xml"]
+    var req: List[String] = ["json", "yaml", "xml"]
+    export_cmd.mutually_exclusive(excl^)
+    export_cmd.one_required(req^)
+
+    # Conditional requirement
+    export_cmd.add_argument(
+        Argument("save", help="Save results to file")
+        .long("save")
+        .short("S")
+        .flag()
+    )
+    export_cmd.add_argument(
+        Argument("output", help="Output file (required with --save)")
+        .long("output")
+        .short("O")
+        .metavar("FILE")
+    )
+    export_cmd.required_if("output", "save")
+
+    # Key-value map option
+    export_cmd.add_argument(
+        Argument("define", help="Define a variable (key=value)")
+        .long("define")
+        .short("D")
+        .map_option()
+    )
+
+    # Multi-value option (nargs)
+    export_cmd.add_argument(
         Argument("point", help="X Y coordinate")
         .long("point")
         .short("P")
@@ -138,78 +205,37 @@ fn main() raises:
         .metavar("N")
     )
 
-    # ── Required-together group ──────────────────────────────────────────
-    # --username and --password must both be provided, or neither.
-    command.add_argument(
-        Argument("username", help="Auth username").long("username").short("u")
-    )
-    command.add_argument(
-        Argument("password", help="Auth password").long("password").short("p")
-    )
-    var auth_group: List[String] = ["username", "password"]
-    command.required_together(auth_group^)
-
-    # ── Conditional requirement ──────────────────────────────────────────
-    # --output is required only when --save is provided.
-    command.add_argument(
-        Argument("save", help="Save search results to file")
-        .long("save")
-        .short("S")
-        .flag()
-    )
-    command.add_argument(
-        Argument("output", help="Output file path (required with --save)")
-        .long("output")
-        .short("O")
-        .metavar("FILE")
-    )
-    command.required_if("output", "save")
-
-    # ── Numeric range validation ─────────────────────────────────────────
-    # --port only accepts values between 1 and 65535.
-    command.add_argument(
-        Argument("port", help="Listening port")
-        .long("port")
-        .range(1, 65535)
-        .metavar("PORT")
-    )
-
-    # ── Key-value map option ─────────────────────────────────────────────
-    # --define / -D collects key=value pairs into a dictionary.
-    command.add_argument(
-        Argument("define", help="Define a variable (key=value)")
-        .long("define")
-        .short("D")
-        .map_option()
-    )
-
-    # ── Aliases ──────────────────────────────────────────────────────────
-    # --colour and --color both resolve to the same argument.
+    # Aliases
     var colour_aliases: List[String] = ["color"]
-    command.add_argument(
+    export_cmd.add_argument(
         Argument("colour", help="Colour theme")
         .long("colour")
         .aliases(colour_aliases^)
         .default("auto")
     )
 
-    # ── Deprecated argument ──────────────────────────────────────────────
-    # --format-old still works but emits a warning on stderr.
-    command.add_argument(
+    # Deprecated argument
+    export_cmd.add_argument(
         Argument("formatting", help="Legacy output format")
         .long("formatting")
-        .deprecated("Use --format instead")
+        .deprecated("Use --json/--yaml/--xml instead")
     )
 
-    # ── Show tips ───────────────────────────────────────
-    command.add_tip("Expressions starting with `-` are accepted.")
-    command.add_tip("Use quotes if you use spaces in expressions.")
+    # Numeric range validation
+    export_cmd.add_argument(
+        Argument("port", help="Listening port")
+        .long("port")
+        .range(1, 65535)
+        .metavar("PORT")
+    )
+
+    app.add_subcommand(export_cmd^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
-    command.help_on_no_args()
+    app.help_on_no_args()
 
     # ── Parse real argv ──────────────────────────────────────────────────
-    var result = command.parse()
+    var result = app.parse()
 
     # ── Display parsed results ───────────────────────────────────────────
-    command.print_summary(result)
+    app.print_summary(result)

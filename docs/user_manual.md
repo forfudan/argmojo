@@ -32,18 +32,26 @@ from argmojo import Argument, Command
   - [Key-Value Map Options](#key-value-map-options)
 - [Value Validation](#value-validation)
   - [Choices Validation](#choices-validation)
-  - [Positional Argument Count Validation](#positional-arg-count-validation)
+  - [Positional Argument Count Validation](#positional-argument-count-validation)
   - [Numeric Range Validation](#numeric-range-validation)
 - [Group Constraints](#group-constraints)
   - [Mutually Exclusive Groups](#mutually-exclusive-groups)
   - [One-Required Groups](#one-required-groups)
   - [Required-Together Groups](#required-together-groups)
   - [Conditional Requirements](#conditional-requirements)
+- [Subcommands](#subcommands)
+  - [Defining Subcommands](#defining-subcommands)
+  - [Parsing Subcommand Results](#parsing-subcommand-results)
+  - [Persistent (Global) Flags](#persistent-global-flags)
+  - [The help Subcommand](#the-help-subcommand)
+  - [Unknown Subcommand Error](#unknown-subcommand-error)
+  - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
 - [Help \& Display](#help--display)
   - [Metavar](#metavar)
   - [Hidden Arguments](#hidden-arguments)
   - [Deprecated Arguments](#deprecated-arguments)
   - [Auto-generated Help](#auto-generated-help)
+  - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
 - [Parsing Behaviour](#parsing-behaviour)
   - [Negative Number Passthrough](#negative-number-passthrough)
@@ -1227,6 +1235,311 @@ Error: Argument '--output' is required when '--save' is provided
 > appear. `required_if()` is one-directional — only the target is
 > required when the condition is present, not vice versa.
 
+## Subcommands
+
+Subcommands (`app <subcommand> [args]`) let you group related functionality under a single binary — similar to `git commit`, `docker run`, or `cargo build`. In ArgMojo, a subcommand is simply another `Command` instance registered on the parent.
+
+### Defining Subcommands
+
+Register subcommands with `add_subcommand()`. Each subcommand has its own set of arguments, help text, and validation rules.
+
+```mojo
+var app = Command("app", "My CLI tool", version="1.0.0")
+app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+
+var search = Command("search", "Search for patterns")
+search.add_argument(Argument("pattern", help="Search pattern").positional().required())
+search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").metavar("N"))
+
+var init = Command("init", "Initialise a new project")
+init.add_argument(Argument("name", help="Project name").positional().required())
+
+app.add_subcommand(search^)
+app.add_subcommand(init^)
+
+var result = app.parse()
+```
+
+```bash
+app search "fn main" --max-depth 3
+app init my-project
+```
+
+---
+
+**Root-level flags before the subcommand token** are parsed as part of the root command:
+
+```bash
+app --verbose search "fn main"
+# verbose = True (root flag), subcommand = "search"
+```
+
+---
+
+**Help output** — when subcommands are registered, the root help automatically includes a **Commands** section and the usage line shows `<COMMAND>`:
+
+```text
+My CLI tool
+
+Usage: app <COMMAND> [OPTIONS]
+
+Options:
+  -v, --verbose    Verbose output
+  -h, --help       Show this help message
+  -V, --version    Show version
+
+Commands:
+  search    Search for patterns
+  init      Initialise a new project
+```
+
+---
+
+**Child help** shows the full command path in the usage line:
+
+```bash
+app search --help
+```
+
+```text
+Search for patterns
+
+Usage: app search <pattern> [OPTIONS]
+
+Arguments:
+  pattern    Search pattern
+
+Options:
+  -d, --max-depth N    Max depth
+  -h, --help           Show this help message
+  -V, --version        Show version
+```
+
+---
+
+**The `--` stop marker** prevents subcommand dispatch. After `--`, all tokens become positional arguments for the root command:
+
+```bash
+app -- search
+# "search" is a root positional, NOT a subcommand dispatch
+```
+
+### Parsing Subcommand Results
+
+After parsing, check `result.subcommand` to see which subcommand was selected, and use `result.get_subcommand_result()` to access the child's parsed values.
+
+```mojo
+var result = app.parse()
+
+if result.subcommand == "search":
+    var sub = result.get_subcommand_result()
+    var pattern = sub.get_string("pattern")
+    var depth = sub.get_int("max-depth") if sub.has("max-depth") else 10
+    print("Searching for:", pattern)
+
+elif result.subcommand == "init":
+    var sub = result.get_subcommand_result()
+    var name = sub.get_string("name")
+    print("Initialising project:", name)
+```
+
+| Method / Field                   | Returns       | Description                                  |
+| -------------------------------- | ------------- | -------------------------------------------- |
+| `result.subcommand`              | `String`      | Name of selected subcommand (empty if none). |
+| `result.has_subcommand_result()` | `Bool`        | `True` if a subcommand was dispatched.       |
+| `result.get_subcommand_result()` | `ParseResult` | The child command's parsed result.           |
+
+All standard `ParseResult` methods (`get_flag()`, `get_string()`, `get_int()`, `get_list()`, `get_map()`, `get_count()`, `has()`) work on the subcommand result.
+
+### Persistent (Global) Flags
+
+A **persistent** flag is declared on the parent command but is automatically available in every subcommand. The user can place it either **before** or **after** the subcommand token — both work identically.
+
+This is inspired by Go cobra's `PersistentFlags()` and is useful for cross-cutting concerns like verbosity, output format, or colour control.
+
+---
+
+**Defining persistent flags**
+
+```mojo
+var app = Command("app", "My app")
+
+# These are available everywhere
+app.add_argument(
+    Argument("verbose", help="Verbose output")
+    .long("verbose").short("v").flag().persistent()
+)
+app.add_argument(
+    Argument("output", help="Output format")
+    .long("output").short("o")
+    .choices(["json", "text", "yaml"])
+    .default("text")
+    .persistent()
+)
+
+var search = Command("search", "Search for patterns")
+search.add_argument(Argument("pattern", help="Pattern").positional().required())
+app.add_subcommand(search^)
+```
+
+---
+
+**Both positions work**
+
+```bash
+app --verbose search "fn main"     # flag BEFORE subcommand
+app search --verbose "fn main"     # flag AFTER subcommand  (same result)
+app -v search -o json "fn main"    # short forms work too
+```
+
+---
+
+**Bidirectional sync** — persistent flag values are synchronised between root and child results, regardless of where the user places them:
+
+```mojo
+var result = app.parse()
+var sub = result.get_subcommand_result()
+
+# Both see the same value, no matter where the flag was placed
+print(result.get_flag("verbose"))   # True
+print(sub.get_flag("verbose"))      # True
+```
+
+---
+
+**Help output** — persistent flags appear under a separate **Global Options** heading in both root and child help:
+
+```text
+# Root help (app --help)
+Options:
+  -h, --help       Show this help message
+  -V, --version    Show version
+
+Global Options:
+  -v, --verbose               Verbose output
+  -o, --output {json,text,yaml}    Output format
+
+# Child help (app search --help)
+Options:
+  -h, --help    Show this help message
+  -V, --version Show version
+
+Global Options:
+  -v, --verbose               Verbose output
+  -o, --output {json,text,yaml}    Output format
+```
+
+---
+
+**Conflict detection** — if a persistent flag on the parent has the same long or short name as a local flag on a child, `add_subcommand()` raises an error at registration time:
+
+```mojo
+var app = Command("app", "My app")
+app.add_argument(Argument("verbose", help="Verbose").long("verbose").short("v").flag().persistent())
+
+var sub = Command("sub", "A child")
+sub.add_argument(Argument("verbose", help="Also verbose").long("verbose").flag())  # conflict!
+
+app.add_subcommand(sub^)  # raises: Persistent flag '--verbose' on 'app'
+                           #         conflicts with '--verbose' on subcommand 'sub'
+```
+
+Non-persistent root flags with the same name as child flags do **not** conflict — they are independent and scoped to their own command.
+
+---
+
+**All argument types** can be made persistent — flags, count flags, value options, choices, etc.:
+
+```mojo
+app.add_argument(
+    Argument("log-level", help="Log level")
+    .long("log-level").choices(["debug", "info", "warn", "error"])
+    .default("info").persistent()
+)
+```
+
+### The help Subcommand
+
+When you call `add_subcommand()` for the first time, ArgMojo automatically registers a `help` subcommand. This mirrors the behaviour of `git help`, `cargo help`, and `kubectl help`.
+
+```bash
+app help search    # equivalent to: app search --help
+app help init      # equivalent to: app init --help
+app help           # shows root help (same as: app --help)
+```
+
+The auto-registered `help` subcommand is excluded from the **Commands** section in help output to avoid clutter.
+
+---
+
+**Disabling the help subcommand**
+
+If you don't want the auto-registered `help` subcommand (e.g., you want to use `help` as a real subcommand name), call `disable_help_subcommand()`:
+
+```mojo
+app.disable_help_subcommand()
+```
+
+This can be called before or after `add_subcommand()`. If called after, the auto-added `help` entry is removed.
+
+### Unknown Subcommand Error
+
+When the root command has subcommands registered **and `allow_positional_with_subcommands()` has not been called**, an unrecognised token triggers an error listing available commands:
+
+```bash
+app foobar
+# error: app: Unknown command 'foobar'. Available commands: search, init
+```
+
+The error message excludes the auto-registered `help` subcommand from the list.
+
+If the command has opted in via `allow_positional_with_subcommands()`, unknown tokens are treated as positionals rather than triggering this error.
+
+### Mixing Positional Args with Subcommands
+
+By default, ArgMojo **prevents** mixing positional arguments and subcommands on the same command. This follows the convention of major CLI frameworks (cobra, clap, Click) — mixing the two creates ambiguity about whether an unknown token is a misspelt subcommand or a positional value.
+
+```mojo
+var app = Command("app", "My app")
+app.add_subcommand(Command("search", "Search")^)
+app.add_argument(Argument("query", help="Query").positional())  # raises!
+```
+
+The same guard triggers if you add a subcommand to a command that already has positional arguments:
+
+```mojo
+var app = Command("app", "My app")
+app.add_argument(Argument("file", help="File").positional())
+app.add_subcommand(Command("init", "Init")^)  # raises!
+```
+
+If you genuinely need both (e.g., `--` stopping dispatch so the subcommand name becomes a positional), call `allow_positional_with_subcommands()` before adding either:
+
+```mojo
+var app = Command("app", "My app")
+app.allow_positional_with_subcommands()
+app.add_subcommand(Command("search", "Search")^)
+app.add_argument(Argument("fallback", help="Fallback").positional())
+
+# "foo" doesn't match any subcommand → treated as positional
+var args: List[String] = ["app", "foo"]
+var result = app.parse_args(args)
+print(result.positionals[0])  # "foo"
+```
+
+Please seriously **think twice** before doing this — it's usually better to design your CLI with a clear separation between subcommands and positionals. Allowing both on the same command can lead to confusing user experiences and error messages.
+
+---
+
+**Error path prefix** — errors inside child parsing include the full command path for clarity:
+
+```bash
+app search --unknown-flag
+# error: app search: Unknown option '--unknown-flag'
+```
+
+This makes it immediately clear which subcommand triggered the error, especially in deeply nested command trees.
+
 ## Help & Display
 
 ### Metavar
@@ -1457,6 +1770,48 @@ This is particularly useful for commands that require arguments — instead of
 showing an obscure "missing required argument" error, the user sees the
 full help text.
 
+### Custom Tips
+
+Add custom **tip lines** to the bottom of your help output with `add_tip()`.
+This is useful for documenting common patterns, gotchas, or examples.
+
+```mojo
+var command = Command("calc", "A calculator")
+command.add_argument(Argument("expr", help="Expression").positional().required())
+command.add_tip("Expressions starting with `-` are accepted.")
+command.add_tip("Use quotes if you use spaces in expressions.")
+```
+
+```text
+A calculator
+
+Usage: calc <expr> [OPTIONS]
+
+Arguments:
+  expr    Expression
+
+Options:
+  -h, --help       Show this help message
+  -V, --version    Show version
+
+Tip: Use '--' to pass values starting with '-' as positionals:  calc -- -10.18
+Tip: Expressions starting with `-` are accepted.
+Tip: Use quotes if you use spaces in expressions.
+```
+
+---
+
+**Smart default tip** — when positional arguments are defined, ArgMojo automatically adds a
+built-in tip explaining the `--` separator. The example in this default tip adapts
+based on whether negative numbers are auto-detected: if they are, it uses
+`-my-value`; otherwise, it uses `-10.18`.
+
+User-defined tips appear **below** the built-in tip.
+
+---
+
+Multiple tips can be added; each is displayed on its own line prefixed with `Tip:`.
+
 ### Version Display
 
 Every command automatically supports `--version` (or `-V`).
@@ -1484,7 +1839,7 @@ After printing the version, the program exits cleanly with exit code 0.
 
 ### Negative Number Passthrough
 
-By default, tokens starting with `-` are interpreted as options. This creates a problem when you need to pass **negative numbers** (like `-9.5`, `-3.14`, `-1.5e10`) as positional values.
+By default, tokens starting with `-` are interpreted as options. This creates a problem when you need to pass **negative numbers** (like `-10.18`, `-3.14`, `-1.5e10`) as positional values.
 
 ArgMojo provides three complementary approaches to handle this, inspired by Python's argparse.
 
@@ -1518,14 +1873,14 @@ Recognised patterns: `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-Ne+X`, `-Ne-X` (wh
 The `--` stop marker forces everything after it to be treated as positional. This is the most universal approach and works regardless of any configuration.
 
 ```bash
-calc -- -9.5         # operand = "-9.5"
+calc -- -10.18         # operand = "-10.18"
 calc -- -3e4         # operand = "-3e4"
 ```
 
 See [The `--` Stop Marker](#the----stop-marker) for details. When positional arguments are registered, ArgMojo's help output includes a **Tip** line reminding users about this:
 
 ```text
-Tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc -- -9.5
+Tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc -- -10.18
 ```
 
 ---
@@ -1666,8 +2021,8 @@ myapp --ling -- "-v is not a flag here" ./src
 A common use-case is passing **negative numbers** as positional arguments:
 
 ```bash
-myapp -- -9.5
-# pattern = "-9.5"
+myapp -- -10.18
+# pattern = "-10.18"
 ```
 
 > **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).

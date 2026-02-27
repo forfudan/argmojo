@@ -665,6 +665,7 @@ fn test_dispatch_child_flag_short() raises:
 fn test_dispatch_double_dash_stops_dispatch() raises:
     """Tests that -- before subcommand name prevents dispatch."""
     var app = Command("app", "My app")
+    app.allow_positional_with_subcommands()
     var search = Command("search", "Search")
     search.add_argument(Argument("pattern", help="Pattern").positional())
     app.add_subcommand(search^)
@@ -683,6 +684,7 @@ fn test_dispatch_unknown_token_is_positional() raises:
     """Tests that an unknown token (no subcommand match) is treated as positional.
     """
     var app = Command("app", "My app")
+    app.allow_positional_with_subcommands()
     var search = Command("search", "Search")
     app.add_subcommand(search^)
     app.add_argument(Argument("name", help="Name").positional())
@@ -780,6 +782,7 @@ fn test_dispatch_child_default_value() raises:
 fn test_dispatch_no_subcommand_when_none_match() raises:
     """Tests that subcommand field stays empty when no token matches."""
     var app = Command("app", "My app")
+    app.allow_positional_with_subcommands()
     var search = Command("search", "Search")
     app.add_subcommand(search^)
     app.add_argument(Argument("file", help="File").positional())
@@ -946,6 +949,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     """Tests that with help disabled, 'help' token is treated as a positional.
     """
     var app = Command("app", "My app")
+    app.allow_positional_with_subcommands()
     app.add_argument(Argument("query", help="Query").positional())
     app.disable_help_subcommand()
     app.add_subcommand(Command("init", "Init")^)
@@ -956,6 +960,194 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     assert_equal(result.subcommand, "")
     assert_equal(result.positionals[0], "help")
     print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
+
+
+# ── Phase 4 Step 5: Error handling ───────────────────────────────────────────
+
+
+fn test_unknown_subcommand_error_no_positionals() raises:
+    """Tests that an unknown subcommand name gives an error when no positional args are defined.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("init", "Init")^)
+
+    var args: List[String] = ["app", "foo"]
+    var caught = False
+    try:
+        _ = app.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Unknown command" in msg,
+            msg="Should mention unknown command",
+        )
+        assert_true("foo" in msg, msg="Should mention 'foo'")
+        assert_true("search" in msg, msg="Should list available 'search'")
+        assert_true("init" in msg, msg="Should list available 'init'")
+    assert_true(caught, msg="Should have raised for unknown subcommand")
+    print("  ✓ test_unknown_subcommand_error_no_positionals")
+
+
+fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
+    """Tests that unknown token becomes positional when root has positional args.
+    """
+    var app = Command("app", "My app")
+    app.allow_positional_with_subcommands()
+    app.add_argument(Argument("query", help="Query").positional())
+    app.add_subcommand(Command("search", "Search")^)
+
+    # "foo" doesn't match any subcommand but root has positional args → positional.
+    var args: List[String] = ["app", "foo"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_equal(result.positionals[0], "foo")
+    print("  ✓ test_unknown_token_becomes_positional_when_positionals_defined")
+
+
+fn test_child_error_includes_command_path() raises:
+    """Tests that child parse errors include the full command path in stderr."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    search.add_argument(
+        Argument("pattern", help="Pattern").positional().required()
+    )
+    app.add_subcommand(search^)
+
+    # Missing required positional in child.
+    var args: List[String] = ["app", "search"]
+    var caught = False
+    try:
+        _ = app.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Required argument" in msg,
+            msg="Should mention required argument",
+        )
+        assert_true("pattern" in msg, msg="Should mention 'pattern'")
+    assert_true(caught, msg="Should have raised for missing required in child")
+    print("  ✓ test_child_error_includes_command_path")
+
+
+fn test_unknown_subcommand_error_excludes_help_sub() raises:
+    """Tests that the error message for unknown subcommand does not list 'help'.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+
+    var args: List[String] = ["app", "foo"]
+    var caught = False
+    try:
+        _ = app.parse_args(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Unknown command" in msg,
+            msg="Should mention unknown command",
+        )
+        assert_true("search" in msg, msg="Should list 'search'")
+        # 'help' should not appear in available commands.
+        # But the full msg could contain "help" in other contexts.
+        # Check the "Available commands:" part specifically.
+        var avail_start = msg.find("Available commands: ")
+        if avail_start >= 0:
+            var avail_part = String(msg[avail_start:])
+            assert_false(
+                "help" in avail_part,
+                msg="'help' sub should not appear in available commands",
+            )
+    assert_true(caught, msg="Should have raised")
+    print("  ✓ test_unknown_subcommand_error_excludes_help_sub")
+
+
+# ── Phase 4 Step 6: Positional + subcommand guard ────────────────────────────
+
+
+fn test_add_positional_after_subcommand_raises() raises:
+    """Tests that adding a positional after a subcommand raises without opt-in.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+
+    var caught = False
+    try:
+        app.add_argument(Argument("query", help="Query").positional())
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Cannot add positional argument" in msg,
+            msg="Should mention positional conflict",
+        )
+        assert_true(
+            "allow_positional_with_subcommands" in msg,
+            msg="Should mention opt-in method",
+        )
+    assert_true(caught, msg="Should have raised")
+    print("  ✓ test_add_positional_after_subcommand_raises")
+
+
+fn test_add_subcommand_after_positional_raises() raises:
+    """Tests that adding a subcommand after a positional raises without opt-in.
+    """
+    var app = Command("app", "My app")
+    app.add_argument(Argument("file", help="File").positional())
+
+    var caught = False
+    try:
+        app.add_subcommand(Command("init", "Init")^)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Cannot add subcommand" in msg,
+            msg="Should mention subcommand conflict",
+        )
+        assert_true(
+            "allow_positional_with_subcommands" in msg,
+            msg="Should mention opt-in method",
+        )
+    assert_true(caught, msg="Should have raised")
+    print("  ✓ test_add_subcommand_after_positional_raises")
+
+
+fn test_allow_positional_with_subcommands_opt_in() raises:
+    """Tests that with opt-in, both directions work without error."""
+    # Direction 1: positional first, then subcommand.
+    var app1 = Command("app", "My app")
+    app1.allow_positional_with_subcommands()
+    app1.add_argument(Argument("file", help="File").positional())
+    app1.add_subcommand(Command("init", "Init")^)
+    assert_equal(len(app1.subcommands), 2)  # init + auto help
+
+    # Direction 2: subcommand first, then positional.
+    var app2 = Command("app", "My app")
+    app2.allow_positional_with_subcommands()
+    app2.add_subcommand(Command("search", "Search")^)
+    app2.add_argument(Argument("query", help="Query").positional())
+
+    # Verify parsing works: unknown token → positional.
+    var args: List[String] = ["app", "hello"]
+    var result = app2.parse_args(args)
+    assert_equal(result.subcommand, "")
+    assert_equal(result.positionals[0], "hello")
+    print("  ✓ test_allow_positional_with_subcommands_opt_in")
+
+
+fn test_non_positional_args_unaffected_by_guard() raises:
+    """Tests that adding non-positional (flags/options) with subcommands
+    does not trigger the guard, even without opt-in."""
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    # These should NOT raise:
+    app.add_argument(Argument("verbose", help="Verbose").long("verbose").flag())
+    app.add_argument(Argument("output", help="Output").long("output"))
+    assert_true(True, msg="Non-positional args should not trigger guard")
+    print("  ✓ test_non_positional_args_unaffected_by_guard")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────

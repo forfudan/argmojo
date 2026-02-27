@@ -114,10 +114,10 @@ fn test_mixed_negative_and_options() raises:
         Argument("value", help="A number").positional().required()
     )
 
-    var args: List[String] = ["test", "--verbose", "-9.5"]
+    var args: List[String] = ["test", "--verbose", "-10.18"]
     var result = command.parse_args(args)
     assert_true(result.get_flag("verbose"))
-    assert_equal(result.positionals[0], "-9.5")
+    assert_equal(result.positionals[0], "-10.18")
     print("  ✓ test_mixed_negative_and_options")
 
 
@@ -190,15 +190,16 @@ fn test_digit_short_suppresses_auto_detect() raises:
 
 
 fn test_double_dash_passes_negative_number() raises:
-    """'-- -9.5' always passes -9.5 as a positional (pre-existing behaviour)."""
+    """'-- -10.18' always passes -10.18 as a positional (pre-existing behaviour).
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("value", help="A number").positional().required()
     )
 
-    var args: List[String] = ["test", "--", "-9.5"]
+    var args: List[String] = ["test", "--", "-10.18"]
     var result = command.parse_args(args)
-    assert_equal(result.positionals[0], "-9.5")
+    assert_equal(result.positionals[0], "-10.18")
     print("  ✓ test_double_dash_passes_negative_number")
 
 

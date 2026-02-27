@@ -129,20 +129,22 @@ This gives us the raw list of argument strings, and the remaining task is to imp
 ```txt
 src/argmojo/
 ├── __init__.mojo               # Package exports (Argument, Command, ParseResult)
-├── argument.mojo                # Argument struct — argument definition with builder pattern
+├── argument.mojo               # Argument struct — argument definition with builder pattern
 ├── command.mojo                # Command struct — command definition & parsing
-└── parse_result.mojo            # ParseResult struct — parsed values
+└── parse_result.mojo           # ParseResult struct — parsed values
 tests/
 ├── test_parse.mojo             # Core parsing tests (flags, values, shorts, etc.)
 ├── test_groups.mojo            # Group constraint tests (exclusive, conditional, etc.)
 ├── test_collect.mojo           # Collection feature tests (append, delimiter, nargs)
 ├── test_help.mojo              # Help output tests (formatting, colours, alignment)
 ├── test_extras.mojo            # Range, map, alias, deprecated tests
-└── test_subcommands.mojo       # Phase 4 subcommand tests (Step 0+)
-└── test_negative_numbers.mojo  # Negative number passthrough tests
+├── test_subcommands.mojo       # Subcommand tests (dispatch, help sub, unknown sub, etc.)
+├── test_negative_numbers.mojo  # Negative number passthrough tests
+└── test_persistent.mojo        # Persistent (global) flag tests
 examples/
 ├── demo.mojo                   # Demo CLI tool, compilable to binary
-├── demo_subcommands.mojo       # Subcommand routing demo (Phase 4 Step 2 + 2b)
+├── demo_subcommands.mojo       # Subcommand routing demo (dispatch + help sub)
+├── demo_persistent.mojo        # Persistent flag demo (injection + sync)
 └── demo_negative.mojo          # Negative number passthrough demo
 ```
 
@@ -343,18 +345,19 @@ if result.subcommand == "search":
 
 #### Step 4 — Help & UX
 
-- [ ] Root `_generate_help()` appends a "Commands:" section listing subcommand names + descriptions (aligned like options)
-- [ ] `app <sub> --help` delegates to `sub._generate_help()` directly
+- [x] Root `_generate_help()` appends a "Commands:" section listing subcommand names + descriptions (aligned like options)
+- [x] `app <sub> --help` delegates to `sub._generate_help()` directly
 - [x] `app help <sub>` routing via auto-registered real subcommand: `add_subcommand()` auto-inserts a `help` Command with `_is_help_subcommand = True`; dispatch path detects the flag and routes to sibling help
 - [x] `.disable_help_subcommand()` opt-out API on `Command`
-- [ ] Child help includes inherited persistent flags under a "Global Options:" heading
-- [ ] Usage line shows full command path: `app search [OPTIONS] PATTERN`
+- [x] Child help includes inherited persistent flags under a "Global Options:" heading
+- [x] Usage line shows full command path: `app search [OPTIONS] PATTERN`
 
 #### Step 5 — Error handling
 
-- [ ] Unknown subcommand: `"Unknown command '<name>'. Available commands: search, init"`
-- [ ] Errors inside child parse: prefix with command path for clarity (e.g. `"app search: Option '--foo' requires a value"`)
-- [ ] Exit codes consistent with current behavior (exit 2 for parse errors)
+- [x] Unknown subcommand: `"Unknown command '<name>'. Available commands: search, init"`
+- [x] Errors inside child parse: prefix with command path for clarity (e.g. `"app search: Option '--foo' requires a value"`)
+- [x] Exit codes consistent with current behavior (exit 2 for parse errors)
+- [x] `allow_positional_with_subcommands()` — guard preventing accidental mixing of positional args and subcommands on the same Command (following cobra/clap convention); requires explicit opt-in
 
 #### Step 6 — Tests
 
@@ -391,15 +394,19 @@ if result.subcommand == "search":
 - [x] Step 3: Conflict detection — long_name clash raises at `add_subcommand()` time
 - [x] Step 3: Conflict detection — short_name clash raises at `add_subcommand()` time
 - [x] Step 3: No conflict raised for non-persistent args with the same name
+- [x] Step 5: Adding positional after subcommand without opt-in raises error
+- [x] Step 5: Adding subcommand after positional without opt-in raises error
+- [x] Step 5: `allow_positional_with_subcommands()` opt-in enables both directions
+- [x] Step 5: Non-positional args (flags/options) unaffected by guard
 
 #### Step 7 — Documentation & examples
 
 - [x] Add `examples/demo_subcommands.mojo` demonstrating Step 2 + Step 2b routing (search / init / build + help subcommand inspection)
 - [x] Add `examples/demo_negative.mojo` demonstrating all three negative-number passthrough approaches (auto-detect, `--`, `allow_negative_numbers()`)
 - [x] Add `examples/demo_persistent.mojo` demonstrating before/after persistent flags, bidirectional sync, conflict detection
-- [ ] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
-- [ ] Update user manual with subcommand usage patterns
-- [ ] Document persistent flag behavior and conflict rules
+- [x] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
+- [x] Update user manual with subcommand usage patterns
+- [x] Document persistent flag behavior and conflict rules
 
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
 

@@ -549,5 +549,253 @@ fn test_nargs_with_metavar() raises:
     print("  ✓ test_nargs_with_metavar")
 
 
+# ── Phase 4 Step 4: Subcommand help UX ───────────────────────────────────────
+
+
+fn test_root_help_shows_commands_section() raises:
+    """Tests that root help includes a Commands: section when subcommands are registered.
+    """
+    var app = Command("app", "My CLI tool")
+    app.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long("verbose")
+        .short("v")
+        .flag()
+    )
+    var search = Command("search", "Search for patterns")
+    var init = Command("init", "Initialize a new project")
+    app.add_subcommand(search^)
+    app.add_subcommand(init^)
+
+    var help = app._generate_help(color=False)
+    assert_true("Commands:" in help, msg="Help should have Commands: section")
+    assert_true("search" in help, msg="Help should list 'search' subcommand")
+    assert_true("init" in help, msg="Help should list 'init' subcommand")
+    assert_true(
+        "Search for patterns" in help,
+        msg="Help should include subcommand description",
+    )
+    assert_true(
+        "Initialize a new project" in help,
+        msg="Help should include init description",
+    )
+    print("  ✓ test_root_help_shows_commands_section")
+
+
+fn test_root_help_no_commands_when_no_subcommands() raises:
+    """Tests that Commands: section is omitted when no subcommands are registered.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output").long("verbose").flag()
+    )
+
+    var help = command._generate_help(color=False)
+    assert_false("Commands:" in help, msg="No Commands: without subcommands")
+    print("  ✓ test_root_help_no_commands_when_no_subcommands")
+
+
+fn test_root_help_commands_excludes_help_sub() raises:
+    """Tests that the auto-inserted 'help' subcommand is not listed in Commands.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+    # 'help' subcommand is auto-added.
+
+    var help = app._generate_help(color=False)
+    assert_true("Commands:" in help, msg="Should have Commands: section")
+    assert_true("search" in help, msg="search should appear")
+    # Check that 'help' doesn't appear as a listed command entry.
+    # (It may appear in other contexts like --help, but not as a subcommand line.)
+    var lines = help.split("\n")
+    var found_help_cmd = False
+    var in_commands = False
+    for i in range(len(lines)):
+        if lines[i].startswith("Commands:"):
+            in_commands = True
+            continue
+        if in_commands:
+            # End of section if we hit a blank line or another heading.
+            if not lines[i] or (len(lines[i]) > 0 and lines[i][0:1] != " "):
+                in_commands = False
+                continue
+            # Check for '  help' as a subcommand entry.
+            var stripped = String("")
+            for c in range(len(lines[i])):
+                if lines[i][c : c + 1] != " ":
+                    stripped = String(lines[i][c:])
+                    break
+            if stripped.startswith("help"):
+                found_help_cmd = True
+    assert_false(
+        found_help_cmd, msg="'help' sub should not appear in Commands:"
+    )
+    print("  ✓ test_root_help_commands_excludes_help_sub")
+
+
+fn test_root_help_usage_shows_command_placeholder() raises:
+    """Tests that usage line includes <COMMAND> when subcommands are registered.
+    """
+    var app = Command("app", "My app")
+    app.add_subcommand(Command("search", "Search")^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "<COMMAND>" in help,
+        msg="Usage should show <COMMAND> placeholder",
+    )
+    print("  ✓ test_root_help_usage_shows_command_placeholder")
+
+
+fn test_root_help_usage_no_command_placeholder_without_subs() raises:
+    """Tests that usage line does NOT include <COMMAND> when no subcommands."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output").long("verbose").flag()
+    )
+
+    var help = command._generate_help(color=False)
+    assert_false(
+        "<COMMAND>" in help,
+        msg="Usage should NOT show <COMMAND> without subcommands",
+    )
+    print("  ✓ test_root_help_usage_no_command_placeholder_without_subs")
+
+
+fn test_persistent_args_under_global_options() raises:
+    """Tests that persistent args appear under a 'Global Options:' heading."""
+    var app = Command("app", "My app")
+    app.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
+    )
+    app.add_argument(
+        Argument("output", help="Output file").long("output").short("o")
+    )
+    app.add_subcommand(Command("search", "Search")^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "Global Options:" in help,
+        msg="Should have Global Options: section",
+    )
+    assert_true("Options:" in help, msg="Should have Options: section")
+    # --output should be under Options, --verbose under Global Options.
+    # Check ordering: Options comes before Global Options.
+    var opt_pos = help.find("Options:")
+    var global_pos = help.find("Global Options:")
+    assert_true(
+        opt_pos < global_pos,
+        msg="Options: should come before Global Options:",
+    )
+    print("  ✓ test_persistent_args_under_global_options")
+
+
+fn test_no_global_options_without_persistent() raises:
+    """Tests that Global Options: section is absent when no persistent args."""
+    var app = Command("app", "My app")
+    app.add_argument(
+        Argument("verbose", help="Verbose output").long("verbose").flag()
+    )
+    app.add_subcommand(Command("search", "Search")^)
+
+    var help = app._generate_help(color=False)
+    assert_false(
+        "Global Options:" in help,
+        msg="No Global Options: without persistent args",
+    )
+    print("  ✓ test_no_global_options_without_persistent")
+
+
+fn test_child_help_shows_full_command_path() raises:
+    """Tests that child help shows full command path (e.g. 'app search')."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search for patterns")
+    search.add_argument(
+        Argument("pattern", help="Search pattern").positional().required()
+    )
+    app.add_subcommand(search^)
+
+    # Simulate: app search --help
+    # The child copy gets name set to "app search", so --help would
+    # show "Usage: app search ..." in help.
+    # We test indirectly by checking what parse_args sets on the child copy.
+    # Create the child copy as parse_args would.
+    # Note: subcommands[0] is auto-added 'help'; search is at index 1.
+    var search_idx = app._find_subcommand("search")
+    var child_copy = app.subcommands[search_idx].copy()
+    child_copy.name = "app search"
+    var help = child_copy._generate_help(color=False)
+    assert_true(
+        "app search" in help,
+        msg="Child help should show full command path",
+    )
+    print("  ✓ test_child_help_shows_full_command_path")
+
+
+fn test_child_help_shows_inherited_persistent_args() raises:
+    """Tests that child help includes inherited persistent args under Global Options.
+    """
+    var app = Command("app", "My app")
+    app.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long("verbose")
+        .short("v")
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "Search for patterns")
+    search.add_argument(
+        Argument("pattern", help="Search pattern").positional().required()
+    )
+    search.add_argument(
+        Argument("max-depth", help="Max depth").long("max-depth").short("d")
+    )
+    app.add_subcommand(search^)
+
+    # Simulate child copy with injected persistent args.
+    # Note: subcommands[0] is auto-added 'help'; search is at index 1.
+    var search_idx = app._find_subcommand("search")
+    var child_copy = app.subcommands[search_idx].copy()
+    child_copy.name = "app search"
+    child_copy.args.append(app.args[0].copy())  # Inject --verbose
+
+    var help = child_copy._generate_help(color=False)
+    assert_true(
+        "Global Options:" in help,
+        msg="Child help should have Global Options:",
+    )
+    assert_true(
+        "--verbose" in help,
+        msg="Inherited --verbose should appear in child help",
+    )
+    assert_true(
+        "--max-depth" in help,
+        msg="Local --max-depth should appear in child help",
+    )
+    print("  ✓ test_child_help_shows_inherited_persistent_args")
+
+
+fn test_add_tip_appears_in_help() raises:
+    """Tests that custom tips appear in help output."""
+    var command = Command("test", "Test app")
+    command.add_tip("Set DEBUG=1 for debug logging.")
+    command.add_tip("Config: ~/.config/test/config.toml")
+
+    var help = command._generate_help(color=False)
+    assert_true(
+        "Set DEBUG=1 for debug logging." in help,
+        msg="First tip should appear in help",
+    )
+    assert_true(
+        "Config: ~/.config/test/config.toml" in help,
+        msg="Second tip should appear in help",
+    )
+    print("  ✓ test_add_tip_appears_in_help")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
