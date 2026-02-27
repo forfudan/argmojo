@@ -60,54 +60,52 @@ I make the Mojo version strictly 0.26.1 because that's the version I developed a
 
 ## Quick Start
 
-Here is a simple example of how to use ArgMojo in a Mojo program. The full example can be found in `examples/demo.mojo`.
+Here is a simple example of how to use ArgMojo in a Mojo program. See `examples/grep.mojo` for the full version.
 
 ```mojo
 from argmojo import Argument, Command
 
 
 fn main() raises:
-    var command = Command("demo", "A CJK-aware text search tool that supports Pinyin and Yuhao Input Methods (宇浩系列輸入法).", version="0.1.0")
+    var app = Command("grep", "Search for PATTERN in each FILE.", version="1.0.0")
 
     # Positional arguments
-    command.add_argument(Argument("pattern", help="Search pattern").positional().required())
-    command.add_argument(Argument("path", help="Search path").positional().default("."))
+    app.add_argument(Argument("pattern", help="Search pattern").positional().required())
+    app.add_argument(Argument("path", help="Search path").positional().default("."))
 
     # Boolean flags
-    command.add_argument(
-        Argument("ling", help="Use Lingming IME for encoding")
-        .long("ling").short("l").flag()
+    app.add_argument(
+        Argument("ignore-case", help="Ignore case distinctions")
+        .long("ignore-case").short("i").flag()
+    )
+    app.add_argument(
+        Argument("recursive", help="Search directories recursively")
+        .long("recursive").short("r").flag()
     )
 
     # Count flag (verbosity)
-    command.add_argument(
+    app.add_argument(
         Argument("verbose", help="Increase verbosity (-v, -vv, -vvv)")
         .long("verbose").short("v").count()
     )
 
-    # Key-value option with choices and metavar
-    var formats: List[String] = ["json", "csv", "table"]
-    command.add_argument(
+    # Key-value option with choices
+    var formats: List[String] = ["text", "json", "csv"]
+    app.add_argument(
         Argument("format", help="Output format")
-        .long("format").short("f").choices(formats^).default("table")
+        .long("format").short("f").choices(formats^).default("text")
     )
 
     # Negatable flag — --color enables, --no-color disables
-    command.add_argument(
-        Argument("color", help="Enable colored output")
+    app.add_argument(
+        Argument("color", help="Highlight matching text")
         .long("color").flag().negatable()
     )
 
-    # Multi-value option — consumes exactly 2 values per occurrence
-    command.add_argument(
-        Argument("point", help="X Y coordinate")
-        .long("point").short("P").nargs(2).metavar("N")
-    )
-
     # Parse and use
-    var result = command.parse()
+    var result = app.parse()
     print("pattern:", result.get_string("pattern"))
-    print("verbose:", result.get_count("verbose"))
+    print("path:   ", result.get_string("path"))
     print("format: ", result.get_string("format"))
     print("color:  ", result.get_flag("color"))
 ```
@@ -116,198 +114,64 @@ fn main() raises:
 
 For detailed explanations and more examples of every feature, see the **[User Manual](docs/user_manual.md)**.
 
-Build the demo binary first, then try the examples below:
+ArgMojo ships with two complete example CLIs:
+
+| Example                 | File                 | Features                                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `grep` — simulated grep | `examples/grep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
+| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips                                                                     |
+
+Build both example binaries:
 
 ```bash
-pixi run build_demo
+pixi run build
 ```
 
-### Basic usage — positional args and flags
+### `grep` (no subcommands)
 
 ```bash
-./demo "nihao" ./src --ling --json
+# Help and version
+./grep --help
+./grep --version
+
+# Basic search
+./grep "fn main" ./src
+
+# Combined short flags + options
+./grep -rnic "TODO" ./src --max-depth 5
+
+# Choices, append, negatable
+./grep "pattern" --format json --tag fixme --tag urgent --color
+
+# -- stops option parsing
+./grep -- "-pattern-with-dashes" ./src
+
+# Prefix matching (--exc matches --exclude-dir)
+./grep "fn" --exc .git,node_modules
 ```
 
-### Short options and default values
-
-The second positional arg (`path`) defaults to `"."` when omitted:
+### `git` (with subcommands)
 
 ```bash
-./demo "zhongguo" -l --json
-```
+# Root help — shows Commands section + Global Options
+./git --help
 
-### Help and version
+# Child help — shows full command path
+./git clone --help
 
-```bash
-./demo --help
-./demo -h
-./demo '-?'      # -? needs quoting because ? is a shell glob wildcard
-./demo --version
-```
+# Subcommand dispatch
+./git clone https://example.com/repo.git my-project --depth 1
+./git commit -am "initial commit"
+./git log --oneline -n 20 --author "Alice"
+./git -v push origin main --force --tags
 
-### Merged short flags
+# Nested subcommands (remote → add/remove/rename/show)
+./git remote add origin https://example.com/repo.git
+./git remote show origin
 
-Multiple short flags can be combined in a single `-` token. For example, `-liv` is equivalent to `-l -i -v`:
-
-```bash
-./demo "pattern" ./src -liv --json
-```
-
-### Attached short values
-
-A short option can receive its value without a space:
-
-```bash
-./demo "pattern" --json -d3          # same as -d 3
-./demo "pattern" --json -ftable      # same as -f table
-```
-
-### Count flags — verbosity
-
-Use `-v` multiple times (merged or repeated) to increase verbosity:
-
-```bash
-./demo "pattern" --json -v           # verbose = 1
-./demo "pattern" --json -vvv         # verbose = 3
-./demo "pattern" --json -v --verbose # verbose = 2  (short + long)
-```
-
-### Choices validation
-
-The `--format` option only accepts `json`, `csv`, or `table`:
-
-```bash
-./demo "pattern" --json --format json     # OK
-./demo "pattern" --json --format xml      # Error: Invalid value 'xml' for argument 'format' (choose from 'json', 'csv', 'table')
-```
-
-### Negatable flags
-
-A negatable flag pairs `--X` (sets `True`) with `--no-X` (sets `False`) automatically:
-
-```bash
-./demo "pattern" --json --color           # color = True
-./demo "pattern" --json --no-color        # color = False
-./demo "pattern" --json                   # color = False (default)
-```
-
-### Mutually exclusive groups
-
-`--json` and `--yaml` are mutually exclusive — using both is an error:
-
-```bash
-./demo "pattern" --json            # OK
-./demo "pattern" --yaml            # OK
-./demo "pattern" --json --yaml     # Error: Arguments are mutually exclusive: '--json', '--yaml'
-```
-
-### `--` stop marker
-
-Everything after `--` is treated as a positional argument, even if it starts with `-`:
-
-```bash
-./demo --json --ling -- "--pattern-with-dashes" ./src
-```
-
-### Hidden arguments
-
-Some arguments are excluded from `--help` but still work at the command line (useful for debug flags):
-
-```bash
-./demo "pattern" --json --debug-index   # Works, but not shown in --help
-```
-
-### Required-together groups
-
-`--username` and `--password` must be provided together — using one without the other is an error:
-
-```bash
-./demo "pattern" --json --username admin --password secret  # OK
-./demo "pattern" --json                                     # OK (neither auth arg is provided)
-./demo "pattern" --json --username admin                    # Error: '--password' required when '--username' is provided
-```
-
-### Append / collect action
-
-`--tag` can be repeated; values are collected into a list:
-
-```bash
-./demo "pattern" --json --tag foo --tag bar -tbaz
-# tags = ["foo", "bar", "baz"]
-```
-
-### One-required groups
-
-`--json` and `--yaml` form a one-required group — at least one must be provided:
-
-```bash
-./demo "pattern" --json            # OK
-./demo "pattern" --yaml            # OK
-./demo "pattern"                   # Error: At least one of the following arguments is required: '--json', '--yaml'
-```
-
-Combined with the mutually exclusive group, this enforces **exactly one** output format.
-
-### Value delimiter
-
-`--env` accepts comma-separated values that are split into a list:
-
-```bash
-./demo "pattern" --json --env dev,staging,prod
-# envs = ["dev", "staging", "prod"]
-
-./demo "pattern" --json --env dev,staging --env prod
-# envs = ["dev", "staging", "prod"]   (values accumulate)
-```
-
-### Multi-value options (nargs)
-
-`--point` consumes exactly 2 values per occurrence. Repeating it collects multiple pairs:
-
-```bash
-./demo "pattern" --json --point 10 20
-# points = [10, 20]
-
-./demo "pattern" --json --point 10 20 --point 30 40
-# points = [10, 20, 30, 40]
-
-./demo "pattern" --json -P 5 6
-# points = [5, 6]    (short option works too)
-```
-
-### A mock example showing how features work together
-
-```bash
-./demo yes ./src --verbo --json -t ime --color -li -d 3 --no-color --usern zhu -t search --pas 12345 -t cn --env dev,prod --point 10 20 --formatting csv
-```
-
-This will be parsed as:
-
-```bash
-Warning: '--formatting' is deprecated: Use --format instead
-=== Parsed Arguments ===
-  pattern: yes
-  path: ./src
-  -l, --ling            True
-  -i, --ignore-case     True
-  -v, --verbose         1
-  -d, --max-depth       3
-  -f, --format          table
-  --color               False
-  --json                True
-  --yaml                False
-  --xml                 False
-  -t, --tag             [ime, search, cn]
-  -e, --env             [dev, prod]
-  -P, --point           [10, 20]
-  -u, --username        zhu
-  -p, --password        12345
-  -S, --save            False
-  -O, --output          (not set)
-  --port                (not set)
-  -D, --define          {}
-  --colour              auto
-  --formatting          csv
+# Unknown subcommand → clear error
+./git foo
+# error: git: Unknown command 'foo'. Available commands: clone, init, ...
 ```
 
 ## Development
@@ -330,19 +194,28 @@ pixi run clean
 
 ```txt
 argmojo/
-├── docs/                           # Documentation
-│   ├── user_manual.md              # User manual with detailed examples
+├── docs/                              # Documentation
+│   ├── user_manual.md                 # User manual with detailed examples
 │   └── argmojo_overall_planning.md
+├── examples/
+│   ├── grep.mojo                      # grep-like CLI (no subcommands)
+│   └── git.mojo                       # git-like CLI (with subcommands)
 ├── src/
-│   └── argmojo/                    # Main package
-│       ├── __init__.mojo           # Package exports
-│       ├── argument.mojo           # Argument struct (argument definition)
-│       ├── command.mojo            # Command struct (parsing logic)
-│       └── parse_result.mojo       # ParseResult struct (parsed values)
-├── tests/
-│   └── test_argmojo.mojo           # Tests
-├── pixi.toml                       # pixi configuration
-├── .gitignore
+│   └── argmojo/                       # Main package
+│       ├── __init__.mojo              # Package exports
+│       ├── arg.mojo                   # Argument struct (argument definition)
+│       ├── command.mojo               # Command struct (parsing logic)
+│       └── result.mojo                # ParseResult struct (parsed values)
+├── tests/                             # Test suites (241 tests)
+│   ├── test_parse.mojo
+│   ├── test_groups.mojo
+│   ├── test_collect.mojo
+│   ├── test_help.mojo
+│   ├── test_extras.mojo
+│   ├── test_subcommands.mojo
+│   ├── test_negative_numbers.mojo
+│   └── test_persistent.mojo
+├── pixi.toml                          # pixi configuration
 ├── LICENSE
 └── README.md
 ```

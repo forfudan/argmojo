@@ -142,10 +142,8 @@ tests/
 ├── test_negative_numbers.mojo  # Negative number passthrough tests
 └── test_persistent.mojo        # Persistent (global) flag tests
 examples/
-├── demo.mojo                   # Demo CLI tool, compilable to binary
-├── demo_subcommands.mojo       # Subcommand routing demo (dispatch + help sub)
-├── demo_persistent.mojo        # Persistent flag demo (injection + sync)
-└── demo_negative.mojo          # Negative number passthrough demo
+├── grep.mojo                   # grep-like CLI example (no subcommands)
+└── git.mojo                    # git-like CLI example (with subcommands)
 ```
 
 ### 4.2 What's Already Done ✓
@@ -401,10 +399,8 @@ if result.subcommand == "search":
 
 #### Step 7 — Documentation & examples
 
-- [x] Add `examples/demo_subcommands.mojo` demonstrating Step 2 + Step 2b routing (search / init / build + help subcommand inspection)
-- [x] Add `examples/demo_negative.mojo` demonstrating all three negative-number passthrough approaches (auto-detect, `--`, `allow_negative_numbers()`)
-- [x] Add `examples/demo_persistent.mojo` demonstrating before/after persistent flags, bidirectional sync, conflict detection
-- [x] Update `examples/demo.mojo` with full 2-3 subcommand CLI (after Step 2–5)
+- [x] Add `examples/grep.mojo` — grep-like CLI demonstrating all single-command features
+- [x] Add `examples/git.mojo` — git-like CLI demonstrating subcommands, nested subcommands, persistent flags, and all group constraints
 - [x] Update user manual with subcommand usage patterns
 - [x] Document persistent flag behavior and conflict rules
 
@@ -413,7 +409,7 @@ if result.subcommand == "search":
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
-- [ ] **Usage line customisation** — override the auto-generated usage string
+- [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
 - [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
 - [ ] **Default-if-present (const)** — `--opt` (no value) → use const; `--opt val` → use val; absent → use default (argparse `const`)

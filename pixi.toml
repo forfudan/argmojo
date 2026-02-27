@@ -36,20 +36,10 @@ test = """\
     && mojo run -I src tests/test_negative_numbers.mojo \
     && mojo run -I src tests/test_persistent.mojo"""
 
-# run demo
-demo = "pixi run package && mojo run -I src examples/demo.mojo"
-
-# run subcommand data model demo (Phase 4 Step 1)
-demo_subcommands = "pixi run package && mojo run -I src examples/demo_subcommands.mojo"
-
-# run negative number passthrough demo
-demo_negative = "pixi run package && mojo run -I src examples/demo_negative.mojo"
-
-# run persistent flags demo
-demo_persistent = "pixi run package && mojo run -I src examples/demo_persistent.mojo"
-
-# build demo binary
-build_demo = "pixi run package && mojo build -I src examples/demo.mojo -o demo"
+# build example binaries
+build = """pixi run package \
+&& mojo build -I src examples/grep.mojo -o grep \
+&& mojo build -I src examples/git.mojo -o git"""
 
 # clean build artifacts
-clean = "rm -f argmojo.mojopkg demo"
+clean = "rm -f argmojo.mojopkg grep git demo"
