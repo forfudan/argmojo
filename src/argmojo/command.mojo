@@ -885,122 +885,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
             # Long option: --key, --key=value, --key value
             if arg.startswith("--"):
-                var key = String(arg[2:])  # strip leading "--"
-                var value = String("")
-                var has_eq = False
-
-                # Check for --key=value format.
-                var eq_pos = key.find("=")
-                if eq_pos >= 0:
-                    # Split into key and value parts.
-                    value = String(key[eq_pos + 1 :])
-                    key = String(key[:eq_pos])
-                    has_eq = True
-
-                # Check for --no-X negation pattern (with prefix matching).
-                var is_negation = False
-                if key.startswith("no-") and not has_eq:
-                    var base_key = String(key[3:])
-                    # Exact match first.
-                    for idx in range(len(self.args)):
-                        if (
-                            self.args[idx].long_name == base_key
-                            and self.args[idx].is_negatable
-                        ):
-                            is_negation = True
-                            key = base_key
-                            break
-                    # Prefix match if no exact match found.
-                    if not is_negation:
-                        var neg_candidates = List[String]()
-                        var neg_idx: Int = -1
-                        for idx in range(len(self.args)):
-                            if (
-                                self.args[idx].long_name
-                                and self.args[idx].long_name.startswith(
-                                    base_key
-                                )
-                                and self.args[idx].is_negatable
-                            ):
-                                neg_candidates.append(self.args[idx].long_name)
-                                neg_idx = idx
-                        if len(neg_candidates) == 1:
-                            is_negation = True
-                            key = self.args[neg_idx].long_name
-                        elif len(neg_candidates) > 1:
-                            var opts = String("")
-                            for j in range(len(neg_candidates)):
-                                if j > 0:
-                                    opts += ", "
-                                opts += "'--no-" + neg_candidates[j] + "'"
-                            self._error(
-                                "Ambiguous option '--no-"
-                                + base_key
-                                + "' could match: "
-                                + opts
-                            )
-
-                var matched: Argument = self._find_by_long(key)
-                # Emit deprecation warning if applicable.
-                if matched.deprecated_msg:
-                    self._warn(
-                        "'--"
-                        + key
-                        + "' is deprecated: "
-                        + matched.deprecated_msg
-                    )
-                if is_negation:
-                    result.flags[matched.name] = False
-                elif matched.is_count and not has_eq:
-                    # Count flag: increment counter.
-                    var cur: Int = 0
-                    try:
-                        cur = result.counts[matched.name]
-                    except:
-                        pass
-                    result.counts[matched.name] = cur + 1
-                elif matched.is_flag and not has_eq:
-                    result.flags[matched.name] = True
-                elif matched.nargs_count > 0:
-                    # nargs: consume exactly N values.
-                    if has_eq:
-                        self._error(
-                            "Option '--"
-                            + key
-                            + "' takes "
-                            + String(matched.nargs_count)
-                            + " values; '=' syntax is not supported"
-                        )
-                    if matched.name not in result.lists:
-                        result.lists[matched.name] = List[String]()
-                    for _n in range(matched.nargs_count):
-                        i += 1
-                        if i >= len(raw_args):
-                            self._error(
-                                "Option '--"
-                                + key
-                                + "' requires "
-                                + String(matched.nargs_count)
-                                + " values"
-                            )
-                        self._validate_choices(matched, raw_args[i])
-                        result.lists[matched.name].append(raw_args[i])
-                else:
-                    if not has_eq:
-                        i += 1
-                        if i >= len(raw_args):
-                            self._error(
-                                "Option '--" + key + "' requires a value"
-                            )
-                        value = raw_args[i]
-                    if matched.is_map:
-                        self._store_map_value(matched, value, result)
-                    elif matched.is_append:
-                        self._store_append_value(matched, value, result)
-                    else:
-                        self._validate_choices(matched, value)
-                        result.values[matched.name] = value
-                i += 1
+                i = self._parse_long_option(raw_args, i, result)
                 continue
 
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
@@ -1023,279 +908,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         continue
                 # ────────────────────────────────────────────────────────────
                 var key = String(arg[1:])
-
-                # Single-char short option: -f or -k value
                 if len(key) == 1:
-                    var matched = self._find_by_short(key)
-                    # Emit deprecation warning if applicable.
-                    if matched.deprecated_msg:
-                        self._warn(
-                            "'-"
-                            + key
-                            + "' is deprecated: "
-                            + matched.deprecated_msg
-                        )
-                    if matched.is_count:
-                        var cur: Int = 0
-                        try:
-                            cur = result.counts[matched.name]
-                        except:
-                            pass
-                        result.counts[matched.name] = cur + 1
-                    elif matched.is_flag:
-                        result.flags[matched.name] = True
-                    elif matched.nargs_count > 0:
-                        # nargs: consume exactly N values.
-                        if matched.name not in result.lists:
-                            result.lists[matched.name] = List[String]()
-                        for _n in range(matched.nargs_count):
-                            i += 1
-                            if i >= len(raw_args):
-                                self._error(
-                                    "Option '-"
-                                    + key
-                                    + "' requires "
-                                    + String(matched.nargs_count)
-                                    + " values"
-                                )
-                            self._validate_choices(matched, raw_args[i])
-                            result.lists[matched.name].append(raw_args[i])
-                    else:
-                        i += 1
-                        if i >= len(raw_args):
-                            self._error(
-                                "Option '-" + key + "' requires a value"
-                            )
-                        var val = raw_args[i]
-                        if matched.is_map:
-                            self._store_map_value(matched, val, result)
-                        elif matched.is_append:
-                            self._store_append_value(matched, val, result)
-                        else:
-                            self._validate_choices(matched, val)
-                            result.values[matched.name] = val
-                    i += 1
-                    continue
-
-                # Multi-char: could be merged flags (-abc) or attached
-                # value (-ofile.txt).
-                # Strategy: try first char as a short option.
-                var first_char = String(key[0:1])
-                var first_match = self._find_by_short(first_char)
-
-                if first_match.is_flag:
-                    # First char is a flag — treat entire string as merged
-                    # flags, except the last char which may take a value.
-                    var j: Int = 0
-                    while j < len(key):
-                        var ch = String(key[j : j + 1])
-                        var m = self._find_by_short(ch)
-                        # Emit deprecation warning if applicable.
-                        if m.deprecated_msg:
-                            self._warn(
-                                "'-"
-                                + ch
-                                + "' is deprecated: "
-                                + m.deprecated_msg
-                            )
-                        if m.is_count:
-                            var cur: Int = 0
-                            try:
-                                cur = result.counts[m.name]
-                            except:
-                                pass
-                            result.counts[m.name] = cur + 1
-                            j += 1
-                        elif m.is_flag:
-                            result.flags[m.name] = True
-                            j += 1
-                        elif m.nargs_count > 0:
-                            # nargs in merged flags: rest of string is
-                            # ignored; consume N values from argv.
-                            if m.name not in result.lists:
-                                result.lists[m.name] = List[String]()
-                            for _n in range(m.nargs_count):
-                                i += 1
-                                if i >= len(raw_args):
-                                    self._error(
-                                        "Option '-"
-                                        + ch
-                                        + "' requires "
-                                        + String(m.nargs_count)
-                                        + " values"
-                                    )
-                                self._validate_choices(m, raw_args[i])
-                                result.lists[m.name].append(raw_args[i])
-                            j = len(key)  # break
-                        else:
-                            # This char takes a value — rest of string is
-                            # the value.
-                            var val = String(key[j + 1 :])
-                            if len(val) == 0:
-                                i += 1
-                                if i >= len(raw_args):
-                                    self._error(
-                                        "Option '-" + ch + "' requires a value"
-                                    )
-                                val = raw_args[i]
-                            if m.is_map:
-                                self._store_map_value(m, val, result)
-                            elif m.is_append:
-                                self._store_append_value(m, val, result)
-                            else:
-                                self._validate_choices(m, val)
-                                result.values[m.name] = val
-                            j = len(key)  # break
-                    i += 1
-                    continue
+                    i = self._parse_short_single(key, raw_args, i, result)
                 else:
-                    # First char takes a value — rest of string is the
-                    # attached value (e.g., -ofile.txt).
-                    # Emit deprecation warning if applicable.
-                    if first_match.deprecated_msg:
-                        self._warn(
-                            "'-"
-                            + first_char
-                            + "' is deprecated: "
-                            + first_match.deprecated_msg
-                        )
-                    if first_match.nargs_count > 0:
-                        # nargs: consume N values from argv (ignore attached).
-                        if first_match.name not in result.lists:
-                            result.lists[first_match.name] = List[String]()
-                        for _n in range(first_match.nargs_count):
-                            i += 1
-                            if i >= len(raw_args):
-                                self._error(
-                                    "Option '-"
-                                    + first_char
-                                    + "' requires "
-                                    + String(first_match.nargs_count)
-                                    + " values"
-                                )
-                            self._validate_choices(first_match, raw_args[i])
-                            result.lists[first_match.name].append(raw_args[i])
-                    elif first_match.is_map:
-                        var val = String(key[1:])
-                        self._store_map_value(first_match, val, result)
-                    elif first_match.is_append:
-                        var val = String(key[1:])
-                        self._store_append_value(first_match, val, result)
-                    else:
-                        var val = String(key[1:])
-                        self._validate_choices(first_match, val)
-                        result.values[first_match.name] = val
-                    i += 1
-                    continue
+                    i = self._parse_short_merged(key, raw_args, i, result)
+                continue
 
             # Positional argument — check for subcommand dispatch first.
             if len(self.subcommands) > 0:
-                # Exact subcommand name match → dispatch.
-                var sub_idx = self._find_subcommand(arg)
-                if sub_idx >= 0:
-                    # Build child argv: ["parent sub", remaining tokens...].
-                    var child_argv = List[String]()
-                    child_argv.append(self.name + " " + arg)
-                    for k in range(i + 1, len(raw_args)):
-                        child_argv.append(raw_args[k])
-                    # Auto-registered 'help' subcommand: display sibling help.
-                    if self.subcommands[sub_idx]._is_help_subcommand:
-                        if len(child_argv) > 1:
-                            var target_idx = self._find_subcommand(
-                                child_argv[1]
-                            )
-                            if (
-                                target_idx >= 0
-                                and not self.subcommands[
-                                    target_idx
-                                ]._is_help_subcommand
-                            ):
-                                print(
-                                    self.subcommands[
-                                        target_idx
-                                    ]._generate_help()
-                                )
-                                exit(0)
-                        # No target, unknown, or self-referential → root help.
-                        print(self._generate_help())
-                        exit(0)
-                    # Build a child copy with persistent args injected so they
-                    # are recognised wherever the user places them on the line.
-                    var child_copy = self.subcommands[sub_idx].copy()
-                    # Set full command path so child help/errors show "app sub".
-                    child_copy.name = self.name + " " + arg
-                    for _pi in range(len(self.args)):
-                        if self.args[_pi].is_persistent:
-                            child_copy.args.append(self.args[_pi].copy())
-                    var child_result = child_copy.parse_args(child_argv)
-                    # Bubble up persistent values from child to root result so
-                    # that root_result.get_flag("x") always works regardless of
-                    # whether the flag appeared before or after the subcommand
-                    # token. (If root already parsed the flag before reaching
-                    # the subcommand token, its value takes precedence.)
-                    # Also push down root-parsed persistent values to child
-                    # result so that sub_result.get_flag("x") always works too.
-                    for _pi in range(len(self.args)):
-                        if not self.args[_pi].is_persistent:
-                            continue
-                        var _pn = self.args[_pi].name
-                        # Bubble up: child parsed flag after subcommand token.
-                        if (
-                            _pn in child_result.flags
-                            and _pn not in result.flags
-                        ):
-                            result.flags[_pn] = child_result.flags[_pn]
-                        if (
-                            _pn in child_result.values
-                            and _pn not in result.values
-                        ):
-                            result.values[_pn] = child_result.values[_pn]
-                        if (
-                            _pn in child_result.counts
-                            and _pn not in result.counts
-                        ):
-                            result.counts[_pn] = child_result.counts[_pn]
-                        # Push down: root parsed flag before subcommand token.
-                        if (
-                            _pn in result.flags
-                            and _pn not in child_result.flags
-                        ):
-                            child_result.flags[_pn] = result.flags[_pn]
-                        if (
-                            _pn in result.values
-                            and _pn not in child_result.values
-                        ):
-                            child_result.values[_pn] = result.values[_pn]
-                        if (
-                            _pn in result.counts
-                            and _pn not in child_result.counts
-                        ):
-                            child_result.counts[_pn] = result.counts[_pn]
-                    result.subcommand = arg
-                    result._subcommand_results.append(child_result^)
-                    # All remaining tokens were consumed by the child.
-                    i = len(raw_args)
+                var new_i = self._dispatch_subcommand(arg, raw_args, i, result)
+                if new_i >= 0:
+                    i = new_i
                     continue
-                else:
-                    # No matching subcommand found.  When positionals are
-                    # not allowed (the usual case), produce a helpful error.
-                    # When allow_positional_with_subcommands is set, fall
-                    # through to positional handling below.
-                    if not self._allow_positional_with_subcommands:
-                        var avail = String("")
-                        var first = True
-                        for _si in range(len(self.subcommands)):
-                            if not self.subcommands[_si]._is_help_subcommand:
-                                if not first:
-                                    avail += ", "
-                                avail += self.subcommands[_si].name
-                                first = False
-                        self._error(
-                            "Unknown command '"
-                            + arg
-                            + "'. Available commands: "
-                            + avail
-                        )
 
             result.positionals.append(arg)
             i += 1
@@ -1305,6 +929,440 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._validate(result)
 
         return result^
+
+    # ===------------------------------------------------------------------=== #
+    # Parsing sub-methods (extracted from parse_args for readability)
+    # ===------------------------------------------------------------------=== #
+
+    fn _parse_long_option(
+        self, raw_args: List[String], start: Int, mut result: ParseResult
+    ) raises -> Int:
+        """Parses a long option token (``--key``, ``--key=value``, ``--no-X``).
+
+        Handles exact match, prefix matching, negation (``--no-X``),
+        count flags, boolean flags, nargs, value-taking options,
+        append/collect, map, delimiter splitting, and deprecation
+        warnings.
+
+        Args:
+            raw_args: The full argument list.
+            start: Index of the current ``--key`` token.
+            result: The ParseResult to store into.
+
+        Returns:
+            The index of the next token to process.
+        """
+        var i = start
+        var arg = raw_args[i]
+        var key = String(arg[2:])  # strip leading "--"
+        var value = String("")
+        var has_eq = False
+
+        # Check for --key=value format.
+        var eq_pos = key.find("=")
+        if eq_pos >= 0:
+            # Split into key and value parts.
+            value = String(key[eq_pos + 1 :])
+            key = String(key[:eq_pos])
+            has_eq = True
+
+        # Check for --no-X negation pattern (with prefix matching).
+        var is_negation = False
+        if key.startswith("no-") and not has_eq:
+            var base_key = String(key[3:])
+            # Exact match first.
+            for idx in range(len(self.args)):
+                if (
+                    self.args[idx].long_name == base_key
+                    and self.args[idx].is_negatable
+                ):
+                    is_negation = True
+                    key = base_key
+                    break
+            # Prefix match if no exact match found.
+            if not is_negation:
+                var neg_candidates = List[String]()
+                var neg_idx: Int = -1
+                for idx in range(len(self.args)):
+                    if (
+                        self.args[idx].long_name
+                        and self.args[idx].long_name.startswith(base_key)
+                        and self.args[idx].is_negatable
+                    ):
+                        neg_candidates.append(self.args[idx].long_name)
+                        neg_idx = idx
+                if len(neg_candidates) == 1:
+                    is_negation = True
+                    key = self.args[neg_idx].long_name
+                elif len(neg_candidates) > 1:
+                    var opts = String("")
+                    for j in range(len(neg_candidates)):
+                        if j > 0:
+                            opts += ", "
+                        opts += "'--no-" + neg_candidates[j] + "'"
+                    self._error(
+                        "Ambiguous option '--no-"
+                        + base_key
+                        + "' could match: "
+                        + opts
+                    )
+
+        var matched: Argument = self._find_by_long(key)
+        # Emit deprecation warning if applicable.
+        if matched.deprecated_msg:
+            self._warn(
+                "'--" + key + "' is deprecated: " + matched.deprecated_msg
+            )
+        if is_negation:
+            result.flags[matched.name] = False
+        elif matched.is_count and not has_eq:
+            # Count flag: increment counter.
+            var cur: Int = 0
+            try:
+                cur = result.counts[matched.name]
+            except:
+                pass
+            result.counts[matched.name] = cur + 1
+        elif matched.is_flag and not has_eq:
+            result.flags[matched.name] = True
+        elif matched.nargs_count > 0:
+            # nargs: consume exactly N values.
+            if has_eq:
+                self._error(
+                    "Option '--"
+                    + key
+                    + "' takes "
+                    + String(matched.nargs_count)
+                    + " values; '=' syntax is not supported"
+                )
+            if matched.name not in result.lists:
+                result.lists[matched.name] = List[String]()
+            for _n in range(matched.nargs_count):
+                i += 1
+                if i >= len(raw_args):
+                    self._error(
+                        "Option '--"
+                        + key
+                        + "' requires "
+                        + String(matched.nargs_count)
+                        + " values"
+                    )
+                self._validate_choices(matched, raw_args[i])
+                result.lists[matched.name].append(raw_args[i])
+        else:
+            if not has_eq:
+                i += 1
+                if i >= len(raw_args):
+                    self._error("Option '--" + key + "' requires a value")
+                value = raw_args[i]
+            if matched.is_map:
+                self._store_map_value(matched, value, result)
+            elif matched.is_append:
+                self._store_append_value(matched, value, result)
+            else:
+                self._validate_choices(matched, value)
+                result.values[matched.name] = value
+        i += 1
+        return i
+
+    fn _parse_short_single(
+        self,
+        key: String,
+        raw_args: List[String],
+        start: Int,
+        mut result: ParseResult,
+    ) raises -> Int:
+        """Parses a single-character short option (``-k``, ``-k value``).
+
+        Args:
+            key: The short option character (without ``-``).
+            raw_args: The full argument list.
+            start: Index of the current ``-k`` token.
+            result: The ParseResult to store into.
+
+        Returns:
+            The index of the next token to process.
+        """
+        var i = start
+        var matched = self._find_by_short(key)
+        # Emit deprecation warning if applicable.
+        if matched.deprecated_msg:
+            self._warn(
+                "'-" + key + "' is deprecated: " + matched.deprecated_msg
+            )
+        if matched.is_count:
+            var cur: Int = 0
+            try:
+                cur = result.counts[matched.name]
+            except:
+                pass
+            result.counts[matched.name] = cur + 1
+        elif matched.is_flag:
+            result.flags[matched.name] = True
+        elif matched.nargs_count > 0:
+            # nargs: consume exactly N values.
+            if matched.name not in result.lists:
+                result.lists[matched.name] = List[String]()
+            for _n in range(matched.nargs_count):
+                i += 1
+                if i >= len(raw_args):
+                    self._error(
+                        "Option '-"
+                        + key
+                        + "' requires "
+                        + String(matched.nargs_count)
+                        + " values"
+                    )
+                self._validate_choices(matched, raw_args[i])
+                result.lists[matched.name].append(raw_args[i])
+        else:
+            i += 1
+            if i >= len(raw_args):
+                self._error("Option '-" + key + "' requires a value")
+            var val = raw_args[i]
+            if matched.is_map:
+                self._store_map_value(matched, val, result)
+            elif matched.is_append:
+                self._store_append_value(matched, val, result)
+            else:
+                self._validate_choices(matched, val)
+                result.values[matched.name] = val
+        i += 1
+        return i
+
+    fn _parse_short_merged(
+        self,
+        key: String,
+        raw_args: List[String],
+        start: Int,
+        mut result: ParseResult,
+    ) raises -> Int:
+        """Parses merged short flags or an attached short value.
+
+        Merged flags: ``-abc`` expands to ``-a -b -c``.
+        Attached value: ``-ofile.txt`` means ``-o file.txt``.
+
+        The first character determines the strategy: if it is a flag,
+        the entire string is treated as merged flags (with the last
+        character potentially taking a value).  Otherwise the rest of
+        the string is the attached value.
+
+        Args:
+            key: The characters after ``-`` (e.g., ``"abc"`` from ``-abc``).
+            raw_args: The full argument list.
+            start: Index of the current token.
+            result: The ParseResult to store into.
+
+        Returns:
+            The index of the next token to process.
+        """
+        var i = start
+        var first_char = String(key[0:1])
+        var first_match = self._find_by_short(first_char)
+
+        if first_match.is_flag:
+            # First char is a flag — treat entire string as merged
+            # flags, except the last char which may take a value.
+            var j: Int = 0
+            while j < len(key):
+                var ch = String(key[j : j + 1])
+                var m = self._find_by_short(ch)
+                # Emit deprecation warning if applicable.
+                if m.deprecated_msg:
+                    self._warn(
+                        "'-" + ch + "' is deprecated: " + m.deprecated_msg
+                    )
+                if m.is_count:
+                    var cur: Int = 0
+                    try:
+                        cur = result.counts[m.name]
+                    except:
+                        pass
+                    result.counts[m.name] = cur + 1
+                    j += 1
+                elif m.is_flag:
+                    result.flags[m.name] = True
+                    j += 1
+                elif m.nargs_count > 0:
+                    # nargs in merged flags: rest of string is
+                    # ignored; consume N values from argv.
+                    if m.name not in result.lists:
+                        result.lists[m.name] = List[String]()
+                    for _n in range(m.nargs_count):
+                        i += 1
+                        if i >= len(raw_args):
+                            self._error(
+                                "Option '-"
+                                + ch
+                                + "' requires "
+                                + String(m.nargs_count)
+                                + " values"
+                            )
+                        self._validate_choices(m, raw_args[i])
+                        result.lists[m.name].append(raw_args[i])
+                    j = len(key)  # break
+                else:
+                    # This char takes a value — rest of string is
+                    # the value.
+                    var val = String(key[j + 1 :])
+                    if len(val) == 0:
+                        i += 1
+                        if i >= len(raw_args):
+                            self._error("Option '-" + ch + "' requires a value")
+                        val = raw_args[i]
+                    if m.is_map:
+                        self._store_map_value(m, val, result)
+                    elif m.is_append:
+                        self._store_append_value(m, val, result)
+                    else:
+                        self._validate_choices(m, val)
+                        result.values[m.name] = val
+                    j = len(key)  # break
+        else:
+            # First char takes a value — rest of string is the
+            # attached value (e.g., -ofile.txt).
+            # Emit deprecation warning if applicable.
+            if first_match.deprecated_msg:
+                self._warn(
+                    "'-"
+                    + first_char
+                    + "' is deprecated: "
+                    + first_match.deprecated_msg
+                )
+            if first_match.nargs_count > 0:
+                # nargs: consume N values from argv (ignore attached).
+                if first_match.name not in result.lists:
+                    result.lists[first_match.name] = List[String]()
+                for _n in range(first_match.nargs_count):
+                    i += 1
+                    if i >= len(raw_args):
+                        self._error(
+                            "Option '-"
+                            + first_char
+                            + "' requires "
+                            + String(first_match.nargs_count)
+                            + " values"
+                        )
+                    self._validate_choices(first_match, raw_args[i])
+                    result.lists[first_match.name].append(raw_args[i])
+            elif first_match.is_map:
+                var val = String(key[1:])
+                self._store_map_value(first_match, val, result)
+            elif first_match.is_append:
+                var val = String(key[1:])
+                self._store_append_value(first_match, val, result)
+            else:
+                var val = String(key[1:])
+                self._validate_choices(first_match, val)
+                result.values[first_match.name] = val
+        i += 1
+        return i
+
+    fn _dispatch_subcommand(
+        self,
+        arg: String,
+        raw_args: List[String],
+        i: Int,
+        mut result: ParseResult,
+    ) raises -> Int:
+        """Attempts to dispatch to a matching subcommand.
+
+        If a subcommand matches, it builds a child argv, injects
+        persistent args, parses via the child's ``parse_args()``,
+        and performs bidirectional sync of persistent values.
+
+        Args:
+            arg: The current token (potential subcommand name).
+            raw_args: The full argument list.
+            i: Index of the current token.
+            result: The ParseResult to store into.
+
+        Returns:
+            The index of the next token to process if a subcommand was
+            dispatched (typically ``len(raw_args)``), or ``-1`` if no
+            subcommand matched and the caller should fall through to
+            positional argument handling.
+        """
+        # Exact subcommand name match → dispatch.
+        var sub_idx = self._find_subcommand(arg)
+        if sub_idx >= 0:
+            # Build child argv: ["parent sub", remaining tokens...].
+            var child_argv = List[String]()
+            child_argv.append(self.name + " " + arg)
+            for k in range(i + 1, len(raw_args)):
+                child_argv.append(raw_args[k])
+            # Auto-registered 'help' subcommand: display sibling help.
+            if self.subcommands[sub_idx]._is_help_subcommand:
+                if len(child_argv) > 1:
+                    var target_idx = self._find_subcommand(child_argv[1])
+                    if (
+                        target_idx >= 0
+                        and not self.subcommands[target_idx]._is_help_subcommand
+                    ):
+                        print(self.subcommands[target_idx]._generate_help())
+                        exit(0)
+                # No target, unknown, or self-referential → root help.
+                print(self._generate_help())
+                exit(0)
+            # Build a child copy with persistent args injected so they
+            # are recognised wherever the user places them on the line.
+            var child_copy = self.subcommands[sub_idx].copy()
+            # Set full command path so child help/errors show "app sub".
+            child_copy.name = self.name + " " + arg
+            for _pi in range(len(self.args)):
+                if self.args[_pi].is_persistent:
+                    child_copy.args.append(self.args[_pi].copy())
+            var child_result = child_copy.parse_args(child_argv)
+            # Bubble up persistent values from child to root result so
+            # that root_result.get_flag("x") always works regardless of
+            # whether the flag appeared before or after the subcommand
+            # token. (If root already parsed the flag before reaching
+            # the subcommand token, its value takes precedence.)
+            # Also push down root-parsed persistent values to child
+            # result so that sub_result.get_flag("x") always works too.
+            for _pi in range(len(self.args)):
+                if not self.args[_pi].is_persistent:
+                    continue
+                var _pn = self.args[_pi].name
+                # Bubble up: child parsed flag after subcommand token.
+                if _pn in child_result.flags and _pn not in result.flags:
+                    result.flags[_pn] = child_result.flags[_pn]
+                if _pn in child_result.values and _pn not in result.values:
+                    result.values[_pn] = child_result.values[_pn]
+                if _pn in child_result.counts and _pn not in result.counts:
+                    result.counts[_pn] = child_result.counts[_pn]
+                # Push down: root parsed flag before subcommand token.
+                if _pn in result.flags and _pn not in child_result.flags:
+                    child_result.flags[_pn] = result.flags[_pn]
+                if _pn in result.values and _pn not in child_result.values:
+                    child_result.values[_pn] = result.values[_pn]
+                if _pn in result.counts and _pn not in child_result.counts:
+                    child_result.counts[_pn] = result.counts[_pn]
+            result.subcommand = arg
+            result._subcommand_results.append(child_result^)
+            # All remaining tokens were consumed by the child.
+            return len(raw_args)
+        else:
+            # No matching subcommand found.  When positionals are
+            # not allowed (the usual case), produce a helpful error.
+            # When allow_positional_with_subcommands is set, fall
+            # through to positional handling below.
+            if not self._allow_positional_with_subcommands:
+                var avail = String("")
+                var first = True
+                for _si in range(len(self.subcommands)):
+                    if not self.subcommands[_si]._is_help_subcommand:
+                        if not first:
+                            avail += ", "
+                        avail += self.subcommands[_si].name
+                        first = False
+                self._error(
+                    "Unknown command '"
+                    + arg
+                    + "'. Available commands: "
+                    + avail
+                )
+            return -1
 
     # ===------------------------------------------------------------------=== #
     # Defaults & validation helpers (extracted for subcommand reuse)

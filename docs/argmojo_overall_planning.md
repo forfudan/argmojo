@@ -284,8 +284,8 @@ Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo
 
 #### Architecture: composition inside `Command`
 
-- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~1500 lines.
-- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline.
+- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2300 lines.
+- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_args()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
 - **Composition-based.** `Command` gains a child command list. When `parse_args()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_args()`. 100% logic reuse, zero duplication.
 
 #### Pre-requisite refactor (Step 0)
@@ -295,6 +295,11 @@ Before adding subcommand routing, clean up `parse_args()` so root and child can 
 - [x] Extract `_apply_defaults(mut result)` — move the ~20-line defaults block into a private method
 - [x] Extract `_validate(result)` — move the ~130-line validation block (required, exclusive, together, one-required, conditional, range) into a private method
 - [x] Verify all existing tests still pass after this refactor (143 original + 17 new Step 0 tests = 160 total, all passing)
+- [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/nargs/value)
+- [x] Extract `_parse_short_single()` — single-character short option parsing (`-k`, `-k value`)
+- [x] Extract `_parse_short_merged()` — merged short flags and attached values (`-abc`, `-ofile.txt`)
+- [x] Extract `_dispatch_subcommand()` — subcommand matching, child argv construction, persistent arg injection, bidirectional sync
+- [x] Verify all tests still pass after this refactor
 
 #### Step 1 — Data model & API surface
 
@@ -452,18 +457,17 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
     ├─ If args[i] == "--version" or "-V":
     │     Print version and exit
     ├─ If args[i].startswith("--"):
-    │     Parse long option
-    │     ├─ Support `--key=value`
-    │     ├─ Support `--no-key` (negatable flags, with prefix match)
-    │     ├─ Resolve by exact long name or unambiguous prefix
-    │     ├─ Handle count / flag / nargs / value-taking options
-    │     └─ For append args, split by delimiter if configured
+    │     → _parse_long_option(raw_args, i, result) → new i
+    │       (--key=value, --no-key negation, prefix match, count/flag/nargs/value)
     ├─ If args[i].startswith("-") and len > 1:
     │     ├─ IF _looks_like_number(token) AND (allow_negative_numbers OR no digit short opts):
     │     │     Treat as positional argument (negative number passthrough)
-    │     └─ ELSE: Parse short option(s)
-    │           ├─ Single short: count / flag / nargs / value
-    │           └─ Multi-short: merged flags and attached value (`-ofile.txt`)
+    │     └─ ELSE:
+    │           ├─ Single char → _parse_short_single(key, raw_args, i, result) → new i
+    │           └─ Multi char  → _parse_short_merged(key, raw_args, i, result) → new i
+    ├─ If subcommands registered:
+    │     → _dispatch_subcommand(arg, raw_args, i, result) → new i or -1
+    │       (match → build child argv, inject persistent, recurse, sync; no match → -1)
     └─ Otherwise:
             Treat as positional argument
 4. Apply defaults for missing arguments (named + positional slots)
@@ -477,7 +481,7 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 6. Return ParseResult
 ```
 
-### 6.1 Subcommand parsing flow (planned)
+### 6.1 Subcommand parsing flow
 
 ```txt
 Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
