@@ -1823,6 +1823,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
 
+        Delegates to five sub-methods, one for each section of the help
+        output: usage line, positional arguments, options (local and
+        global), subcommands, and tips.
+
         Args:
             color: When True (default), include ANSI colour codes.
 
@@ -1834,6 +1838,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var H = (_BOLD_UL + self._header_color) if color else ""
         var R = _RESET if color else ""
 
+        var s = String("")
+        s += self._help_usage_line(C, H, R)
+        s += self._help_positionals_section(C, H, R)
+        s += self._help_options_section(C, H, R)
+        s += self._help_commands_section(C, H, R)
+        s += self._help_tips_section(H)
+        return s
+
+    fn _help_usage_line(self, C: String, H: String, R: String) -> String:
+        """Generates the description and usage line of help output.
+
+        Args:
+            C: ANSI colour code for argument names (empty if colour off).
+            H: ANSI colour code for section headers (empty if colour off).
+            R: ANSI reset code (empty if colour off).
+
+        Returns:
+            The description (if any) and usage line string.
+        """
         var s = String("")
         if self.description:
             s += self.description + "\n\n"
@@ -1860,49 +1883,79 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += " " + C + "<COMMAND>" + R
 
         s += " " + C + "[OPTIONS]" + R + "\n\n"
+        return s
 
-        # Positional arguments section.
+    fn _help_positionals_section(
+        self, C: String, H: String, R: String
+    ) -> String:
+        """Generates the 'Arguments:' section listing positional arguments.
+
+        Uses a two-pass approach: first collects plain and coloured text
+        to compute dynamic column padding, then assembles the final lines.
+
+        Args:
+            C: ANSI colour code for argument names.
+            H: ANSI colour code for section headers.
+            R: ANSI reset code.
+
+        Returns:
+            The positional arguments section, or empty string if none.
+        """
         var has_positional = False
         for i in range(len(self.args)):
             if self.args[i].is_positional and not self.args[i].is_hidden:
                 has_positional = True
                 break
 
-        if has_positional:
-            # Two-pass for dynamic padding.
-            var pos_plains = List[String]()  # plain text for padding calc
-            var pos_colors = List[String]()  # coloured text for display
-            var pos_helps = List[String]()
-            for i in range(len(self.args)):
-                if self.args[i].is_positional and not self.args[i].is_hidden:
-                    var plain = String("  ") + self.args[i].name
-                    var colored = String("  ") + C + self.args[i].name + R
-                    pos_plains.append(plain)
-                    pos_colors.append(colored)
-                    pos_helps.append(self.args[i].help_text)
+        if not has_positional:
+            return ""
 
-            var pos_max: Int = 0
-            for k in range(len(pos_plains)):
-                if len(pos_plains[k]) > pos_max:
-                    pos_max = len(pos_plains[k])
-            var pos_pad = pos_max + 4
+        # Two-pass for dynamic padding.
+        var pos_plains = List[String]()  # plain text for padding calc
+        var pos_colors = List[String]()  # coloured text for display
+        var pos_helps = List[String]()
+        for i in range(len(self.args)):
+            if self.args[i].is_positional and not self.args[i].is_hidden:
+                var plain = String("  ") + self.args[i].name
+                var colored = String("  ") + C + self.args[i].name + R
+                pos_plains.append(plain)
+                pos_colors.append(colored)
+                pos_helps.append(self.args[i].help_text)
 
-            s += H + "Arguments:" + R + "\n"
-            for k in range(len(pos_plains)):
-                var line = pos_colors[k]
-                if pos_helps[k]:
-                    # Pad based on plain-text width.
-                    var padding = pos_pad - len(pos_plains[k])
-                    for _p in range(padding):
-                        line += " "
-                    line += pos_helps[k]
-                s += line + "\n"
-            s += "\n"
+        var pos_max: Int = 0
+        for k in range(len(pos_plains)):
+            if len(pos_plains[k]) > pos_max:
+                pos_max = len(pos_plains[k])
+        var pos_pad = pos_max + 4
 
-        # Options section — two-pass for dynamic padding.
-        # Separate local options from persistent (global) options so they
-        # can be displayed under distinct headings.
-        # Pass 1: build plain + coloured left-hand sides.
+        var s = H + "Arguments:" + R + "\n"
+        for k in range(len(pos_plains)):
+            var line = pos_colors[k]
+            if pos_helps[k]:
+                # Pad based on plain-text width.
+                var padding = pos_pad - len(pos_plains[k])
+                for _p in range(padding):
+                    line += " "
+                line += pos_helps[k]
+            s += line + "\n"
+        s += "\n"
+        return s
+
+    fn _help_options_section(self, C: String, H: String, R: String) -> String:
+        """Generates the 'Options:' and 'Global Options:' sections.
+
+        Separates local options from persistent (global) options and
+        displays them under distinct headings.  Built-in ``--help`` and
+        ``--version`` are always appended to the local section.
+
+        Args:
+            C: ANSI colour code for argument names.
+            H: ANSI colour code for section headers.
+            R: ANSI reset code.
+
+        Returns:
+            The options section string.
+        """
         var opt_plains = List[String]()
         var opt_colors = List[String]()
         var opt_helps = List[String]()
@@ -2026,8 +2079,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 has_global = True
                 break
 
-        # Helper: compute padding width for a subset of options.
-        # Uses the plain-text width of matching entries.
+        # Compute padding width for local and global options separately.
         var local_max: Int = 0
         var global_max: Int = 0
         for k in range(len(opt_plains)):
@@ -2042,7 +2094,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Pass 2: assemble padded lines using coloured text.
         # Local options.
-        s += H + "Options:" + R + "\n"
+        var s = H + "Options:" + R + "\n"
         for k in range(len(opt_plains)):
             if not opt_persistent[k]:
                 var line = opt_colors[k]
@@ -2066,35 +2118,74 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         line += opt_helps[k]
                     s += line + "\n"
 
-        # Commands section — list registered subcommands with descriptions.
-        if has_subcommands:
-            var cmd_plains = List[String]()
-            var cmd_colors = List[String]()
-            var cmd_helps = List[String]()
-            for i in range(len(self.subcommands)):
-                if not self.subcommands[i]._is_help_subcommand:
-                    var plain = String("  ") + self.subcommands[i].name
-                    var colored = (
-                        String("  ") + C + self.subcommands[i].name + R
-                    )
-                    cmd_plains.append(plain)
-                    cmd_colors.append(colored)
-                    cmd_helps.append(self.subcommands[i].description)
-            # Compute padding.
-            var cmd_max: Int = 0
-            for k in range(len(cmd_plains)):
-                if len(cmd_plains[k]) > cmd_max:
-                    cmd_max = len(cmd_plains[k])
-            var cmd_pad = cmd_max + 4
-            s += "\n" + H + "Commands:" + R + "\n"
-            for k in range(len(cmd_plains)):
-                var line = cmd_colors[k]
-                if cmd_helps[k]:
-                    var padding = cmd_pad - len(cmd_plains[k])
-                    for _p in range(padding):
-                        line += " "
-                    line += cmd_helps[k]
-                s += line + "\n"
+        return s
+
+    fn _help_commands_section(self, C: String, H: String, R: String) -> String:
+        """Generates the 'Commands:' section listing registered subcommands.
+
+        Args:
+            C: ANSI colour code for argument names.
+            H: ANSI colour code for section headers.
+            R: ANSI reset code.
+
+        Returns:
+            The commands section string, or empty string if no subcommands.
+        """
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+
+        if not has_subcommands:
+            return ""
+
+        var cmd_plains = List[String]()
+        var cmd_colors = List[String]()
+        var cmd_helps = List[String]()
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                var plain = String("  ") + self.subcommands[i].name
+                var colored = String("  ") + C + self.subcommands[i].name + R
+                cmd_plains.append(plain)
+                cmd_colors.append(colored)
+                cmd_helps.append(self.subcommands[i].description)
+        # Compute padding.
+        var cmd_max: Int = 0
+        for k in range(len(cmd_plains)):
+            if len(cmd_plains[k]) > cmd_max:
+                cmd_max = len(cmd_plains[k])
+        var cmd_pad = cmd_max + 4
+        var s = "\n" + H + "Commands:" + R + "\n"
+        for k in range(len(cmd_plains)):
+            var line = cmd_colors[k]
+            if cmd_helps[k]:
+                var padding = cmd_pad - len(cmd_plains[k])
+                for _p in range(padding):
+                    line += " "
+                line += cmd_helps[k]
+            s += line + "\n"
+
+        return s
+
+    fn _help_tips_section(self, H: String) -> String:
+        """Generates the 'Tips:' section with hints and user-defined tips.
+
+        Automatically adds a ``--`` separator hint when positional
+        arguments are registered.  User-defined tips (added via
+        ``add_tip()``) are always included.
+
+        Args:
+            H: ANSI colour code for section headers.
+
+        Returns:
+            The tips section string, or empty string if no tips.
+        """
+        var has_positional = False
+        for i in range(len(self.args)):
+            if self.args[i].is_positional and not self.args[i].is_hidden:
+                has_positional = True
+                break
 
         # Tip: show '--' separator hint when positional args are registered.
         # When negative numbers are already handled automatically (either via
@@ -2131,11 +2222,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for _ti in range(len(self._tips)):
             tip_lines.append(self._tips[_ti])
 
-        if len(tip_lines) > 0:
-            s += "\n" + H + "Tips:" + _RESET + "\n"
-            for _ti in range(len(tip_lines)):
-                s += "  " + tip_lines[_ti] + "\n"
+        if len(tip_lines) == 0:
+            return ""
 
+        var s = "\n" + H + "Tips:" + _RESET + "\n"
+        for _ti in range(len(tip_lines)):
+            s += "  " + tip_lines[_ti] + "\n"
         return s
 
     fn print_summary(self, result: ParseResult):

@@ -284,7 +284,7 @@ Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo
 
 #### Architecture: composition inside `Command`
 
-- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2300 lines.
+- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2400 lines.
 - **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_args()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
 - **Composition-based.** `Command` gains a child command list. When `parse_args()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_args()`. 100% logic reuse, zero duplication.
 
@@ -295,11 +295,6 @@ Before adding subcommand routing, clean up `parse_args()` so root and child can 
 - [x] Extract `_apply_defaults(mut result)` — move the ~20-line defaults block into a private method
 - [x] Extract `_validate(result)` — move the ~130-line validation block (required, exclusive, together, one-required, conditional, range) into a private method
 - [x] Verify all existing tests still pass after this refactor (143 original + 17 new Step 0 tests = 160 total, all passing)
-- [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/nargs/value)
-- [x] Extract `_parse_short_single()` — single-character short option parsing (`-k`, `-k value`)
-- [x] Extract `_parse_short_merged()` — merged short flags and attached values (`-abc`, `-ofile.txt`)
-- [x] Extract `_dispatch_subcommand()` — subcommand matching, child argv construction, persistent arg injection, bidirectional sync
-- [x] Verify all tests still pass after this refactor
 
 #### Step 1 — Data model & API surface
 
@@ -410,6 +405,24 @@ if result.subcommand == "search":
 - [x] Document persistent flag behavior and conflict rules
 
 ### Phase 5: Polish (nice-to-have features, may not be implemented soon)
+
+#### Pre-requisite refactor
+
+Before adding Phase 5 features, further decompose `parse_args()` for readability and maintainability:
+
+- [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/nargs/value)
+- [x] Extract `_parse_short_single()` — single-character short option parsing (`-k`, `-k value`)
+- [x] Extract `_parse_short_merged()` — merged short flags and attached values (`-abc`, `-ofile.txt`)
+- [x] Extract `_dispatch_subcommand()` — subcommand matching, child argv construction, persistent arg injection, bidirectional sync
+- [x] Verify all 241 tests still pass after this refactor
+- [x] Extract `_help_usage_line()` — description + usage line with positionals / COMMAND / OPTIONS
+- [x] Extract `_help_positionals_section()` — "Arguments:" section with dynamic padding
+- [x] Extract `_help_options_section()` — "Options:" and "Global Options:" sections (local + persistent, built-in --help/--version)
+- [x] Extract `_help_commands_section()` — "Commands:" section listing subcommands
+- [x] Extract `_help_tips_section()` — "Tips:" section with `--` hint and user-defined tips
+- [x] Verify all 241 tests still pass after help refactor
+
+#### Features
 
 - [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
 - [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
