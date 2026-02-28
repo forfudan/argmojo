@@ -69,7 +69,7 @@ These features appear across multiple libraries and depend only on string operat
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                        | Phase 5       |
 | Require equals syntax              | —        | —     | —     | ✓    |                        | Phase 5       |
 | Default-if-present (const)         | ✓        | —     | —     | ✓    |                        | Phase 5       |
-| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | Phase 5       |
+| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
 | CJK-aware help formatting          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |

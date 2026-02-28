@@ -13,6 +13,7 @@ from .utils import (
     _DEFAULT_ERROR_COLOR,
     _looks_like_number,
     _resolve_color,
+    _suggest_similar,
 )
 
 
@@ -1255,11 +1256,21 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             avail += ", "
                         avail += self.subcommands[_si].name
                         first = False
+                # Try typo suggestion for subcommand names.
+                var sub_names = List[String]()
+                for _si2 in range(len(self.subcommands)):
+                    if not self.subcommands[_si2]._is_help_subcommand:
+                        sub_names.append(self.subcommands[_si2].name)
+                var suggestion = _suggest_similar(arg, sub_names)
+                var hint = String("")
+                if suggestion != "":
+                    hint = ". Did you mean '" + suggestion + "'?"
                 self._error(
                     "Unknown command '"
                     + arg
                     + "'. Available commands: "
                     + avail
+                    + hint
                 )
             return -1
 
@@ -1549,6 +1560,22 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 "Ambiguous option '--" + name + "' could match: " + opts
             )
 
+        # Collect all known long names + aliases for typo suggestion.
+        var all_longs = List[String]()
+        for i in range(len(self.args)):
+            if self.args[i].long_name != "":
+                all_longs.append(self.args[i].long_name)
+            for j in range(len(self.args[i].alias_names)):
+                all_longs.append(self.args[i].alias_names[j])
+        var suggestion = _suggest_similar(name, all_longs)
+        if suggestion != "":
+            self._error(
+                "Unknown option '--"
+                + name
+                + "'. Did you mean '--"
+                + suggestion
+                + "'?"
+            )
         self._error("Unknown option '--" + name + "'")
         raise Error(
             "unreachable"
@@ -1566,9 +1593,21 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error if no argument matches.
         """
+        var all_shorts = List[String]()
         for i in range(len(self.args)):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
+            if self.args[i].short_name != "":
+                all_shorts.append(self.args[i].short_name)
+        var suggestion = _suggest_similar(name, all_shorts)
+        if suggestion != "":
+            self._error(
+                "Unknown option '-"
+                + name
+                + "'. Did you mean '-"
+                + suggestion
+                + "'?"
+            )
         self._error("Unknown option '-" + name + "'")
         raise Error(
             "unreachable"

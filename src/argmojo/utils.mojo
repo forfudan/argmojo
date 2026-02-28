@@ -112,3 +112,78 @@ fn _resolve_color(name: String) raises -> String:
         + "'. Choose from: RED, GREEN, YELLOW, BLUE, MAGENTA, PINK, CYAN,"
         " WHITE, ORANGE"
     )
+
+
+fn _levenshtein(a: String, b: String) -> Int:
+    """Returns the Levenshtein edit distance between two strings.
+
+    The classic dynamic-programming algorithm, O(m*n) time and O(min(m,n))
+    space (only the previous row is kept).
+    """
+    var m = len(a)
+    var n = len(b)
+    if m == 0:
+        return n
+    if n == 0:
+        return m
+    # Ensure the shorter string is used for the column dimension.
+    if m < n:
+        return _levenshtein(b, a)
+    # prev holds the previous row of the DP matrix.
+    var prev = List[Int]()
+    for j in range(n + 1):
+        prev.append(j)
+    var curr = List[Int]()
+    for _ in range(n + 1):
+        curr.append(0)
+    for i in range(1, m + 1):
+        curr[0] = i
+        for j in range(1, n + 1):
+            var cost = 0 if a[i - 1 : i] == b[j - 1 : j] else 1
+            var ins = prev[j] + 1
+            var dele = curr[j - 1] + 1
+            var sub = prev[j - 1] + cost
+            # min of three
+            var best = ins
+            if dele < best:
+                best = dele
+            if sub < best:
+                best = sub
+            curr[j] = best
+        # Swap rows.
+        for j in range(n + 1):
+            var tmp = prev[j]
+            prev[j] = curr[j]
+            curr[j] = tmp
+    return prev[n]
+
+
+fn _suggest_similar(input: String, candidates: List[String]) -> String:
+    """Returns a 'Did you mean ...?' hint for the closest candidate.
+
+    Uses Levenshtein distance with a threshold of `max(len(input)/2, 2)`.
+    If no candidate is close enough, returns an empty string.
+
+    Args:
+        input: The unrecognised token the user typed.
+        candidates: Valid option / subcommand names to compare against.
+
+    Returns:
+        A non-empty hint string such as `". Did you mean '--verbose'?"`
+        or `""` when there is no good match.
+    """
+    if len(candidates) == 0:
+        return ""
+    var best_dist = len(input) + 1
+    var best_name = String("")
+    var threshold = len(input) // 2
+    if threshold < 2:
+        threshold = 2
+    for i in range(len(candidates)):
+        var d = _levenshtein(input, candidates[i])
+        if d < best_dist:
+            best_dist = d
+            best_name = candidates[i]
+    if best_dist <= threshold:
+        return best_name
+    return ""
