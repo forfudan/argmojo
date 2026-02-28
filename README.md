@@ -219,7 +219,8 @@ argmojo/
 │       ├── __init__.mojo              # Package exports
 │       ├── argument.mojo              # Argument struct (argument definition)
 │       ├── command.mojo               # Command struct (parsing logic)
-│       └── parse_result.mojo          # ParseResult struct (parsed values)
+│       ├── parse_result.mojo          # ParseResult struct (parsed values)
+│       └── utils.mojo                 # ANSI colour constants and utility functions
 ├── tests/                             # Test suites (241 tests)
 │   ├── test_parse.mojo
 │   ├── test_groups.mojo
