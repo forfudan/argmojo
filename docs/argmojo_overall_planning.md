@@ -284,7 +284,7 @@ Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo
 
 #### Architecture: composition inside `Command`
 
-- **No file split.** Everything stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2400 lines.
+- **No file split.** Core logic stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2250 lines. ANSI colour constants and small utility functions live in `utils.mojo` (internal-only, all symbols `_`-prefixed).
 - **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_args()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
 - **Composition-based.** `Command` gains a child command list. When `parse_args()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_args()`. 100% logic reuse, zero duplication.
 
@@ -421,6 +421,8 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 - [x] Extract `_help_commands_section()` — "Commands:" section listing subcommands
 - [x] Extract `_help_tips_section()` — "Tips:" section with `--` hint and user-defined tips
 - [x] Verify all 241 tests still pass after help refactor
+- [x] Extract `utils.mojo` — move ANSI colour constants (`_RESET`, `_BOLD_UL`, `_RED`…`_ORANGE`, default colour aliases) and utility functions (`_looks_like_number`, `_is_ascii_digit`, `_resolve_color`) into a dedicated internal module; `command.mojo` imports them
+- [x] Verify all tests still pass after utils extraction
 
 #### Features
 
