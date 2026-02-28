@@ -27,9 +27,8 @@ comptime _DEFAULT_ERROR_COLOR = _RED
 fn _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
-    Recognises the forms ``-N``, ``-N.N``, ``-.N``, ``-NeX``, ``-N.NeX``,
-    and the corresponding ``-Ne+X`` / ``-Ne-X`` variants (same grammar as
-    Python / argparse numeric detection).
+    Recognises the forms `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-N.NEX`,
+    `-.NE+X`, and the corresponding `-Ne+X`, `-Ne-X`, `-NE+X`, `-NE-X` variants.
     """
     if len(token) < 2 or token[0:1] != "-":
         return False
