@@ -75,6 +75,7 @@ These features appear across multiple libraries and depend only on string operat
 | Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature | Phase 5       |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention        | Phase 5       |
+| Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish      | Phase 5       |
 | CJK-aware help formatting          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
@@ -89,7 +90,6 @@ These features appear across multiple libraries and depend only on string operat
 | Feature                                       | Reason for Exclusion                                      |
 | --------------------------------------------- | --------------------------------------------------------- |
 | Derive / decorator API                        | Mojo has no macros or decorators                          |
-| Shell auto-completion generation              | Requires writing shell scripts; out of scope              |
 | Usage-string-driven parsing (docopt style)    | Too implicit; not a good fit for a typed systems language |
 | Type-conversion callbacks                     | Use `get_int()` / `get_string()` pattern instead          |
 | Config file reading (`fromfile_prefix_chars`) | Out of scope; users can pre-process argv                  |
@@ -545,7 +545,6 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 These will **NOT** be implemented (but who knows :D maybe in the future if there's demand):
 
 - Derive/decorator-based API (no macros in Mojo)
-- Shell completion script generation
 - Usage-string-driven parsing (docopt style)
 - Config file parsing (users can pre-process argv)
 - Environment variable fallback
