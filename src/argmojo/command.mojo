@@ -1635,21 +1635,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error if no argument matches.
         """
-        var all_shorts = List[String]()
         for i in range(len(self.args)):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
-            if self.args[i].short_name != "":
-                all_shorts.append(self.args[i].short_name)
-        var suggestion = _suggest_similar(name, all_shorts)
-        if suggestion != "":
-            self._error(
-                "Unknown option '-"
-                + name
-                + "'. Did you mean '-"
-                + suggestion
-                + "'?"
-            )
+        # Short options are always a single character; any two single-character
+        # inputs have Levenshtein distance ≤ 1, so the threshold would always
+        # fire and produce meaningless suggestions (e.g. "-z" → "Did you mean
+        # '-v'?"). Suggestions are therefore disabled for short options.
         self._error("Unknown option '-" + name + "'")
         raise Error(
             "unreachable"
