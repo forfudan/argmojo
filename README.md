@@ -1,14 +1,8 @@
 # ArgMojo
 
-A command-line argument parser library for [Mojo](https://www.modular.com/mojo).
+A command-line argument parser library for [Mojo](https://www.modular.com/mojo), inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, and other popular libraries.
 
-> **A**rguments  
-> **R**esolved and  
-> **G**rouped into  
-> **M**eaningful  
-> **O**ptions and  
-> **J**oined  
-> **O**bjects
+> **A**rguments **R**esolved and **G**rouped into **M**eaningful **O**ptions and **J**oined **O**bjects
 
 ## Overview
 
