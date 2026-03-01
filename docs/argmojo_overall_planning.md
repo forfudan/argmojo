@@ -73,6 +73,13 @@ These features appear across multiple libraries and depend only on string operat
 | CJK-aware help formatting          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
+| Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
+| Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention        | Phase 6       |
+| Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
+| `Parseable` trait for type params  | —        | —     | —     | ✓    |                        | Phase 7       |
+| Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros   | Phase 7+      |
+| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection    | Phase 7+      |
+| Subcommand variant dispatch        | —        | —     | —     | ✓    | Requires sum types     | Phase 7+      |
 
 ### 2.3 Features Excluded (Infeasible or Inappropriate)
 
@@ -85,6 +92,7 @@ These features appear across multiple libraries and depend only on string operat
 | Config file reading (`fromfile_prefix_chars`) | Out of scope; users can pre-process argv                  |
 | Environment variable fallback                 | Can be done externally; not core parser responsibility    |
 | Template-customisable help (Go cobra style)   | Mojo has no template engine; help format is hardcoded     |
+| Path / URL / Duration value types             | Mojo stdlib has no `Path` / `Url` / `Duration` types yet  |
 
 ## 3. Technical Foundations
 
@@ -237,6 +245,87 @@ pattern             # By order of add_argument() calls
 --help / -h         # Show auto-generated help
 --version / -V      # Show version
 ```
+
+### 4.5 Validation & Help Behavior Matrix
+
+Positional arguments and named options are validated **independently** — a command can fail on either or both. The two matrices below show each dimension's behavior separately; the combined scenario table shows practical cross-product outcomes.
+
+#### Per-Dimension Behavior
+
+**Positional arguments:**
+
+| Command config ↓ \ User input → | Enough positionals provided | Not enough positionals provided |
+| ------------------------------- | --------------------------- | ------------------------------- |
+| **Has required positional(s)**  | ✓ Proceed                   | ✗ Error + usage                 |
+| **No required positional(s)**   | ✓ Proceed                   | N/A — always "enough"           |
+
+**Named options:**
+
+| Command config ↓ \ User input → | Enough options provided | Not enough options provided |
+| ------------------------------- | ----------------------- | --------------------------- |
+| **Has required option(s)**      | ✓ Proceed               | ✗ Error + usage             |
+| **No required option(s)**       | ✓ Proceed               | N/A — always "enough"       |
+
+#### Cross-Dimension Matrix (4 × 4)
+
+When rows and columns refer to **different** dimensions (e.g., "has required positionals" × "enough options"), the outcome depends on the *other* dimension — marked ? below.
+
+|                                | Enough pos. args     | Not enough pos. args | Enough options       | Not enough options   |
+| ------------------------------ | -------------------- | -------------------- | -------------------- | -------------------- |
+| **Has required positional(s)** | ✓ Proceed            | ✗ Error + usage      | ? depends on pos.    | ? depends on pos.    |
+| **No required positional(s)**  | ✓ Proceed            | *(N/A)*              | ? always ok for pos. | ? always ok for pos. |
+| **Has required option(s)**     | ? depends on opt.    | ? depends on opt.    | ✓ Proceed            | ✗ Error + usage      |
+| **No required option(s)**      | ? always ok for opt. | ? always ok for opt. | ✓ Proceed            | *(N/A)*              |
+
+#### Combined Scenario Table
+
+The practical view — both dimensions checked together at parse time:
+
+| Command Profile               | Nothing provided | Pos. ✗ Opt. ✓          | Pos. ✓ Opt. ✗          | All ✓      |
+| ----------------------------- | ---------------- | ---------------------- | ---------------------- | ---------- |
+| Required pos. + required opt. | ✗ Error + usage  | ✗ Error (missing pos.) | ✗ Error (missing opt.) | ✓ Proceed  |
+| Required pos. only            | ✗ Error + usage  | ✗ Error (missing pos.) | ✓ Proceed              | ✓ Proceed  |
+| Required opt. only            | ✗ Error + usage  | ✓ Proceed              | ✗ Error (missing opt.) | ✓ Proceed  |
+| No requirements               | ✓ Proceed        | ✓ Proceed              | ✓ Proceed              | ✓ Proceed  |
+| Has subcommands (group)       | ✓ Proceed *      | —                      | —                      | ✓ Dispatch |
+
+\* Group commands with subcommands typically do nothing useful with no input — `help_on_no_args()` is recommended.
+
+#### Effect of `help_on_no_args()`
+
+| Scenario                          | Default (off)                                                  | With `help_on_no_args()`    |
+| --------------------------------- | -------------------------------------------------------------- | --------------------------- |
+| Zero args (only program name)     | Validation runs → error if requirements exist; proceed if none | **Show full help** (exit 0) |
+| Some args provided (insufficient) | ✗ Error + usage                                                | ✗ Error + usage *(same)*    |
+| All requirements satisfied        | ✓ Proceed                                                      | ✓ Proceed *(same)*          |
+
+> **Key:** `help_on_no_args()` only overrides the **zero-argument** case. Once any argument is provided, normal validation takes over regardless.
+
+#### Industry Consensus (clap / cobra / argparse / click / docker / git / kubectl)
+
+1. **Error, not help.** When the user provides a partial or incorrect invocation, the standard is a *short error message* naming the missing argument + a compact *usage line*. Full help is reserved for `--help` or bare group commands. This is the dominant pattern across clap, argparse, click, commander.js, cargo.
+
+2. **No special-casing "zero args" by default.** The vast majority of frameworks do NOT treat "provided nothing" differently from "provided some but not all." clap's `arg_required_else_help(true)` is the only first-class opt-in — ArgMojo's `help_on_no_args()` mirrors this.
+
+3. **Two-tier pattern for subcommands.** Every tool examined follows the same convention:
+   - **Group/parent command** with no subcommand given → **show full help** (list available subcommands)
+   - **Leaf subcommand** with missing required args → **show error + usage line** (not full help)
+   - Rationale: at the group level, the user needs guidance on *what* to do; at the leaf level, they know *what* they want but forgot *how*.
+
+4. **Error batching.** Split across tools — clap and argparse report *all* missing arguments at once; click and commander report the *first* one. ArgMojo currently reports the first missing argument (validation order: required args → positional count → exclusive groups → together groups → one-required → conditional → range).
+
+5. **Exit codes.** POSIX-influenced tools (argparse, clap, click) use exit code **2** for argument parse errors. Go-based tools (cobra, docker, kubectl) use exit code **1**. ArgMojo currently raises an `Error` (caller decides exit code).
+
+6. **Error output format consensus** (clap / argparse / click / cargo):
+
+   ```bash
+   error: <command>: <what's wrong>
+
+   Usage: <command> <required> [optional] [OPTIONS]
+   For more information, try '<command> --help'.
+   ```
+
+   NOT full help with all flags listed (only cobra does that by default, and it provides `SilenceUsage` to opt out).
 
 ## 5. Development Roadmap
 
@@ -426,7 +515,7 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 
 #### Features
 
-- [ ] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
+- [x] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
 - [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
@@ -453,6 +542,125 @@ These will **NOT** be implemented (but who knows :D maybe in the future if there
 - Config file parsing (users can pre-process argv)
 - Environment variable fallback
 - Template-based help formatting
+
+### Phase 6: CJK Features & Miscellaneous
+
+ArgMojo's differentiating features — no other CLI library addresses CJK-specific pain points.
+
+#### 6.1 CJK-aware help formatting
+
+**Problem:** All Western CLI libraries (argparse, cobra, clap) assume 1 char = 1 column. CJK characters occupy 2 terminal columns (full-width), causing misaligned `--help` output when descriptions mix CJK and ASCII:
+
+```bash
+  --format <FMT>   Output format              ← aligned
+  --ling           使用宇浩靈明編碼           ← CJK chars each take 2 columns, misaligned
+```
+
+**Implementation:**
+
+- [ ] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing each code point:
+  - CJK Unified Ideographs (`U+4E00`–`U+9FFF`), CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms (`U+FF01`–`U+FF60`) → width 2
+  - Other visible characters → width 1
+  - Zero-width joiners, combining marks → width 0
+- [ ] Replace `len()` with `_display_width()` in all help formatting padding calculations (`_help_positionals_section`, `_help_options_section`, `_help_commands_section`)
+- [ ] Add tests with mixed CJK/ASCII help text verifying column alignment
+
+**References:** POSIX `wcwidth(3)`, Python `unicodedata.east_asian_width()`, Rust `unicode-width` crate.
+
+#### 6.2 Full-width → half-width auto-correction
+
+**Problem:** CJK users frequently forget to switch input methods, typing full-width ASCII:
+
+- `－－ｖｅｒｂｏｓｅ` instead of `--verbose`
+- `＝` instead of `=`
+
+**Implementation:**
+
+- [ ] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
+  - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get half-width
+  - Full-width space `U+3000` → half-width space `U+0020`
+- [ ] In `parse_args()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
+
+  ```bash
+  warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
+  ```
+
+- [ ] Only correct option names (tokens starting with `-`), **not** positional values (user may intentionally input full-width content)
+- [ ] Add `.disable_fullwidth_correction()` opt-out API on `Command`
+- [ ] Add tests for full-width flag, full-width `=` in `--key＝value`, and opt-out
+
+#### 6.3 CJK punctuation detection
+
+**Problem:** Users accidentally type Chinese punctuation:
+
+- `——verbose` (em-dash `U+2014` × 2) instead of `--verbose`
+- `--key：value` (full-width colon `U+FF1A`) instead of `--key=value`
+
+**Implementation:**
+
+- [ ] Integrate with typo suggestion system — when a token fails to match any known option, check for common CJK punctuation patterns before running Levenshtein:
+  - `——` (`U+2014 U+2014`) → `--`
+  - `：` (`U+FF1A`) → `=` or `:`
+  - `，` (`U+FF0C`) → `,` (affects value delimiters)
+- [ ] Produce specific error messages:
+
+  ```bash
+  error: unknown option '——verbose'. Did you mean '--verbose'? (detected Chinese em-dash ——)
+  ```
+
+- [ ] Add tests for each punctuation substitution
+
+#### 6.4 Mutual implication
+
+**Problem:** Some flags logically imply others: setting `--debug` should automatically enable `--verbose`. No major CLI library (argparse, cobra, clap) has built-in support; users must write manual if-else logic.
+
+**Implementation:**
+
+- [ ] Add `command.implies("debug", "verbose")` API — after parsing, if the trigger flag is set, automatically set the implied flag
+- [ ] Support chained implication: `debug → verbose → log`
+- [ ] Detect circular implication (`A → B → A`) at registration time and raise an error
+- [ ] Add tests for simple implication, chaining, and cycle detection
+
+#### 6.5 Stdin value reading
+
+**Problem:** Unix convention uses `-` to mean "read from stdin":
+
+```bash
+cat data.txt | mytool --input -
+```
+
+**Implementation:**
+
+- [ ] Add `.stdin_value()` builder method on `Argument`
+- [ ] When the parsed value is `"-"`, read from stdin and store the content as the argument's value
+- [ ] Depends on Mojo's stdin support — verify feasibility before implementing
+- [ ] Add tests (may need to mock stdin or skip in CI)
+
+### Phase 7: Type-Safe API (aspirational — blocked on Mojo language features)
+
+These features represent the "next generation" of CLI parser design, inspired by Rust clap's derive API. They require Mojo language features that do **not yet exist** (macros, reflection, sum types). Tracked here as aspirational goals.
+
+> **Note on clap's success:** The claim that "clap succeeded because of strong typing" is partially misleading. clap's **builder API** (`matches.get_one::<String>("name")`) is structurally identical to ArgMojo's `result.get_string("name")` — both are runtime-typed string-keyed lookups. clap was the dominant Rust CLI library for years (v1–v3) before the derive macro was stabilised. The derive API's real value is **boilerplate reduction** (one struct definition encodes name, type, help, default), not type safety per se. Python argparse (dynamic `Namespace`), Go cobra (`GetString("name")`), and Click all use the same runtime-lookup pattern and are the most popular parsers in their ecosystems.
+
+| Feature                                                   | What it needs                            | Status                  |
+| --------------------------------------------------------- | ---------------------------------------- | ----------------------- |
+| `Parseable` trait                                         | Mojo traits + parametric methods         | Can prototype now       |
+| `add_arg[Int]("--port")` generic registration             | `Parseable` trait + type-aware storage   | Can prototype now       |
+| `@cli struct Args` derive                                 | Mojo macros / decorators                 | Blocked — no macros     |
+| `enum Mode { Debug, Release }` → auto choices             | Mojo reflection on enum variants         | Blocked — no reflection |
+| `variant Command { Commit(CommitArgs), Push(PushArgs) }`  | Mojo sum types / enum with payloads      | Blocked — no sum types  |
+| `file: String` (required) vs `output: String?` (optional) | Derive macro to map struct fields → args | Blocked — no macros     |
+| `Path` / `Url` / `Duration` value types                   | Mojo stdlib types                        | Blocked — stdlib gaps   |
+
+#### What ArgMojo already provides (equivalent functionality)
+
+| "Missing" feature            | ArgMojo equivalent                                                                                                                             | How                                             |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Typed retrieval              | `get_flag()->Bool`, `get_int()->Int`, `get_string()->String`, `get_count()->Int`, `get_list()->List[String]`, `get_map()->Dict[String,String]` | Already typed at retrieval                      |
+| Enum validation              | `.choices(["debug", "release"])`                                                                                                               | String-level enum; help shows `{debug,release}` |
+| Required / optional          | `.required()` / `.default("...")`                                                                                                              | Parse-time enforcement with coloured errors     |
+| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max(N)` planned           |
+| Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
 
 ## 6. Parsing Algorithm
 

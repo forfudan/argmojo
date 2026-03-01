@@ -28,7 +28,7 @@ from argmojo import Argument, Command
 fn main() raises:
     var app = Command(
         "git",
-        "The stupid content tracker.",
+        "A git-like CLI to demonstrate argmojo with subcommands.",
         version="2.47.0",
     )
 
@@ -91,6 +91,7 @@ fn main() raises:
         .long("recurse-submodules")
         .flag()
     )
+    clone.help_on_no_args()
     app.add_subcommand(clone^)
 
     # ── init ─────────────────────────────────────────────────────────────
@@ -317,12 +318,14 @@ fn main() raises:
         .short("f")
         .flag()
     )
+    remote_add.help_on_no_args()
     remote.add_subcommand(remote_add^)
 
     var remote_remove = Command("remove", "Remove a remote")
     remote_remove.add_argument(
         Argument("name", help="Remote name to remove").positional().required()
     )
+    remote_remove.help_on_no_args()
     remote.add_subcommand(remote_remove^)
 
     var remote_rename = Command("rename", "Rename a remote")
@@ -332,14 +335,17 @@ fn main() raises:
     remote_rename.add_argument(
         Argument("new", help="New remote name").positional().required()
     )
+    remote_rename.help_on_no_args()
     remote.add_subcommand(remote_rename^)
 
     var remote_show = Command("show", "Show information about a remote")
     remote_show.add_argument(
         Argument("name", help="Remote name").positional().required()
     )
+    remote_show.help_on_no_args()
     remote.add_subcommand(remote_show^)
 
+    remote.help_on_no_args()
     app.add_subcommand(remote^)
 
     # ── branch ───────────────────────────────────────────────────────────

@@ -694,6 +694,48 @@ struct Command(Copyable, Movable, Stringable, Writable):
         )
         raise Error(msg)
 
+    fn _error_with_usage(self, msg: String) raises:
+        """Prints a coloured error with a usage hint and help tip, then raises.
+
+        Used for validation errors (missing required args, too many positionals)
+        where showing the usage line helps the user understand what is expected.
+        """
+        print(
+            self._error_color + "error: " + self.name + ": " + msg + _RESET,
+            file=stderr,
+        )
+        print(
+            "\n" + self._plain_usage(),
+            file=stderr,
+        )
+        print(
+            "For more information, try '" + self.name + " --help'.",
+            file=stderr,
+        )
+        raise Error(msg)
+
+    fn _plain_usage(self) -> String:
+        """Returns a plain-text usage line (no ANSI colours).
+
+        Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
+        """
+        var s = String("Usage: ") + self.name
+        for i in range(len(self.args)):
+            if self.args[i].is_positional and not self.args[i].is_hidden:
+                if self.args[i].is_required:
+                    s += " <" + self.args[i].name + ">"
+                else:
+                    s += " [" + self.args[i].name + "]"
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " <COMMAND>"
+        s += " [OPTIONS]"
+        return s
+
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
 
@@ -1327,14 +1369,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.is_required and not result.has(a.name):
-                self._error(
+                self._error_with_usage(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
         if expected_count > 0 and len(result.positionals) > expected_count:
-            self._error(
+            self._error_with_usage(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
