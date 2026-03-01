@@ -59,6 +59,9 @@ These features appear across multiple libraries and depend only on string operat
 | Subcommands                        | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
 | Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl    | **Done**      |
 | Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.  | **Done**      |
+| Subcommand aliases                 | —        | —     | ✓     | ✓    |                        | Phase 5       |
+| Hidden subcommands                 | —        | —     | ✓     | ✓    |                        | Phase 5       |
+| `NO_COLOR` env variable            | —        | —     | —     | —    | no-color.org standard  | Phase 5       |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                        | Phase 5       |
 | Interactive prompting              | —        | ✓     | —     | —    |                        | Phase 5       |
@@ -70,16 +73,16 @@ These features appear across multiple libraries and depend only on string operat
 | Require equals syntax              | —        | —     | —     | ✓    |                        | Phase 5       |
 | Default-if-present (const)         | ✓        | —     | —     | ✓    |                        | Phase 5       |
 | Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
+| Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature | Phase 5       |
+| Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention        | Phase 5       |
 | CJK-aware help formatting          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
-| Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
-| Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention        | Phase 6       |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                        | Phase 7       |
-| Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros   | Phase 7+      |
-| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection    | Phase 7+      |
-| Subcommand variant dispatch        | —        | —     | —     | ✓    | Requires sum types     | Phase 7+      |
+| Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros   | Phase unknown |
+| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection    | Phase unknown |
+| Subcommand variant dispatch        | —        | —     | —     | ✓    | Requires sum types     | Phase unknown |
 
 ### 2.3 Features Excluded (Infeasible or Inappropriate)
 
@@ -531,6 +534,11 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
 - [ ] **REMAINDER nargs** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
+- [ ] **Mutual implication** — `command.implies("debug", "verbose")` — after parsing, if the trigger flag is set, automatically set the implied flag; support chained implication (`debug → verbose → log`); detect circular cycles at registration time (no major library has this built-in)
+- [ ] **Stdin value** — `.stdin_value()` on `Argument` — when parsed value is `"-"`, read from stdin; Unix convention (`cat file.txt | mytool --input -`) (cobra supports; depends on Mojo stdin API)
+- [ ] **Subcommand aliases** — `sub.alias("co")` registers a shorthand name; typo suggestions search aliases too (cobra `Command.Aliases`, clap `Command::alias`)
+- [ ] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, still dispatchable by exact name (clap `Command::hide`, cobra `Hidden`)
+- [ ] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set, suppress all ANSI colour output; lower priority than explicit `.color(False)` API call
 
 ### Explicitly Out of Scope
 
@@ -543,9 +551,11 @@ These will **NOT** be implemented (but who knows :D maybe in the future if there
 - Environment variable fallback
 - Template-based help formatting
 
-### Phase 6: CJK Features & Miscellaneous
+### Phase 6: CJK Features
 
 ArgMojo's differentiating features — no other CLI library addresses CJK-specific pain points.
+
+這部分主要是為了讓 ArgMojo 在 CJK 環境下的使用體驗更好，解決一些常見的問題，比如幫助信息對齊、全角字符自動轉半角、CJK 標點檢測等。畢竟我總是忘了切換輸入法，打出中文的全角標點，然後被 CLI 報錯。
 
 #### 6.1 CJK-aware help formatting
 
@@ -609,32 +619,6 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
   ```
 
 - [ ] Add tests for each punctuation substitution
-
-#### 6.4 Mutual implication
-
-**Problem:** Some flags logically imply others: setting `--debug` should automatically enable `--verbose`. No major CLI library (argparse, cobra, clap) has built-in support; users must write manual if-else logic.
-
-**Implementation:**
-
-- [ ] Add `command.implies("debug", "verbose")` API — after parsing, if the trigger flag is set, automatically set the implied flag
-- [ ] Support chained implication: `debug → verbose → log`
-- [ ] Detect circular implication (`A → B → A`) at registration time and raise an error
-- [ ] Add tests for simple implication, chaining, and cycle detection
-
-#### 6.5 Stdin value reading
-
-**Problem:** Unix convention uses `-` to mean "read from stdin":
-
-```bash
-cat data.txt | mytool --input -
-```
-
-**Implementation:**
-
-- [ ] Add `.stdin_value()` builder method on `Argument`
-- [ ] When the parsed value is `"-"`, read from stdin and store the content as the argument's value
-- [ ] Depends on Mojo's stdin support — verify feasibility before implementing
-- [ ] Add tests (may need to mock stdin or skip in CI)
 
 ### Phase 7: Type-Safe API (aspirational — blocked on Mojo language features)
 
