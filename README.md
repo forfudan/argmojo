@@ -9,6 +9,9 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo),
 [![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
 [![User manual](https://img.shields.io/badge/user-manual-purple)](https://github.com/forfudan/argmojo/wiki)
 
+<video src="https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/completions.mp4" controls width="800"></video>
+<p align="center"><em>Shell auto-completion of a mock <code>git</code> CLI built with ArgMojo</em></p>
+
 <!-- 
 [![CI](https://img.shields.io/github/actions/workflow/status/forfudan/argmojo/run_tests.yaml?branch=main&label=tests)](https://github.com/forfudan/argmojo/actions/workflows/run_tests.yaml)
 [![License](https://img.shields.io/github/license/forfudan/argmojo)](LICENSE)
@@ -153,6 +156,8 @@ pixi run build
 
 ### `grep` (no subcommands)
 
+![grep CLI demo](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/grep.png)
+
 ```bash
 # Help and version
 ./grep --help
@@ -175,6 +180,8 @@ pixi run build
 ```
 
 ### `git` (with subcommands)
+
+![git clone subcommand](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/git-clone.png)
 
 ```bash
 # Root help — shows Commands section + Global Options
