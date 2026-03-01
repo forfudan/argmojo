@@ -78,6 +78,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
     By default (False), registering a positional arg on a Command that already 
     has subcommands (or vice versa) raises an Error at registration time.
     Call `allow_positional_with_subcommands()` to opt in explicitly."""
+    var _completions_enabled: Bool
+    """When True (default), a built-in completion trigger is active.
+    Call ``disable_default_completions()`` to opt out entirely."""
+    var _completions_name: String
+    """The name used for the built-in completion trigger.
+    Defaults to ``"completions"`` → ``--completions <shell>``.
+    Change via ``completions_name()``."""
+    var _completions_is_subcommand: Bool
+    """When True, the completion trigger is a subcommand instead of an
+    option.  Default False → ``--completions``.  Call
+    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
@@ -114,6 +125,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_subcommand_enabled = True
         self._allow_negative_numbers = False
         self._allow_positional_with_subcommands = False
+        self._completions_enabled = True
+        self._completions_name = String("completions")
+        self._completions_is_subcommand = False
         self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
@@ -142,6 +156,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._allow_positional_with_subcommands = (
             move._allow_positional_with_subcommands
         )
+        self._completions_enabled = move._completions_enabled
+        self._completions_name = move._completions_name^
+        self._completions_is_subcommand = move._completions_is_subcommand
         self._tips = move._tips^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
@@ -185,6 +202,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._allow_positional_with_subcommands = (
             copy._allow_positional_with_subcommands
         )
+        self._completions_enabled = copy._completions_enabled
+        self._completions_name = copy._completions_name
+        self._completions_is_subcommand = copy._completions_is_subcommand
         self._tips = copy._tips.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
@@ -408,6 +428,75 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```
         """
         self._allow_positional_with_subcommands = True
+
+    fn disable_default_completions(mut self):
+        """Disables the built-in completion trigger entirely.
+
+        By default, every ``Command`` has a built-in ``--completions bash``
+        (or ``zsh`` / ``fish``) that prints a shell completion script and
+        exits.  Call this method to remove that trigger completely.
+
+        The ``generate_completion()`` method is still available for
+        programmatic use — only the automatic trigger is removed.
+
+        Example:
+
+        ```mojo
+        var app = Command("myapp", "My CLI")
+        app.disable_default_completions()
+        # --completions is now an unknown option
+        # but app.generate_completion("bash") still works
+        ```
+        """
+        self._completions_enabled = False
+
+    fn completions_name(mut self, name: String):
+        """Sets the name used for the built-in completion trigger.
+
+        Default is ``"completions"`` → ``--completions <shell>``.
+        Change to any name you prefer:
+
+        - ``app.completions_name("autocomp")`` → ``--autocomp bash``
+        - ``app.completions_name("generate-completions")`` → ``--generate-completions bash``
+
+        Combine with ``completions_as_subcommand()`` to use as a subcommand:
+
+        - ``app.completions_name("comp")`` + ``app.completions_as_subcommand()``
+          → ``myapp comp bash``
+
+        Args:
+            name: The new trigger name (without ``--`` prefix).
+
+        Example:
+
+        ```mojo
+        var app = Command("myapp", "My CLI")
+        app.completions_name("autocomp")
+        # Now: myapp --autocomp bash
+        ```
+        """
+        self._completions_name = name
+
+    fn completions_as_subcommand(mut self):
+        """Switches the built-in completion trigger from an option to a subcommand.
+
+        Default behaviour: ``myapp --completions bash``
+        After calling this: ``myapp completions bash``
+
+        Combine with ``completions_name()`` to customise the subcommand name:
+
+        ```mojo
+        app.completions_name("comp")
+        app.completions_as_subcommand()
+        # → myapp comp bash
+        ```
+
+        The subcommand is auto-registered when ``parse()`` runs. It does
+        **not** appear in help output by default (like the ``help``
+        subcommand). The auto-registered subcommand takes one positional
+        argument (the shell name) and handles printing + exiting.
+        """
+        self._completions_is_subcommand = True
 
     fn add_tip(mut self, tip: String):
         """Adds a custom tip line to the bottom of the help message.
@@ -825,6 +914,29 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 print(self.name + " " + self.version)
                 exit(0)
 
+            # Handle --<completions_name> <shell>  (built-in, like --help/--version)
+            if (
+                self._completions_enabled
+                and not self._completions_is_subcommand
+                and arg == "--" + self._completions_name
+            ):
+                if i + 1 < len(raw_args):
+                    i += 1
+                    var shell_arg = raw_args[i]
+                    try:
+                        print(self.generate_completion(shell_arg))
+                    except e:
+                        self._error(String(e))
+                        exit(2)
+                    exit(0)
+                else:
+                    self._error(
+                        "--"
+                        + self._completions_name
+                        + " requires a shell name: bash, zsh, or fish"
+                    )
+                    exit(2)
+
             # Long option: --key, --key=value, --key value
             if arg.startswith("--"):
                 i = self._parse_long_option(raw_args, i, result)
@@ -857,6 +969,27 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 continue
 
             # Positional argument — check for subcommand dispatch first.
+            # Built-in completions subcommand (when in subcommand mode).
+            if (
+                self._completions_enabled
+                and self._completions_is_subcommand
+                and arg == self._completions_name
+            ):
+                if i + 1 < len(raw_args):
+                    i += 1
+                    var shell_arg = raw_args[i]
+                    try:
+                        print(self.generate_completion(shell_arg))
+                    except e:
+                        self._error(String(e))
+                        exit(2)
+                    exit(0)
+                else:
+                    self._error(
+                        self._completions_name
+                        + " requires a shell name: bash, zsh, or fish"
+                    )
+                    exit(2)
             if len(self.subcommands) > 0:
                 var new_i = self._dispatch_subcommand(arg, raw_args, i, result)
                 if new_i >= 0:
@@ -2098,6 +2231,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
         opt_colors.append(version_colored)
         opt_persistent.append(False)
         opt_helps.append(String("Show version"))
+        if self._completions_enabled and not self._completions_is_subcommand:
+            var comp_plain = String(
+                "  --" + self._completions_name + " {bash,zsh,fish}"
+            )
+            var comp_colored = (
+                "  "
+                + arg_color
+                + "--"
+                + self._completions_name
+                + reset_code
+                + " "
+                + arg_color
+                + "{bash,zsh,fish}"
+                + reset_code
+            )
+            opt_plains.append(comp_plain)
+            opt_colors.append(comp_colored)
+            opt_persistent.append(False)
+            opt_helps.append(String("Generate shell completion script"))
 
         # Check if there are any persistent (global) options.
         var has_global = False
@@ -2168,6 +2320,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not self.subcommands[i]._is_help_subcommand:
                 has_subcommands = True
                 break
+        # Also count completions subcommand if in subcommand mode.
+        if self._completions_enabled and self._completions_is_subcommand:
+            has_subcommands = True
 
         if not has_subcommands:
             return ""
@@ -2187,6 +2342,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 cmd_plains.append(plain)
                 cmd_colors.append(colored)
                 cmd_helps.append(self.subcommands[i].description)
+        # Append completions subcommand if in subcommand mode.
+        if self._completions_enabled and self._completions_is_subcommand:
+            var cname = self._completions_name
+            var plain = String("  ") + cname
+            var colored = String("  ") + arg_color + cname + reset_code
+            cmd_plains.append(plain)
+            cmd_colors.append(colored)
+            cmd_helps.append(
+                String("Generate shell completion script (bash, zsh, fish)")
+            )
         # Compute padding.
         var cmd_max: Int = 0
         for k in range(len(cmd_plains)):
@@ -2371,6 +2536,637 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 line += " "
             line += value_strs[k]
             print(line)
+
+    # ===------------------------------------------------------------------=== #
+    # Shell completion generation
+    # ===------------------------------------------------------------------=== #
+
+    fn generate_completion(self, shell: String) raises -> String:
+        """Generates a shell completion script for this command tree.
+
+        Supports ``bash``, ``zsh``, and ``fish`` shells.  The returned
+        string is a complete script that the user can source or redirect
+        to a file:
+
+        ```bash
+        myapp --generate-completions bash > ~/.bash_completion.d/myapp
+        myapp --generate-completions zsh  > ~/.zsh/completions/_myapp
+        myapp --generate-completions fish > ~/.config/fish/completions/myapp.fish
+        ```
+
+        Args:
+            shell: One of ``"bash"``, ``"zsh"``, or ``"fish"``
+                   (case-insensitive).
+
+        Returns:
+            The completion script as a string.
+
+        Raises:
+            Error if *shell* is not recognised.
+        """
+        var lower = shell.lower()
+        if lower == "fish":
+            return self._completion_fish()
+        if lower == "zsh":
+            return self._completion_zsh()
+        if lower == "bash":
+            return self._completion_bash()
+        raise Error("Unknown shell '" + shell + "'. Supported: bash, zsh, fish")
+
+    fn _completion_fish(self) -> String:
+        """Generates a Fish shell completion script.
+
+        Each option/subcommand becomes a single ``complete`` line.
+        Subcommand-specific completions use ``-n '__fish_seen_subcommand_from <sub>'``
+        to scope them.
+
+        Returns:
+            A complete Fish completion script.
+        """
+        var s = String("# Fish completions for " + self.name + "\n")
+        s += "# Generated by ArgMojo\n\n"
+
+        # Root-level options.
+        s += self._fish_options_for(self.name, "")
+        # Built-in options.
+        s += (
+            "complete -c "
+            + self.name
+            + " -s h -l help -d 'Show this help message'\n"
+        )
+        s += "complete -c " + self.name + " -s V -l version -d 'Show version'\n"
+        if self._completions_enabled and not self._completions_is_subcommand:
+            s += (
+                "complete -c "
+                + self.name
+                + " -l "
+                + self._completions_name
+                + " -r -a 'bash zsh fish'"
+                + " -d 'Generate shell completion script'\n"
+            )
+
+        # Subcommands.
+        var _comp_is_sub = (
+            self._completions_enabled and self._completions_is_subcommand
+        )
+        if len(self.subcommands) > 0 or _comp_is_sub:
+            # Condition: no subcommand seen yet.
+            var sub_names = String("")
+            for i in range(len(self.subcommands)):
+                if not self.subcommands[i]._is_help_subcommand:
+                    if sub_names:
+                        sub_names += " "
+                    sub_names += self.subcommands[i].name
+            if _comp_is_sub:
+                if sub_names:
+                    sub_names += " "
+                sub_names += self._completions_name
+            var no_sub_cond = "__fish_seen_subcommand_from " + sub_names
+
+            for i in range(len(self.subcommands)):
+                if self.subcommands[i]._is_help_subcommand:
+                    continue
+                var sub = self.subcommands[i].copy()
+                # Register the subcommand itself.
+                s += (
+                    "complete -c "
+                    + self.name
+                    + " -n 'not "
+                    + no_sub_cond
+                    + "'"
+                    + " -f -a '"
+                    + sub.name
+                    + "'"
+                )
+                if sub.description:
+                    s += " -d '" + self._fish_escape(sub.description) + "'"
+                s += "\n"
+
+                # Subcommand-specific options.
+                var sub_cond = "__fish_seen_subcommand_from " + sub.name
+                s += self._fish_options_for(self.name, sub_cond)
+                # Iterate sub.args for subcommand's own arguments.
+                for j in range(len(sub.args)):
+                    var arg = sub.args[j].copy()
+                    if arg.is_hidden or arg.is_positional:
+                        continue
+                    var line = "complete -c " + self.name
+                    line += " -n '" + sub_cond + "'"
+                    if arg.short_name:
+                        line += " -s " + arg.short_name
+                    if arg.long_name:
+                        line += " -l " + arg.long_name
+                    if not arg.is_flag and not arg.is_count:
+                        line += " -r"
+                    if len(arg.choice_values) > 0:
+                        var choices = String("")
+                        for k in range(len(arg.choice_values)):
+                            if choices:
+                                choices += " "
+                            choices += arg.choice_values[k]
+                        line += " -a '" + choices + "'"
+                    if arg.help_text:
+                        line += " -d '" + self._fish_escape(arg.help_text) + "'"
+                    s += line + "\n"
+
+            # Completions subcommand entry.
+            if _comp_is_sub:
+                var cname = self._completions_name
+                s += (
+                    "complete -c "
+                    + self.name
+                    + " -n 'not "
+                    + no_sub_cond
+                    + "'"
+                    + " -f -a '"
+                    + cname
+                    + "'"
+                    + " -d 'Generate shell completion script'\n"
+                )
+                s += (
+                    "complete -c "
+                    + self.name
+                    + " -n '__fish_seen_subcommand_from "
+                    + cname
+                    + "'"
+                    + " -r -a 'bash zsh fish'\n"
+                )
+        return s
+
+    fn _fish_options_for(self, cmd_name: String, condition: String) -> String:
+        """Generates ``complete`` lines for this command's own arguments.
+
+        Args:
+            cmd_name: The top-level command name (for ``complete -c``).
+            condition: Fish condition string (empty for root-level).
+
+        Returns:
+            Lines of ``complete`` commands for non-hidden, non-positional args.
+        """
+        var s = String("")
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if arg.is_hidden or arg.is_positional:
+                continue
+            var line = "complete -c " + cmd_name
+            if condition:
+                line += " -n '" + condition + "'"
+            if arg.short_name:
+                line += " -s " + arg.short_name
+            if arg.long_name:
+                line += " -l " + arg.long_name
+            if not arg.is_flag and not arg.is_count:
+                line += " -r"
+            if len(arg.choice_values) > 0:
+                var choices = String("")
+                for k in range(len(arg.choice_values)):
+                    if choices:
+                        choices += " "
+                    choices += arg.choice_values[k]
+                line += " -a '" + choices + "'"
+            if arg.help_text:
+                line += " -d '" + self._fish_escape(arg.help_text) + "'"
+            s += line + "\n"
+        return s
+
+    fn _fish_escape(self, text: String) -> String:
+        """Escapes single quotes in text for Fish shell strings.
+
+        Args:
+            text: The text to escape.
+
+        Returns:
+            The escaped text with ``'`` replaced by ``\\'``.
+        """
+        var result = String("")
+        for i in range(len(text)):
+            var ch = text[i : i + 1]
+            if ch == "'":
+                result += "\\'"
+            else:
+                result += ch
+        return result
+
+    fn _completion_zsh(self) -> String:
+        """Generates a Zsh completion script using ``_arguments``.
+
+        Returns:
+            A complete Zsh completion script.
+        """
+        var s = String("#compdef " + self.name + "\n")
+        s += "# Zsh completions for " + self.name + "\n"
+        s += "# Generated by ArgMojo\n\n"
+
+        # If there are subcommands, generate a dispatcher function.
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+
+        if has_subcommands:
+            s += self._zsh_with_subcommands()
+        else:
+            s += self._zsh_simple()
+
+        s += "compdef _" + self.name + " " + self.name + "\n"
+        return s
+
+    fn _zsh_simple(self) -> String:
+        """Generates a simple Zsh completion function (no subcommands).
+
+        Returns:
+            The function body string.
+        """
+        var s = String("_" + self.name + "() {\n")
+        s += "  _arguments \\\n"
+        # User-defined arguments.
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if arg.is_hidden:
+                continue
+            if arg.is_positional:
+                continue
+            s += "    " + self._zsh_arg_spec(arg) + " \\\n"
+        # Built-in options.
+        s += "    '(- *)'{-h,--help}'[Show this help message]' \\\n"
+        if self._completions_enabled and not self._completions_is_subcommand:
+            s += "    '(- *)'{-V,--version}'[Show version]' \\\n"
+            s += (
+                "    '--"
+                + self._completions_name
+                + "[Generate shell completion script]:shell:(bash zsh fish)'\n"
+            )
+        else:
+            s += "    '(- *)'{-V,--version}'[Show version]'\n"
+        s += "}\n\n"
+        return s
+
+    fn _zsh_with_subcommands(self) -> String:
+        """Generates a Zsh completion function with subcommand dispatch.
+
+        Returns:
+            The function body string with subcommand handling.
+        """
+        var s = String("_" + self.name + "() {\n")
+        s += "  local -a commands\n"
+        s += "  commands=(\n"
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i]._is_help_subcommand:
+                continue
+            var sub = self.subcommands[i].copy()
+            var desc = self._zsh_escape(
+                sub.description
+            ) if sub.description else ""
+            s += "    '" + sub.name + ":" + desc + "'\n"
+        if self._completions_enabled and self._completions_is_subcommand:
+            s += (
+                "    '"
+                + self._completions_name
+                + ":Generate shell completion script'\n"
+            )
+        s += "  )\n\n"
+
+        s += "  _arguments -C \\\n"
+        # Root-level options.
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if arg.is_hidden or arg.is_positional:
+                continue
+            s += "    " + self._zsh_arg_spec(arg) + " \\\n"
+        s += "    '(- *)'{-h,--help}'[Show this help message]' \\\n"
+        s += "    '(- *)'{-V,--version}'[Show version]' \\\n"
+        if self._completions_enabled and not self._completions_is_subcommand:
+            s += (
+                "    '--"
+                + self._completions_name
+                + "[Generate shell completion"
+                " script]:shell:(bash zsh fish)' \\\n"
+            )
+        s += "    '1:command:->cmd' \\\n"
+        s += "    '*::arg:->args'\n\n"
+
+        s += "  case $state in\n"
+        s += "    cmd)\n"
+        s += "      _describe -t commands 'command' commands\n"
+        s += "      ;;\n"
+        s += "    args)\n"
+        s += "      case $words[1] in\n"
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i]._is_help_subcommand:
+                continue
+            var sub = self.subcommands[i].copy()
+            s += "        " + sub.name + ")\n"
+            s += "          _arguments \\\n"
+            for j in range(len(sub.args)):
+                var arg = sub.args[j].copy()
+                if arg.is_hidden:
+                    continue
+                if arg.is_positional:
+                    continue
+                s += "            " + self._zsh_arg_spec(arg) + " \\\n"
+            s += "            '(- *)'{-h,--help}'[Show this help message]'\n"
+            s += "          ;;\n"
+
+        if self._completions_enabled and self._completions_is_subcommand:
+            s += "        " + self._completions_name + ")\n"
+            s += (
+                "          _arguments \\\n"
+                "            '1:shell:(bash zsh fish)'\n"
+            )
+            s += "          ;;\n"
+
+        s += "      esac\n"
+        s += "      ;;\n"
+        s += "  esac\n"
+        s += "}\n\n"
+        return s
+
+    fn _zsh_arg_spec(self, arg: Argument) -> String:
+        """Builds a single ``_arguments`` spec string for an argument.
+
+        Args:
+            arg: The argument to generate a spec for.
+
+        Returns:
+            A ``_arguments``-compatible spec string, e.g.
+            ``'--verbose[Enable verbose output]'``.
+        """
+        var spec = String("")
+        var desc = self._zsh_escape(arg.help_text) if arg.help_text else ""
+
+        if arg.short_name and arg.long_name:
+            # Grouped short+long form.
+            spec += (
+                "'(-"
+                + arg.short_name
+                + " --"
+                + arg.long_name
+                + ")'"
+                + "{-"
+                + arg.short_name
+                + ",--"
+                + arg.long_name
+                + "}"
+            )
+        elif arg.long_name:
+            spec += "'--" + arg.long_name
+        elif arg.short_name:
+            spec += "'-" + arg.short_name
+
+        if arg.short_name and arg.long_name:
+            # Description + value spec.
+            spec += "'[" + desc + "]"
+            if not arg.is_flag and not arg.is_count:
+                if len(arg.choice_values) > 0:
+                    var choices = String("")
+                    for k in range(len(arg.choice_values)):
+                        if choices:
+                            choices += " "
+                        choices += arg.choice_values[k]
+                    spec += ":value:(" + choices + ")"
+                else:
+                    var mv = arg.metavar_name if arg.metavar_name else arg.name
+                    spec += ":" + mv + ":"
+            spec += "'"
+        else:
+            if not arg.is_flag and not arg.is_count:
+                if len(arg.choice_values) > 0:
+                    var choices = String("")
+                    for k in range(len(arg.choice_values)):
+                        if choices:
+                            choices += " "
+                        choices += arg.choice_values[k]
+                    spec += "[" + desc + "]:value:(" + choices + ")'"
+                else:
+                    var mv = arg.metavar_name if arg.metavar_name else arg.name
+                    spec += "[" + desc + "]:" + mv + ":'"
+            else:
+                spec += "[" + desc + "]'"
+
+        return spec
+
+    fn _zsh_escape(self, text: String) -> String:
+        """Escapes special characters in text for Zsh completion specs.
+
+        Escapes ``[``, ``]``, ``'``, and ``:`` which have special meaning
+        in ``_arguments`` spec syntax.
+
+        Args:
+            text: The text to escape.
+
+        Returns:
+            The escaped text.
+        """
+        var result = String("")
+        for i in range(len(text)):
+            var ch = text[i : i + 1]
+            if ch == "[" or ch == "]":
+                result += "\\" + ch
+            elif ch == "'":
+                result += "'\"'\"'"
+            elif ch == ":":
+                result += "\\:"
+            else:
+                result += ch
+        return result
+
+    fn _completion_bash(self) -> String:
+        """Generates a Bash completion script using ``complete -F``.
+
+        Returns:
+            A complete Bash completion script.
+        """
+        var fn_name = "_" + self.name + "_completion"
+        var s = String("# Bash completions for " + self.name + "\n")
+        s += "# Generated by ArgMojo\n\n"
+        s += fn_name + "() {\n"
+        s += '  local cur="${COMP_WORDS[COMP_CWORD]}"\n'
+        s += '  local prev="${COMP_WORDS[COMP_CWORD-1]}"\n'
+
+        # Check if there are subcommands.
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+
+        if has_subcommands:
+            s += self._bash_with_subcommands()
+        else:
+            s += self._bash_simple()
+
+        s += "}\n\n"
+        s += "complete -F " + fn_name + " " + self.name + "\n"
+        return s
+
+    fn _bash_simple(self) -> String:
+        """Generates the body of a simple Bash completion function.
+
+        Returns:
+            The case/COMPREPLY logic for a command with no subcommands.
+        """
+        # Collect all option words.
+        var words = String("--help --version")
+        if self._completions_enabled and not self._completions_is_subcommand:
+            words += " --" + self._completions_name
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if arg.is_hidden or arg.is_positional:
+                continue
+            if arg.long_name:
+                words += " --" + arg.long_name
+            if arg.short_name:
+                words += " -" + arg.short_name
+
+        # Handle value completion for prev.
+        var s = self._bash_prev_cases()
+        s += '  COMPREPLY=($(compgen -W "' + words + '" -- "$cur"))\n'
+        return s
+
+    fn _bash_with_subcommands(self) -> String:
+        """Generates the body of a Bash completion function with subcommands.
+
+        Uses ``COMP_WORDS`` scanning to detect which subcommand is active,
+        then scopes completions accordingly.
+
+        Returns:
+            The completion logic body string.
+        """
+        # Collect subcommand names.
+        var sub_names = String("")
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i]._is_help_subcommand:
+                continue
+            if sub_names:
+                sub_names += " "
+            sub_names += self.subcommands[i].name
+        if self._completions_enabled and self._completions_is_subcommand:
+            if sub_names:
+                sub_names += " "
+            sub_names += self._completions_name
+
+        var s = String("")
+        # Root-level options.
+        var root_words = String("--help --version")
+        if self._completions_enabled and not self._completions_is_subcommand:
+            root_words += " --" + self._completions_name
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if arg.is_hidden or arg.is_positional:
+                continue
+            if arg.long_name:
+                root_words += " --" + arg.long_name
+            if arg.short_name:
+                root_words += " -" + arg.short_name
+
+        # Detect subcommand in COMP_WORDS.
+        s += "  local subcmd=''\n"
+        s += "  for ((i=1; i<COMP_CWORD; i++)); do\n"
+        s += "    case ${COMP_WORDS[i]} in\n"
+        s += "      " + sub_names.replace(" ", "|") + ")\n"
+        s += "        subcmd=${COMP_WORDS[i]}\n"
+        s += "        break\n"
+        s += "        ;;\n"
+        s += "    esac\n"
+        s += "  done\n\n"
+
+        s += "  if [[ -z $subcmd ]]; then\n"
+        s += (
+            '    COMPREPLY=($(compgen -W "'
+            + root_words
+            + " "
+            + sub_names
+            + '" -- "$cur"))\n'
+        )
+        s += "    return\n"
+        s += "  fi\n\n"
+
+        s += "  case $subcmd in\n"
+        for i in range(len(self.subcommands)):
+            if self.subcommands[i]._is_help_subcommand:
+                continue
+            var sub = self.subcommands[i].copy()
+            var sub_words = String("--help")
+            for j in range(len(sub.args)):
+                var arg = sub.args[j].copy()
+                if arg.is_hidden or arg.is_positional:
+                    continue
+                if arg.long_name:
+                    sub_words += " --" + arg.long_name
+                if arg.short_name:
+                    sub_words += " -" + arg.short_name
+            s += "    " + sub.name + ")\n"
+            s += (
+                '      COMPREPLY=($(compgen -W "'
+                + sub_words
+                + '" -- "$cur"))\n'
+            )
+            s += "      ;;\n"
+        if self._completions_enabled and self._completions_is_subcommand:
+            s += "    " + self._completions_name + ")\n"
+            s += '      COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))\n'
+            s += "      ;;\n"
+        s += "  esac\n"
+        return s
+
+    fn _bash_prev_cases(self) -> String:
+        """Generates ``case $prev`` blocks for options with choices.
+
+        When the previous word is an option that has a fixed set of
+        choices, completes those values.
+
+        Returns:
+            A ``case``/``esac`` block string, or empty if no choices.
+        """
+        var has_choices = (
+            self._completions_enabled and not self._completions_is_subcommand
+        )
+        if not has_choices:
+            for i in range(len(self.args)):
+                if (
+                    not self.args[i].is_hidden
+                    and not self.args[i].is_positional
+                    and len(self.args[i].choice_values) > 0
+                ):
+                    has_choices = True
+                    break
+
+        if not has_choices:
+            return ""
+
+        var s = String("  case $prev in\n")
+        if self._completions_enabled and not self._completions_is_subcommand:
+            s += "    --" + self._completions_name + ")\n"
+            s += '      COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))\n'
+            s += "      return\n"
+            s += "      ;;\n"
+        for i in range(len(self.args)):
+            var arg = self.args[i].copy()
+            if (
+                arg.is_hidden
+                or arg.is_positional
+                or len(arg.choice_values) == 0
+            ):
+                continue
+            var pattern = String("")
+            if arg.long_name:
+                pattern += "--" + arg.long_name
+            if arg.short_name:
+                if pattern:
+                    pattern += "|"
+                pattern += "-" + arg.short_name
+            var choices = String("")
+            for k in range(len(arg.choice_values)):
+                if choices:
+                    choices += " "
+                choices += arg.choice_values[k]
+            s += "    " + pattern + ")\n"
+            s += '      COMPREPLY=($(compgen -W "' + choices + '" -- "$cur"))\n'
+            s += "      return\n"
+            s += "      ;;\n"
+        s += "  esac\n"
+        return s
 
     fn __str__(self) -> String:
         """Returns a string representation of this command."""

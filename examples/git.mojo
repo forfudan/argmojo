@@ -9,7 +9,8 @@ required arguments, metavar, hidden arguments, append/collect, value
 delimiter, mutually exclusive groups, required-together groups, conditional
 requirements, numeric range validation, aliases, deprecated arguments,
 Commands section in help, Global Options heading, full command path in
-child help/errors, unknown subcommand error, and custom tips.
+child help/errors, unknown subcommand error, custom tips, and shell
+completion script generation.
 
 Try these:
   git --help                        # root help (Commands + Global Options)
@@ -20,6 +21,7 @@ Try these:
   git log --oneline -n 20 --author "Alice"
   git remote add origin https://example.com/repo.git
   git -v push origin main --force --tags
+  git --completions bash           # shell completion script (built-in)
 """
 
 from argmojo import Argument, Command

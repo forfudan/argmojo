@@ -47,6 +47,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **One-required groups**: require at least one argument from a group (e.g., must provide `--json` or `--yaml`)
 - **Value delimiter**: `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`
 - **Multi-value options (nargs)**: `--point 10 20` consumes N consecutive values with `.nargs(N)`
+- **Shell completion script generation**: `generate_completion("bash"|"zsh"|"fish")` produces a complete tab-completion script for your CLI
 
 ---
 
@@ -142,7 +143,7 @@ ArgMojo ships with two complete example CLIs:
 | Example                 | File                 | Features                                                                                                                                                                                                                                                                                                                       |
 | ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `grep` — simulated grep | `examples/grep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
-| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips                                                                     |
+| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                 |
 
 Build both example binaries:
 
@@ -195,6 +196,11 @@ pixi run build
 # Unknown subcommand → clear error
 ./git foo
 # error: git: Unknown command 'foo'. Available commands: clone, init, ...
+
+# Shell completion script generation
+./git --generate-completions bash   # bash completion script
+./git --generate-completions zsh    # zsh completion script
+./git --generate-completions fish   # fish completion script
 ```
 
 ## Development
