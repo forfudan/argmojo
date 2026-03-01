@@ -13,6 +13,7 @@ from .utils import (
     _DEFAULT_ERROR_COLOR,
     _looks_like_number,
     _resolve_color,
+    _suggest_similar,
 )
 
 
@@ -693,6 +694,48 @@ struct Command(Copyable, Movable, Stringable, Writable):
         )
         raise Error(msg)
 
+    fn _error_with_usage(self, msg: String) raises:
+        """Prints a coloured error with a usage hint and help tip, then raises.
+
+        Used for validation errors (missing required args, too many positionals)
+        where showing the usage line helps the user understand what is expected.
+        """
+        print(
+            self._error_color + "error: " + self.name + ": " + msg + _RESET,
+            file=stderr,
+        )
+        print(
+            "\n" + self._plain_usage(),
+            file=stderr,
+        )
+        print(
+            "For more information, try '" + self.name + " --help'.",
+            file=stderr,
+        )
+        raise Error(msg)
+
+    fn _plain_usage(self) -> String:
+        """Returns a plain-text usage line (no ANSI colours).
+
+        Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
+        """
+        var s = String("Usage: ") + self.name
+        for i in range(len(self.args)):
+            if self.args[i].is_positional and not self.args[i].is_hidden:
+                if self.args[i].is_required:
+                    s += " <" + self.args[i].name + ">"
+                else:
+                    s += " [" + self.args[i].name + "]"
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " <COMMAND>"
+        s += " [OPTIONS]"
+        return s
+
     fn parse(self) raises -> ParseResult:
         """Parses command-line arguments from `sys.argv()`.
 
@@ -1255,11 +1298,21 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             avail += ", "
                         avail += self.subcommands[_si].name
                         first = False
+                # Try typo suggestion for subcommand names.
+                var sub_names = List[String]()
+                for _si2 in range(len(self.subcommands)):
+                    if not self.subcommands[_si2]._is_help_subcommand:
+                        sub_names.append(self.subcommands[_si2].name)
+                var suggestion = _suggest_similar(arg, sub_names)
+                var hint = String("")
+                if suggestion != "":
+                    hint = ". Did you mean '" + suggestion + "'?"
                 self._error(
                     "Unknown command '"
                     + arg
                     + "'. Available commands: "
                     + avail
+                    + hint
                 )
             return -1
 
@@ -1316,14 +1369,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.is_required and not result.has(a.name):
-                self._error(
+                self._error_with_usage(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
         if expected_count > 0 and len(result.positionals) > expected_count:
-            self._error(
+            self._error_with_usage(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
@@ -1549,6 +1602,22 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 "Ambiguous option '--" + name + "' could match: " + opts
             )
 
+        # Collect all known long names + aliases for typo suggestion.
+        var all_longs = List[String]()
+        for i in range(len(self.args)):
+            if self.args[i].long_name != "":
+                all_longs.append(self.args[i].long_name)
+            for j in range(len(self.args[i].alias_names)):
+                all_longs.append(self.args[i].alias_names[j])
+        var suggestion = _suggest_similar(name, all_longs)
+        if suggestion != "":
+            self._error(
+                "Unknown option '--"
+                + name
+                + "'. Did you mean '--"
+                + suggestion
+                + "'?"
+            )
         self._error("Unknown option '--" + name + "'")
         raise Error(
             "unreachable"
@@ -1569,6 +1638,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(self.args)):
             if self.args[i].short_name == name:
                 return self.args[i].copy()
+        # Short options are always a single character; any two single-character
+        # inputs have Levenshtein distance ≤ 1, so the threshold would always
+        # fire and produce meaningless suggestions (e.g. "-z" → "Did you mean
+        # '-v'?"). Suggestions are therefore disabled for short options.
         self._error("Unknown option '-" + name + "'")
         raise Error(
             "unreachable"
