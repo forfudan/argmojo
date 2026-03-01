@@ -2049,7 +2049,8 @@ Every `Command` automatically responds to `--completions <shell>` — just like 
 var app = Command("myapp", "My application", version="1.0.0")
 app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
 app.add_argument(Argument("output", help="Output file").long("output").short("o").metavar("FILE"))
-app.add_argument(Argument("format", help="Output format").long("format").choices("json", "csv", "table"))
+var formats: List[String] = ["json", "csv", "table"]
+app.add_argument(Argument("format", help="Output format").long("format").choices(formats^))
 
 var sub = Command("serve", "Start a server")
 sub.add_argument(Argument("port", help="Port number").long("port").short("p"))
@@ -2136,8 +2137,6 @@ After generating a script, users `source` it or place it in a shell-specific dir
 **Bash:**
 
 ```bash
-# If compdef is not already loaded, initialize Zsh completion system
-autoload -Uz compinit && compinit
 # One-shot (current session only)
 eval "$(myapp --completions bash)"
 

@@ -80,19 +80,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
     Call `allow_positional_with_subcommands()` to opt in explicitly."""
     var _completions_enabled: Bool
     """When True (default), a built-in completion trigger is active.
-    Call ``disable_default_completions()`` to opt out entirely."""
+    Call `disable_default_completions()` to opt out entirely."""
     var _completions_name: String
     """The name used for the built-in completion trigger.
-    Defaults to ``"completions"`` → ``--completions <shell>``.
-    Change via ``completions_name()``."""
+    Defaults to `"completions"` → `--completions <shell>`.
+    Change via `completions_name()`."""
     var _completions_is_subcommand: Bool
     """When True, the completion trigger is a subcommand instead of an
-    option.  Default False → ``--completions``.  Call
-    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
+    option.  Default False → `--completions`.  Call
+    `completions_as_subcommand()` to switch to `myapp completions bash`."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
-    Add entries via ``add_tip()``.  Each tip is printed on its own line
-    prefixed with the same bold ``Tip:`` label as the built-in hint."""
+    Add entries via `add_tip()`.  Each tip is printed on its own line
+    prefixed with the same bold `Tip:` label as the built-in hint."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -169,9 +169,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Creates a deep copy of a Command.
 
         All field data — including registered args and subcommands — is
-        duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
+        duplicated.  Builder-pattern usage with `add_subcommand(sub^)`
         moves rather than copies, so this is only triggered when a
-        ``Command`` value is assigned via ``=``.
+        `Command` value is assigned via `=`.
 
         Args:
             copy: The Command to copy from.
@@ -221,7 +221,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error if adding a positional argument to a Command that already
             has subcommands registered, unless
-            ``allow_positional_with_subcommands()`` has been called.
+            `allow_positional_with_subcommands()` has been called.
 
         Args:
             argument: The Argument to register.
@@ -2549,9 +2549,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         to a file:
 
         ```bash
-        myapp --generate-completions bash > ~/.bash_completion.d/myapp
-        myapp --generate-completions zsh  > ~/.zsh/completions/_myapp
-        myapp --generate-completions fish > ~/.config/fish/completions/myapp.fish
+        myapp --completions bash > ~/.bash_completion.d/myapp
+        myapp --completions zsh  > ~/.zsh/completions/_myapp
+        myapp --completions fish > ~/.config/fish/completions/myapp.fish
         ```
 
         Args:
@@ -2644,7 +2644,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 # Subcommand-specific options.
                 var sub_cond = "__fish_seen_subcommand_from " + sub.name
-                s += self._fish_options_for(self.name, sub_cond)
+                s += self._fish_options_for(
+                    self.name, sub_cond, persistent_only=True
+                )
                 # Iterate sub.args for subcommand's own arguments.
                 for j in range(len(sub.args)):
                     var arg = sub.args[j].copy()
@@ -2693,12 +2695,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
         return s
 
-    fn _fish_options_for(self, cmd_name: String, condition: String) -> String:
+    fn _fish_options_for(
+        self, cmd_name: String, condition: String, persistent_only: Bool = False
+    ) -> String:
         """Generates ``complete`` lines for this command's own arguments.
 
         Args:
             cmd_name: The top-level command name (for ``complete -c``).
             condition: Fish condition string (empty for root-level).
+            persistent_only: When True, only emit persistent arguments.
 
         Returns:
             Lines of ``complete`` commands for non-hidden, non-positional args.
@@ -2707,6 +2712,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
             if arg.is_hidden or arg.is_positional:
+                continue
+            if persistent_only and not arg.is_persistent:
                 continue
             var line = "complete -c " + cmd_name
             if condition:
@@ -2763,6 +2770,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not self.subcommands[i]._is_help_subcommand:
                 has_subcommands = True
                 break
+        if self._completions_enabled and self._completions_is_subcommand:
+            has_subcommands = True
 
         if has_subcommands:
             s += self._zsh_with_subcommands()
@@ -2990,6 +2999,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not self.subcommands[i]._is_help_subcommand:
                 has_subcommands = True
                 break
+        if self._completions_enabled and self._completions_is_subcommand:
+            has_subcommands = True
 
         if has_subcommands:
             s += self._bash_with_subcommands()
@@ -3072,6 +3083,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         s += "  done\n\n"
 
         s += "  if [[ -z $subcmd ]]; then\n"
+        # Root-level $prev choices completion.
+        s += self._bash_prev_cases_for_args(self.args, "    ")
         s += (
             '    COMPREPLY=($(compgen -W "'
             + root_words
@@ -3097,6 +3110,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if arg.short_name:
                     sub_words += " -" + arg.short_name
             s += "    " + sub.name + ")\n"
+            # Subcommand-level $prev choices completion.
+            s += self._bash_prev_cases_for_args(sub.args, "      ")
             s += (
                 '      COMPREPLY=($(compgen -W "'
                 + sub_words
@@ -3166,6 +3181,66 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += "      return\n"
             s += "      ;;\n"
         s += "  esac\n"
+        return s
+
+    fn _bash_prev_cases_for_args(
+        self, args: List[Argument], indent: String
+    ) -> String:
+        """Generates `case $prev` blocks for a given list of arguments.
+
+        Used by `_bash_with_subcommands()` to emit choice-value
+        completion for both root-level and subcommand-level options.
+
+        Args:
+            args: The argument list to scan for choice-bearing options.
+            indent: Whitespace prefix for each emitted line.
+
+        Returns:
+            A `case`/`esac` block string, or empty if no choices.
+        """
+        var has_choices = False
+        for i in range(len(args)):
+            if (
+                not args[i].is_hidden
+                and not args[i].is_positional
+                and len(args[i].choice_values) > 0
+            ):
+                has_choices = True
+                break
+        if not has_choices:
+            return ""
+
+        var s = indent + "case $prev in\n"
+        for i in range(len(args)):
+            var arg = args[i].copy()
+            if (
+                arg.is_hidden
+                or arg.is_positional
+                or len(arg.choice_values) == 0
+            ):
+                continue
+            var pattern = String("")
+            if arg.long_name:
+                pattern += "--" + arg.long_name
+            if arg.short_name:
+                if pattern:
+                    pattern += "|"
+                pattern += "-" + arg.short_name
+            var choices = String("")
+            for k in range(len(arg.choice_values)):
+                if choices:
+                    choices += " "
+                choices += arg.choice_values[k]
+            s += indent + "  " + pattern + ")\n"
+            s += (
+                indent
+                + '    COMPREPLY=($(compgen -W "'
+                + choices
+                + '" -- "$cur"))\n'
+            )
+            s += indent + "    return\n"
+            s += indent + "    ;;\n"
+        s += indent + "esac\n"
         return s
 
     fn __str__(self) -> String:

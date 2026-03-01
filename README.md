@@ -205,9 +205,9 @@ pixi run build
 # error: git: Unknown command 'foo'. Available commands: clone, init, ...
 
 # Shell completion script generation
-./git --generate-completions bash   # bash completion script
-./git --generate-completions zsh    # zsh completion script
-./git --generate-completions fish   # fish completion script
+./git --completions bash   # bash completion script
+./git --completions zsh    # zsh completion script
+./git --completions fish   # fish completion script
 ```
 
 ## Development

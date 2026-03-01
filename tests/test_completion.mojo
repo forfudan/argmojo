@@ -530,13 +530,16 @@ fn test_count_option_no_value() raises:
     # Fish: should NOT have -r
     var fish = command.generate_completion("fish")
     var lines = fish.split("\n")
+    var found = False
     for i in range(len(lines)):
         if "-l verbose" in lines[i]:
+            found = True
             assert_false(
                 " -r" in lines[i],
                 msg="Count option should not have -r in Fish",
             )
             break
+    assert_true(found, msg="Fish script should contain '-l verbose' line")
     print("  ✓ test_count_option_no_value")
 
 
