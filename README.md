@@ -4,6 +4,19 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo),
 
 > **A**rguments **R**esolved and **G**rouped into **M**eaningful **O**ptions and **J**oined **O**bjects
 
+[![CI](https://img.shields.io/github/actions/workflow/status/forfudan/argmojo/run_tests.yaml?branch=main&label=tests)](https://github.com/forfudan/argmojo/actions/workflows/run_tests.yaml)
+[![Version](https://img.shields.io/github/v/tag/forfudan/argmojo?label=version&color=blue)](https://github.com/forfudan/argmojo/releases)
+![Mojo](https://img.shields.io/badge/mojo-0.26.1-orange)
+[![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
+
+<!-- 
+[![License](https://img.shields.io/github/license/forfudan/argmojo)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/forfudan/argmojo?style=flat)](https://github.com/forfudan/argmojo/stargazers)
+[![Issues](https://img.shields.io/github/issues/forfudan/argmojo)](https://github.com/forfudan/argmojo/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/forfudan/argmojo)](https://github.com/forfudan/argmojo/commits/main)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+ -->
+
 ## Overview
 
 ArgMojo provides a builder-pattern API for defining and parsing command-line arguments in Mojo. It currently supports:
