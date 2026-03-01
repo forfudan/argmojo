@@ -1,0 +1,29 @@
+name: Sync User Manual to Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/user_manual.md'
+  workflow_dispatch:
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Push user_manual.md to Wiki
+        run: |
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki
+          cp docs/user_manual.md wiki/Home.md
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Home.md
+          git diff --staged --quiet || git commit -m "docs: sync user manual from docs/user_manual.md"
+          git push
