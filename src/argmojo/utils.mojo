@@ -27,8 +27,9 @@ comptime _DEFAULT_ERROR_COLOR = _RED
 fn _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
-    Recognises the forms `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-N.NEX`,
-    `-.NE+X`, and the corresponding `-Ne+X`, `-Ne-X`, `-NE+X`, `-NE-X` variants.
+    Recognises the forms ``-N``, ``-N.N``, ``-.N``, ``-NeX``, ``-N.NeX``,
+    ``-N.NEX``, ``-.NE+X``, and the corresponding ``-Ne+X``, ``-Ne-X``,
+    ``-NE+X``, ``-NE-X`` variants.
     """
     if len(token) < 2 or token[0:1] != "-":
         return False
@@ -161,7 +162,7 @@ fn _levenshtein(a: String, b: String) -> Int:
 fn _suggest_similar(input: String, candidates: List[String]) -> String:
     """Returns a 'Did you mean ...?' hint for the closest candidate.
 
-    Uses Levenshtein distance with a threshold of `max(len(input)/2, 2)`.
+    Uses Levenshtein distance with a threshold of ``max(len(input)/2, 2)``.
     If no candidate is close enough, returns an empty string.
 
     Args:
@@ -169,8 +170,8 @@ fn _suggest_similar(input: String, candidates: List[String]) -> String:
         candidates: Valid option / subcommand names to compare against.
 
     Returns:
-        A non-empty hint string such as `". Did you mean '--verbose'?"`
-        or `""` when there is no good match.
+        A non-empty hint string such as ``". Did you mean '--verbose'?"``
+        or ``""`` when there is no good match.
     """
     if len(candidates) == 0:
         return ""

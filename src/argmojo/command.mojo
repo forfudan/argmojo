@@ -60,39 +60,39 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """ANSI code for parse error messages (default: red)."""
     var _is_help_subcommand: Bool
     """True for the auto-inserted 'help' pseudo-subcommand.
-    Never set this manually; use `add_subcommand()` to register subcommands and
-    `disable_help_subcommand()` to opt out.
+    Never set this manually; use ``add_subcommand()`` to register subcommands and
+    ``disable_help_subcommand()`` to opt out.
     """
     var _help_subcommand_enabled: Bool
     """When True (default), auto-insert a 'help' subcommand on first 
-    `add_subcommand()` call."""
+    ``add_subcommand()`` call."""
     var _allow_negative_numbers: Bool
     """When True, tokens matching negative-number format (-N, -N.N, -NeX)
     are always treated as positional arguments.
     When False (default), the same treatment applies automatically whenever
     no registered short option uses a digit character (auto-detect).
-    Enable explicitly via `allow_negative_numbers()` when you have a digit
+    Enable explicitly via ``allow_negative_numbers()`` when you have a digit
     short option and still need negative-number literals to pass through."""
     var _allow_positional_with_subcommands: Bool
     """When True, allows mixing positional arguments with subcommands.
     By default (False), registering a positional arg on a Command that already 
     has subcommands (or vice versa) raises an Error at registration time.
-    Call `allow_positional_with_subcommands()` to opt in explicitly."""
+    Call ``allow_positional_with_subcommands()`` to opt in explicitly."""
     var _completions_enabled: Bool
     """When True (default), a built-in completion trigger is active.
-    Call `disable_default_completions()` to opt out entirely."""
+    Call ``disable_default_completions()`` to opt out entirely."""
     var _completions_name: String
     """The name used for the built-in completion trigger.
-    Defaults to `"completions"` → `--completions <shell>`.
-    Change via `completions_name()`."""
+    Defaults to ``"completions"`` → ``--completions <shell>``.
+    Change via ``completions_name()``."""
     var _completions_is_subcommand: Bool
     """When True, the completion trigger is a subcommand instead of an
-    option.  Default False → `--completions`.  Call
-    `completions_as_subcommand()` to switch to `myapp completions bash`."""
+    option.  Default False → ``--completions``.  Call
+    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
-    Add entries via `add_tip()`.  Each tip is printed on its own line
-    prefixed with the same bold `Tip:` label as the built-in hint."""
+    Add entries via ``add_tip()``.  Each tip is printed on its own line
+    prefixed with the same bold ``Tip:`` label as the built-in hint."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -169,9 +169,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Creates a deep copy of a Command.
 
         All field data — including registered args and subcommands — is
-        duplicated.  Builder-pattern usage with `add_subcommand(sub^)`
+        duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
         moves rather than copies, so this is only triggered when a
-        `Command` value is assigned via `=`.
+        ``Command`` value is assigned via ``=``.
 
         Args:
             copy: The Command to copy from.
@@ -221,7 +221,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error if adding a positional argument to a Command that already
             has subcommands registered, unless
-            `allow_positional_with_subcommands()` has been called.
+            ``allow_positional_with_subcommands()`` has been called.
 
         Args:
             argument: The Argument to register.
@@ -366,9 +366,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         from argmojo import Command
         var app = Command("search", "Search engine")
         app.disable_help_subcommand()   # "help" is a valid search query
-        # Now: `search help init`  →  positionals ["help", "init"] on root,
+        # Now: ``search help init``  →  positionals ["help", "init"] on root,
         #    so that you can do something like: search "help" in path "init".
-        #    `search init --help`  →  shows init's help page
+        #    ``search init --help``  →  shows init's help page
         ```
         """
         self._help_subcommand_enabled = False
@@ -442,6 +442,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
+        from argmojo import Command
         var app = Command("myapp", "My CLI")
         app.disable_default_completions()
         # --completions is now an unknown option
@@ -470,6 +471,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Example:
 
         ```mojo
+        from argmojo import Command
         var app = Command("myapp", "My CLI")
         app.completions_name("autocomp")
         # Now: myapp --autocomp bash
@@ -486,6 +488,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Combine with ``completions_name()`` to customise the subcommand name:
 
         ```mojo
+        from argmojo import Command
+        var app = Command("decimo", "CLI calculator based on decimo")
         app.completions_name("comp")
         app.completions_as_subcommand()
         # → myapp comp bash
@@ -722,12 +726,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._error_color = _resolve_color(name)
 
     # Here is a high-level outline of the parsing algorithm implemented in
-    # `parse_args`:
+    # ``parse_args``:
     #
     # 1. Initialize ParseResult and register positional names.
-    # 2. If `help_on_no_args` is enabled and only argv[0] is present:
+    # 2. If ``help_on_no_args`` is enabled and only argv[0] is present:
     #    print help and exit.
-    # 3. Iterate from argv[1] with cursor `i`:
+    # 3. Iterate from argv[1] with cursor ``i``:
     #    ├─ If token is "--": enter positional-only mode.
     #    ├─ If in positional-only mode: append token to positionals.
     #    ├─ If token is --help / -h / -?: print help and exit.
@@ -826,7 +830,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         return s
 
     fn parse(self) raises -> ParseResult:
-        """Parses command-line arguments from `sys.argv()`.
+        """Parses command-line arguments from ``sys.argv()``.
 
         Errors from parsing (missing/invalid arguments, validation failures)
         are printed in colour to stderr and the process exits with code 2.
@@ -853,7 +857,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn parse_args(self, raw_args: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
-        The first element, e.g., `argv[0]`, is expected to be the program name
+        The first element, e.g., ``argv[0]``, is expected to be the program name
         and is skipped.
 
         Args:
@@ -867,7 +871,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         Notes:
 
-        The modifier for `self` is `read` but not `mut`. This ensures that the
+        The modifier for ``self`` is ``read`` but not ``mut``. This ensures that the
         parsing process does not mutate the Command instance itself, which
         prevents contamination and conflicts between multiple parses, e.g.,
         in testing scenarios, REPL usage, and autocompletion.
@@ -1457,7 +1461,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Fills in default values for arguments not provided by the user.
 
         For positional arguments, defaults are placed into the correct slot.
-        For named arguments, the default is stored in `result.values`.
+        For named arguments, the default is stored in ``result.values``.
 
         Args:
             result: The parse result to mutate in-place.
@@ -3186,9 +3190,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn _bash_prev_cases_for_args(
         self, args: List[Argument], indent: String
     ) -> String:
-        """Generates `case $prev` blocks for a given list of arguments.
+        """Generates ``case $prev`` blocks for a given list of arguments.
 
-        Used by `_bash_with_subcommands()` to emit choice-value
+        Used by ``_bash_with_subcommands()`` to emit choice-value
         completion for both root-level and subcommand-level options.
 
         Args:
@@ -3196,7 +3200,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             indent: Whitespace prefix for each emitted line.
 
         Returns:
-            A `case`/`esac` block string, or empty if no choices.
+            A ``case``/``esac`` block string, or empty if no choices.
         """
         var has_choices = False
         for i in range(len(args)):
