@@ -59,9 +59,10 @@ These features appear across multiple libraries and depend only on string operat
 | Subcommands                        | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
 | Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl    | **Done**      |
 | Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.  | **Done**      |
-| Subcommand aliases                 | —        | —     | ✓     | ✓    |                        | Phase 5       |
+| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
+| Subcommand aliases                 | —        | —     | ✓     | ✓    | ✅ Done                 | Phase 5       |
 | Hidden subcommands                 | —        | —     | ✓     | ✓    |                        | Phase 5       |
-| `NO_COLOR` env variable            | —        | —     | —     | —    | no-color.org standard  | Phase 5       |
+| `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally   | Phase 5       |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                        | Phase 5       |
 | Interactive prompting              | —        | ✓     | —     | —    |                        | Phase 5       |
@@ -72,13 +73,12 @@ These features appear across multiple libraries and depend only on string operat
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                        | Phase 5       |
 | Require equals syntax              | —        | —     | —     | ✓    |                        | Phase 5       |
 | Default-if-present (const)         | ✓        | —     | —     | ✓    |                        | Phase 5       |
-| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature | Phase 5       |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention        | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish      | Phase 5       |
-| CJK-aware help formatting          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
-| CJK full-to-half-width correction  | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
-| CJK punctuation detection          | —        | —     | —     | —    | ArgMojo unique feature | Phase 6       |
+| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally   | Phase 6       |
+| CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally   | Phase 6       |
+| CJK punctuation detection          | —        | —     | —     | —    | I need it personally   | Phase 6       |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                        | **Done**      |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                        | Phase 7       |
 | Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros   | Phase unknown |
@@ -537,7 +537,7 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
 - [ ] **Mutual implication** — `command.implies("debug", "verbose")` — after parsing, if the trigger flag is set, automatically set the implied flag; support chained implication (`debug → verbose → log`); detect circular cycles at registration time (no major library has this built-in)
 - [ ] **Stdin value** — `.stdin_value()` on `Argument` — when parsed value is `"-"`, read from stdin; Unix convention (`cat file.txt | mytool --input -`) (cobra supports; depends on Mojo stdin API)
-- [ ] **Subcommand aliases** — `sub.alias("co")` registers a shorthand name; typo suggestions search aliases too (cobra `Command.Aliases`, clap `Command::alias`)
+- [x] **Subcommand aliases** — `sub.command_aliases(["co"])` registers shorthand names; typo suggestions and completions search aliases too (cobra `Command.Aliases`, clap `Command::alias`)
 - [ ] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, still dispatchable by exact name (clap `Command::hide`, cobra `Hidden`)
 - [ ] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set, suppress all ANSI colour output; lower priority than explicit `.color(False)` API call
 

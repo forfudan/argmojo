@@ -94,6 +94,8 @@ fn main() raises:
         .flag()
     )
     clone.help_on_no_args()
+    var clone_aliases: List[String] = ["cl"]
+    clone.command_aliases(clone_aliases^)
     app.add_subcommand(clone^)
 
     # ── init ─────────────────────────────────────────────────────────────
@@ -184,6 +186,8 @@ fn main() raises:
         .long("cleanup-mode")
         .deprecated("Use --cleanup instead")
     )
+    var commit_aliases: List[String] = ["ci"]
+    commit.command_aliases(commit_aliases^)
     app.add_subcommand(commit^)
 
     # ── push ─────────────────────────────────────────────────────────────
@@ -352,6 +356,8 @@ fn main() raises:
 
     # ── branch ───────────────────────────────────────────────────────────
     var branch = Command("branch", "List, create, or delete branches")
+    var branch_aliases: List[String] = ["br"]
+    branch.command_aliases(branch_aliases^)
     branch.add_argument(Argument("name", help="Branch name").positional())
     branch.add_argument(
         Argument("delete", help="Delete a branch")
@@ -381,6 +387,8 @@ fn main() raises:
 
     # ── diff ─────────────────────────────────────────────────────────────
     var diff = Command("diff", "Show changes between commits, trees, etc.")
+    var diff_aliases: List[String] = ["di"]
+    diff.command_aliases(diff_aliases^)
     diff.add_argument(Argument("path", help="Path to diff").positional())
     diff.add_argument(
         Argument("staged", help="Show staged changes").long("staged").flag()
@@ -449,6 +457,8 @@ fn main() raises:
 
     # ── stash ────────────────────────────────────────────────────────────
     var stash = Command("stash", "Stash changes in working directory")
+    var stash_aliases: List[String] = ["st"]
+    stash.command_aliases(stash_aliases^)
     stash.add_argument(
         Argument("stash-message", help="Stash message")
         .long("message")

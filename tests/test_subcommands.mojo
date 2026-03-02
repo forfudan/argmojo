@@ -1150,6 +1150,162 @@ fn test_non_positional_args_unaffected_by_guard() raises:
     print("  ✓ test_non_positional_args_unaffected_by_guard")
 
 
+# ── Step 5: Subcommand aliases ───────────────────────────────────────────────
+
+
+fn test_command_aliases_empty_by_default() raises:
+    """Tests that a fresh Command has no aliases registered."""
+    var sub = Command("clone", "Clone a repo")
+    assert_equal(len(sub._aliases), 0)
+    print("  ✓ test_command_aliases_empty_by_default")
+
+
+fn test_command_aliases_builder() raises:
+    """Tests that command_aliases() stores the provided names."""
+    var sub = Command("clone", "Clone a repo")
+    var names: List[String] = ["cl", "cln"]
+    sub.command_aliases(names^)
+    assert_equal(len(sub._aliases), 2)
+    assert_equal(sub._aliases[0], "cl")
+    assert_equal(sub._aliases[1], "cln")
+    print("  ✓ test_command_aliases_builder")
+
+
+fn test_alias_dispatch_basic() raises:
+    """Tests that typing an alias dispatches to the correct subcommand."""
+    var app = Command("app", "My app")
+    var clone = Command("clone", "Clone a repo")
+    clone.add_argument(
+        Argument("url", help="Repository URL").positional().required()
+    )
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+
+    var args: List[String] = ["app", "cl", "https://example.com/repo.git"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "clone")
+    var sub_result = result.get_subcommand_result()
+    assert_equal(sub_result.positionals[0], "https://example.com/repo.git")
+    print("  ✓ test_alias_dispatch_basic")
+
+
+fn test_alias_stores_canonical_name() raises:
+    """Tests that result.subcommand holds the canonical name, not the alias."""
+    var app = Command("app", "My app")
+    var commit = Command("commit", "Record changes")
+    var aliases: List[String] = ["ci", "cm"]
+    commit.command_aliases(aliases^)
+    app.add_subcommand(commit^)
+
+    # Use second alias.
+    var args: List[String] = ["app", "cm"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "commit")
+    print("  ✓ test_alias_stores_canonical_name")
+
+
+fn test_alias_dispatch_with_child_flags() raises:
+    """Tests that child flags parse correctly when dispatched via alias."""
+    var app = Command("app", "My app")
+    var commit = Command("commit", "Record changes")
+    commit.add_argument(
+        Argument("message", help="Message").short("m").long("message")
+    )
+    commit.add_argument(Argument("amend", help="Amend").long("amend").flag())
+    var aliases: List[String] = ["ci"]
+    commit.command_aliases(aliases^)
+    app.add_subcommand(commit^)
+
+    var args: List[String] = ["app", "ci", "-m", "fix bug", "--amend"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "commit")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("message"), "fix bug")
+    assert_true(sub.get_flag("amend"))
+    print("  ✓ test_alias_dispatch_with_child_flags")
+
+
+fn test_alias_primary_name_still_works() raises:
+    """Tests that the primary name still dispatches correctly alongside aliases.
+    """
+    var app = Command("app", "My app")
+    var clone = Command("clone", "Clone a repo")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+
+    var args: List[String] = ["app", "clone"]
+    var result = app.parse_args(args)
+    assert_equal(result.subcommand, "clone")
+    print("  ✓ test_alias_primary_name_still_works")
+
+
+fn test_alias_find_subcommand() raises:
+    """Tests that _find_subcommand() returns the correct index for aliases."""
+    var app = Command("app", "My app")
+    var search = Command("search", "Search")
+    var aliases: List[String] = ["s", "find"]
+    search.command_aliases(aliases^)
+    app.add_subcommand(search^)
+
+    var idx_name = app._find_subcommand("search")
+    var idx_alias1 = app._find_subcommand("s")
+    var idx_alias2 = app._find_subcommand("find")
+    var idx_none = app._find_subcommand("notexist")
+
+    assert_true(idx_name >= 0)
+    assert_equal(idx_name, idx_alias1)
+    assert_equal(idx_name, idx_alias2)
+    assert_equal(idx_none, -1)
+    print("  ✓ test_alias_find_subcommand")
+
+
+fn test_alias_copy_init() raises:
+    """Tests that aliases survive Command copy."""
+    var sub = Command("clone", "Clone")
+    var aliases: List[String] = ["cl"]
+    sub.command_aliases(aliases^)
+    var sub2 = sub.copy()
+    assert_equal(len(sub2._aliases), 1)
+    assert_equal(sub2._aliases[0], "cl")
+    print("  ✓ test_alias_copy_init")
+
+
+fn test_alias_multiple_subcommands() raises:
+    """Tests aliases with multiple subcommands don't interfere."""
+    var app = Command("app", "My app")
+    var clone = Command("clone", "Clone")
+    var clone_aliases: List[String] = ["cl"]
+    clone.command_aliases(clone_aliases^)
+    app.add_subcommand(clone^)
+
+    var commit = Command("commit", "Commit")
+    var commit_aliases: List[String] = ["ci"]
+    commit.command_aliases(commit_aliases^)
+    app.add_subcommand(commit^)
+
+    # Dispatch via clone alias.
+    var args1: List[String] = ["app", "cl"]
+    var r1 = app.parse_args(args1)
+    assert_equal(r1.subcommand, "clone")
+
+    # Dispatch via commit alias.
+    var args2: List[String] = ["app", "ci"]
+    var r2 = app.parse_args(args2)
+    assert_equal(r2.subcommand, "commit")
+
+    # Primary names still work.
+    var args3: List[String] = ["app", "clone"]
+    var r3 = app.parse_args(args3)
+    assert_equal(r3.subcommand, "clone")
+
+    var args4: List[String] = ["app", "commit"]
+    var r4 = app.parse_args(args4)
+    assert_equal(r4.subcommand, "commit")
+    print("  ✓ test_alias_multiple_subcommands")
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 

@@ -1490,6 +1490,37 @@ app.disable_help_subcommand()
 
 This can be called before or after `add_subcommand()`. If called after, the auto-added `help` entry is removed.
 
+### Subcommand Aliases
+
+You can register short aliases for subcommands with `command_aliases()`. When the user types an alias, ArgMojo dispatches to the canonical subcommand and stores the **canonical name** (not the alias) in `result.subcommand`.
+
+```mojo
+var clone = Command("clone", "Clone a repository")
+var aliases: List[String] = ["cl"]
+clone.command_aliases(aliases^)
+app.add_subcommand(clone^)
+```
+
+```bash
+app cl https://example.com/repo.git   # dispatches to "clone"
+app clone https://example.com/repo.git # still works
+```
+
+```mojo
+var result = app.parse()
+print(result.subcommand)  # always "clone", even if user typed "cl"
+```
+
+Aliases appear in help output alongside the primary name:
+
+```
+Commands:
+  clone, cl    Clone a repository
+  commit, ci   Record changes to the repository
+```
+
+Aliases are also included in shell-completion scripts and typo suggestions.
+
 ### Unknown Subcommand Error
 
 When the root command has subcommands registered **and `allow_positional_with_subcommands()` has not been called**, an unrecognised token triggers an error listing available commands:
