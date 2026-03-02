@@ -36,7 +36,7 @@ fn test_persistent_flag_on_root_no_subcommand() raises:
         .flag()
         .persistent()
     )
-    var r = command.parse_args(["app", "--verbose"])
+    var r = command.parse_arguments(["app", "--verbose"])
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
     print("  ✓ test_persistent_flag_on_root_no_subcommand")
 
@@ -51,7 +51,7 @@ fn test_persistent_flag_absent_on_root() raises:
         .flag()
         .persistent()
     )
-    var r = command.parse_args(["app"])
+    var r = command.parse_arguments(["app"])
     assert_false(r.get_flag("verbose"), msg="absent verbose should be False")
     print("  ✓ test_persistent_flag_absent_on_root")
 
@@ -74,7 +74,7 @@ fn test_persistent_flag_before_subcommand_in_root_result() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "--verbose", "search", "pattern"])
+    var r = app.parse_arguments(["app", "--verbose", "search", "pattern"])
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
     assert_equal(r.subcommand, "search")
     print("  ✓ test_persistent_flag_before_subcommand_in_root_result")
@@ -95,7 +95,7 @@ fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "--verbose", "search", "pattern"])
+    var r = app.parse_arguments(["app", "--verbose", "search", "pattern"])
     var sub = r.get_subcommand_result()
     assert_true(
         sub.get_flag("verbose"),
@@ -122,7 +122,7 @@ fn test_persistent_flag_after_subcommand_in_child_result() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "search", "--verbose", "pattern"])
+    var r = app.parse_arguments(["app", "search", "--verbose", "pattern"])
     var sub = r.get_subcommand_result()
     assert_true(
         sub.get_flag("verbose"), msg="child result should have verbose=True"
@@ -145,7 +145,7 @@ fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "search", "--verbose", "pattern"])
+    var r = app.parse_arguments(["app", "search", "--verbose", "pattern"])
     assert_true(
         r.get_flag("verbose"),
         msg="root result should have verbose=True via bubble-up",
@@ -168,7 +168,7 @@ fn test_persistent_short_flag_after_subcommand() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "search", "-v", "pattern"])
+    var r = app.parse_arguments(["app", "search", "-v", "pattern"])
     assert_true(
         r.get_flag("verbose"), msg="root verbose via short form should be True"
     )
@@ -193,7 +193,9 @@ fn test_persistent_value_option_after_subcommand() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "search", "--output", "json", "pattern"])
+    var r = app.parse_arguments(
+        ["app", "search", "--output", "json", "pattern"]
+    )
     assert_equal(r.get_string("output"), "json")
     assert_equal(r.get_subcommand_result().get_string("output"), "json")
     print("  ✓ test_persistent_value_option_after_subcommand")
@@ -214,7 +216,7 @@ fn test_persistent_flag_absent_defaults_false_in_both() raises:
     search.add_argument(Argument("pattern", help="").positional().required())
     app.add_subcommand(search^)
 
-    var r = app.parse_args(["app", "search", "pattern"])
+    var r = app.parse_arguments(["app", "search", "pattern"])
     assert_false(
         r.get_flag("verbose"), msg="root verbose should default to False"
     )
@@ -241,7 +243,7 @@ fn test_non_persistent_root_flag_not_injected_into_child() raises:
 
     var raised = False
     try:
-        _ = app.parse_args(["app", "search", "--root-only", "pattern"])
+        _ = app.parse_arguments(["app", "search", "--root-only", "pattern"])
     except:
         raised = True
     assert_true(

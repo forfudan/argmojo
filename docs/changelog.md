@@ -14,6 +14,7 @@ ArgMojo v0.2.0 is compatible with Mojo v0.26.1.
 1. Auto-register a `help` subcommand so that `app help <command>` works out of the box; opt out with `disable_help_subcommand()`.
 1. Add `allow_positional_with_subcommands()` guard — prevents accidental mixing of positional args and subcommands on the same `Command`, following the cobra/clap convention. Requires explicit opt-in.
 1. Add `subcommand` and `subcommand_result` fields on `ParseResult` with `has_subcommand_result()` / `get_subcommand_result()` accessors.
+1. Add `command_aliases()` builder method for subcommand short names (e.g., `clone` → `cl`). Aliases dispatch to the canonical subcommand, appear in help output, shell completions, and typo suggestions.
 
 **Persistent flags:**
 
@@ -102,7 +103,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 
 1. Append / collect action — `--tag x --tag y` collects repeated options into a list with `.append()`.
 1. Value delimiter — `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
-1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.nargs(N)`.
+1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.number_of_values(N)`.
 1. Key-value map option — `--define key=value` builds a `Dict` with `.key_value()`.
 
 **Help & display:**

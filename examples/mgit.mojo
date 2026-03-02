@@ -93,7 +93,9 @@ fn main() raises:
         .long("recurse-submodules")
         .flag()
     )
-    clone.help_on_no_args()
+    clone.help_on_no_arguments()
+    var clone_aliases: List[String] = ["cl"]
+    clone.command_aliases(clone_aliases^)
     app.add_subcommand(clone^)
 
     # ── init ─────────────────────────────────────────────────────────────
@@ -184,6 +186,8 @@ fn main() raises:
         .long("cleanup-mode")
         .deprecated("Use --cleanup instead")
     )
+    var commit_aliases: List[String] = ["ci"]
+    commit.command_aliases(commit_aliases^)
     app.add_subcommand(commit^)
 
     # ── push ─────────────────────────────────────────────────────────────
@@ -320,14 +324,14 @@ fn main() raises:
         .short("f")
         .flag()
     )
-    remote_add.help_on_no_args()
+    remote_add.help_on_no_arguments()
     remote.add_subcommand(remote_add^)
 
     var remote_remove = Command("remove", "Remove a remote")
     remote_remove.add_argument(
         Argument("name", help="Remote name to remove").positional().required()
     )
-    remote_remove.help_on_no_args()
+    remote_remove.help_on_no_arguments()
     remote.add_subcommand(remote_remove^)
 
     var remote_rename = Command("rename", "Rename a remote")
@@ -337,21 +341,23 @@ fn main() raises:
     remote_rename.add_argument(
         Argument("new", help="New remote name").positional().required()
     )
-    remote_rename.help_on_no_args()
+    remote_rename.help_on_no_arguments()
     remote.add_subcommand(remote_rename^)
 
     var remote_show = Command("show", "Show information about a remote")
     remote_show.add_argument(
         Argument("name", help="Remote name").positional().required()
     )
-    remote_show.help_on_no_args()
+    remote_show.help_on_no_arguments()
     remote.add_subcommand(remote_show^)
 
-    remote.help_on_no_args()
+    remote.help_on_no_arguments()
     app.add_subcommand(remote^)
 
     # ── branch ───────────────────────────────────────────────────────────
     var branch = Command("branch", "List, create, or delete branches")
+    var branch_aliases: List[String] = ["br"]
+    branch.command_aliases(branch_aliases^)
     branch.add_argument(Argument("name", help="Branch name").positional())
     branch.add_argument(
         Argument("delete", help="Delete a branch")
@@ -381,6 +387,8 @@ fn main() raises:
 
     # ── diff ─────────────────────────────────────────────────────────────
     var diff = Command("diff", "Show changes between commits, trees, etc.")
+    var diff_aliases: List[String] = ["di"]
+    diff.command_aliases(diff_aliases^)
     diff.add_argument(Argument("path", help="Path to diff").positional())
     diff.add_argument(
         Argument("staged", help="Show staged changes").long("staged").flag()
@@ -449,6 +457,8 @@ fn main() raises:
 
     # ── stash ────────────────────────────────────────────────────────────
     var stash = Command("stash", "Stash changes in working directory")
+    var stash_aliases: List[String] = ["st"]
+    stash.command_aliases(stash_aliases^)
     stash.add_argument(
         Argument("stash-message", help="Stash message")
         .long("message")
@@ -469,7 +479,7 @@ fn main() raises:
     app.add_subcommand(stash^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
-    app.help_on_no_args()
+    app.help_on_no_arguments()
 
     # ── Parse & display ──────────────────────────────────────────────────
     var result = app.parse()

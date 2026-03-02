@@ -87,14 +87,14 @@ fn main() raises:
 
 ---
 
-**`parse()` vs `parse_args()`**
+**`parse()` vs `parse_arguments()`**
 
 - **`command.parse()`** reads the real command-line via `sys.argv()`.
-- **`command.parse_args(args)`** accepts a `List[String]` — useful for testing without a real binary. Note that `args[0]` is expected to be the program name and will be skipped, so the actual arguments should start from index 1.
+- **`command.parse_arguments(args)`** accepts a `List[String]` — useful for testing without a real binary. Note that `args[0]` is expected to be the program name and will be skipped, so the actual arguments should start from index 1.
 
 ### Reading Parsed Results
 
-After calling `command.parse()` or `command.parse_args()`, you get a `ParseResult` with these typed accessors:
+After calling `command.parse()` or `command.parse_arguments()`, you get a `ParseResult` with these typed accessors:
 
 | Method                      | Returns        | Description                                       |
 | --------------------------- | -------------- | ------------------------------------------------- |
@@ -659,14 +659,14 @@ This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 
 **Defining a multi-value option**
 
-Use `.nargs(N)` to specify how many values the option consumes:
+Use `.number_of_values(N)` to specify how many values the option consumes:
 
 ```mojo
-command.add_argument(Argument("point", help="X Y coordinates").long("point").nargs(2))
-command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").nargs(3))
+command.add_argument(Argument("point", help="X Y coordinates").long("point").number_of_values(2))
+command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values(3))
 ```
 
-`.nargs(N)` automatically implies `.append()` — values are stored in
+`.number_of_values(N)` automatically implies `.append()` — values are stored in
 `ParseResult.lists` and retrieved with `get_list()`.
 
 ---
@@ -720,7 +720,7 @@ Choices are validated for **each** value individually:
 ```mojo
 var dirs: List[String] = ["north", "south", "east", "west"]
 command.add_argument(
-    Argument("route", help="Start and end").long("route").nargs(2).choices(dirs^)
+    Argument("route", help="Start and end").long("route").number_of_values(2).choices(dirs^)
 )
 ```
 
@@ -1490,6 +1490,37 @@ app.disable_help_subcommand()
 
 This can be called before or after `add_subcommand()`. If called after, the auto-added `help` entry is removed.
 
+### Subcommand Aliases
+
+You can register short aliases for subcommands with `command_aliases()`. When the user types an alias, ArgMojo dispatches to the canonical subcommand and stores the **canonical name** (not the alias) in `result.subcommand`.
+
+```mojo
+var clone = Command("clone", "Clone a repository")
+var aliases: List[String] = ["cl"]
+clone.command_aliases(aliases^)
+app.add_subcommand(clone^)
+```
+
+```bash
+app cl https://example.com/repo.git   # dispatches to "clone"
+app clone https://example.com/repo.git # still works
+```
+
+```mojo
+var result = app.parse()
+print(result.subcommand)  # always "clone", even if user typed "cl"
+```
+
+Aliases appear in help output alongside the primary name:
+
+```
+Commands:
+  clone, cl    Clone a repository
+  commit, ci   Record changes to the repository
+```
+
+Aliases are also included in shell-completion scripts and typo suggestions.
+
 ### Unknown Subcommand Error
 
 When the root command has subcommands registered **and `allow_positional_with_subcommands()` has not been called**, an unrecognised token triggers an error listing available commands:
@@ -1531,7 +1562,7 @@ app.add_argument(Argument("fallback", help="Fallback").positional())
 
 # "foo" doesn't match any subcommand → treated as positional
 var args: List[String] = ["app", "foo"]
-var result = app.parse_args(args)
+var result = app.parse_arguments(args)
 print(result.positionals[0])  # "foo"
 ```
 
@@ -1759,13 +1790,13 @@ After printing help, the program exits cleanly with exit code 0.
 
 **Show Help When No Arguments Provided**
 
-Use `help_on_no_args()` to automatically display help when the user invokes
+Use `help_on_no_arguments()` to automatically display help when the user invokes
 the command with no arguments (like `git`, `docker`, or `cargo`):
 
 ```mojo
 var command = Command("myapp", "My application")
 command.add_argument(Argument("file", help="Input file").long("file").required())
-command.help_on_no_args()
+command.help_on_no_arguments()
 var result = command.parse()
 ```
 

@@ -48,7 +48,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """Groups where at least one argument must be provided."""
     var _conditional_reqs: List[List[String]]
     """Pairs [target, condition]: target is required when condition is present."""
-    var _help_on_no_args: Bool
+    var _help_on_no_arguments: Bool
     """When True, show help and exit if no arguments are provided."""
     var _header_color: String
     """ANSI code for section headers (Usage, Arguments, Options)."""
@@ -89,6 +89,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """When True, the completion trigger is a subcommand instead of an
     option.  Default False → ``--completions``.  Call
     ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
+    var _command_aliases: List[String]
+    """Alternate names for this command when used as a subcommand.
+    Add entries via ``command_aliases()``.  Aliases are matched during
+    subcommand dispatch and appear inline next to the primary name in
+    help (e.g., "clone, cl"), but are not shown as separate entries."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
@@ -120,7 +125,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
-        self._help_on_no_args = False
+        self._help_on_no_arguments = False
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
         self._allow_negative_numbers = False
@@ -128,6 +133,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = True
         self._completions_name = String("completions")
         self._completions_is_subcommand = False
+        self._command_aliases = List[String]()
         self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
@@ -149,7 +155,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = move._required_groups^
         self._one_required_groups = move._one_required_groups^
         self._conditional_reqs = move._conditional_reqs^
-        self._help_on_no_args = move._help_on_no_args
+        self._help_on_no_arguments = move._help_on_no_arguments
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
         self._allow_negative_numbers = move._allow_negative_numbers
@@ -159,6 +165,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = move._completions_enabled
         self._completions_name = move._completions_name^
         self._completions_is_subcommand = move._completions_is_subcommand
+        self._command_aliases = move._command_aliases^
         self._tips = move._tips^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
@@ -195,7 +202,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._conditional_reqs = List[List[String]]()
         for i in range(len(copy._conditional_reqs)):
             self._conditional_reqs.append(copy._conditional_reqs[i].copy())
-        self._help_on_no_args = copy._help_on_no_args
+        self._help_on_no_arguments = copy._help_on_no_arguments
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
         self._allow_negative_numbers = copy._allow_negative_numbers
@@ -205,6 +212,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = copy._completions_enabled
         self._completions_name = copy._completions_name
         self._completions_is_subcommand = copy._completions_is_subcommand
+        self._command_aliases = copy._command_aliases.copy()
         self._tips = copy._tips.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
@@ -524,6 +532,30 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._tips.append(tip)
 
+    fn command_aliases(mut self, var names: List[String]):
+        """Registers alternate names for this command when used as a subcommand.
+
+        Aliases are matched during subcommand dispatch and included in
+        shell completion scripts, but they do **not** appear as separate
+        entries in the ``Commands:`` help section.  Instead, aliases are
+        shown inline next to the primary name.
+
+        Args:
+            names: The list of alias strings.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var clone = Command("clone", "Clone a repository")
+        var aliases: List[String] = ["cl"]
+        clone.command_aliases(aliases^)
+        # Now: mgit cl ... is equivalent to mgit clone ...
+        ```
+        """
+        for i in range(len(names)):
+            self._command_aliases.append(names[i])
+
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
 
@@ -613,7 +645,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var pair: List[String] = [target, condition]
         self._conditional_reqs.append(pair^)
 
-    fn help_on_no_args(mut self):
+    fn help_on_no_arguments(mut self):
         """Enables showing help when invoked with no arguments.
 
         When enabled, calling the command with no arguments (only the
@@ -625,10 +657,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
         command.add_argument(Argument("file", help="Input file").long("file").required())
-        command.help_on_no_args()
+        command.help_on_no_arguments()
         ```
         """
-        self._help_on_no_args = True
+        self._help_on_no_arguments = True
 
     fn header_color(mut self, name: String) raises:
         """Sets the colour for section headers (Usage, Arguments, Options).
@@ -725,45 +757,6 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._error_color = _resolve_color(name)
 
-    # Here is a high-level outline of the parsing algorithm implemented in
-    # ``parse_args``:
-    #
-    # 1. Initialize ParseResult and register positional names.
-    # 2. If ``help_on_no_args`` is enabled and only argv[0] is present:
-    #    print help and exit.
-    # 3. Iterate from argv[1] with cursor ``i``:
-    #    ├─ If token is "--": enter positional-only mode.
-    #    ├─ If in positional-only mode: append token to positionals.
-    #    ├─ If token is --help / -h / -?: print help and exit.
-    #    ├─ If token is --version / -V: print version and exit.
-    #    ├─ If token starts with "--":
-    #    │  Parse long option
-    #    │   ├─ Support --key=value split.
-    #    │   ├─ Support --no-key for negatable flags (with prefix matching).
-    #    │   ├─ Resolve by exact long name → exact alias → prefix match.
-    #    │   ├─ Emit deprecation warning if the matched arg is deprecated.
-    #    │   ├─ Handle count / flag / nargs / map / value-taking variants.
-    #    │   └─ For append args, store via delimiter-aware append logic.
-    #    ├─ If token starts with "-" and len > 1:
-    #    │  Parse short option(s)
-    #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
-    #    │   └─ Multi-short: merged flags and attached value forms.
-    #    └─ Otherwise (bare word):
-    #       ├─ Subcommands registered + "help <sub>": print child help & exit.
-    #       ├─ Subcommands registered + token matches subcommand name:
-    #       │   build child argv, call child.parse_args(), store result, break.
-    #       └─ Otherwise: treat as positional argument.
-    # 4. Apply defaults for missing args (named + positional slots).
-    # 5. Validate:
-    #    ├─ Required args
-    #    ├─ Positional count (too many)
-    #    ├─ Mutually-exclusive groups
-    #    ├─ Required-together groups
-    #    ├─ One-required groups
-    #    ├─ Conditional requirements
-    #    └─ Numeric range constraints
-    # 6. Return ParseResult.
-
     # ===------------------------------------------------------------------=== #
     # Private output helpers
     # ===------------------------------------------------------------------=== #
@@ -776,7 +769,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Prints a coloured error message to stderr then raises.
 
         All parse-time errors funnel through this method so that callers
-        of both ``parse()`` and ``parse_args()`` always see coloured output
+        of both ``parse()`` and ``parse_arguments()`` always see coloured output
         while tests can still catch the raised ``Error`` normally.
         The command name is included in the stderr output so that errors
         from subcommands show the full path (e.g. ``app search: ...``).
@@ -836,7 +829,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         are printed in colour to stderr and the process exits with code 2.
         This matches the behaviour of Python's ``argparse``.
 
-        Use ``parse_args()`` directly if you want to catch errors yourself.
+        Use ``parse_arguments()`` directly if you want to catch errors yourself.
 
         Returns:
             A ParseResult containing all parsed values.
@@ -846,7 +839,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(raw_variadic)):
             raw.append(String(raw_variadic[i]))
         try:
-            return self.parse_args(raw)
+            return self.parse_arguments(raw)
         except:
             # Error message was already printed to stderr by _error().
             exit(2)
@@ -854,7 +847,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # compiler does not model exit() as @noreturn yet.
             return ParseResult()
 
-    fn parse_args(self, raw_args: List[String]) raises -> ParseResult:
+    fn parse_arguments(self, raw_args: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
         The first element, e.g., ``argv[0]``, is expected to be the program name
@@ -876,6 +869,46 @@ struct Command(Copyable, Movable, Stringable, Writable):
         prevents contamination and conflicts between multiple parses, e.g.,
         in testing scenarios, REPL usage, and autocompletion.
         """
+
+        # Here is a high-level outline of the parsing algorithm implemented in
+        # ``parse_arguments``:
+        #
+        # 1. Initialize ParseResult and register positional names.
+        # 2. If ``help_on_no_arguments`` is enabled and only argv[0] is present:
+        #    print help and exit.
+        # 3. Iterate from argv[1] with cursor ``i``:
+        #    ├─ If token is "--": enter positional-only mode.
+        #    ├─ If in positional-only mode: append token to positionals.
+        #    ├─ If token is --help / -h / -?: print help and exit.
+        #    ├─ If token is --version / -V: print version and exit.
+        #    ├─ If token starts with "--":
+        #    │  Parse long option
+        #    │   ├─ Support --key=value split.
+        #    │   ├─ Support --no-key for negatable flags (with prefix matching).
+        #    │   ├─ Resolve by exact long name → exact alias → prefix match.
+        #    │   ├─ Emit deprecation warning if the matched arg is deprecated.
+        #    │   ├─ Handle count / flag / nargs / map / value-taking variants.
+        #    │   └─ For append args, store via delimiter-aware append logic.
+        #    ├─ If token starts with "-" and len > 1:
+        #    │  Parse short option(s)
+        #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
+        #    │   └─ Multi-short: merged flags and attached value forms.
+        #    └─ Otherwise (bare word):
+        #       ├─ Subcommands registered + "help <sub>": print child help & exit.
+        #       ├─ Subcommands registered + token matches subcommand name:
+        #       │   build child argv, call child.parse_arguments(), store result, break.
+        #       └─ Otherwise: treat as positional argument.
+        # 4. Apply defaults for missing args (named + positional slots).
+        # 5. Validate:
+        #    ├─ Required args
+        #    ├─ Positional count (too many)
+        #    ├─ Mutually-exclusive groups
+        #    ├─ Required-together groups
+        #    ├─ One-required groups
+        #    ├─ Conditional requirements
+        #    └─ Numeric range constraints
+        # 6. Return ParseResult.
+
         var result = ParseResult()
 
         # Register positional argument names in order.
@@ -888,7 +921,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var stop_parsing_options = False
 
         # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_args and len(raw_args) <= 1:
+        if self._help_on_no_arguments and len(raw_args) <= 1:
             print(self._generate_help())
             exit(0)
 
@@ -1010,7 +1043,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         return result^
 
     # ===------------------------------------------------------------------=== #
-    # Parsing sub-methods (extracted from parse_args for readability)
+    # Parsing sub-methods (extracted from parse_arguments for readability)
     # ===------------------------------------------------------------------=== #
 
     fn _parse_long_option(
@@ -1104,26 +1137,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result.counts[matched.name] = cur + 1
         elif matched.is_flag and not has_eq:
             result.flags[matched.name] = True
-        elif matched.nargs_count > 0:
+        elif matched.num_values > 0:
             # nargs: consume exactly N values.
             if has_eq:
                 self._error(
                     "Option '--"
                     + key
                     + "' takes "
-                    + String(matched.nargs_count)
+                    + String(matched.num_values)
                     + " values; '=' syntax is not supported"
                 )
             if matched.name not in result.lists:
                 result.lists[matched.name] = List[String]()
-            for _n in range(matched.nargs_count):
+            for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '--"
                         + key
                         + "' requires "
-                        + String(matched.nargs_count)
+                        + String(matched.num_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
@@ -1178,18 +1211,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result.counts[matched.name] = cur + 1
         elif matched.is_flag:
             result.flags[matched.name] = True
-        elif matched.nargs_count > 0:
+        elif matched.num_values > 0:
             # nargs: consume exactly N values.
             if matched.name not in result.lists:
                 result.lists[matched.name] = List[String]()
-            for _n in range(matched.nargs_count):
+            for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '-"
                         + key
                         + "' requires "
-                        + String(matched.nargs_count)
+                        + String(matched.num_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
@@ -1262,19 +1295,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 elif m.is_flag:
                     result.flags[m.name] = True
                     j += 1
-                elif m.nargs_count > 0:
+                elif m.num_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
                     if m.name not in result.lists:
                         result.lists[m.name] = List[String]()
-                    for _n in range(m.nargs_count):
+                    for _n in range(m.num_values):
                         i += 1
                         if i >= len(raw_args):
                             self._error(
                                 "Option '-"
                                 + ch
                                 + "' requires "
-                                + String(m.nargs_count)
+                                + String(m.num_values)
                                 + " values"
                             )
                         self._validate_choices(m, raw_args[i])
@@ -1308,18 +1341,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + "' is deprecated: "
                     + first_match.deprecated_msg
                 )
-            if first_match.nargs_count > 0:
+            if first_match.num_values > 0:
                 # nargs: consume N values from argv (ignore attached).
                 if first_match.name not in result.lists:
                     result.lists[first_match.name] = List[String]()
-                for _n in range(first_match.nargs_count):
+                for _n in range(first_match.num_values):
                     i += 1
                     if i >= len(raw_args):
                         self._error(
                             "Option '-"
                             + first_char
                             + "' requires "
-                            + String(first_match.nargs_count)
+                            + String(first_match.num_values)
                             + " values"
                         )
                     self._validate_choices(first_match, raw_args[i])
@@ -1347,7 +1380,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Attempts to dispatch to a matching subcommand.
 
         If a subcommand matches, it builds a child argv, injects
-        persistent args, parses via the child's ``parse_args()``,
+        persistent args, parses via the child's ``parse_arguments()``,
         and performs bidirectional sync of persistent values.
 
         Args:
@@ -1362,12 +1395,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
             subcommand matched and the caller should fall through to
             positional argument handling.
         """
-        # Exact subcommand name match → dispatch.
+        # Exact subcommand (name or alias) match → dispatch.
         var sub_idx = self._find_subcommand(arg)
         if sub_idx >= 0:
+            # Resolve canonical name (alias → real name).
+            var canon = self.subcommands[sub_idx].name
             # Build child argv: ["parent sub", remaining tokens...].
             var child_argv = List[String]()
-            child_argv.append(self.name + " " + arg)
+            child_argv.append(self.name + " " + canon)
             for k in range(i + 1, len(raw_args)):
                 child_argv.append(raw_args[k])
             # Auto-registered 'help' subcommand: display sibling help.
@@ -1387,11 +1422,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # are recognised wherever the user places them on the line.
             var child_copy = self.subcommands[sub_idx].copy()
             # Set full command path so child help/errors show "app sub".
-            child_copy.name = self.name + " " + arg
+            child_copy.name = self.name + " " + canon
             for _pi in range(len(self.args)):
                 if self.args[_pi].is_persistent:
                     child_copy.args.append(self.args[_pi].copy())
-            var child_result = child_copy.parse_args(child_argv)
+            var child_result = child_copy.parse_arguments(child_argv)
             # Bubble up persistent values from child to root result so
             # that root_result.get_flag("x") always works regardless of
             # whether the flag appeared before or after the subcommand
@@ -1417,7 +1452,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     child_result.values[_pn] = result.values[_pn]
                 if _pn in result.counts and _pn not in child_result.counts:
                     child_result.counts[_pn] = result.counts[_pn]
-            result.subcommand = arg
+            result.subcommand = canon
             result._subcommand_results.append(child_result^)
             # All remaining tokens were consumed by the child.
             return len(raw_args)
@@ -1434,12 +1469,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         if not first:
                             avail += ", "
                         avail += self.subcommands[_si].name
+                        # Append aliases to available list.
+                        for _ai in range(
+                            len(self.subcommands[_si]._command_aliases)
+                        ):
+                            avail += (
+                                ", "
+                                + self.subcommands[_si]._command_aliases[_ai]
+                            )
                         first = False
                 # Try typo suggestion for subcommand names.
                 var sub_names = List[String]()
                 for _si2 in range(len(self.subcommands)):
                     if not self.subcommands[_si2]._is_help_subcommand:
                         sub_names.append(self.subcommands[_si2].name)
+                        for _ai2 in range(
+                            len(self.subcommands[_si2]._command_aliases)
+                        ):
+                            sub_names.append(
+                                self.subcommands[_si2]._command_aliases[_ai2]
+                            )
                 var suggestion = _suggest_similar(arg, sub_names)
                 var hint = String("")
                 if suggestion != "":
@@ -1787,15 +1836,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn _find_subcommand(self, name: String) -> Int:
         """Returns the index of the registered subcommand matching ``name``.
 
+        Checks primary names first, then aliases.
+
         Args:
-            name: Subcommand name to look up.
+            name: Subcommand name or alias to look up.
 
         Returns:
             The index into ``self.subcommands``, or ``-1`` if not found.
         """
+        # 1. Exact match on primary name.
         for i in range(len(self.subcommands)):
             if self.subcommands[i].name == name:
                 return i
+        # 2. Match on aliases.
+        for i in range(len(self.subcommands)):
+            for j in range(len(self.subcommands[i]._command_aliases)):
+                if self.subcommands[i]._command_aliases[j] == name:
+                    return i
         return -1
 
     fn _display_name(self, name: String) -> String:
@@ -2146,7 +2203,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 # Show metavar or choices for value-taking options.
                 if not self.args[i].is_flag:
-                    var ncount = self.args[i].nargs_count
+                    var ncount = self.args[i].num_values
                     var repeat = ncount if ncount > 0 else 1
                     var append_dots = self.args[i].is_append and ncount == 0
                     if self.args[i].metavar_name:
@@ -2336,13 +2393,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var cmd_helps = List[String]()
         for i in range(len(self.subcommands)):
             if not self.subcommands[i]._is_help_subcommand:
-                var plain = String("  ") + self.subcommands[i].name
-                var colored = (
-                    String("  ")
-                    + arg_color
-                    + self.subcommands[i].name
-                    + reset_code
-                )
+                # Build label: "name" or "name, alias1, alias2".
+                var label = self.subcommands[i].name
+                for _ai in range(len(self.subcommands[i]._command_aliases)):
+                    label += ", " + self.subcommands[i]._command_aliases[_ai]
+                var plain = String("  ") + label
+                var colored = String("  ") + arg_color + label + reset_code
                 cmd_plains.append(plain)
                 cmd_colors.append(colored)
                 cmd_helps.append(self.subcommands[i].description)
@@ -2448,7 +2504,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         were actually provided.
 
         Args:
-            result: The ParseResult returned by ``parse()`` or ``parse_args()``.
+            result: The ParseResult returned by ``parse()`` or ``parse_arguments()``.
         """
         print("=== Parsed Arguments ===")
 
@@ -2621,6 +2677,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     if sub_names:
                         sub_names += " "
                     sub_names += self.subcommands[i].name
+                    for _ai in range(len(self.subcommands[i]._command_aliases)):
+                        sub_names += (
+                            " " + self.subcommands[i]._command_aliases[_ai]
+                        )
             if _comp_is_sub:
                 if sub_names:
                     sub_names += " "
@@ -2645,9 +2705,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if sub.description:
                     s += " -d '" + self._fish_escape(sub.description) + "'"
                 s += "\n"
+                # Register each alias as a completable name.
+                for _ai in range(len(sub._command_aliases)):
+                    s += (
+                        "complete -c "
+                        + self.name
+                        + " -n 'not "
+                        + no_sub_cond
+                        + "'"
+                        + " -f -a '"
+                        + sub._command_aliases[_ai]
+                        + "'"
+                    )
+                    if sub.description:
+                        s += " -d '" + self._fish_escape(sub.description) + "'"
+                    s += "\n"
 
                 # Subcommand-specific options.
                 var sub_cond = "__fish_seen_subcommand_from " + sub.name
+                for _ai in range(len(sub._command_aliases)):
+                    sub_cond += " " + sub._command_aliases[_ai]
                 s += self._fish_options_for(
                     self.name, sub_cond, persistent_only=True
                 )
@@ -2832,6 +2909,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 sub.description
             ) if sub.description else ""
             s += "    '" + sub.name + ":" + desc + "'\n"
+            # Add aliases as separate entries pointing to same description.
+            for _ai in range(len(sub._command_aliases)):
+                s += "    '" + sub._command_aliases[_ai] + ":" + desc + "'\n"
         if self._completions_enabled and self._completions_is_subcommand:
             s += (
                 "    '"
@@ -2869,7 +2949,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if self.subcommands[i]._is_help_subcommand:
                 continue
             var sub = self.subcommands[i].copy()
-            s += "        " + sub.name + ")\n"
+            # Build pattern: name|alias1|alias2
+            var zsh_pat = sub.name
+            for _ai in range(len(sub._command_aliases)):
+                zsh_pat += "|" + sub._command_aliases[_ai]
+            s += "        " + zsh_pat + ")\n"
             s += "          _arguments \\\n"
             for j in range(len(sub.args)):
                 var arg = sub.args[j].copy()
@@ -3056,6 +3140,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if sub_names:
                 sub_names += " "
             sub_names += self.subcommands[i].name
+            for _ai in range(len(self.subcommands[i]._command_aliases)):
+                sub_names += " " + self.subcommands[i]._command_aliases[_ai]
         if self._completions_enabled and self._completions_is_subcommand:
             if sub_names:
                 sub_names += " "
@@ -3113,7 +3199,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     sub_words += " --" + arg.long_name
                 if arg.short_name:
                     sub_words += " -" + arg.short_name
-            s += "    " + sub.name + ")\n"
+            # Build pattern: name|alias1|alias2
+            var bash_pat = sub.name
+            for _ai in range(len(sub._command_aliases)):
+                bash_pat += "|" + sub._command_aliases[_ai]
+            s += "    " + bash_pat + ")\n"
             # Subcommand-level $prev choices completion.
             s += self._bash_prev_cases_for_args(sub.args, "      ")
             s += (

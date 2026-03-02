@@ -15,7 +15,7 @@ fn test_append_single() raises:
     )
 
     var args: List[String] = ["test", "--tag", "alpha"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "alpha")
@@ -39,7 +39,7 @@ fn test_append_multiple() raises:
         "--tag",
         "gamma",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 3)
     assert_equal(tags[0], "alpha")
@@ -56,7 +56,7 @@ fn test_append_short_option() raises:
     )
 
     var args: List[String] = ["test", "-t", "alpha", "-t", "beta"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
@@ -72,7 +72,7 @@ fn test_append_equals_syntax() raises:
     )
 
     var args: List[String] = ["test", "--tag=alpha", "--tag=beta"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
@@ -88,7 +88,7 @@ fn test_append_attached_short() raises:
     )
 
     var args: List[String] = ["test", "-talpha", "-tbeta"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
@@ -104,7 +104,7 @@ fn test_append_mixed_syntax() raises:
     )
 
     var args: List[String] = ["test", "--tag", "a", "-t", "b", "--tag=c", "-td"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 4)
     assert_equal(tags[0], "a")
@@ -122,7 +122,7 @@ fn test_append_empty() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 0)
     assert_false(result.has("tag"), msg="tag should not be present")
@@ -139,7 +139,7 @@ fn test_append_with_choices() raises:
 
     # Valid choices
     var args: List[String] = ["test", "--env", "dev", "--env", "prod"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var envlist = result.get_list("env")
     assert_equal(len(envlist), 2)
     assert_equal(envlist[0], "dev")
@@ -154,7 +154,7 @@ fn test_append_with_choices() raises:
     var args2: List[String] = ["test", "--env", "local"]
     var caught = False
     try:
-        _ = command2.parse_args(args2)
+        _ = command2.parse_arguments(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -188,7 +188,7 @@ fn test_append_with_other_args() raises:
         "--include",
         "/opt/lib",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
     assert_equal(result.get_string("output"), "out.txt")
     var includes = result.get_list("include")
@@ -211,7 +211,7 @@ fn test_delimiter_comma() raises:
     )
 
     var args: List[String] = ["test", "--tag", "a,b,c"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 3)
     assert_equal(tags[0], "a")
@@ -228,7 +228,7 @@ fn test_delimiter_equals_syntax() raises:
     )
 
     var args: List[String] = ["test", "--tag=x,y,z"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 3)
     assert_equal(tags[0], "x")
@@ -245,7 +245,7 @@ fn test_delimiter_short_option() raises:
     )
 
     var args: List[String] = ["test", "-t", "foo,bar"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "foo")
@@ -265,7 +265,7 @@ fn test_delimiter_attached_short() raises:
 
     # -vta,b means -v -t a,b (v is flag, t takes value)
     var args: List[String] = ["test", "-vta,b"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="-v should be True")
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
@@ -282,7 +282,7 @@ fn test_delimiter_repeated() raises:
     )
 
     var args: List[String] = ["test", "--tag", "a,b", "--tag", "c,d"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 4)
     assert_equal(tags[0], "a")
@@ -300,7 +300,7 @@ fn test_delimiter_single_value() raises:
     )
 
     var args: List[String] = ["test", "--tag", "single"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "single")
@@ -320,7 +320,7 @@ fn test_delimiter_with_choices() raises:
 
     # Valid — all pieces are in choices.
     var args1: List[String] = ["test", "--env", "dev,prod"]
-    var result = command.parse_args(args1)
+    var result = command.parse_arguments(args1)
     var envlist = result.get_list("env")
     assert_equal(len(envlist), 2)
     assert_equal(envlist[0], "dev")
@@ -330,7 +330,7 @@ fn test_delimiter_with_choices() raises:
     var caught = False
     var args2: List[String] = ["test", "--env", "dev,local"]
     try:
-        _ = command.parse_args(args2)
+        _ = command.parse_arguments(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -350,7 +350,7 @@ fn test_delimiter_semicolon() raises:
     )
 
     var args: List[String] = ["test", "--path", "/usr/lib;/opt/lib;/home/lib"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var paths = result.get_list("path")
     assert_equal(len(paths), 3)
     assert_equal(paths[0], "/usr/lib")
@@ -368,7 +368,7 @@ fn test_delimiter_implies_append() raises:
     )
 
     var args: List[String] = ["test", "--tag", "x,y"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.has("tag"), msg="tag should be present")
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
@@ -385,7 +385,7 @@ fn test_delimiter_empty_not_provided() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 0)
     print("  ✓ test_delimiter_empty_not_provided")
@@ -399,7 +399,7 @@ fn test_delimiter_trailing_comma() raises:
     )
 
     var args: List[String] = ["test", "--tag", "a,b,"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "a")
@@ -413,32 +413,34 @@ fn test_delimiter_trailing_comma() raises:
 
 
 fn test_nargs_basic() raises:
-    """Tests that nargs(2) consumes exactly 2 values."""
+    """Tests that number_of_values(2) consumes exactly 2 values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y coordinates").long("point").nargs(2)
+        Argument("point", help="X Y coordinates")
+        .long("point")
+        .number_of_values(2)
     )
 
     var args: List[String] = ["test", "--point", "10", "20"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("point")
-    assert_equal(len(lst), 2, msg="nargs(2) should produce 2 values")
+    assert_equal(len(lst), 2, msg="number_of_values(2) should produce 2 values")
     assert_equal(lst[0], "10", msg="First value should be '10'")
     assert_equal(lst[1], "20", msg="Second value should be '20'")
     print("  ✓ test_nargs_basic")
 
 
 fn test_nargs_three() raises:
-    """Tests that nargs(3) consumes exactly 3 values."""
+    """Tests that number_of_values(3) consumes exactly 3 values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("rgb", help="RGB colour").long("rgb").nargs(3)
+        Argument("rgb", help="RGB colour").long("rgb").number_of_values(3)
     )
 
     var args: List[String] = ["test", "--rgb", "255", "128", "0"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("rgb")
-    assert_equal(len(lst), 3, msg="nargs(3) should produce 3 values")
+    assert_equal(len(lst), 3, msg="number_of_values(3) should produce 3 values")
     assert_equal(lst[0], "255", msg="First = 255")
     assert_equal(lst[1], "128", msg="Second = 128")
     assert_equal(lst[2], "0", msg="Third = 0")
@@ -449,13 +451,18 @@ fn test_nargs_short_option() raises:
     """Tests nargs with a short option (-p 1 2)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").short("p").nargs(2)
+        Argument("point", help="X Y")
+        .long("point")
+        .short("p")
+        .number_of_values(2)
     )
 
     var args: List[String] = ["test", "-p", "3", "4"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("point")
-    assert_equal(len(lst), 2, msg="Short nargs(2) should produce 2 values")
+    assert_equal(
+        len(lst), 2, msg="Short number_of_values(2) should produce 2 values"
+    )
     assert_equal(lst[0], "3", msg="First = 3")
     assert_equal(lst[1], "4", msg="Second = 4")
     print("  ✓ test_nargs_short_option")
@@ -464,7 +471,9 @@ fn test_nargs_short_option() raises:
 fn test_nargs_repeated() raises:
     """Tests that nargs collects across repeated occurrences."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("point", help="X Y").long("point").nargs(2))
+    command.add_argument(
+        Argument("point", help="X Y").long("point").number_of_values(2)
+    )
 
     var args: List[String] = [
         "test",
@@ -475,9 +484,11 @@ fn test_nargs_repeated() raises:
         "3",
         "4",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("point")
-    assert_equal(len(lst), 4, msg="Two nargs(2) calls should produce 4 values")
+    assert_equal(
+        len(lst), 4, msg="Two number_of_values(2) calls should produce 4 values"
+    )
     assert_equal(lst[0], "1", msg="1st = 1")
     assert_equal(lst[1], "2", msg="2nd = 2")
     assert_equal(lst[2], "3", msg="3rd = 3")
@@ -488,12 +499,14 @@ fn test_nargs_repeated() raises:
 fn test_nargs_too_few_values() raises:
     """Tests that nargs raises when not enough values are available."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("point", help="X Y").long("point").nargs(2))
+    command.add_argument(
+        Argument("point", help="X Y").long("point").number_of_values(2)
+    )
 
     var args: List[String] = ["test", "--point", "10"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -508,12 +521,14 @@ fn test_nargs_too_few_values() raises:
 fn test_nargs_too_few_short() raises:
     """Tests that nargs raises with short option when not enough values."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("point", help="X Y").short("p").nargs(2))
+    command.add_argument(
+        Argument("point", help="X Y").short("p").number_of_values(2)
+    )
 
     var args: List[String] = ["test", "-p", "10"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -532,13 +547,13 @@ fn test_nargs_with_choices() raises:
     command.add_argument(
         Argument("dir", help="Two directions")
         .long("dir")
-        .nargs(2)
+        .number_of_values(2)
         .choices(dirs^)
     )
 
     # Valid.
     var args: List[String] = ["test", "--dir", "north", "east"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("dir")
     assert_equal(lst[0], "north", msg="First direction")
     assert_equal(lst[1], "east", msg="Second direction")
@@ -547,7 +562,7 @@ fn test_nargs_with_choices() raises:
     var bad_args: List[String] = ["test", "--dir", "north", "up"]
     var caught = False
     try:
-        _ = command.parse_args(bad_args)
+        _ = command.parse_arguments(bad_args)
     except e:
         caught = True
         var msg = String(e)
@@ -562,7 +577,9 @@ fn test_nargs_with_other_args() raises:
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
-    command.add_argument(Argument("point", help="X Y").long("point").nargs(2))
+    command.add_argument(
+        Argument("point", help="X Y").long("point").number_of_values(2)
+    )
     command.add_argument(
         Argument("output", help="File").long("output").short("o")
     )
@@ -576,7 +593,7 @@ fn test_nargs_with_other_args() raises:
         "-o",
         "out.txt",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
     var lst = result.get_list("point")
     assert_equal(len(lst), 2, msg="point should have 2 values")
@@ -591,12 +608,14 @@ fn test_nargs_with_other_args() raises:
 fn test_nargs_equals_syntax_rejected() raises:
     """Tests that = syntax is rejected for nargs options."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("point", help="X Y").long("point").nargs(2))
+    command.add_argument(
+        Argument("point", help="X Y").long("point").number_of_values(2)
+    )
 
     var args: List[String] = ["test", "--point=10", "20"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -612,11 +631,11 @@ fn test_nargs_prefix_match() raises:
     """Tests that prefix matching works with nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("position", help="X Y").long("position").nargs(2)
+        Argument("position", help="X Y").long("position").number_of_values(2)
     )
 
     var args: List[String] = ["test", "--pos", "7", "8"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var lst = result.get_list("position")
     assert_equal(len(lst), 2, msg="prefix --pos should resolve to --position")
     assert_equal(lst[0], "7", msg="First = 7")

@@ -42,7 +42,7 @@ fn test_hidden_still_works() raises:
     )
 
     var args: List[String] = ["test", "--debug"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("debug"), msg="hidden --debug should work")
     print("  ✓ test_hidden_still_works")
 
@@ -252,8 +252,9 @@ fn test_help_and_version_aligned() raises:
     print("  ✓ test_help_and_version_aligned")
 
 
-fn test_help_on_no_args_disabled_by_default() raises:
-    """Tests that parse_args works with no args when help_on_no_args is off."""
+fn test_help_on_no_arguments_disabled_by_default() raises:
+    """Tests that parse_arguments works with no args when help_on_no_arguments is off.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
@@ -261,9 +262,9 @@ fn test_help_on_no_args_disabled_by_default() raises:
 
     var args: List[String] = ["test"]
     # Should NOT exit — just parse with defaults.
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("verbose"), msg="verbose should be False")
-    print("  ✓ test_help_on_no_args_disabled_by_default")
+    print("  ✓ test_help_on_no_arguments_disabled_by_default")
 
 
 fn test_positional_args_aligned_in_help() raises:
@@ -499,21 +500,25 @@ fn test_nargs_in_help() raises:
     """Tests that nargs options show repeated placeholders in help."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y coords").long("point").nargs(2)
+        Argument("point", help="X Y coords").long("point").number_of_values(2)
     )
     command.add_argument(
-        Argument("rgb", help="RGB colour").long("rgb").nargs(3).metavar("N")
+        Argument("rgb", help="RGB colour")
+        .long("rgb")
+        .number_of_values(3)
+        .metavar("N")
     )
 
     var help = command._generate_help(color=False)
     # --point should show <point> <point>
     assert_true(
         "<point> <point>" in help,
-        msg="nargs(2) should show '<point> <point>' in help",
+        msg="number_of_values(2) should show '<point> <point>' in help",
     )
     # --rgb should show N N N
     assert_true(
-        "N N N" in help, msg="nargs(3) with metavar should show 'N N N'"
+        "N N N" in help,
+        msg="number_of_values(3) with metavar should show 'N N N'",
     )
     # Neither should have "..." since they are nargs, not plain append.
     assert_false(
@@ -529,14 +534,14 @@ fn test_nargs_with_metavar() raises:
     command.add_argument(
         Argument("size", help="Width and height")
         .long("size")
-        .nargs(2)
+        .number_of_values(2)
         .metavar("PX")
     )
 
     var help = command._generate_help(color=False)
     assert_true(
         "PX PX" in help,
-        msg="nargs(2) with metavar PX should show 'PX PX'",
+        msg="number_of_values(2) with metavar PX should show 'PX PX'",
     )
     print("  ✓ test_nargs_with_metavar")
 
@@ -714,8 +719,8 @@ fn test_child_help_shows_full_command_path() raises:
     # Simulate: app search --help
     # The child copy gets name set to "app search", so --help would
     # show "Usage: app search ..." in help.
-    # We test indirectly by checking what parse_args sets on the child copy.
-    # Create the child copy as parse_args would.
+    # We test indirectly by checking what parse_arguments sets on the child copy.
+    # Create the child copy as parse_arguments would.
     # Note: subcommands[0] is auto-added 'help'; search is at index 1.
     var search_idx = app._find_subcommand("search")
     var child_copy = app.subcommands[search_idx].copy()
@@ -787,6 +792,41 @@ fn test_add_tip_appears_in_help() raises:
         msg="Second tip should appear in help",
     )
     print("  ✓ test_add_tip_appears_in_help")
+
+
+# ── Alias in help output ──────────────────────────────────────────────────────
+
+
+fn test_alias_shown_inline_in_help() raises:
+    """Tests that subcommand aliases appear inline in help output."""
+    var app = Command("app", "Test app")
+    var clone = Command("clone", "Clone a repo")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "clone, cl" in help,
+        msg="Help should show alias inline: 'clone, cl'",
+    )
+    print("  ✓ test_alias_shown_inline_in_help")
+
+
+fn test_multiple_aliases_shown_in_help() raises:
+    """Tests that multiple aliases are all shown inline in help."""
+    var app = Command("app", "Test app")
+    var commit = Command("commit", "Record changes")
+    var aliases: List[String] = ["ci", "cm"]
+    commit.command_aliases(aliases^)
+    app.add_subcommand(commit^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "commit, ci, cm" in help,
+        msg="Help should show all aliases: 'commit, ci, cm'",
+    )
+    print("  ✓ test_multiple_aliases_shown_in_help")
 
 
 fn main() raises:

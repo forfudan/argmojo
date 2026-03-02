@@ -44,7 +44,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     _ = Argument("env", help="...").long("env").delimiter(",")
 
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
-    _ = Argument("point", help="...").long("point").nargs(2)
+    _ = Argument("point", help="...").long("point").number_of_values(2)
 
     # Numeric range validation  →  result.get_int("port")
     _ = Argument("port", help="...").long("port").range(1, 65535)
@@ -96,7 +96,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """If True, repeated uses collect values into a list (e.g., --tag x --tag y)."""
     var delimiter_char: String
     """If non-empty, each value is split by this delimiter into multiple list entries."""
-    var nargs_count: Int
+    var num_values: Int
     """Number of values to consume per occurrence (0 means single-value mode)."""
     var range_min: Int
     """Minimum allowed value (inclusive) for numeric range validation."""
@@ -143,7 +143,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_negatable = False
         self.is_append = False
         self.delimiter_char = ""
-        self.nargs_count = 0
+        self.num_values = 0
         self.range_min = 0
         self.range_max = 0
         self.has_range = False
@@ -176,7 +176,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_negatable = copy.is_negatable
         self.is_append = copy.is_append
         self.delimiter_char = copy.delimiter_char
-        self.nargs_count = copy.nargs_count
+        self.num_values = copy.num_values
         self.range_min = copy.range_min
         self.range_max = copy.range_max
         self.has_range = copy.has_range
@@ -209,7 +209,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_negatable = move.is_negatable
         self.is_append = move.is_append
         self.delimiter_char = move.delimiter_char^
-        self.nargs_count = move.nargs_count
+        self.num_values = move.num_values
         self.range_min = move.range_min
         self.range_max = move.range_max
         self.has_range = move.has_range
@@ -404,11 +404,11 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_append = True
         return self^
 
-    fn nargs(var self, n: Int) -> Self:
+    fn number_of_values(var self, n: Int) -> Self:
         """Sets the number of values consumed per occurrence.
 
         When set, each use of the option consumes exactly ``n``
-        consecutive arguments.  For example, ``.nargs(2)`` on
+        consecutive arguments.  For example, ``.number_of_values(2)`` on
         ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
         Implies ``.append()`` so values are stored in
         ``ParseResult.lists``.
@@ -417,9 +417,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             n: Number of values to consume (must be ≥ 2).
 
         Returns:
-            Self with nargs and append mode set.
+            Self with num_values and append mode set.
         """
-        self.nargs_count = n
+        self.num_values = n
         self.is_append = True
         return self^
 

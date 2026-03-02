@@ -16,7 +16,7 @@ fn test_flag_long() raises:
     )
 
     var args: List[String] = ["test", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
     print("  ✓ test_flag_long")
 
@@ -32,7 +32,7 @@ fn test_flag_short() raises:
     )
 
     var args: List[String] = ["test", "-v"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="-v should be True")
     print("  ✓ test_flag_short")
 
@@ -48,7 +48,7 @@ fn test_flag_default_false() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("verbose"), msg="unset flag should be False")
     print("  ✓ test_flag_default_false")
 
@@ -61,7 +61,7 @@ fn test_key_value_long_space() raises:
     )
 
     var args: List[String] = ["test", "--output", "file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_key_value_long_space")
 
@@ -74,7 +74,7 @@ fn test_key_value_long_equals() raises:
     )
 
     var args: List[String] = ["test", "--output=file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_key_value_long_equals")
 
@@ -87,7 +87,7 @@ fn test_key_value_short() raises:
     )
 
     var args: List[String] = ["test", "-o", "file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_key_value_short")
 
@@ -103,7 +103,7 @@ fn test_positional_args() raises:
     )
 
     var args: List[String] = ["test", "hello", "./src"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), "./src")
     print("  ✓ test_positional_args")
@@ -120,7 +120,7 @@ fn test_positional_with_default() raises:
     )
 
     var args: List[String] = ["test", "hello"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), ".")
     print("  ✓ test_positional_with_default")
@@ -162,7 +162,7 @@ fn test_mixed_args() raises:
         "--max-depth",
         "3",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "zhong")
     assert_equal(result.get_string("path"), "./src")
     assert_true(result.get_flag("ling"), msg="--ling should be True")
@@ -177,7 +177,7 @@ fn test_double_dash_stop() raises:
     command.add_argument(Argument("verbose").long("verbose").short("v").flag())
 
     var args: List[String] = ["test", "--", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(
         result.get_flag("verbose"),
         msg="--verbose after -- should not be parsed as flag",
@@ -194,7 +194,7 @@ fn test_has() raises:
     command.add_argument(Argument("output").long("output"))
 
     var args: List[String] = ["test", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.has("verbose"), msg="verbose should exist")
     assert_false(result.has("output"), msg="output should not exist")
     print("  ✓ test_has")
@@ -211,7 +211,7 @@ fn test_merged_short_flags() raises:
     command.add_argument(Argument("color", help="Color").short("c").flag())
 
     var args: List[String] = ["test", "-abc"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("all"), msg="-a should be True from -abc")
     assert_true(result.get_flag("brief"), msg="-b should be True from -abc")
     assert_true(result.get_flag("color"), msg="-c should be True from -abc")
@@ -226,7 +226,7 @@ fn test_merged_flags_partial() raises:
     command.add_argument(Argument("color", help="Color").short("c").flag())
 
     var args: List[String] = ["test", "-ab"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("all"), msg="-a should be True from -ab")
     assert_true(result.get_flag("brief"), msg="-b should be True from -ab")
     assert_false(result.get_flag("color"), msg="-c should be False (not given)")
@@ -241,7 +241,7 @@ fn test_merged_flags_with_trailing_value() raises:
     command.add_argument(Argument("output", help="Output").short("o"))
 
     var args: List[String] = ["test", "-avo", "file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("all"), msg="-a should be True")
     assert_true(result.get_flag("verbose"), msg="-v should be True")
     assert_equal(result.get_string("output"), "file.txt")
@@ -257,7 +257,7 @@ fn test_attached_short_value() raises:
     command.add_argument(Argument("output", help="Output").short("o"))
 
     var args: List[String] = ["test", "-ofile.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_attached_short_value")
 
@@ -270,7 +270,7 @@ fn test_merged_flags_with_attached_value() raises:
     command.add_argument(Argument("output", help="Output").short("o"))
 
     var args: List[String] = ["test", "-abofile.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("all"), msg="-a should be True")
     assert_true(result.get_flag("brief"), msg="-b should be True")
     assert_equal(result.get_string("output"), "file.txt")
@@ -292,7 +292,7 @@ fn test_choices_valid() raises:
     )
 
     var args: List[String] = ["test", "--format", "json"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
     print("  ✓ test_choices_valid")
 
@@ -311,7 +311,7 @@ fn test_choices_invalid() raises:
     var args: List[String] = ["test", "--format", "xml"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -338,7 +338,7 @@ fn test_choices_with_short_attached() raises:
     )
 
     var args: List[String] = ["test", "-fjson"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
     print("  ✓ test_choices_with_short_attached")
 
@@ -357,7 +357,7 @@ fn test_count_single() raises:
     )
 
     var args: List[String] = ["test", "-v"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 1)
     print("  ✓ test_count_single")
 
@@ -373,7 +373,7 @@ fn test_count_triple() raises:
     )
 
     var args: List[String] = ["test", "-vvv"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 3)
     print("  ✓ test_count_triple")
 
@@ -389,7 +389,7 @@ fn test_count_long_repeated() raises:
     )
 
     var args: List[String] = ["test", "--verbose", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 2)
     print("  ✓ test_count_long_repeated")
 
@@ -405,7 +405,7 @@ fn test_count_mixed_short_long() raises:
     )
 
     var args: List[String] = ["test", "-vv", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 3)
     print("  ✓ test_count_mixed_short_long")
 
@@ -421,7 +421,7 @@ fn test_count_default_zero() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 0)
     print("  ✓ test_count_default_zero")
 
@@ -439,7 +439,7 @@ fn test_too_many_positionals() raises:
     var args: List[String] = ["test", "hello", "extra1", "extra2"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -464,7 +464,7 @@ fn test_exact_positionals_ok() raises:
     )
 
     var args: List[String] = ["test", "hello", "./src"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), "./src")
     print("  ✓ test_exact_positionals_ok")
@@ -484,7 +484,7 @@ fn test_negatable_positive() raises:
     )
 
     var args: List[String] = ["test", "--color"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("color"), msg="--color should be True")
     print("  ✓ test_negatable_positive")
 
@@ -500,7 +500,7 @@ fn test_negatable_negative() raises:
     )
 
     var args: List[String] = ["test", "--no-color"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("color"), msg="--no-color should be False")
     assert_true(
         result.has("color"), msg="color should be present after --no-color"
@@ -519,7 +519,7 @@ fn test_negatable_default() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(
         result.get_flag("color"), msg="unset negatable should be False"
     )
@@ -539,7 +539,7 @@ fn test_non_negatable_rejects_no_prefix() raises:
     var args: List[String] = ["test", "--no-verbose"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -567,7 +567,7 @@ fn test_prefix_match_unambiguous() raises:
     )
 
     var args: List[String] = ["test", "--verb"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(
         result.get_flag("verbose"), msg="--verb should resolve to --verbose"
     )
@@ -582,7 +582,7 @@ fn test_prefix_match_value() raises:
     )
 
     var args: List[String] = ["test", "--out", "file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_prefix_match_value")
 
@@ -595,7 +595,7 @@ fn test_prefix_match_equals() raises:
     )
 
     var args: List[String] = ["test", "--out=file.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
     print("  ✓ test_prefix_match_equals")
 
@@ -618,7 +618,7 @@ fn test_prefix_match_ambiguous() raises:
     var args: List[String] = ["test", "--ver"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -639,7 +639,7 @@ fn test_prefix_match_exact_preferred() raises:
 
     # --color should exactly match 'color', not be ambiguous.
     var args: List[String] = ["test", "--color"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(
         result.get_flag("color"),
         msg="--color should exactly match 'color'",
@@ -662,7 +662,7 @@ fn test_prefix_match_negatable() raises:
     )
 
     var args: List[String] = ["test", "--no-col"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("color"), msg="--no-col should negate color")
     assert_true(
         result.has("color"), msg="color should be present after --no-col"

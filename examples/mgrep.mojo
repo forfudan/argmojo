@@ -148,7 +148,7 @@ fn main() raises:
         Argument("context", help="Print B lines before and A lines after match")
         .long("context")
         .short("C")
-        .nargs(2)
+        .number_of_values(2)
         .metavar("N")
     )
 
@@ -242,7 +242,7 @@ fn main() raises:
     app.add_tip('Use quotes for patterns with spaces: grep "fn main" ./src')
 
     # ── Show help when invoked with no arguments ─────────────────────────
-    app.help_on_no_args()
+    app.help_on_no_arguments()
 
     # ── Parse & display ──────────────────────────────────────────────────
     var result = app.parse()

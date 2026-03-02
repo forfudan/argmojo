@@ -15,7 +15,7 @@ fn test_range_valid_value() raises:
     )
 
     var args: List[String] = ["test", "--port", "8080"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "8080")
     print("  ✓ test_range_valid_value")
 
@@ -28,7 +28,7 @@ fn test_range_boundary_min() raises:
     )
 
     var args: List[String] = ["test", "--port", "1"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "1")
     print("  ✓ test_range_boundary_min")
 
@@ -41,7 +41,7 @@ fn test_range_boundary_max() raises:
     )
 
     var args: List[String] = ["test", "--port", "65535"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "65535")
     print("  ✓ test_range_boundary_max")
 
@@ -56,7 +56,7 @@ fn test_range_below_min() raises:
     var args: List[String] = ["test", "--port", "0"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -78,7 +78,7 @@ fn test_range_above_max() raises:
     var args: List[String] = ["test", "--port", "70000"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -97,7 +97,7 @@ fn test_range_not_provided_ok() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.has("port"), msg="port should not be set")
     print("  ✓ test_range_not_provided_ok")
 
@@ -112,7 +112,7 @@ fn test_range_with_append() raises:
     var args: List[String] = ["test", "--port", "50", "--port", "101"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -132,7 +132,7 @@ fn test_range_with_short_option() raises:
     )
 
     var args: List[String] = ["test", "-l", "3"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("level"), "3")
     print("  ✓ test_range_with_short_option")
 
@@ -151,7 +151,7 @@ fn test_map_single_pair() raises:
     )
 
     var args: List[String] = ["test", "--define", "CC=gcc"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     print("  ✓ test_map_single_pair")
@@ -168,7 +168,7 @@ fn test_map_multiple_pairs() raises:
     )
 
     var args: List[String] = ["test", "--define", "CC=gcc", "-D", "CXX=g++"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     assert_equal(m["CXX"], "g++")
@@ -183,7 +183,7 @@ fn test_map_equals_syntax() raises:
     )
 
     var args: List[String] = ["test", "--define=CC=gcc"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     print("  ✓ test_map_equals_syntax")
@@ -201,7 +201,7 @@ fn test_map_with_delimiter() raises:
     )
 
     var args: List[String] = ["test", "--define", "CC=gcc,CXX=g++"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     assert_equal(m["CXX"], "g++")
@@ -218,7 +218,7 @@ fn test_map_invalid_no_equals() raises:
     var args: List[String] = ["test", "--define", "NOEQUALS"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -235,7 +235,7 @@ fn test_map_has_check() raises:
     )
 
     var args: List[String] = ["test", "--define", "A=1"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.has("define"), msg="has() should be True for map arg")
     print("  ✓ test_map_has_check")
 
@@ -248,7 +248,7 @@ fn test_map_empty_value() raises:
     )
 
     var args: List[String] = ["test", "--define", "KEY="]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["KEY"], "")
     print("  ✓ test_map_empty_value")
@@ -262,7 +262,7 @@ fn test_map_value_with_equals() raises:
     )
 
     var args: List[String] = ["test", "--env", "PATH=/usr/bin:/bin"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var m = result.get_map("env")
     assert_equal(m["PATH"], "/usr/bin:/bin")
     print("  ✓ test_map_value_with_equals")
@@ -282,7 +282,7 @@ fn test_alias_basic() raises:
     )
 
     var args: List[String] = ["test", "--color", "red"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "red")
     print("  ✓ test_alias_basic")
 
@@ -298,7 +298,7 @@ fn test_alias_primary_still_works() raises:
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "blue")
     print("  ✓ test_alias_primary_still_works")
 
@@ -314,11 +314,11 @@ fn test_alias_multiple() raises:
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "json")
 
     var args2: List[String] = ["test", "--out", "yaml"]
-    var result2 = command.parse_args(args2)
+    var result2 = command.parse_arguments(args2)
     assert_equal(result2.get_string("output"), "yaml")
     print("  ✓ test_alias_multiple")
 
@@ -334,7 +334,7 @@ fn test_alias_prefix_match() raises:
     )
 
     var args: List[String] = ["test", "--colo", "green"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "green")
     print("  ✓ test_alias_prefix_match")
 
@@ -351,7 +351,7 @@ fn test_alias_with_flag() raises:
     )
 
     var args: List[String] = ["test", "--debug"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(
         result.get_flag("verbose"), msg="--debug alias should set verbose flag"
     )
@@ -371,7 +371,7 @@ fn test_deprecated_still_parses() raises:
     )
 
     var args: List[String] = ["test", "--format-old", "csv"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("format_old"), "csv")
     print("  ✓ test_deprecated_still_parses")
 
@@ -388,7 +388,7 @@ fn test_deprecated_short_option() raises:
     )
 
     var args: List[String] = ["test", "-C"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("compat"), msg="-C should still set the flag")
     print("  ✓ test_deprecated_short_option")
 
@@ -404,7 +404,7 @@ fn test_deprecated_not_provided_ok() raises:
     command.add_argument(Argument("new", help="New option").long("new"))
 
     var args: List[String] = ["test", "--new", "val"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.has("old"), msg="old should not be present")
     assert_equal(result.get_string("new"), "val")
     print("  ✓ test_deprecated_not_provided_ok")
@@ -422,7 +422,7 @@ fn test_deprecated_with_alias() raises:
     )
 
     var args: List[String] = ["test", "--out", "json"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "json")
     print("  ✓ test_deprecated_with_alias")
 

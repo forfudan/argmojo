@@ -927,5 +927,71 @@ fn test_completions_custom_name_with_subcommand() raises:
     print("  ✓ test_completions_custom_name_with_subcommand")
 
 
+# ── Alias in completion scripts ──────────────────────────────────────────────
+
+
+fn test_fish_completion_includes_alias() raises:
+    """Tests that Fish completion lists alias as a completable name."""
+    var app = Command("myapp", "A test app")
+    var clone = Command("clone", "Clone a repository")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+    var script = app.generate_completion("fish")
+    assert_true(
+        "-a 'cl'" in script,
+        msg="Fish script should list alias 'cl' as completable",
+    )
+    assert_true(
+        "-a 'clone'" in script,
+        msg="Fish script should still list primary name 'clone'",
+    )
+    # Alias should also be in the seen_subcommand_from condition.
+    assert_true(
+        "__fish_seen_subcommand_from clone cl" in script,
+        msg="Fish should include alias in seen_subcommand_from",
+    )
+    print("  ✓ test_fish_completion_includes_alias")
+
+
+fn test_zsh_completion_includes_alias() raises:
+    """Tests that Zsh completion lists alias entries."""
+    var app = Command("myapp", "A test app")
+    var clone = Command("clone", "Clone a repository")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+    var script = app.generate_completion("zsh")
+    assert_true(
+        "'cl:" in script,
+        msg="Zsh script should list alias 'cl' in commands array",
+    )
+    assert_true(
+        "clone|cl)" in script,
+        msg="Zsh script should dispatch clone|cl pattern",
+    )
+    print("  ✓ test_zsh_completion_includes_alias")
+
+
+fn test_bash_completion_includes_alias() raises:
+    """Tests that Bash completion includes alias in dispatch pattern."""
+    var app = Command("myapp", "A test app")
+    var clone = Command("clone", "Clone a repository")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+    var script = app.generate_completion("bash")
+    assert_true(
+        "clone|cl)" in script,
+        msg="Bash script should have clone|cl) case pattern",
+    )
+    # Alias should also appear in the subcommand list for root completion.
+    assert_true(
+        "clone cl" in script,
+        msg="Bash should list alias in subcommand names",
+    )
+    print("  ✓ test_bash_completion_includes_alias")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
