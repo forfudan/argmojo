@@ -23,7 +23,7 @@ fn test_typo_long_option_suggests() raises:
     var args2: List[String] = ["test", "--vrebose"]
     var caught = False
     try:
-        _ = command.parse_args(args2)
+        _ = command.parse_arguments(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -49,7 +49,7 @@ fn test_typo_long_option_no_suggestion() raises:
     var args: List[String] = ["test", "--zzzzzzz"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -71,7 +71,7 @@ fn test_typo_long_option_single_char_diff() raises:
     var args: List[String] = ["test", "--outptu", "file.txt"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -101,7 +101,7 @@ fn test_typo_subcommand_suggests() raises:
     var args: List[String] = ["app", "serach"]
     var caught = False
     try:
-        _ = root.parse_args(args)
+        _ = root.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -127,7 +127,7 @@ fn test_typo_subcommand_no_suggestion() raises:
     var args: List[String] = ["app", "xxxxxxx"]
     var caught = False
     try:
-        _ = root.parse_args(args)
+        _ = root.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -156,7 +156,7 @@ fn test_typo_alias_suggests() raises:
     var args: List[String] = ["test", "--colro"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)

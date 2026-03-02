@@ -87,14 +87,14 @@ fn main() raises:
 
 ---
 
-**`parse()` vs `parse_args()`**
+**`parse()` vs `parse_arguments()`**
 
 - **`command.parse()`** reads the real command-line via `sys.argv()`.
-- **`command.parse_args(args)`** accepts a `List[String]` — useful for testing without a real binary. Note that `args[0]` is expected to be the program name and will be skipped, so the actual arguments should start from index 1.
+- **`command.parse_arguments(args)`** accepts a `List[String]` — useful for testing without a real binary. Note that `args[0]` is expected to be the program name and will be skipped, so the actual arguments should start from index 1.
 
 ### Reading Parsed Results
 
-After calling `command.parse()` or `command.parse_args()`, you get a `ParseResult` with these typed accessors:
+After calling `command.parse()` or `command.parse_arguments()`, you get a `ParseResult` with these typed accessors:
 
 | Method                      | Returns        | Description                                       |
 | --------------------------- | -------------- | ------------------------------------------------- |
@@ -1562,7 +1562,7 @@ app.add_argument(Argument("fallback", help="Fallback").positional())
 
 # "foo" doesn't match any subcommand → treated as positional
 var args: List[String] = ["app", "foo"]
-var result = app.parse_args(args)
+var result = app.parse_arguments(args)
 print(result.positionals[0])  # "foo"
 ```
 
@@ -1790,13 +1790,13 @@ After printing help, the program exits cleanly with exit code 0.
 
 **Show Help When No Arguments Provided**
 
-Use `help_on_no_args()` to automatically display help when the user invokes
+Use `help_on_no_arguments()` to automatically display help when the user invokes
 the command with no arguments (like `git`, `docker`, or `cargo`):
 
 ```mojo
 var command = Command("myapp", "My application")
 command.add_argument(Argument("file", help="Input file").long("file").required())
-command.help_on_no_args()
+command.help_on_no_arguments()
 var result = command.parse()
 ```
 

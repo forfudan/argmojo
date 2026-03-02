@@ -1,8 +1,8 @@
 """Tests for argmojo subcommand support.
 
 Step 0: Validates that the _apply_defaults() and _validate() extraction
-from parse_args() preserves all existing behavior. These tests exercise
-the defaults and validation paths directly through parse_args(), ensuring
+from parse_arguments() preserves all existing behavior. These tests exercise
+the defaults and validation paths directly through parse_arguments(), ensuring
 no regression from the refactor.
 
 Step 1: Validates the data model & API surface for subcommand support:
@@ -10,10 +10,10 @@ Step 1: Validates the data model & API surface for subcommand support:
   - ParseResult.subcommand field (String, defaults to "")
   - ParseResult.has_subcommand_result() / get_subcommand_result()
   - ParseResult.__copyinit__ preserves subcommand data
-  - parse_args() unchanged when no subcommands are registered
+  - parse_arguments() unchanged when no subcommands are registered
 
 Step 2: Validates parse-time subcommand routing:
-  - Basic dispatch: subcommand token → child parse_args()
+  - Basic dispatch: subcommand token → child parse_arguments()
   - Root flags before subcommand parsed by root
   - Child flags/positionals parsed by child
   - ``--`` stops dispatch; subsequent tokens are root positionals
@@ -49,7 +49,7 @@ fn test_defaults_named_arg() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
     print("  ✓ test_defaults_named_arg")
 
@@ -66,7 +66,7 @@ fn test_defaults_positional_arg() raises:
     )
 
     var args: List[String] = ["test", "hello"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), ".")
     print("  ✓ test_defaults_positional_arg")
@@ -80,7 +80,7 @@ fn test_defaults_not_applied_when_provided() raises:
     )
 
     var args: List[String] = ["test", "--format", "csv"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "csv")
     print("  ✓ test_defaults_not_applied_when_provided")
 
@@ -97,7 +97,7 @@ fn test_defaults_multiple_positional() raises:
 
     # Provide only the first positional.
     var args: List[String] = ["test", "input.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("src"), "input.txt")
     assert_equal(result.get_string("dst"), "b.txt")
     print("  ✓ test_defaults_multiple_positional")
@@ -116,7 +116,7 @@ fn test_validate_required_missing() raises:
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -137,7 +137,7 @@ fn test_validate_required_provided() raises:
     )
 
     var args: List[String] = ["test", "--output", "out.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_validate_required_provided")
 
@@ -153,7 +153,7 @@ fn test_validate_too_many_positionals() raises:
     var args: List[String] = ["test", "alice", "bob"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -179,7 +179,7 @@ fn test_validate_exclusive_conflict() raises:
     var args: List[String] = ["test", "--json", "--yaml"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -199,7 +199,7 @@ fn test_validate_exclusive_ok() raises:
     command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"))
     print("  ✓ test_validate_exclusive_ok")
 
@@ -218,7 +218,7 @@ fn test_validate_together_partial() raises:
     var args: List[String] = ["test", "--user", "alice"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -244,7 +244,7 @@ fn test_validate_one_required_none() raises:
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -268,7 +268,7 @@ fn test_validate_conditional_triggered() raises:
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -287,7 +287,7 @@ fn test_validate_conditional_satisfied() raises:
     command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save", "--output", "out.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("save"))
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_validate_conditional_satisfied")
@@ -306,7 +306,7 @@ fn test_validate_range_out_of_bounds() raises:
     var args: List[String] = ["test", "--port", "200"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -325,7 +325,7 @@ fn test_validate_range_in_bounds() raises:
     )
 
     var args: List[String] = ["test", "--port", "50"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "50")
     print("  ✓ test_validate_range_in_bounds")
 
@@ -348,7 +348,7 @@ fn test_defaults_then_validation_combined() raises:
 
     # Providing neither — no error (required-together only fires if some present).
     var args1: List[String] = ["test"]
-    var result = command.parse_args(args1)
+    var result = command.parse_arguments(args1)
     assert_false(result.has("user"))
     assert_false(result.has("pass"))
     print("  ✓ test_defaults_then_validation_combined")
@@ -363,7 +363,7 @@ fn test_full_parse_with_defaults_and_range() raises:
 
     # Not providing --port should use default "50" which is in range.
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "50")
     print("  ✓ test_full_parse_with_defaults_and_range")
 
@@ -543,14 +543,14 @@ fn test_parseresult_copy_preserves_subcommand() raises:
 
 
 fn test_parse_without_subcommands_unaffected() raises:
-    """Tests that parse_args() results are unchanged when no subcommands exist.
+    """Tests that parse_arguments() results are unchanged when no subcommands exist.
     """
     var command = Command("app", "My app")
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     var args: List[String] = ["app", "--verbose"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
@@ -570,7 +570,7 @@ fn test_dispatch_basic() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     assert_true(result.has_subcommand_result())
     var sub = result.get_subcommand_result()
@@ -591,7 +591,7 @@ fn test_dispatch_root_flag_before_subcommand() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "--verbose", "search", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
@@ -612,7 +612,7 @@ fn test_dispatch_root_short_flag_before_subcommand() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "-v", "search", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
@@ -633,7 +633,7 @@ fn test_dispatch_child_flag() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "--max-depth", "3", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("max-depth"), "3")
@@ -654,7 +654,7 @@ fn test_dispatch_child_flag_short() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "-d", "5", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("max-depth"), "5")
@@ -673,7 +673,7 @@ fn test_dispatch_double_dash_stops_dispatch() raises:
     app.add_argument(Argument("arg1", help="First arg").positional())
 
     var args: List[String] = ["app", "--", "search"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
     assert_equal(result.get_string("arg1"), "search")
@@ -690,7 +690,7 @@ fn test_dispatch_unknown_token_is_positional() raises:
     app.add_argument(Argument("name", help="Name").positional())
 
     var args: List[String] = ["app", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.get_string("name"), "hello")
     print("  ✓ test_dispatch_unknown_token_is_positional")
@@ -709,7 +709,7 @@ fn test_dispatch_two_subcommands_route_first() raises:
     app.add_subcommand(init^)
 
     var args: List[String] = ["app", "search", "foo"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     assert_equal(result.get_subcommand_result().get_string("pattern"), "foo")
     print("  ✓ test_dispatch_two_subcommands_route_first")
@@ -728,7 +728,7 @@ fn test_dispatch_two_subcommands_route_second() raises:
     app.add_subcommand(init^)
 
     var args: List[String] = ["app", "init", "myproject"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "init")
     assert_equal(result.get_subcommand_result().get_string("name"), "myproject")
     print("  ✓ test_dispatch_two_subcommands_route_second")
@@ -746,7 +746,7 @@ fn test_dispatch_child_validation_error() raises:
     var args: List[String] = ["app", "search"]
     var caught = False
     try:
-        _ = app.parse_args(args)
+        _ = app.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -772,7 +772,7 @@ fn test_dispatch_child_default_value() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("pattern"), "hello")
     assert_equal(sub.get_string("path"), ".")
@@ -788,7 +788,7 @@ fn test_dispatch_no_subcommand_when_none_match() raises:
     app.add_argument(Argument("file", help="File").positional())
 
     var args: List[String] = ["app", "myfile.txt"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
     print("  ✓ test_dispatch_no_subcommand_when_none_match")
@@ -809,7 +809,7 @@ fn test_dispatch_root_still_validates_own_required() raises:
     var args: List[String] = ["app", "search", "hello"]
     var caught = False
     try:
-        _ = app.parse_args(args)
+        _ = app.parse_arguments(args)
     except e:
         caught = True
         assert_true("Required argument" in String(e))
@@ -830,7 +830,7 @@ fn test_dispatch_child_receives_no_root_tokens() raises:
     app.add_subcommand(sub^)
 
     var args: List[String] = ["app", "--verbose", "run", "main.mojo"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "run")
     var child = result.get_subcommand_result()
@@ -938,7 +938,7 @@ fn test_dispatch_unaffected_by_help_sub() raises:
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "TODO"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     var child = result.get_subcommand_result()
     assert_equal(child.get_string("pattern"), "TODO")
@@ -956,7 +956,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
 
     # "help" should be treated as a root positional, not dispatch.
     var args: List[String] = ["app", "help"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.positionals[0], "help")
     print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
@@ -975,7 +975,7 @@ fn test_unknown_subcommand_error_no_positionals() raises:
     var args: List[String] = ["app", "foo"]
     var caught = False
     try:
-        _ = app.parse_args(args)
+        _ = app.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -1000,7 +1000,7 @@ fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
 
     # "foo" doesn't match any subcommand but root has positional args → positional.
     var args: List[String] = ["app", "foo"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.positionals[0], "foo")
     print("  ✓ test_unknown_token_becomes_positional_when_positionals_defined")
@@ -1019,7 +1019,7 @@ fn test_child_error_includes_command_path() raises:
     var args: List[String] = ["app", "search"]
     var caught = False
     try:
-        _ = app.parse_args(args)
+        _ = app.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -1041,7 +1041,7 @@ fn test_unknown_subcommand_error_excludes_help_sub() raises:
     var args: List[String] = ["app", "foo"]
     var caught = False
     try:
-        _ = app.parse_args(args)
+        _ = app.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -1132,7 +1132,7 @@ fn test_allow_positional_with_subcommands_opt_in() raises:
 
     # Verify parsing works: unknown token → positional.
     var args: List[String] = ["app", "hello"]
-    var result = app2.parse_args(args)
+    var result = app2.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.positionals[0], "hello")
     print("  ✓ test_allow_positional_with_subcommands_opt_in")
@@ -1183,7 +1183,7 @@ fn test_alias_dispatch_basic() raises:
     app.add_subcommand(clone^)
 
     var args: List[String] = ["app", "cl", "https://example.com/repo.git"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "clone")
     var sub_result = result.get_subcommand_result()
     assert_equal(sub_result.positionals[0], "https://example.com/repo.git")
@@ -1200,7 +1200,7 @@ fn test_alias_stores_canonical_name() raises:
 
     # Use second alias.
     var args: List[String] = ["app", "cm"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "commit")
     print("  ✓ test_alias_stores_canonical_name")
 
@@ -1218,7 +1218,7 @@ fn test_alias_dispatch_with_child_flags() raises:
     app.add_subcommand(commit^)
 
     var args: List[String] = ["app", "ci", "-m", "fix bug", "--amend"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "commit")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("message"), "fix bug")
@@ -1236,7 +1236,7 @@ fn test_alias_primary_name_still_works() raises:
     app.add_subcommand(clone^)
 
     var args: List[String] = ["app", "clone"]
-    var result = app.parse_args(args)
+    var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "clone")
     print("  ✓ test_alias_primary_name_still_works")
 
@@ -1287,21 +1287,21 @@ fn test_alias_multiple_subcommands() raises:
 
     # Dispatch via clone alias.
     var args1: List[String] = ["app", "cl"]
-    var r1 = app.parse_args(args1)
+    var r1 = app.parse_arguments(args1)
     assert_equal(r1.subcommand, "clone")
 
     # Dispatch via commit alias.
     var args2: List[String] = ["app", "ci"]
-    var r2 = app.parse_args(args2)
+    var r2 = app.parse_arguments(args2)
     assert_equal(r2.subcommand, "commit")
 
     # Primary names still work.
     var args3: List[String] = ["app", "clone"]
-    var r3 = app.parse_args(args3)
+    var r3 = app.parse_arguments(args3)
     assert_equal(r3.subcommand, "clone")
 
     var args4: List[String] = ["app", "commit"]
-    var r4 = app.parse_args(args4)
+    var r4 = app.parse_arguments(args4)
     assert_equal(r4.subcommand, "commit")
     print("  ✓ test_alias_multiple_subcommands")
 

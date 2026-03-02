@@ -42,7 +42,7 @@ fn test_hidden_still_works() raises:
     )
 
     var args: List[String] = ["test", "--debug"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("debug"), msg="hidden --debug should work")
     print("  ✓ test_hidden_still_works")
 
@@ -252,8 +252,9 @@ fn test_help_and_version_aligned() raises:
     print("  ✓ test_help_and_version_aligned")
 
 
-fn test_help_on_no_args_disabled_by_default() raises:
-    """Tests that parse_args works with no args when help_on_no_args is off."""
+fn test_help_on_no_arguments_disabled_by_default() raises:
+    """Tests that parse_arguments works with no args when help_on_no_arguments is off.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
@@ -261,9 +262,9 @@ fn test_help_on_no_args_disabled_by_default() raises:
 
     var args: List[String] = ["test"]
     # Should NOT exit — just parse with defaults.
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("verbose"), msg="verbose should be False")
-    print("  ✓ test_help_on_no_args_disabled_by_default")
+    print("  ✓ test_help_on_no_arguments_disabled_by_default")
 
 
 fn test_positional_args_aligned_in_help() raises:
@@ -714,8 +715,8 @@ fn test_child_help_shows_full_command_path() raises:
     # Simulate: app search --help
     # The child copy gets name set to "app search", so --help would
     # show "Usage: app search ..." in help.
-    # We test indirectly by checking what parse_args sets on the child copy.
-    # Create the child copy as parse_args would.
+    # We test indirectly by checking what parse_arguments sets on the child copy.
+    # Create the child copy as parse_arguments would.
     # Note: subcommands[0] is auto-added 'help'; search is at index 1.
     var search_idx = app._find_subcommand("search")
     var child_copy = app.subcommands[search_idx].copy()

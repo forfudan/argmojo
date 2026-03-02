@@ -48,7 +48,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """Groups where at least one argument must be provided."""
     var _conditional_reqs: List[List[String]]
     """Pairs [target, condition]: target is required when condition is present."""
-    var _help_on_no_args: Bool
+    var _help_on_no_arguments: Bool
     """When True, show help and exit if no arguments are provided."""
     var _header_color: String
     """ANSI code for section headers (Usage, Arguments, Options)."""
@@ -124,7 +124,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
-        self._help_on_no_args = False
+        self._help_on_no_arguments = False
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
         self._allow_negative_numbers = False
@@ -154,7 +154,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = move._required_groups^
         self._one_required_groups = move._one_required_groups^
         self._conditional_reqs = move._conditional_reqs^
-        self._help_on_no_args = move._help_on_no_args
+        self._help_on_no_arguments = move._help_on_no_arguments
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
         self._allow_negative_numbers = move._allow_negative_numbers
@@ -201,7 +201,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._conditional_reqs = List[List[String]]()
         for i in range(len(copy._conditional_reqs)):
             self._conditional_reqs.append(copy._conditional_reqs[i].copy())
-        self._help_on_no_args = copy._help_on_no_args
+        self._help_on_no_arguments = copy._help_on_no_arguments
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
         self._allow_negative_numbers = copy._allow_negative_numbers
@@ -644,7 +644,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var pair: List[String] = [target, condition]
         self._conditional_reqs.append(pair^)
 
-    fn help_on_no_args(mut self):
+    fn help_on_no_arguments(mut self):
         """Enables showing help when invoked with no arguments.
 
         When enabled, calling the command with no arguments (only the
@@ -656,10 +656,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
         command.add_argument(Argument("file", help="Input file").long("file").required())
-        command.help_on_no_args()
+        command.help_on_no_arguments()
         ```
         """
-        self._help_on_no_args = True
+        self._help_on_no_arguments = True
 
     fn header_color(mut self, name: String) raises:
         """Sets the colour for section headers (Usage, Arguments, Options).
@@ -768,7 +768,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Prints a coloured error message to stderr then raises.
 
         All parse-time errors funnel through this method so that callers
-        of both ``parse()`` and ``parse_args()`` always see coloured output
+        of both ``parse()`` and ``parse_arguments()`` always see coloured output
         while tests can still catch the raised ``Error`` normally.
         The command name is included in the stderr output so that errors
         from subcommands show the full path (e.g. ``app search: ...``).
@@ -828,7 +828,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         are printed in colour to stderr and the process exits with code 2.
         This matches the behaviour of Python's ``argparse``.
 
-        Use ``parse_args()`` directly if you want to catch errors yourself.
+        Use ``parse_arguments()`` directly if you want to catch errors yourself.
 
         Returns:
             A ParseResult containing all parsed values.
@@ -838,7 +838,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(raw_variadic)):
             raw.append(String(raw_variadic[i]))
         try:
-            return self.parse_args(raw)
+            return self.parse_arguments(raw)
         except:
             # Error message was already printed to stderr by _error().
             exit(2)
@@ -846,7 +846,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # compiler does not model exit() as @noreturn yet.
             return ParseResult()
 
-    fn parse_args(self, raw_args: List[String]) raises -> ParseResult:
+    fn parse_arguments(self, raw_args: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
         The first element, e.g., ``argv[0]``, is expected to be the program name
@@ -870,10 +870,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
 
         # Here is a high-level outline of the parsing algorithm implemented in
-        # ``parse_args``:
+        # ``parse_arguments``:
         #
         # 1. Initialize ParseResult and register positional names.
-        # 2. If ``help_on_no_args`` is enabled and only argv[0] is present:
+        # 2. If ``help_on_no_arguments`` is enabled and only argv[0] is present:
         #    print help and exit.
         # 3. Iterate from argv[1] with cursor ``i``:
         #    ├─ If token is "--": enter positional-only mode.
@@ -895,7 +895,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         #    └─ Otherwise (bare word):
         #       ├─ Subcommands registered + "help <sub>": print child help & exit.
         #       ├─ Subcommands registered + token matches subcommand name:
-        #       │   build child argv, call child.parse_args(), store result, break.
+        #       │   build child argv, call child.parse_arguments(), store result, break.
         #       └─ Otherwise: treat as positional argument.
         # 4. Apply defaults for missing args (named + positional slots).
         # 5. Validate:
@@ -920,7 +920,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var stop_parsing_options = False
 
         # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_args and len(raw_args) <= 1:
+        if self._help_on_no_arguments and len(raw_args) <= 1:
             print(self._generate_help())
             exit(0)
 
@@ -1042,7 +1042,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         return result^
 
     # ===------------------------------------------------------------------=== #
-    # Parsing sub-methods (extracted from parse_args for readability)
+    # Parsing sub-methods (extracted from parse_arguments for readability)
     # ===------------------------------------------------------------------=== #
 
     fn _parse_long_option(
@@ -1379,7 +1379,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Attempts to dispatch to a matching subcommand.
 
         If a subcommand matches, it builds a child argv, injects
-        persistent args, parses via the child's ``parse_args()``,
+        persistent args, parses via the child's ``parse_arguments()``,
         and performs bidirectional sync of persistent values.
 
         Args:
@@ -1425,7 +1425,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             for _pi in range(len(self.args)):
                 if self.args[_pi].is_persistent:
                     child_copy.args.append(self.args[_pi].copy())
-            var child_result = child_copy.parse_args(child_argv)
+            var child_result = child_copy.parse_arguments(child_argv)
             # Bubble up persistent values from child to root result so
             # that root_result.get_flag("x") always works regardless of
             # whether the flag appeared before or after the subcommand
@@ -2503,7 +2503,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         were actually provided.
 
         Args:
-            result: The ParseResult returned by ``parse()`` or ``parse_args()``.
+            result: The ParseResult returned by ``parse()`` or ``parse_arguments()``.
         """
         print("=== Parsed Arguments ===")
 

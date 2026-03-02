@@ -93,7 +93,7 @@ fn main() raises:
         .long("recurse-submodules")
         .flag()
     )
-    clone.help_on_no_args()
+    clone.help_on_no_arguments()
     var clone_aliases: List[String] = ["cl"]
     clone.command_aliases(clone_aliases^)
     app.add_subcommand(clone^)
@@ -324,14 +324,14 @@ fn main() raises:
         .short("f")
         .flag()
     )
-    remote_add.help_on_no_args()
+    remote_add.help_on_no_arguments()
     remote.add_subcommand(remote_add^)
 
     var remote_remove = Command("remove", "Remove a remote")
     remote_remove.add_argument(
         Argument("name", help="Remote name to remove").positional().required()
     )
-    remote_remove.help_on_no_args()
+    remote_remove.help_on_no_arguments()
     remote.add_subcommand(remote_remove^)
 
     var remote_rename = Command("rename", "Rename a remote")
@@ -341,17 +341,17 @@ fn main() raises:
     remote_rename.add_argument(
         Argument("new", help="New remote name").positional().required()
     )
-    remote_rename.help_on_no_args()
+    remote_rename.help_on_no_arguments()
     remote.add_subcommand(remote_rename^)
 
     var remote_show = Command("show", "Show information about a remote")
     remote_show.add_argument(
         Argument("name", help="Remote name").positional().required()
     )
-    remote_show.help_on_no_args()
+    remote_show.help_on_no_arguments()
     remote.add_subcommand(remote_show^)
 
-    remote.help_on_no_args()
+    remote.help_on_no_arguments()
     app.add_subcommand(remote^)
 
     # ── branch ───────────────────────────────────────────────────────────
@@ -479,7 +479,7 @@ fn main() raises:
     app.add_subcommand(stash^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
-    app.help_on_no_args()
+    app.help_on_no_arguments()
 
     # ── Parse & display ──────────────────────────────────────────────────
     var result = app.parse()

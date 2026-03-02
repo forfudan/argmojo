@@ -292,23 +292,23 @@ The practical view — both dimensions checked together at parse time:
 | No requirements               | ✓ Proceed        | ✓ Proceed              | ✓ Proceed              | ✓ Proceed  |
 | Has subcommands (group)       | ✓ Proceed *      | —                      | —                      | ✓ Dispatch |
 
-\* Group commands with subcommands typically do nothing useful with no input — `help_on_no_args()` is recommended.
+\* Group commands with subcommands typically do nothing useful with no input — `help_on_no_arguments()` is recommended.
 
-#### Effect of `help_on_no_args()`
+#### Effect of `help_on_no_arguments()`
 
-| Scenario                          | Default (off)                                                  | With `help_on_no_args()`    |
+| Scenario                          | Default (off)                                                  | With `help_on_no_arguments()`    |
 | --------------------------------- | -------------------------------------------------------------- | --------------------------- |
 | Zero args (only program name)     | Validation runs → error if requirements exist; proceed if none | **Show full help** (exit 0) |
 | Some args provided (insufficient) | ✗ Error + usage                                                | ✗ Error + usage *(same)*    |
 | All requirements satisfied        | ✓ Proceed                                                      | ✓ Proceed *(same)*          |
 
-> **Key:** `help_on_no_args()` only overrides the **zero-argument** case. Once any argument is provided, normal validation takes over regardless.
+> **Key:** `help_on_no_arguments()` only overrides the **zero-argument** case. Once any argument is provided, normal validation takes over regardless.
 
 #### Industry Consensus (clap / cobra / argparse / click / docker / git / kubectl)
 
 1. **Error, not help.** When the user provides a partial or incorrect invocation, the standard is a *short error message* naming the missing argument + a compact *usage line*. Full help is reserved for `--help` or bare group commands. This is the dominant pattern across clap, argparse, click, commander.js, cargo.
 
-2. **No special-casing "zero args" by default.** The vast majority of frameworks do NOT treat "provided nothing" differently from "provided some but not all." clap's `arg_required_else_help(true)` is the only first-class opt-in — ArgMojo's `help_on_no_args()` mirrors this.
+2. **No special-casing "zero args" by default.** The vast majority of frameworks do NOT treat "provided nothing" differently from "provided some but not all." clap's `arg_required_else_help(true)` is the only first-class opt-in — ArgMojo's `help_on_no_arguments()` mirrors this.
 
 3. **Two-tier pattern for subcommands.** Every tool examined follows the same convention:
    - **Group/parent command** with no subcommand given → **show full help** (list available subcommands)
@@ -360,7 +360,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **One-required group** — `command.one_required(["json", "yaml"])` requires at least one from the group (cobra `MarkFlagsOneRequired`, clap `ArgGroup::required`)
 - [x] **Value delimiter** — `--tag a,b,c` splits by delimiter into `["a", "b", "c"]` (cobra `StringSliceVar`, clap `value_delimiter`)
 - [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help` (common in Windows CLI tools, Java, MySQL, curl)
-- [x] **Help on no args** — `command.help_on_no_args()` shows help when invoked with no arguments (like git/docker/cargo)
+- [x] **Help on no args** — `command.help_on_no_arguments()` shows help when invoked with no arguments (like git/docker/cargo)
 - [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
 - [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
 - [x] **nargs (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
@@ -372,17 +372,17 @@ The practical view — both dimensions checked together at parse time:
 
 ### Phase 4: Subcommands (for v0.2 or v0.3 depending on complexity)
 
-Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo from a single-parser into a parser tree. The core insight is that **a subcommand is just another `Command` instance** — it already has `parse_args()`, `_generate_help()`, and all validation logic. No new parser, tokenizer, or separate module files are needed.
+Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo from a single-parser into a parser tree. The core insight is that **a subcommand is just another `Command` instance** — it already has `parse_arguments()`, `_generate_help()`, and all validation logic. No new parser, tokenizer, or separate module files are needed.
 
 #### Architecture: composition inside `Command`
 
 - **No file split.** Core logic stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2250 lines. ANSI colour constants and small utility functions live in `utils.mojo` (internal-only, all symbols `_`-prefixed).
-- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_args()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
-- **Composition-based.** `Command` gains a child command list. When `parse_args()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_args()`. 100% logic reuse, zero duplication.
+- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_arguments()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
+- **Composition-based.** `Command` gains a child command list. When `parse_arguments()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_arguments()`. 100% logic reuse, zero duplication.
 
 #### Pre-requisite refactor (Step 0)
 
-Before adding subcommand routing, clean up `parse_args()` so root and child can each call the same validation/defaults path:
+Before adding subcommand routing, clean up `parse_arguments()` so root and child can each call the same validation/defaults path:
 
 - [x] Extract `_apply_defaults(mut result)` — move the ~20-line defaults block into a private method
 - [x] Extract `_validate(result)` — move the ~130-line validation block (required, exclusive, together, one-required, conditional, range) into a private method
@@ -419,8 +419,8 @@ if result.subcommand == "search":
 
 #### Step 2 — Parse routing (I need to be very careful)
 
-- [x] In `parse_args()`, when the current token is not an option and subcommands are registered, check if it matches a subcommand name
-- [x] On match: record `result.subcommand = name`, build child argv (remaining tokens), call `child.parse_args(child_argv)`, store child result
+- [x] In `parse_arguments()`, when the current token is not an option and subcommands are registered, check if it matches a subcommand name
+- [x] On match: record `result.subcommand = name`, build child argv (remaining tokens), call `child.parse_arguments(child_argv)`, store child result
 - [x] On no match and subcommands exist: treat as positional (existing behavior)
 - [x] `--` before subcommand boundary: all subsequent tokens are positional for root, no subcommand dispatch
 - [x] Handle `app help <sub>` as equivalent to `app <sub> --help` via auto-registered `help` subcommand (strategy B); `_is_help_subcommand` flag; `.disable_help_subcommand()` opt-out API
@@ -458,7 +458,7 @@ if result.subcommand == "search":
 - [x] Step 1: `ParseResult.subcommand` defaults to `""`
 - [x] Step 1: `has_subcommand_result()` / `get_subcommand_result()` lifecycle
 - [x] Step 1: `ParseResult.__copyinit__` preserves subcommand data
-- [x] Step 1: `parse_args()` unchanged when no subcommands registered
+- [x] Step 1: `parse_arguments()` unchanged when no subcommands registered
 - [x] Step 2: Basic dispatch: `app search pattern` → subcommand="search", positionals=["pattern"]
 - [x] Step 2: Root flag: `app --verbose search pattern` → root flag verbose=true, child positional
 - [x] Step 2: Child flag: `app search --max-depth 3 pattern` → child value max-depth=3
@@ -500,7 +500,7 @@ if result.subcommand == "search":
 
 #### Pre-requisite refactor
 
-Before adding Phase 5 features, further decompose `parse_args()` for readability and maintainability:
+Before adding Phase 5 features, further decompose `parse_arguments()` for readability and maintainability:
 
 - [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/nargs/value)
 - [x] Extract `_parse_short_single()` — single-character short option parsing (`-k`, `-k value`)
@@ -589,7 +589,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 - [ ] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
   - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get half-width
   - Full-width space `U+3000` → half-width space `U+0020`
-- [ ] In `parse_args()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
+- [ ] In `parse_arguments()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
 
   ```bash
   warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
@@ -652,7 +652,7 @@ These features represent the "next generation" of CLI parser design, inspired by
 Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 
 1. Initialize ParseResult and register positional names
-2. If `help_on_no_args` is enabled and only argv[0] exists:
+2. If `help_on_no_arguments` is enabled and only argv[0] exists:
     print help and exit
 3. Loop from argv[1] with cursor i:
     ├─ If args[i] == "--":
@@ -693,7 +693,7 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 ```txt
 Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
 
-1. Root parse_args() begins normal cursor walk from argv[1]
+1. Root parse_arguments() begins normal cursor walk from argv[1]
 2. "--verbose" → starts with "--" → parsed as root-level long option (flag)
 3. "search" → no "-" prefix → check registered subcommands:
     ├─ match found → record subcommand = "search"
@@ -702,7 +702,7 @@ Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
 4. Build child argv: ["app search", "pattern", "--max-depth", "3"]
    (argv[0] = command path for child help/error messages)
 5. Inject persistent args from root into child's arg list
-6. Call child.parse_args(child_argv) → child runs its own full parse loop
+6. Call child.parse_arguments(child_argv) → child runs its own full parse loop
    (same code path: long/short/merged/positional/defaults/validation)
 7. Store child ParseResult in root result:
     ├─ result.subcommand = "search"
@@ -711,6 +711,29 @@ Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
    (child already validated itself in step 6)
 9. Return root ParseResult to application code
 ```
+
+## 7. Naming Conventions
+
+ArgMojo follows a consistent naming philosophy. When in doubt, apply these priorities **in order**:
+
+1. **Internal consistency** — every name within ArgMojo should follow the same pattern. If we use `Argument`, then methods that refer to arguments should also spell out the word.
+2. **Mojo / Python style consistency** — prefer `snake_case` for functions and methods, `PascalCase` for types. Follow Mojo stdlib conventions where they exist.
+3. **Cross-language familiarity** — when a concept is well-known across CLI libraries (cobra, clap, Click, argparse), keep the name recognisable, but do **not** import abbreviations that conflict with priority 1.
+
+### Decisions made
+
+| Abbreviation (rejected) | Full form (adopted) | Rationale |
+|---|---|---|
+| `Arg` | `Argument` | Internal struct name; aligns with `add_argument()` |
+| `parse_args()` | `parse_arguments()` | Consistent with `Argument` naming; `parse_args` was an argparse legacy |
+| `help_on_no_args()` | `help_on_no_arguments()` | Same reason |
+| `_aliases` | `_command_aliases` | Disambiguates from `Argument.aliases()` (option-level aliases) |
+
+### Open questions
+
+| Current name | Alternative | Notes |
+|---|---|---|
+| `nargs()` | `num_args()` | clap uses `num_args`; argparse coined `nargs`. Keep for now — very widely recognised |
 
 ## 8. Notes on Mojo versions
 

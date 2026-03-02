@@ -23,7 +23,7 @@ fn test_exclusive_one_provided() raises:
     command.mutually_exclusive(group^)
 
     var args: List[String] = ["test", "--json"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
     print("  ✓ test_exclusive_one_provided")
@@ -42,7 +42,7 @@ fn test_exclusive_none_provided() raises:
     command.mutually_exclusive(group^)
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
     print("  ✓ test_exclusive_none_provided")
@@ -66,7 +66,7 @@ fn test_exclusive_conflict() raises:
     var args: List[String] = ["test", "--json", "--yaml"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -99,7 +99,7 @@ fn test_exclusive_value_args() raises:
     var args: List[String] = ["test", "--input", "file.txt", "--stdin"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -133,7 +133,7 @@ fn test_required_together_all_provided() raises:
         "--password",
         "secret",
     ]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("username"), "admin")
     assert_equal(result.get_string("password"), "secret")
     print("  ✓ test_required_together_all_provided")
@@ -152,7 +152,7 @@ fn test_required_together_none_provided() raises:
     command.required_together(group^)
 
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.has("username"), msg="username should not be set")
     assert_false(result.has("password"), msg="password should not be set")
     print("  ✓ test_required_together_none_provided")
@@ -174,7 +174,7 @@ fn test_required_together_partial() raises:
     var args: List[String] = ["test", "--username", "admin"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -202,7 +202,7 @@ fn test_required_together_three_args() raises:
     var args: List[String] = ["test", "--host", "localhost"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -239,7 +239,7 @@ fn test_one_required_one_provided() raises:
     command.one_required(group^)
 
     var args: List[String] = ["test", "--yaml"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("toml"), msg="--toml should be False")
@@ -260,7 +260,7 @@ fn test_one_required_multiple_provided() raises:
 
     # Both provided — one_required is satisfied (it only requires at least one).
     var args: List[String] = ["test", "--json", "--yaml"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
     print("  ✓ test_one_required_multiple_provided")
@@ -281,7 +281,7 @@ fn test_one_required_none_provided() raises:
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -315,7 +315,7 @@ fn test_one_required_with_value_args() raises:
 
     # Providing --input satisfies the group.
     var args: List[String] = ["test", "--input", "data.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("input"), "data.txt")
     print("  ✓ test_one_required_with_value_args")
 
@@ -333,7 +333,7 @@ fn test_one_required_with_short_option() raises:
     command.one_required(group^)
 
     var args: List[String] = ["test", "-j"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="-j should satisfy one_required")
     print("  ✓ test_one_required_with_short_option")
 
@@ -354,7 +354,7 @@ fn test_one_required_error_shows_display_names() raises:
     var args: List[String] = ["test"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -383,14 +383,14 @@ fn test_one_required_combined_with_exclusive() raises:
 
     # Providing one is fine.
     var args1: List[String] = ["test", "--json"]
-    var result1 = command.parse_args(args1)
+    var result1 = command.parse_arguments(args1)
     assert_true(result1.get_flag("json"), msg="--json should be True")
 
     # Providing none fails (one-required).
     var caught_none = False
     var args2: List[String] = ["test"]
     try:
-        _ = command.parse_args(args2)
+        _ = command.parse_arguments(args2)
     except:
         caught_none = True
     assert_true(caught_none, msg="Should error when none provided")
@@ -399,7 +399,7 @@ fn test_one_required_combined_with_exclusive() raises:
     var caught_both = False
     var args3: List[String] = ["test", "--json", "--yaml"]
     try:
-        _ = command.parse_args(args3)
+        _ = command.parse_arguments(args3)
     except:
         caught_both = True
     assert_true(caught_both, msg="Should error when both provided")
@@ -422,7 +422,7 @@ fn test_one_required_multiple_groups() raises:
 
     # Satisfying both groups.
     var args1: List[String] = ["test", "--yaml", "--input", "f.txt"]
-    var result1 = command.parse_args(args1)
+    var result1 = command.parse_arguments(args1)
     assert_true(result1.get_flag("yaml"), msg="--yaml should be True")
     assert_equal(result1.get_string("input"), "f.txt")
 
@@ -430,7 +430,7 @@ fn test_one_required_multiple_groups() raises:
     var caught = False
     var args2: List[String] = ["test", "--json"]
     try:
-        _ = command.parse_args(args2)
+        _ = command.parse_arguments(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -454,7 +454,7 @@ fn test_one_required_with_append_arg() raises:
 
     # Providing --tag satisfies the group.
     var args: List[String] = ["test", "--tag", "v1"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "v1")
@@ -478,7 +478,7 @@ fn test_conditional_req_satisfied() raises:
     command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save", "--output", "out.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("save"), msg="--save should be True")
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_conditional_req_satisfied")
@@ -498,7 +498,7 @@ fn test_conditional_req_condition_absent() raises:
 
     # --save not provided → --output not required → should pass
     var args: List[String] = ["test"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_false(result.has("save"), msg="save should not be present")
     assert_false(result.has("output"), msg="output should not be present")
     print("  ✓ test_conditional_req_condition_absent")
@@ -519,7 +519,7 @@ fn test_conditional_req_violated() raises:
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -552,7 +552,7 @@ fn test_conditional_req_target_alone_ok() raises:
 
     # --output provided without --save → should be fine
     var args: List[String] = ["test", "--output", "out.txt"]
-    var result = command.parse_args(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "out.txt")
     assert_false(result.has("save"), msg="save should not be present")
     print("  ✓ test_conditional_req_target_alone_ok")
@@ -585,7 +585,7 @@ fn test_conditional_req_multiple_rules() raises:
         "--format",
         "gzip",
     ]
-    var result1 = command.parse_args(args1)
+    var result1 = command.parse_arguments(args1)
     assert_equal(result1.get_string("output"), "out.txt")
     assert_equal(result1.get_string("format"), "gzip")
 
@@ -607,7 +607,7 @@ fn test_conditional_req_multiple_rules() raises:
     var args2: List[String] = ["test", "--compress"]
     var caught = False
     try:
-        _ = command2.parse_args(args2)
+        _ = command2.parse_arguments(args2)
     except e:
         caught = True
         var msg = String(e)
@@ -638,7 +638,7 @@ fn test_conditional_req_with_short_option() raises:
     var args: List[String] = ["test", "-s"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -650,7 +650,7 @@ fn test_conditional_req_with_short_option() raises:
 
     # Using -s -o file.txt satisfies it
     var args2: List[String] = ["test", "-s", "-o", "out.txt"]
-    var result = command.parse_args(args2)
+    var result = command.parse_arguments(args2)
     assert_true(result.get_flag("save"), msg="-s should set save")
     assert_equal(result.get_string("output"), "out.txt")
     print("  ✓ test_conditional_req_with_short_option")
@@ -669,7 +669,7 @@ fn test_conditional_req_with_value_condition() raises:
     var args: List[String] = ["test", "--format", "json"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -694,7 +694,7 @@ fn test_conditional_req_error_uses_display_names() raises:
     var args: List[String] = ["test", "--save"]
     var caught = False
     try:
-        _ = command.parse_args(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
