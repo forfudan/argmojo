@@ -189,7 +189,7 @@ examples/
 | Append / collect action (`--tag x --tag y` → list)                                                 | ✓      | ✓     |
 | One-required groups (`command.one_required(["json", "yaml"])`)                                     | ✓      | ✓     |
 | Value delimiter (`.delimiter(",")` → split into list)                                              | ✓      | ✓     |
-| Nargs (`.nargs(N)` → consume N values per occurrence)                                              | ✓      | ✓     |
+| Nargs (`.number_of_values(N)` → consume N values per occurrence)                                   | ✓      | ✓     |
 | Conditional requirements (`command.required_if("output", "save")`)                                 | ✓      | ✓     |
 | Numeric range validation (`.range(1, 65535)`)                                                      | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                    | ✓      | ✓     |
@@ -296,11 +296,11 @@ The practical view — both dimensions checked together at parse time:
 
 #### Effect of `help_on_no_arguments()`
 
-| Scenario                          | Default (off)                                                  | With `help_on_no_arguments()`    |
-| --------------------------------- | -------------------------------------------------------------- | --------------------------- |
-| Zero args (only program name)     | Validation runs → error if requirements exist; proceed if none | **Show full help** (exit 0) |
-| Some args provided (insufficient) | ✗ Error + usage                                                | ✗ Error + usage *(same)*    |
-| All requirements satisfied        | ✓ Proceed                                                      | ✓ Proceed *(same)*          |
+| Scenario                          | Default (off)                                                  | With `help_on_no_arguments()` |
+| --------------------------------- | -------------------------------------------------------------- | ----------------------------- |
+| Zero args (only program name)     | Validation runs → error if requirements exist; proceed if none | **Show full help** (exit 0)   |
+| Some args provided (insufficient) | ✗ Error + usage                                                | ✗ Error + usage *(same)*      |
+| All requirements satisfied        | ✓ Proceed                                                      | ✓ Proceed *(same)*            |
 
 > **Key:** `help_on_no_arguments()` only overrides the **zero-argument** case. Once any argument is provided, normal validation takes over regardless.
 
@@ -541,9 +541,9 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, still dispatchable by exact name (clap `Command::hide`, cobra `Hidden`)
 - [ ] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set, suppress all ANSI colour output; lower priority than explicit `.color(False)` API call
 
-### Explicitly Out of Scope
+#### Explicitly Out of Scope in This Phase
 
-These will **NOT** be implemented (but who knows :D maybe in the future if there's demand):
+These will **NOT** be implemented in this phase, but will be considered in future.
 
 - Derive/decorator-based API (no macros in Mojo)
 - Usage-string-driven parsing (docopt style)
@@ -722,18 +722,13 @@ ArgMojo follows a consistent naming philosophy. When in doubt, apply these prior
 
 ### Decisions made
 
-| Abbreviation (rejected) | Full form (adopted) | Rationale |
-|---|---|---|
-| `Arg` | `Argument` | Internal struct name; aligns with `add_argument()` |
-| `parse_args()` | `parse_arguments()` | Consistent with `Argument` naming; `parse_args` was an argparse legacy |
-| `help_on_no_args()` | `help_on_no_arguments()` | Same reason |
-| `_aliases` | `_command_aliases` | Disambiguates from `Argument.aliases()` (option-level aliases) |
-
-### Open questions
-
-| Current name | Alternative | Notes |
-|---|---|---|
-| `nargs()` | `num_args()` | clap uses `num_args`; argparse coined `nargs`. Keep for now — very widely recognised |
+| Abbreviation (rejected)   | Full form (adopted)                 | Rationale                                                                                      |
+| ------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Arg`                     | `Argument`                          | Internal struct name; aligns with `add_argument()`                                             |
+| `parse_args()`            | `parse_arguments()`                 | Consistent with `Argument` naming; `parse_args` was an argparse legacy                         |
+| `help_on_no_args()`       | `help_on_no_arguments()`            | Same reason                                                                                    |
+| `_aliases`                | `_command_aliases`                  | Disambiguates from `Argument.aliases()` (option-level aliases)                                 |
+| `nargs()` / `nargs_count` | `number_of_values()` / `num_values` | Method uses full descriptive name; field uses short form to avoid Mojo field/method name clash |
 
 ## 8. Notes on Mojo versions
 

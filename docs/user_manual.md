@@ -659,14 +659,14 @@ This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 
 **Defining a multi-value option**
 
-Use `.nargs(N)` to specify how many values the option consumes:
+Use `.number_of_values(N)` to specify how many values the option consumes:
 
 ```mojo
-command.add_argument(Argument("point", help="X Y coordinates").long("point").nargs(2))
-command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").nargs(3))
+command.add_argument(Argument("point", help="X Y coordinates").long("point").number_of_values(2))
+command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values(3))
 ```
 
-`.nargs(N)` automatically implies `.append()` — values are stored in
+`.number_of_values(N)` automatically implies `.append()` — values are stored in
 `ParseResult.lists` and retrieved with `get_list()`.
 
 ---
@@ -720,7 +720,7 @@ Choices are validated for **each** value individually:
 ```mojo
 var dirs: List[String] = ["north", "south", "east", "west"]
 command.add_argument(
-    Argument("route", help="Start and end").long("route").nargs(2).choices(dirs^)
+    Argument("route", help="Start and end").long("route").number_of_values(2).choices(dirs^)
 )
 ```
 

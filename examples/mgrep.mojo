@@ -148,7 +148,7 @@ fn main() raises:
         Argument("context", help="Print B lines before and A lines after match")
         .long("context")
         .short("C")
-        .nargs(2)
+        .number_of_values(2)
         .metavar("N")
     )
 

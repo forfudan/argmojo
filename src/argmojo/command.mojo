@@ -1136,26 +1136,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result.counts[matched.name] = cur + 1
         elif matched.is_flag and not has_eq:
             result.flags[matched.name] = True
-        elif matched.nargs_count > 0:
+        elif matched.num_values > 0:
             # nargs: consume exactly N values.
             if has_eq:
                 self._error(
                     "Option '--"
                     + key
                     + "' takes "
-                    + String(matched.nargs_count)
+                    + String(matched.num_values)
                     + " values; '=' syntax is not supported"
                 )
             if matched.name not in result.lists:
                 result.lists[matched.name] = List[String]()
-            for _n in range(matched.nargs_count):
+            for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '--"
                         + key
                         + "' requires "
-                        + String(matched.nargs_count)
+                        + String(matched.num_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
@@ -1210,18 +1210,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result.counts[matched.name] = cur + 1
         elif matched.is_flag:
             result.flags[matched.name] = True
-        elif matched.nargs_count > 0:
+        elif matched.num_values > 0:
             # nargs: consume exactly N values.
             if matched.name not in result.lists:
                 result.lists[matched.name] = List[String]()
-            for _n in range(matched.nargs_count):
+            for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '-"
                         + key
                         + "' requires "
-                        + String(matched.nargs_count)
+                        + String(matched.num_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
@@ -1294,19 +1294,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 elif m.is_flag:
                     result.flags[m.name] = True
                     j += 1
-                elif m.nargs_count > 0:
+                elif m.num_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
                     if m.name not in result.lists:
                         result.lists[m.name] = List[String]()
-                    for _n in range(m.nargs_count):
+                    for _n in range(m.num_values):
                         i += 1
                         if i >= len(raw_args):
                             self._error(
                                 "Option '-"
                                 + ch
                                 + "' requires "
-                                + String(m.nargs_count)
+                                + String(m.num_values)
                                 + " values"
                             )
                         self._validate_choices(m, raw_args[i])
@@ -1340,18 +1340,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + "' is deprecated: "
                     + first_match.deprecated_msg
                 )
-            if first_match.nargs_count > 0:
+            if first_match.num_values > 0:
                 # nargs: consume N values from argv (ignore attached).
                 if first_match.name not in result.lists:
                     result.lists[first_match.name] = List[String]()
-                for _n in range(first_match.nargs_count):
+                for _n in range(first_match.num_values):
                     i += 1
                     if i >= len(raw_args):
                         self._error(
                             "Option '-"
                             + first_char
                             + "' requires "
-                            + String(first_match.nargs_count)
+                            + String(first_match.num_values)
                             + " values"
                         )
                     self._validate_choices(first_match, raw_args[i])
@@ -2202,7 +2202,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 # Show metavar or choices for value-taking options.
                 if not self.args[i].is_flag:
-                    var ncount = self.args[i].nargs_count
+                    var ncount = self.args[i].num_values
                     var repeat = ncount if ncount > 0 else 1
                     var append_dots = self.args[i].is_append and ncount == 0
                     if self.args[i].metavar_name:

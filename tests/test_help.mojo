@@ -500,21 +500,25 @@ fn test_nargs_in_help() raises:
     """Tests that nargs options show repeated placeholders in help."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y coords").long("point").nargs(2)
+        Argument("point", help="X Y coords").long("point").number_of_values(2)
     )
     command.add_argument(
-        Argument("rgb", help="RGB colour").long("rgb").nargs(3).metavar("N")
+        Argument("rgb", help="RGB colour")
+        .long("rgb")
+        .number_of_values(3)
+        .metavar("N")
     )
 
     var help = command._generate_help(color=False)
     # --point should show <point> <point>
     assert_true(
         "<point> <point>" in help,
-        msg="nargs(2) should show '<point> <point>' in help",
+        msg="number_of_values(2) should show '<point> <point>' in help",
     )
     # --rgb should show N N N
     assert_true(
-        "N N N" in help, msg="nargs(3) with metavar should show 'N N N'"
+        "N N N" in help,
+        msg="number_of_values(3) with metavar should show 'N N N'",
     )
     # Neither should have "..." since they are nargs, not plain append.
     assert_false(
@@ -530,14 +534,14 @@ fn test_nargs_with_metavar() raises:
     command.add_argument(
         Argument("size", help="Width and height")
         .long("size")
-        .nargs(2)
+        .number_of_values(2)
         .metavar("PX")
     )
 
     var help = command._generate_help(color=False)
     assert_true(
         "PX PX" in help,
-        msg="nargs(2) with metavar PX should show 'PX PX'",
+        msg="number_of_values(2) with metavar PX should show 'PX PX'",
     )
     print("  ✓ test_nargs_with_metavar")
 
