@@ -1156,7 +1156,7 @@ fn test_non_positional_args_unaffected_by_guard() raises:
 fn test_command_aliases_empty_by_default() raises:
     """Tests that a fresh Command has no aliases registered."""
     var sub = Command("clone", "Clone a repo")
-    assert_equal(len(sub._aliases), 0)
+    assert_equal(len(sub._command_aliases), 0)
     print("  ✓ test_command_aliases_empty_by_default")
 
 
@@ -1165,9 +1165,9 @@ fn test_command_aliases_builder() raises:
     var sub = Command("clone", "Clone a repo")
     var names: List[String] = ["cl", "cln"]
     sub.command_aliases(names^)
-    assert_equal(len(sub._aliases), 2)
-    assert_equal(sub._aliases[0], "cl")
-    assert_equal(sub._aliases[1], "cln")
+    assert_equal(len(sub._command_aliases), 2)
+    assert_equal(sub._command_aliases[0], "cl")
+    assert_equal(sub._command_aliases[1], "cln")
     print("  ✓ test_command_aliases_builder")
 
 
@@ -1267,8 +1267,8 @@ fn test_alias_copy_init() raises:
     var aliases: List[String] = ["cl"]
     sub.command_aliases(aliases^)
     var sub2 = sub.copy()
-    assert_equal(len(sub2._aliases), 1)
-    assert_equal(sub2._aliases[0], "cl")
+    assert_equal(len(sub2._command_aliases), 1)
+    assert_equal(sub2._command_aliases[0], "cl")
     print("  ✓ test_alias_copy_init")
 
 

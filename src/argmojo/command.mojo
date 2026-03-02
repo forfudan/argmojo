@@ -89,7 +89,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """When True, the completion trigger is a subcommand instead of an
     option.  Default False → ``--completions``.  Call
     ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
-    var _aliases: List[String]
+    var _command_aliases: List[String]
     """Alternate names for this command when used as a subcommand.
     Add entries via ``command_aliases()``.  Aliases are matched during
     subcommand dispatch but are not shown as separate entries in help."""
@@ -132,7 +132,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = True
         self._completions_name = String("completions")
         self._completions_is_subcommand = False
-        self._aliases = List[String]()
+        self._command_aliases = List[String]()
         self._tips = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
@@ -164,7 +164,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = move._completions_enabled
         self._completions_name = move._completions_name^
         self._completions_is_subcommand = move._completions_is_subcommand
-        self._aliases = move._aliases^
+        self._command_aliases = move._command_aliases^
         self._tips = move._tips^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
@@ -211,7 +211,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_enabled = copy._completions_enabled
         self._completions_name = copy._completions_name
         self._completions_is_subcommand = copy._completions_is_subcommand
-        self._aliases = copy._aliases.copy()
+        self._command_aliases = copy._command_aliases.copy()
         self._tips = copy._tips.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
@@ -553,7 +553,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```
         """
         for i in range(len(names)):
-            self._aliases.append(names[i])
+            self._command_aliases.append(names[i])
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -1469,17 +1469,24 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             avail += ", "
                         avail += self.subcommands[_si].name
                         # Append aliases to available list.
-                        for _ai in range(len(self.subcommands[_si]._aliases)):
-                            avail += ", " + self.subcommands[_si]._aliases[_ai]
+                        for _ai in range(
+                            len(self.subcommands[_si]._command_aliases)
+                        ):
+                            avail += (
+                                ", "
+                                + self.subcommands[_si]._command_aliases[_ai]
+                            )
                         first = False
                 # Try typo suggestion for subcommand names.
                 var sub_names = List[String]()
                 for _si2 in range(len(self.subcommands)):
                     if not self.subcommands[_si2]._is_help_subcommand:
                         sub_names.append(self.subcommands[_si2].name)
-                        for _ai2 in range(len(self.subcommands[_si2]._aliases)):
+                        for _ai2 in range(
+                            len(self.subcommands[_si2]._command_aliases)
+                        ):
                             sub_names.append(
-                                self.subcommands[_si2]._aliases[_ai2]
+                                self.subcommands[_si2]._command_aliases[_ai2]
                             )
                 var suggestion = _suggest_similar(arg, sub_names)
                 var hint = String("")
@@ -1842,8 +1849,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 return i
         # 2. Match on aliases.
         for i in range(len(self.subcommands)):
-            for j in range(len(self.subcommands[i]._aliases)):
-                if self.subcommands[i]._aliases[j] == name:
+            for j in range(len(self.subcommands[i]._command_aliases)):
+                if self.subcommands[i]._command_aliases[j] == name:
                     return i
         return -1
 
@@ -2387,8 +2394,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not self.subcommands[i]._is_help_subcommand:
                 # Build label: "name" or "name, alias1, alias2".
                 var label = self.subcommands[i].name
-                for _ai in range(len(self.subcommands[i]._aliases)):
-                    label += ", " + self.subcommands[i]._aliases[_ai]
+                for _ai in range(len(self.subcommands[i]._command_aliases)):
+                    label += ", " + self.subcommands[i]._command_aliases[_ai]
                 var plain = String("  ") + label
                 var colored = String("  ") + arg_color + label + reset_code
                 cmd_plains.append(plain)
@@ -2669,8 +2676,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     if sub_names:
                         sub_names += " "
                     sub_names += self.subcommands[i].name
-                    for _ai in range(len(self.subcommands[i]._aliases)):
-                        sub_names += " " + self.subcommands[i]._aliases[_ai]
+                    for _ai in range(len(self.subcommands[i]._command_aliases)):
+                        sub_names += (
+                            " " + self.subcommands[i]._command_aliases[_ai]
+                        )
             if _comp_is_sub:
                 if sub_names:
                     sub_names += " "
@@ -2696,7 +2705,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     s += " -d '" + self._fish_escape(sub.description) + "'"
                 s += "\n"
                 # Register each alias as a completable name.
-                for _ai in range(len(sub._aliases)):
+                for _ai in range(len(sub._command_aliases)):
                     s += (
                         "complete -c "
                         + self.name
@@ -2704,7 +2713,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + no_sub_cond
                         + "'"
                         + " -f -a '"
-                        + sub._aliases[_ai]
+                        + sub._command_aliases[_ai]
                         + "'"
                     )
                     if sub.description:
@@ -2713,8 +2722,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 # Subcommand-specific options.
                 var sub_cond = "__fish_seen_subcommand_from " + sub.name
-                for _ai in range(len(sub._aliases)):
-                    sub_cond += " " + sub._aliases[_ai]
+                for _ai in range(len(sub._command_aliases)):
+                    sub_cond += " " + sub._command_aliases[_ai]
                 s += self._fish_options_for(
                     self.name, sub_cond, persistent_only=True
                 )
@@ -2900,8 +2909,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             ) if sub.description else ""
             s += "    '" + sub.name + ":" + desc + "'\n"
             # Add aliases as separate entries pointing to same description.
-            for _ai in range(len(sub._aliases)):
-                s += "    '" + sub._aliases[_ai] + ":" + desc + "'\n"
+            for _ai in range(len(sub._command_aliases)):
+                s += "    '" + sub._command_aliases[_ai] + ":" + desc + "'\n"
         if self._completions_enabled and self._completions_is_subcommand:
             s += (
                 "    '"
@@ -2941,8 +2950,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             var sub = self.subcommands[i].copy()
             # Build pattern: name|alias1|alias2
             var zsh_pat = sub.name
-            for _ai in range(len(sub._aliases)):
-                zsh_pat += "|" + sub._aliases[_ai]
+            for _ai in range(len(sub._command_aliases)):
+                zsh_pat += "|" + sub._command_aliases[_ai]
             s += "        " + zsh_pat + ")\n"
             s += "          _arguments \\\n"
             for j in range(len(sub.args)):
@@ -3130,8 +3139,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if sub_names:
                 sub_names += " "
             sub_names += self.subcommands[i].name
-            for _ai in range(len(self.subcommands[i]._aliases)):
-                sub_names += " " + self.subcommands[i]._aliases[_ai]
+            for _ai in range(len(self.subcommands[i]._command_aliases)):
+                sub_names += " " + self.subcommands[i]._command_aliases[_ai]
         if self._completions_enabled and self._completions_is_subcommand:
             if sub_names:
                 sub_names += " "
@@ -3191,8 +3200,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     sub_words += " -" + arg.short_name
             # Build pattern: name|alias1|alias2
             var bash_pat = sub.name
-            for _ai in range(len(sub._aliases)):
-                bash_pat += "|" + sub._aliases[_ai]
+            for _ai in range(len(sub._command_aliases)):
+                bash_pat += "|" + sub._command_aliases[_ai]
             s += "    " + bash_pat + ")\n"
             # Subcommand-level $prev choices completion.
             s += self._bash_prev_cases_for_args(sub.args, "      ")
