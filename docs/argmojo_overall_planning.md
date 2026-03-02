@@ -60,7 +60,7 @@ These features appear across multiple libraries and depend only on string operat
 | Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl    | **Done**      |
 | Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.  | **Done**      |
 | Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                        | **Done**      |
-| Subcommand aliases                 | —        | —     | ✓     | ✓    | ✅ Done                 | Phase 5       |
+| Subcommand aliases                 | —        | —     | ✓     | ✓    | cobra, clap            | **Done**      |
 | Hidden subcommands                 | —        | —     | ✓     | ✓    |                        | Phase 5       |
 | `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally   | Phase 5       |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild         | Phase 5       |

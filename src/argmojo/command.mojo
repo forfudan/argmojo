@@ -92,7 +92,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
     var _command_aliases: List[String]
     """Alternate names for this command when used as a subcommand.
     Add entries via ``command_aliases()``.  Aliases are matched during
-    subcommand dispatch but are not shown as separate entries in help."""
+    subcommand dispatch and appear inline next to the primary name in
+    help (e.g., "clone, cl"), but are not shown as separate entries."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
@@ -1394,7 +1395,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             subcommand matched and the caller should fall through to
             positional argument handling.
         """
-        # Exact subcommand name match → dispatch.
+        # Exact subcommand (name or alias) match → dispatch.
         var sub_idx = self._find_subcommand(arg)
         if sub_idx >= 0:
             # Resolve canonical name (alias → real name).

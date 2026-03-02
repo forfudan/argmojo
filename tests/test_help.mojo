@@ -794,5 +794,40 @@ fn test_add_tip_appears_in_help() raises:
     print("  ✓ test_add_tip_appears_in_help")
 
 
+# ── Alias in help output ──────────────────────────────────────────────────────
+
+
+fn test_alias_shown_inline_in_help() raises:
+    """Tests that subcommand aliases appear inline in help output."""
+    var app = Command("app", "Test app")
+    var clone = Command("clone", "Clone a repo")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    app.add_subcommand(clone^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "clone, cl" in help,
+        msg="Help should show alias inline: 'clone, cl'",
+    )
+    print("  ✓ test_alias_shown_inline_in_help")
+
+
+fn test_multiple_aliases_shown_in_help() raises:
+    """Tests that multiple aliases are all shown inline in help."""
+    var app = Command("app", "Test app")
+    var commit = Command("commit", "Record changes")
+    var aliases: List[String] = ["ci", "cm"]
+    commit.command_aliases(aliases^)
+    app.add_subcommand(commit^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "commit, ci, cm" in help,
+        msg="Help should show all aliases: 'commit, ci, cm'",
+    )
+    print("  ✓ test_multiple_aliases_shown_in_help")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

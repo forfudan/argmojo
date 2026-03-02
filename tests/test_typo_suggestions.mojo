@@ -168,5 +168,33 @@ fn test_typo_alias_suggests() raises:
     print("  ✓ test_typo_alias_suggests")
 
 
+fn test_typo_subcommand_alias_suggests() raises:
+    """Tests that a typo near a subcommand alias triggers a suggestion."""
+    var root = Command("app", "Test app")
+    var clone = Command("clone", "Clone a repo")
+    var aliases: List[String] = ["cl"]
+    clone.command_aliases(aliases^)
+    root.add_subcommand(clone^)
+
+    # "clon" is close to both "clone" and "cl"
+    var args: List[String] = ["app", "clon"]
+    var caught = False
+    try:
+        _ = root.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "Did you mean" in msg,
+            msg="Error should suggest a correction for 'clon'",
+        )
+        assert_true(
+            "clone" in msg,
+            msg="Error should suggest 'clone' for 'clon'",
+        )
+    assert_true(caught, msg="Should have raised error for 'clon'")
+    print("  ✓ test_typo_subcommand_alias_suggests")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

@@ -417,7 +417,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             n: Number of values to consume (must be ≥ 2).
 
         Returns:
-            Self with nargs and append mode set.
+            Self with num_values and append mode set.
         """
         self.num_values = n
         self.is_append = True
