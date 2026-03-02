@@ -28,8 +28,8 @@ logs/
 *.mojopkg
 
 # Built example binaries
-/grep
-/git
+/mgrep
+/mgit
 
 # Local notes (not tracked)
 local/

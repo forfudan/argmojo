@@ -27,7 +27,7 @@ from argmojo import Argument, Command
 
 fn main() raises:
     var app = Command(
-        "grep",
+        "mgrep",
         "Search for PATTERN in each FILE.",
         version="1.0.0",
     )

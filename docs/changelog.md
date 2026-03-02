@@ -2,7 +2,7 @@
 
 ## 20260228 (v0.2.0)
 
-ArgMojo v0.2.0 is a major release that transforms the library from a single-command parser into a full **subcommand-capable CLI framework**. It introduces hierarchical subcommands with automatic dispatch, persistent (global) flags with bidirectional sync, negative number passthrough, colored error messages, custom tips, and significant help/UX improvements. The public API is also refined: `Arg` → `Argument`, `Result` → `ParseResult` (old names kept as aliases). Two complete example CLIs (`grep` and `git`) replace the previous demo.
+ArgMojo v0.2.0 is a major release that transforms the library from a single-command parser into a full **subcommand-capable CLI framework**. It introduces hierarchical subcommands with automatic dispatch, persistent (global) flags with bidirectional sync, negative number passthrough, colored error messages, custom tips, and significant help/UX improvements. The public API is also refined: `Arg` → `Argument`, `Result` → `ParseResult` (old names kept as aliases). Two complete example CLIs (`mgrep` and `mgit`) replace the previous demo.
 
 ArgMojo v0.2.0 is compatible with Mojo v0.26.1.
 
@@ -56,7 +56,7 @@ ArgMojo v0.2.0 is compatible with Mojo v0.26.1.
 
 ### 📚 Documentation and testing in v0.2.0
 
-- Add two complete example CLIs: `examples/grep.mojo` (single-command, demonstrating all argument features) and `examples/git.mojo` (subcommand-based, with nested subcommands and persistent flags).
+- Add two complete example CLIs: `examples/mgrep.mojo` (single-command, demonstrating all argument features) and `examples/mgit.mojo` (subcommand-based, with nested subcommands and persistent flags).
 - Add `tests/test_subcommands.mojo` covering data model, dispatch, help subcommand, persistent flags, allow-positional guard, and error handling.
 - Add `tests/test_negative_numbers.mojo`.
 - Add `tests/test_persistent.mojo`.

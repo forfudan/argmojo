@@ -153,8 +153,8 @@ tests/
 ├── test_negative_numbers.mojo  # Negative number passthrough tests
 └── test_persistent.mojo        # Persistent (global) flag tests
 examples/
-├── grep.mojo                   # grep-like CLI example (no subcommands)
-└── git.mojo                    # git-like CLI example (with subcommands)
+├── mgrep.mojo                   # grep-like CLI example (no subcommands)
+└── mgit.mojo                    # git-like CLI example (with subcommands)
 ```
 
 ### 4.2 What's Already Done ✓
@@ -491,8 +491,8 @@ if result.subcommand == "search":
 
 #### Step 7 — Documentation & examples
 
-- [x] Add `examples/grep.mojo` — grep-like CLI demonstrating all single-command features
-- [x] Add `examples/git.mojo` — git-like CLI demonstrating subcommands, nested subcommands, persistent flags, and all group constraints
+- [x] Add `examples/mgrep.mojo` — grep-like CLI demonstrating all single-command features
+- [x] Add `examples/mgit.mojo` — git-like CLI demonstrating subcommands, nested subcommands, persistent flags, and all group constraints
 - [x] Update user manual with subcommand usage patterns
 - [x] Document persistent flag behavior and conflict rules
 

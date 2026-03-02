@@ -29,7 +29,7 @@ from argmojo import Argument, Command
 
 fn main() raises:
     var app = Command(
-        "git",
+        "mgit",
         "A git-like CLI to demonstrate argmojo with subcommands.",
         version="2.47.0",
     )

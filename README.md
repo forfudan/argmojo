@@ -9,8 +9,8 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo),
 [![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
 [![User manual](https://img.shields.io/badge/user-manual-purple)](https://github.com/forfudan/argmojo/wiki)
 
-<video src="https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/completions.mp4" controls width="800"></video>
-<p align="center"><em>Shell auto-completion of a mock <code>git</code> CLI built with ArgMojo</em></p>
+![Shell tab-completion powered by ArgMojo](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/completions.gif)  
+*Demo: Shell tab-completion powered by ArgMojo*
 
 <!-- 
 [![CI](https://img.shields.io/github/actions/workflow/status/forfudan/argmojo/run_tests.yaml?branch=main&label=tests)](https://github.com/forfudan/argmojo/actions/workflows/run_tests.yaml)
@@ -87,14 +87,14 @@ The following table summarizes the package versions and their corresponding Mojo
 
 ## Quick Start
 
-Here is a simple example of how to use ArgMojo in a Mojo program. See `examples/grep.mojo` for the full version.
+Here is a simple example of how to use ArgMojo in a Mojo program. See `examples/mgrep.mojo` for the full version.
 
 ```mojo
 from argmojo import Argument, Command
 
 
 fn main() raises:
-    var app = Command("grep", "Search for PATTERN in each FILE.", version="1.0.0")
+    var app = Command("mgrep", "Search for PATTERN in each FILE.", version="1.0.0")
 
     # Positional arguments
     app.add_argument(Argument("pattern", help="Search pattern").positional().required())
@@ -143,10 +143,10 @@ For detailed explanations and more examples of every feature, see the **[User Ma
 
 ArgMojo ships with two complete example CLIs:
 
-| Example                 | File                 | Features                                                                                                                                                                                                                                                                                                                       |
-| ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `grep` — simulated grep | `examples/grep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
-| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                 |
+| Example                  | File                  | Features                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mgrep` — simulated grep | `examples/mgrep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
+| `mgit` — simulated git   | `examples/mgit.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                 |
 
 Build both example binaries:
 
@@ -154,60 +154,60 @@ Build both example binaries:
 pixi run build
 ```
 
-### `grep` (no subcommands)
+### `mgrep` (no subcommands)
 
-![grep CLI demo](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/grep.png)
+![mgrep CLI demo](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/mgrep.png)
 
 ```bash
 # Help and version
-./grep --help
-./grep --version
+./mgrep --help
+./mgrep --version
 
 # Basic search
-./grep "fn main" ./src
+./mgrep "fn main" ./src
 
 # Combined short flags + options
-./grep -rnic "TODO" ./src --max-depth 5
+./mgrep -rnic "TODO" ./src --max-depth 5
 
 # Choices, append, negatable
-./grep "pattern" --format json --tag fixme --tag urgent --color
+./mgrep "pattern" --format json --tag fixme --tag urgent --color
 
 # -- stops option parsing
-./grep -- "-pattern-with-dashes" ./src
+./mgrep -- "-pattern-with-dashes" ./src
 
 # Prefix matching (--exc matches --exclude-dir)
-./grep "fn" --exc .git,node_modules
+./mgrep "fn" --exc .git,node_modules
 ```
 
-### `git` (with subcommands)
+### `mgit` (with subcommands)
 
-![git clone subcommand](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/git-clone.png)
+![mgit clone subcommand](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/mgit-clone.png)
 
 ```bash
 # Root help — shows Commands section + Global Options
-./git --help
+./mgit --help
 
 # Child help — shows full command path
-./git clone --help
+./mgit clone --help
 
 # Subcommand dispatch
-./git clone https://example.com/repo.git my-project --depth 1
-./git commit -am "initial commit"
-./git log --oneline -n 20 --author "Alice"
-./git -v push origin main --force --tags
+./mgit clone https://example.com/repo.git my-project --depth 1
+./mgit commit -am "initial commit"
+./mgit log --oneline -n 20 --author "Alice"
+./mgit -v push origin main --force --tags
 
 # Nested subcommands (remote → add/remove/rename/show)
-./git remote add origin https://example.com/repo.git
-./git remote show origin
+./mgit remote add origin https://example.com/repo.git
+./mgit remote show origin
 
 # Unknown subcommand → clear error
-./git foo
-# error: git: Unknown command 'foo'. Available commands: clone, init, ...
+./mgit foo
+# error: mgit: Unknown command 'foo'. Available commands: clone, init, ...
 
 # Shell completion script generation
-./git --completions bash   # bash completion script
-./git --completions zsh    # zsh completion script
-./git --completions fish   # fish completion script
+./mgit --completions bash   # bash completion script
+./mgit --completions zsh    # zsh completion script
+./mgit --completions fish   # fish completion script
 ```
 
 ## Development
@@ -233,8 +233,8 @@ argmojo/
 ├── docs/                              # Documentation
 │   └── user_manual.md                 # User manual with detailed examples
 ├── examples/
-│   ├── grep.mojo                      # grep-like CLI (no subcommands)
-│   └── git.mojo                       # git-like CLI (with subcommands)
+│   ├── mgrep.mojo                     # grep-like CLI (no subcommands)
+│   └── mgit.mojo                      # git-like CLI (with subcommands)
 ├── src/
 │   └── argmojo/                       # Main package
 │       ├── __init__.mojo              # Package exports
