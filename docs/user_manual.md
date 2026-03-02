@@ -57,6 +57,14 @@ from argmojo import Argument, Command
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
   - [The `--` Stop Marker](#the----stop-marker)
+- [Shell Completion](#shell-completion)
+  - [Built-in `--completions` Flag](#built-in---completions-flag)
+  - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
+  - [Customising the Trigger Name](#customising-the-trigger-name)
+  - [Using a Subcommand Instead of an Option](#using-a-subcommand-instead-of-an-option)
+  - [Generating a Script Programmatically](#generating-a-script-programmatically)
+  - [Installing Completions](#installing-completions)
+  - [What Gets Completed](#what-gets-completed)
 
 ## Getting Started
 
@@ -2026,3 +2034,155 @@ myapp -- -10.18
 ```
 
 > **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).
+
+## Shell Completion
+
+ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These scripts enable tab-completion for your CLI's options, flags, subcommands, and choice values — with zero runtime overhead.
+
+The generated scripts are **static**: they are produced once from your command tree and sourced by the user's shell. No runtime hook or callback mechanism is needed.
+
+### Built-in `--completions` Flag
+
+Every `Command` automatically responds to `--completions <shell>` — just like `--help` and `--version`. **No extra code is required.**
+
+```mojo
+var app = Command("myapp", "My application", version="1.0.0")
+app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+app.add_argument(Argument("output", help="Output file").long("output").short("o").metavar("FILE"))
+var formats: List[String] = ["json", "csv", "table"]
+app.add_argument(Argument("format", help="Output format").long("format").choices(formats^))
+
+var sub = Command("serve", "Start a server")
+sub.add_argument(Argument("port", help="Port number").long("port").short("p"))
+app.add_subcommand(sub^)
+
+# parse() handles --completions automatically — no extra code needed
+var result = app.parse()
+```
+
+Users run:
+
+```bash
+myapp --completions bash   # prints Bash completion script and exits
+myapp --completions zsh    # prints Zsh completion script and exits
+myapp --completions fish   # prints Fish completion script and exits
+```
+
+The `--completions` option is shown in the help output alongside `--help` and `--version`:
+
+```bash
+Options:
+  --help                  Show this help message and exit
+  --version               Show the version and exit
+  --completions {bash,zsh,fish}
+                          Generate shell completion script
+```
+
+### Disabling the Built-in Flag
+
+If you want to use `completions` as a regular argument name — or handle completion triggering entirely on your own — call `disable_default_completions()`:
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.disable_default_completions()   # --completions is now an unknown option
+```
+
+`disable_default_completions()` removes `--completions` from the parse loop, help output, and all generated completion scripts. The `generate_completion()` method remains available for programmatic use.
+
+### Customising the Trigger Name
+
+By default the option is called `--completions`. Use `completions_name()` to rename it:
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.completions_name("autocomp")    # → --autocomp bash/zsh/fish
+```
+
+Help output, parse loop, and generated scripts all reflect the new name.
+
+### Using a Subcommand Instead of an Option
+
+To expose completion generation as a subcommand rather than a `--` option, call `completions_as_subcommand()`:
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.completions_as_subcommand()     # → myapp completions bash
+```
+
+The trigger moves from `Options:` to `Commands:` in help output. This can be combined with `completions_name()`:
+
+```mojo
+app.completions_name("comp")
+app.completions_as_subcommand()     # → myapp comp bash
+```
+
+### Generating a Script Programmatically
+
+You can also call `generate_completion(shell)` directly to get a completion script as a `String`:
+
+```mojo
+# Generate for any supported shell
+var script = app.generate_completion("bash")   # or "zsh" or "fish"
+print(script)
+```
+
+The `shell` argument is **case-insensitive** (`"Bash"`, `"BASH"`, `"bash"` all work). An error is raised for unrecognised shell names.
+
+### Installing Completions
+
+After generating a script, users `source` it or place it in a shell-specific directory.
+
+---
+
+**Bash:**
+
+```bash
+# One-shot (current session only)
+eval "$(myapp --completions bash)"
+
+# Persistent
+myapp --completions bash > ~/.bash_completion.d/myapp
+# Then add to ~/.bashrc:  source ~/.bash_completion.d/myapp
+```
+
+---
+
+**Zsh:**
+
+```bash
+# Place in your fpath (file must be named _myapp)
+myapp --completions zsh > ~/.zsh/completions/_myapp
+
+# Make sure ~/.zsh/completions is in fpath (add to ~/.zshrc):
+#   fpath=(~/.zsh/completions $fpath)
+#   autoload -Uz compinit && compinit
+```
+
+---
+
+**Fish:**
+
+```bash
+# Fish auto-loads from this directory
+myapp --completions fish > ~/.config/fish/completions/myapp.fish
+```
+
+### What Gets Completed
+
+The generated scripts cover the full command tree:
+
+| Element                           | Completed?       | Notes                                                                |
+| --------------------------------- | ---------------- | -------------------------------------------------------------------- |
+| Long options (`--verbose`)        | Yes              | With description text from `help`                                    |
+| Short options (`-v`)              | Yes              | Paired with long option when both exist                              |
+| Boolean flags                     | Yes              | Marked as no-argument (no file/value completion after the flag)      |
+| Count flags (`-vvv`)              | Yes              | Treated like boolean flags (no value expected)                       |
+| Choices (`--format json`)         | Yes              | Tab-completes the allowed values (`json`, `csv`, `table`)            |
+| Subcommands                       | Yes              | Listed with descriptions; scoped completions for each subcommand     |
+| Built-in `--help` / `--version`   | Yes              | Automatically included                                               |
+| Built-in `--completions {bash,…}` | Yes              | Automatically included; disable with `disable_default_completions()` |
+| Hidden arguments                  | No (intentional) | `.hidden()` arguments are excluded from completion                   |
+| Positional arguments              | No (by design)   | Positionals use default shell completion (file paths, etc.)          |
+| Persistent (global) flags         | Yes (root level) | Inherited flags appear in the root command's completions             |
+
+> **Note:** Negatable flags (`--color` / `--no-color`) — the `--no-X` form is **not** separately listed in completions. The base `--color` flag is completed; users type `--no-` manually. This matches the behaviour of other CLI frameworks.

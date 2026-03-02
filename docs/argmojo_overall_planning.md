@@ -521,6 +521,7 @@ Before adding Phase 5 features, further decompose `parse_args()` for readability
 - [x] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
 - [ ] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 (no major library has this)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
+- [x] **Shell completion script generation** — `generate_completion("bash"|"zsh"|"fish")` returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)

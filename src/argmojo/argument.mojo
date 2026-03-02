@@ -2,7 +2,7 @@
 
 
 comptime Arg = Argument
-"""Shorthand alias for `Argument`."""
+"""Shorthand alias for ``Argument``."""
 
 
 struct Argument(Copyable, Movable, Stringable, Writable):
@@ -321,8 +321,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn metavar(var self, name: String) -> Self:
         """Sets the display name for the value in help text.
 
-        For example, `.metavar("FILE")` causes help to show `--output FILE`
-        instead of `--output OUTPUT`.
+        For example, ``.metavar("FILE")`` causes help to show ``--output FILE``
+        instead of ``--output OUTPUT``.
 
         Args:
             name: The display name.
@@ -345,8 +345,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn count(var self) -> Self:
         """Marks this argument as a counter flag.
 
-        Each occurrence increments a counter. For example, `-vvv` sets
-        the count to 3. Use `get_count()` on ParseResult to retrieve.
+        Each occurrence increments a counter. For example, ``-vvv`` sets
+        the count to 3. Use ``get_count()`` on ParseResult to retrieve.
 
         Returns:
             Self marked as a counter.
@@ -358,9 +358,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn negatable(var self) -> Self:
         """Marks this flag as negatable.
 
-        A negatable flag accepts both `--X` (sets True) and `--no-X`
-        (sets False). For example, `.long("color").flag().negatable()`
-        accepts `--color` and `--no-color`.
+        A negatable flag accepts both ``--X`` (sets True) and ``--no-X``
+        (sets False). For example, ``.long("color").flag().negatable()``
+        accepts ``--color`` and ``--no-color``.
 
         Returns:
             Self marked as negatable.
@@ -372,7 +372,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Marks this argument as an append/collect option.
 
         Each occurrence adds its value to a list. For example,
-        `--tag x --tag y` collects `["x", "y"]`. Use `get_list()`
+        ``--tag x --tag y`` collects ``["x", "y"]``. Use ``get_list()``
         on ParseResult to retrieve the collected values.
 
         Returns:
@@ -390,9 +390,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Sets a value delimiter for splitting a single value into multiple.
 
         When set, each provided value is split by the delimiter, and each
-        piece is added to the list individually.  Implies `.append()`.
-        For example, `.delimiter(",")` causes `--tag a,b,c` to produce
-        `["a", "b", "c"]`.
+        piece is added to the list individually.  Implies ``.append()``.
+        For example, ``.delimiter(",")`` causes ``--tag a,b,c`` to produce
+        ``["a", "b", "c"]``.
 
         Args:
             sep: The delimiter string (e.g., ",").

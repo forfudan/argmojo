@@ -9,6 +9,9 @@ A command-line argument parser library for [Mojo](https://www.modular.com/mojo),
 [![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
 [![User manual](https://img.shields.io/badge/user-manual-purple)](https://github.com/forfudan/argmojo/wiki)
 
+<video src="https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/completions.mp4" controls width="800"></video>
+<p align="center"><em>Shell auto-completion of a mock <code>git</code> CLI built with ArgMojo</em></p>
+
 <!-- 
 [![CI](https://img.shields.io/github/actions/workflow/status/forfudan/argmojo/run_tests.yaml?branch=main&label=tests)](https://github.com/forfudan/argmojo/actions/workflows/run_tests.yaml)
 [![License](https://img.shields.io/github/license/forfudan/argmojo)](LICENSE)
@@ -47,6 +50,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **One-required groups**: require at least one argument from a group (e.g., must provide `--json` or `--yaml`)
 - **Value delimiter**: `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`
 - **Multi-value options (nargs)**: `--point 10 20` consumes N consecutive values with `.nargs(N)`
+- **Shell completion script generation**: `generate_completion("bash"|"zsh"|"fish")` produces a complete tab-completion script for your CLI
 
 ---
 
@@ -142,7 +146,7 @@ ArgMojo ships with two complete example CLIs:
 | Example                 | File                 | Features                                                                                                                                                                                                                                                                                                                       |
 | ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `grep` — simulated grep | `examples/grep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
-| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips                                                                     |
+| `git` — simulated git   | `examples/git.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                 |
 
 Build both example binaries:
 
@@ -151,6 +155,8 @@ pixi run build
 ```
 
 ### `grep` (no subcommands)
+
+![grep CLI demo](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/grep.png)
 
 ```bash
 # Help and version
@@ -175,6 +181,8 @@ pixi run build
 
 ### `git` (with subcommands)
 
+![git clone subcommand](https://raw.githubusercontent.com/forfudan/forfudan-github-data/main/argmojo/git-clone.png)
+
 ```bash
 # Root help — shows Commands section + Global Options
 ./git --help
@@ -195,6 +203,11 @@ pixi run build
 # Unknown subcommand → clear error
 ./git foo
 # error: git: Unknown command 'foo'. Available commands: clone, init, ...
+
+# Shell completion script generation
+./git --completions bash   # bash completion script
+./git --completions zsh    # zsh completion script
+./git --completions fish   # fish completion script
 ```
 
 ## Development

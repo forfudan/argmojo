@@ -159,7 +159,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
             The list of collected values.
 
         Note:
-            For map-type arguments (`.map_option()`), each entry is the
+            For map-type arguments (``.map_option()``), each entry is the
             raw ``key=value`` string (e.g. ``["DEBUG=1", "VERSION=2"]``).
             Use ``get_map()`` instead to retrieve the parsed dict.
         """
