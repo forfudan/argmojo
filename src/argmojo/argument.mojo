@@ -34,6 +34,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
     _ = Argument("verbose", help="...").long("verbose").short("v").count()
 
+    # Count flag with ceiling  (-vvvvv capped at 3)
+    _ = Argument("verbose", help="...").long("verbose").short("v").count().max(3)
+
     # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
     _ = Argument("color", help="...").long("color").flag().negatable()
 
@@ -48,6 +51,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
     # Numeric range validation  →  result.get_int("port")
     _ = Argument("port", help="...").long("port").range(1, 65535)
+
+    # Numeric range with clamping  (--level 200 → 100 with warning)
+    _ = Argument("level", help="...").long("level").range(0, 100).clamp()
 
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long("define").short("D").map_option()
@@ -104,12 +110,18 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Maximum allowed value (inclusive) for numeric range validation."""
     var has_range: Bool
     """Whether numeric range validation is active."""
+    var is_clamp: Bool
+    """If True, out-of-range values are clamped (adjusted with warning) instead of rejected."""
     var is_map: Bool
     """If True, each value is parsed as key=value and stored in a Dict."""
     var alias_names: List[String]
     """Alternative long names that resolve to this argument."""
     var deprecated_msg: String
     """If non-empty, this argument is deprecated; the string is the warning message."""
+    var count_max: Int
+    """Maximum count value (ceiling) for counter flags. 0 means no limit."""
+    var has_count_max: Bool
+    """Whether a count ceiling has been set via ``.max()``."""
     var is_persistent: Bool
     """If True, this argument is automatically inherited by every subcommand.
     Persistent flags/options are injected into child command parsers at
@@ -147,9 +159,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = 0
         self.range_max = 0
         self.has_range = False
+        self.is_clamp = False
         self.is_map = False
         self.alias_names = List[String]()
         self.deprecated_msg = ""
+        self.count_max = 0
+        self.has_count_max = False
         self.is_persistent = False
 
     fn __copyinit__(out self, copy: Self):
@@ -180,11 +195,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = copy.range_min
         self.range_max = copy.range_max
         self.has_range = copy.has_range
+        self.is_clamp = copy.is_clamp
         self.is_map = copy.is_map
         self.alias_names = List[String]()
         for i in range(len(copy.alias_names)):
             self.alias_names.append(copy.alias_names[i])
         self.deprecated_msg = copy.deprecated_msg
+        self.count_max = copy.count_max
+        self.has_count_max = copy.has_count_max
         self.is_persistent = copy.is_persistent
 
     fn __moveinit__(out self, deinit move: Self):
@@ -213,9 +231,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = move.range_min
         self.range_max = move.range_max
         self.has_range = move.has_range
+        self.is_clamp = move.is_clamp
         self.is_map = move.is_map
         self.alias_names = move.alias_names^
         self.deprecated_msg = move.deprecated_msg^
+        self.count_max = move.count_max
+        self.has_count_max = move.has_count_max
         self.is_persistent = move.is_persistent
 
     # ===------------------------------------------------------------------=== #
@@ -348,11 +369,32 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Each occurrence increments a counter. For example, ``-vvv`` sets
         the count to 3. Use ``get_count()`` on ParseResult to retrieve.
 
+        Chain with ``.max(n)`` to cap the counter at a ceiling value.
+
         Returns:
             Self marked as a counter.
         """
         self.is_count = True
         self.is_flag = True
+        return self^
+
+    fn max(var self, ceiling: Int) -> Self:
+        """Sets a ceiling for a counter flag.
+
+        When a counter flag has a ceiling, the count is capped at the
+        given value regardless of how many times the flag appears.
+        For example, ``.count().max(3)`` caps ``-vvvvv`` at 3.
+
+        Must be used after ``.count()``.
+
+        Args:
+            ceiling: The maximum count value (must be ≥ 1).
+
+        Returns:
+            Self with the count ceiling set.
+        """
+        self.count_max = ceiling
+        self.has_count_max = True
         return self^
 
     fn negatable(var self) -> Self:
@@ -430,6 +472,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``[min_val, max_val]`` (inclusive).  Validation occurs
         after parsing, during the validation phase.
 
+        By default, out-of-range values cause an error.  Chain with
+        ``.clamp()`` to silently adjust the value (with a warning)
+        instead of erroring.
+
         Args:
             min_val: Minimum allowed value (inclusive).
             max_val: Maximum allowed value (inclusive).
@@ -440,6 +486,25 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = min_val
         self.range_max = max_val
         self.has_range = True
+        return self^
+
+    fn clamp(var self) -> Self:
+        """Enables clamping for numeric range validation.
+
+        When clamping is enabled (used after ``.range(min, max)``),
+        out-of-range values are adjusted to the nearest boundary
+        instead of causing an error.  A warning is printed to stderr
+        to inform the user of the adjustment.
+
+        For example, ``.range(1, 100).clamp()`` causes ``--level 200``
+        to be silently adjusted to 100 with a warning.
+
+        Must be used after ``.range()``.
+
+        Returns:
+            Self with clamping enabled.
+        """
+        self.is_clamp = True
         return self^
 
     fn map_option(var self) -> Self:

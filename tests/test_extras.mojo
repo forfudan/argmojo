@@ -137,6 +137,147 @@ fn test_range_with_short_option() raises:
     print("  ✓ test_range_with_short_option")
 
 
+# ── Range clamping (.clamp()) ────────────────────────────────────────────────
+
+
+fn test_clamp_above_max() raises:
+    """Tests that .clamp() adjusts a value above max to max."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Level").long("level").range(1, 100).clamp()
+    )
+
+    var args: List[String] = ["test", "--level", "200"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_int("level"),
+        100,
+        msg="200 should be clamped to 100",
+    )
+    print("  ✓ test_clamp_above_max")
+
+
+fn test_clamp_below_min() raises:
+    """Tests that .clamp() adjusts a value below min to min."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Level").long("level").range(1, 100).clamp()
+    )
+
+    var args: List[String] = ["test", "--level", "-5"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_int("level"),
+        1,
+        msg="-5 should be clamped to 1",
+    )
+    print("  ✓ test_clamp_below_min")
+
+
+fn test_clamp_within_range_no_change() raises:
+    """Tests that .clamp() does not affect a value within range."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Level").long("level").range(1, 100).clamp()
+    )
+
+    var args: List[String] = ["test", "--level", "50"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_int("level"),
+        50,
+        msg="50 should remain 50",
+    )
+    print("  ✓ test_clamp_within_range_no_change")
+
+
+fn test_clamp_at_boundary() raises:
+    """Tests that .clamp() does not trigger at exact boundaries."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Port").long("port").range(1, 65535).clamp()
+    )
+
+    var args1: List[String] = ["test", "--port", "1"]
+    var result1 = command.parse_arguments(args1)
+    assert_equal(result1.get_int("port"), 1, msg="1 at min boundary is fine")
+
+    var args2: List[String] = ["test", "--port", "65535"]
+    var result2 = command.parse_arguments(args2)
+    assert_equal(
+        result2.get_int("port"), 65535, msg="65535 at max boundary is fine"
+    )
+    print("  ✓ test_clamp_at_boundary")
+
+
+fn test_clamp_with_short_option() raises:
+    """Tests that .clamp() works with short option syntax."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Level")
+        .long("level")
+        .short("l")
+        .range(0, 10)
+        .clamp()
+    )
+
+    var args: List[String] = ["test", "-l", "99"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_int("level"),
+        10,
+        msg="99 with range [0,10] should clamp to 10",
+    )
+    print("  ✓ test_clamp_with_short_option")
+
+
+fn test_clamp_with_append() raises:
+    """Tests that .clamp() adjusts individual values in append mode."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Ports")
+        .long("port")
+        .append()
+        .range(1, 100)
+        .clamp()
+    )
+
+    var args: List[String] = [
+        "test",
+        "--port",
+        "50",
+        "--port",
+        "200",
+        "--port",
+        "0",
+    ]
+    var result = command.parse_arguments(args)
+    var lst = result.get_list("port")
+    assert_equal(lst[0], "50", msg="50 should remain 50")
+    assert_equal(lst[1], "100", msg="200 should clamp to 100")
+    assert_equal(lst[2], "1", msg="0 should clamp to 1")
+    print("  ✓ test_clamp_with_append")
+
+
+fn test_range_without_clamp_still_errors() raises:
+    """Tests that .range() without .clamp() still raises errors."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("port", help="Port").long("port").range(1, 65535)
+    )
+
+    var args: List[String] = ["test", "--port", "99999"]
+    var caught = False
+    try:
+        _ = command.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true("out of range" in msg, msg="should error on out of range")
+    assert_true(caught, msg="Should have raised for out-of-range without clamp")
+    print("  ✓ test_range_without_clamp_still_errors")
+
+
 # ── Key-value map option ─────────────────────────────────────────────────────
 
 

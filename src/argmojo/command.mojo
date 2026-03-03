@@ -1533,7 +1533,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     result.values[a.name] = a.default_value
 
-    fn _validate(self, result: ParseResult) raises:
+    fn _validate(self, mut result: ParseResult) raises:
         """Runs all post-parse validation checks on the result.
 
         Checks (in order):
@@ -1543,10 +1543,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
         4. Required-together groups are all-or-nothing.
         5. One-required groups have at least one member set.
         6. Conditional requirements are satisfied.
-        7. Numeric range constraints are met.
+        7. Count ceilings are enforced (clamp + warn).
+        8. Numeric range constraints are met (error or clamp + warn).
 
         Args:
-            result: The parse result to validate.
+            result: The parse result to validate (may be mutated by clamping).
 
         Raises:
             Error if any validation check fails.
@@ -1647,10 +1648,34 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + " is provided"
                 )
 
+        # Validate count ceilings — clamp and warn.
+        for j in range(len(self.args)):
+            var a = self.args[j].copy()
+            if a.is_count and a.has_count_max:
+                var cur: Int
+                try:
+                    cur = result.counts[a.name]
+                except:
+                    continue
+                if cur > a.count_max:
+                    self._warn(
+                        self._display_name(a.name)
+                        + " count "
+                        + String(cur)
+                        + " exceeds maximum "
+                        + String(a.count_max)
+                        + ", capped to "
+                        + String(a.count_max)
+                    )
+                    result.counts[a.name] = a.count_max
+
         # Validate numeric range constraints.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.has_range and result.has(a.name):
+                var display = String("'") + a.name + "'"
+                if a.long_name:
+                    display = "'--" + a.long_name + "'"
                 # Get the raw string value(s) for this argument.
                 if a.is_append:
                     var lst = result.get_list(a.name)
@@ -1669,20 +1694,36 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + "'"
                             )
                         if v < a.range_min or v > a.range_max:
-                            var display = String("'") + a.name + "'"
-                            if a.long_name:
-                                display = "'--" + a.long_name + "'"
-                            self._error(
-                                "Value "
-                                + String(v)
-                                + " for "
-                                + display
-                                + " is out of range ["
-                                + String(a.range_min)
-                                + ", "
-                                + String(a.range_max)
-                                + "]"
-                            )
+                            if a.is_clamp:
+                                var clamped = v
+                                if v < a.range_min:
+                                    clamped = a.range_min
+                                elif v > a.range_max:
+                                    clamped = a.range_max
+                                self._warn(
+                                    display
+                                    + " value "
+                                    + String(v)
+                                    + " is out of range ["
+                                    + String(a.range_min)
+                                    + ", "
+                                    + String(a.range_max)
+                                    + "], clamped to "
+                                    + String(clamped)
+                                )
+                                result.lists[a.name][k] = String(clamped)
+                            else:
+                                self._error(
+                                    "Value "
+                                    + String(v)
+                                    + " for "
+                                    + display
+                                    + " is out of range ["
+                                    + String(a.range_min)
+                                    + ", "
+                                    + String(a.range_max)
+                                    + "]"
+                                )
                 else:
                     var raw: String
                     try:
@@ -1703,20 +1744,36 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             + "'"
                         )
                     if v < a.range_min or v > a.range_max:
-                        var display = String("'") + a.name + "'"
-                        if a.long_name:
-                            display = "'--" + a.long_name + "'"
-                        self._error(
-                            "Value "
-                            + String(v)
-                            + " for "
-                            + display
-                            + " is out of range ["
-                            + String(a.range_min)
-                            + ", "
-                            + String(a.range_max)
-                            + "]"
-                        )
+                        if a.is_clamp:
+                            var clamped = v
+                            if v < a.range_min:
+                                clamped = a.range_min
+                            elif v > a.range_max:
+                                clamped = a.range_max
+                            self._warn(
+                                display
+                                + " value "
+                                + String(v)
+                                + " is out of range ["
+                                + String(a.range_min)
+                                + ", "
+                                + String(a.range_max)
+                                + "], clamped to "
+                                + String(clamped)
+                            )
+                            result.values[a.name] = String(clamped)
+                        else:
+                            self._error(
+                                "Value "
+                                + String(v)
+                                + " for "
+                                + display
+                                + " is out of range ["
+                                + String(a.range_min)
+                                + ", "
+                                + String(a.range_max)
+                                + "]"
+                            )
 
     # ===------------------------------------------------------------------=== #
     # Argument lookup helpers
