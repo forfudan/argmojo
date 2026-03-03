@@ -300,7 +300,7 @@ fn test_validate_range_out_of_bounds() raises:
     """Tests that a value outside numeric range fails validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100)
+        Argument("port", help="Port").long("port").range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "200"]
@@ -321,7 +321,7 @@ fn test_validate_range_in_bounds() raises:
     """Tests that a value within numeric range passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100)
+        Argument("port", help="Port").long("port").range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "50"]
@@ -358,7 +358,7 @@ fn test_full_parse_with_defaults_and_range() raises:
     """Tests that default values also pass range validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100).default("50")
+        Argument("port", help="Port").long("port").range[1, 100]().default("50")
     )
 
     # Not providing --port should use default "50" which is in range.

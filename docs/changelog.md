@@ -97,7 +97,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 1. Negatable flags — `--color` / `--no-color` paired flags with `.negatable()`.
 1. Long option prefix matching — `--verb` auto-resolves to `--verbose` when unambiguous.
 1. Conditional requirements — `--output` required only when `--save` is present.
-1. Numeric range validation — `.range(1, 65535)` validates value is within bounds.
+1. Numeric range validation — `.range[1, 65535]()` validates value is within bounds.
 
 **Groups:**
 
@@ -109,7 +109,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 
 1. Append / collect action — `--tag x --tag y` collects repeated options into a list with `.append()`.
 1. Value delimiter — `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
-1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.number_of_values(N)`.
+1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.number_of_values[N]()`.
 1. Key-value map option — `--define key=value` builds a `Dict` with `.key_value()`.
 
 **Help & display:**

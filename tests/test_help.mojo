@@ -500,12 +500,12 @@ fn test_nargs_in_help() raises:
     """Tests that nargs options show repeated placeholders in help."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y coords").long("point").number_of_values(2)
+        Argument("point", help="X Y coords").long("point").number_of_values[2]()
     )
     command.add_argument(
         Argument("rgb", help="RGB colour")
         .long("rgb")
-        .number_of_values(3)
+        .number_of_values[3]()
         .metavar("N")
     )
 
@@ -534,7 +534,7 @@ fn test_nargs_with_metavar() raises:
     command.add_argument(
         Argument("size", help="Width and height")
         .long("size")
-        .number_of_values(2)
+        .number_of_values[2]()
         .metavar("PX")
     )
 

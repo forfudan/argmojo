@@ -11,7 +11,7 @@ fn test_range_valid_value() raises:
     """Tests that a value within range is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "8080"]
@@ -24,7 +24,7 @@ fn test_range_boundary_min() raises:
     """Tests that the exact minimum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "1"]
@@ -37,7 +37,7 @@ fn test_range_boundary_max() raises:
     """Tests that the exact maximum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "65535"]
@@ -50,7 +50,7 @@ fn test_range_below_min() raises:
     """Tests that a value below the minimum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "0"]
@@ -72,7 +72,7 @@ fn test_range_above_max() raises:
     """Tests that a value above the maximum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "70000"]
@@ -93,7 +93,7 @@ fn test_range_not_provided_ok() raises:
     """Tests that an optional range arg is fine when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test"]
@@ -106,7 +106,7 @@ fn test_range_with_append() raises:
     """Tests range validation on appended values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Ports").long("port").append().range(1, 100)
+        Argument("port", help="Ports").long("port").append().range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "50", "--port", "101"]
@@ -128,7 +128,7 @@ fn test_range_with_short_option() raises:
     """Tests range validation with a short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").short("l").range(0, 5)
+        Argument("level", help="Level").long("level").short("l").range[0, 5]()
     )
 
     var args: List[String] = ["test", "-l", "3"]
@@ -144,7 +144,7 @@ fn test_clamp_above_max() raises:
     """Tests that .clamp() adjusts a value above max to max."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range(1, 100).clamp()
+        Argument("level", help="Level").long("level").range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "200"]
@@ -161,7 +161,7 @@ fn test_clamp_below_min() raises:
     """Tests that .clamp() adjusts a value below min to min."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range(1, 100).clamp()
+        Argument("level", help="Level").long("level").range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "-5"]
@@ -178,7 +178,7 @@ fn test_clamp_within_range_no_change() raises:
     """Tests that .clamp() does not affect a value within range."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range(1, 100).clamp()
+        Argument("level", help="Level").long("level").range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "50"]
@@ -195,7 +195,7 @@ fn test_clamp_at_boundary() raises:
     """Tests that .clamp() does not trigger at exact boundaries."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535).clamp()
+        Argument("port", help="Port").long("port").range[1, 65535]().clamp()
     )
 
     var args1: List[String] = ["test", "--port", "1"]
@@ -217,7 +217,7 @@ fn test_clamp_with_short_option() raises:
         Argument("level", help="Level")
         .long("level")
         .short("l")
-        .range(0, 10)
+        .range[0, 10]()
         .clamp()
     )
 
@@ -238,7 +238,7 @@ fn test_clamp_with_append() raises:
         Argument("port", help="Ports")
         .long("port")
         .append()
-        .range(1, 100)
+        .range[1, 100]()
         .clamp()
     )
 
@@ -263,7 +263,7 @@ fn test_range_without_clamp_still_errors() raises:
     """Tests that .range() without .clamp() still raises errors."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 65535)
+        Argument("port", help="Port").long("port").range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "99999"]

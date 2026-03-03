@@ -38,11 +38,11 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
     _ = Argument("env", help="...").long("env").delimiter(",")
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
-    _ = Argument("point", help="...").long("point").number_of_values(2)
+    _ = Argument("point", help="...").long("point").number_of_values[2]()
     # Numeric range validation  →  result.get_int("port")
-    _ = Argument("port", help="...").long("port").range(1, 65535)
+    _ = Argument("port", help="...").long("port").range[1, 65535]()
     # Numeric range with clamping  (--level 200 → 100 with warning)
-    _ = Argument("level", help="...").long("level").range(0, 100).clamp()
+    _ = Argument("level", help="...").long("level").range[0, 100]().clamp()
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long("define").short("D").map_option()
     # Aliases  (--colour and --color both work)
@@ -374,7 +374,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # rather than developers, may encounter errors about a wrong ceiling value
     # in the terminal when they use the API, no matter they are using it
     # correctly or not. That would be catastrophic.
-    fn max[ceiling: Int](var self) -> Self:
+    fn max[ceiling: Int](var self) -> Self where ceiling >= 1:
         """Sets a ceiling for a counter flag.
 
         When a counter flag has a ceiling, the count is capped at the
@@ -389,7 +389,6 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the count ceiling set.
         """
-        constrained[ceiling >= 1, "max(): ceiling must be >= 1"]()
         if not self._is_count:
             print(
                 (
@@ -452,16 +451,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn number_of_values(var self, n: Int) -> Self:
+    fn number_of_values[n: Int](var self) -> Self where n >= 2:
         """Sets the number of values consumed per occurrence.
 
         When set, each use of the option consumes exactly ``n``
-        consecutive arguments.  For example, ``.number_of_values(2)`` on
+        consecutive arguments.  For example, ``.number_of_values[2]()`` on
         ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
         Implies ``.append()`` so values are retrieved with
         ``ParseResult.get_list()``.
 
-        Args:
+        Parameters:
             n: Number of values to consume (must be ≥ 2).
 
         Returns:
@@ -471,7 +470,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn range(var self, min_val: Int, max_val: Int) -> Self:
+    fn range[
+        min_val: Int, max_val: Int
+    ](var self) -> Self where max_val >= min_val:
         """Sets numeric range validation for this argument.
 
         When set, the parsed value must be an integer within
@@ -482,7 +483,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``.clamp()`` to silently adjust the value (with a warning)
         instead of erroring.
 
-        Args:
+        Parameters:
             min_val: Minimum allowed value (inclusive).
             max_val: Maximum allowed value (inclusive).
 
@@ -497,12 +498,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn clamp(var self) -> Self:
         """Enables clamping for numeric range validation.
 
-        When clamping is enabled (used after ``.range(min, max)``),
+        When clamping is enabled (used after ``.range[min, max]()``),
         out-of-range values are adjusted to the nearest boundary
         instead of causing an error.  A warning is printed to stderr
         to inform the user of the adjustment.
 
-        For example, ``.range(1, 100).clamp()`` causes ``--level 200``
+        For example, ``.range[1, 100]().clamp()`` causes ``--level 200``
         to be silently adjusted to 100 with a warning.
 
         Must be used after ``.range()``.

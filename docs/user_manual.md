@@ -688,14 +688,14 @@ This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 
 **Defining a multi-value option**
 
-Use `.number_of_values(N)` to specify how many values the option consumes:
+Use `.number_of_values[N]()` to specify how many values the option consumes:
 
 ```mojo
-command.add_argument(Argument("point", help="X Y coordinates").long("point").number_of_values(2))
-command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values(3))
+command.add_argument(Argument("point", help="X Y coordinates").long("point").number_of_values[2]())
+command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values[3]())
 ```
 
-`.number_of_values(N)` automatically implies `.append()` — values are
+`.number_of_values[N]()` automatically implies `.append()` — values are
 retrieved with `get_list()`.
 
 ---
@@ -749,7 +749,7 @@ Choices are validated for **each** value individually:
 ```mojo
 var dirs: List[String] = ["north", "south", "east", "west"]
 command.add_argument(
-    Argument("route", help="Start and end").long("route").number_of_values(2).choices(dirs^)
+    Argument("route", help="Start and end").long("route").number_of_values[2]().choices(dirs^)
 )
 ```
 
@@ -925,7 +925,7 @@ myapp "hello" ./src /tmp       # Error: Too many positional arguments: expected 
 ### Numeric Range Validation
 
 Constrain a numeric argument to an inclusive `[min, max]` range
-with `.range(min, max)`.  The validation is applied after parsing,
+with `.range[min, max]()`.  The validation is applied after parsing,
 so the value is still stored as a string; `atol()` is used internally
 to convert and compare.
 
@@ -933,7 +933,7 @@ to convert and compare.
 command.add_argument(
     Argument("port", help="Listening port")
         .long("port")
-        .range(1, 65535)
+        .range[1, 65535]()
 )
 ```
 
@@ -959,7 +959,7 @@ myapp --port 65535   # OK
 
 ```mojo
 command.add_argument(
-    Argument("port", help="Ports").long("port").append().range(1, 100)
+    Argument("port", help="Ports").long("port").append().range[1, 100]()
 )
 ```
 
@@ -976,7 +976,7 @@ By default, an out-of-range value causes a hard error. If you prefer a gentler a
 command.add_argument(
     Argument("level", help="Compression level (0–9)")
         .long("level")
-        .range(0, 9)
+        .range[0, 9]()
         .clamp()
 )
 ```
@@ -999,7 +999,7 @@ warning: '--level' value 20 is out of range [0, 9], clamped to 9
 
 ```mojo
 command.add_argument(
-    Argument("port", help="Ports").long("port").append().range(1, 100).clamp()
+    Argument("port", help="Ports").long("port").append().range[1, 100]().clamp()
 )
 ```
 
