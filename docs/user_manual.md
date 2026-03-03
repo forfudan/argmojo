@@ -48,6 +48,7 @@ from argmojo import Argument, Command
   - [The help Subcommand](#the-help-subcommand)
   - [Subcommand Aliases](#subcommand-aliases)
   - [Unknown Subcommand Error](#unknown-subcommand-error)
+  - [Hidden Subcommands](#hidden-subcommands)
   - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
 - [Help \& Display](#help--display)
   - [Metavar](#metavar)
@@ -1610,9 +1611,45 @@ app foobar
 # error: app: Unknown command 'foobar'. Available commands: search, init
 ```
 
-The error message excludes the auto-registered `help` subcommand from the list.
+The error message excludes the auto-registered `help` subcommand and hidden subcommands from the list.
 
 If the command has opted in via `allow_positional_with_subcommands()`, unknown tokens are treated as positionals rather than triggering this error.
+
+### Hidden Subcommands
+
+A **hidden** subcommand is fully functional but excluded from user-facing surfaces:
+
+- `--help` output (the `Commands:` section and usage line)
+- Shell completion scripts (bash, zsh, fish)
+- "Available commands" error messages
+- Typo suggestions
+
+The subcommand remains dispatchable by its exact name or alias. This is useful for internal, experimental, or deprecated commands.
+
+```mojo
+var app = Command("myapp", "My application")
+
+var debug = Command("debug", "Internal diagnostics")
+debug.hidden()                          # mark as hidden
+app.add_subcommand(debug^)
+
+var search = Command("search", "Search for items")
+app.add_subcommand(search^)
+
+# 'debug' won't appear in --help or completions, but:
+#   myapp debug ...   still works
+```
+
+Hidden subcommand aliases also remain functional:
+
+```mojo
+var debug = Command("debug", "Internal diagnostics")
+debug.hidden()
+var aliases: List[String] = ["dbg"]
+debug.command_aliases(aliases^)
+app.add_subcommand(debug^)
+# myapp dbg   still dispatches to debug
+```
 
 ### Mixing Positional Args with Subcommands
 
@@ -1865,6 +1902,24 @@ colour is enabled.
 | `.required()`   | Positional args show as `<name>` instead of `[name]`. |
 
 After printing help, the program exits cleanly with exit code 0.
+
+---
+
+**`NO_COLOR` Environment Variable**
+
+ArgMojo respects the [`NO_COLOR`](https://no-color.org/) convention. When the `NO_COLOR` environment variable is **set** (any value, including an empty string), all ANSI colour codes are suppressed in:
+
+- Help output (`_generate_help()`)
+- Warning messages (`_warn()`)
+- Error messages (`_error()` and `_error_with_usage()`)
+
+```bash
+NO_COLOR=1 myapp --help    # plain-text help, no colours
+NO_COLOR= myapp --help     # also suppressed (empty string counts as "set")
+myapp --help               # coloured output (NO_COLOR is unset)
+```
+
+This takes priority over the `color=True` default but does **not** override an explicit `_generate_help(color=False)` call (which already produces plain output regardless).
 
 ---
 

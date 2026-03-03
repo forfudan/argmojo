@@ -63,8 +63,8 @@ These features appear across multiple libraries and depend only on string operat
 | Subcommand aliases                 | —        | —     | ✓     | ✓    | cobra, clap                  | **Done**      |
 | Count with ceiling                 | -        | —     | —     | -    |                              | **Done**      |
 | Cap and floor (clamp) for ranges   | -        | ✓     | —     | —    | Click `IntRange(clamp=True)` | **Done**      |
-| Hidden subcommands                 | —        | —     | ✓     | ✓    |                              | Phase 5       |
-| `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | Phase 5       |
+| Hidden subcommands                 | —        | —     | ✓     | ✓    |                              | **Done**      |
+| `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | Phase 5       |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                              | Phase 5       |
 | Interactive prompting              | —        | ✓     | —     | —    |                              | Phase 5       |
@@ -77,7 +77,7 @@ These features appear across multiple libraries and depend only on string operat
 | Default-if-present (const)         | ✓        | —     | —     | ✓    |                              | Phase 5       |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | Phase 5       |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
-| Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | Phase 5       |
+| Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
 | CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | Phase 6       |

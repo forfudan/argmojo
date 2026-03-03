@@ -1309,5 +1309,65 @@ fn test_alias_multiple_subcommands() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
+# ── Hidden subcommands — dispatch ─────────────────────────────────────────────
+
+
+fn test_hidden_subcommand_still_dispatchable() raises:
+    """Tests that a hidden subcommand can still be dispatched by exact name."""
+    var app = Command("app", "Test app")
+    var visible = Command("clone", "Clone")
+    visible.add_argument(Argument("url", help="Repo URL").positional())
+    app.add_subcommand(visible^)
+    var hidden = Command("debug", "Debug")
+    hidden.hidden()
+    hidden.add_argument(
+        Argument("level", help="Debug level").long("level").default("info")
+    )
+    app.add_subcommand(hidden^)
+
+    var args: List[String] = ["app", "debug", "--level", "trace"]
+    var result = app.parse_arguments(args)
+    assert_equal(result.subcommand, "debug")
+    var sub = result.get_subcommand_result()
+    assert_equal(sub.get_string("level"), "trace")
+    print("  ✓ test_hidden_subcommand_still_dispatchable")
+
+
+fn test_hidden_subcommand_alias_dispatchable() raises:
+    """Tests that a hidden subcommand can be dispatched via its alias."""
+    var app = Command("app", "Test app")
+    var debug = Command("debug", "Debug")
+    debug.hidden()
+    var debug_aliases: List[String] = ["dbg"]
+    debug.command_aliases(debug_aliases^)
+    app.add_subcommand(debug^)
+    # Add a visible sub so the command has subcommands.
+    var clone = Command("clone", "Clone")
+    app.add_subcommand(clone^)
+
+    var args: List[String] = ["app", "dbg"]
+    var result = app.parse_arguments(args)
+    assert_equal(result.subcommand, "debug")
+    print("  ✓ test_hidden_subcommand_alias_dispatchable")
+
+
+fn test_hidden_is_hidden_field() raises:
+    """Tests that _is_hidden is False by default and True after hidden()."""
+    var cmd = Command("test", "Test")
+    assert_false(cmd._is_hidden, msg="_is_hidden should default to False")
+    cmd.hidden()
+    assert_true(cmd._is_hidden, msg="hidden() should set _is_hidden to True")
+    print("  ✓ test_hidden_is_hidden_field")
+
+
+fn test_hidden_subcommand_copy() raises:
+    """Tests that _is_hidden survives Command copy."""
+    var cmd = Command("debug", "Debug")
+    cmd.hidden()
+    var copy = cmd.copy()
+    assert_true(copy._is_hidden, msg="_is_hidden should survive copy")
+    print("  ✓ test_hidden_subcommand_copy")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

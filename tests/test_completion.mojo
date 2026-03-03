@@ -993,5 +993,90 @@ fn test_bash_completion_includes_alias() raises:
     print("  ✓ test_bash_completion_includes_alias")
 
 
+# ── Hidden subcommands in completions ─────────────────────────────────────────
+
+
+fn _make_app_with_hidden_sub() raises -> Command:
+    """Helper: app with 'clone' visible and 'debug' hidden."""
+    var app = Command("myapp", "A test app")
+    var clone = Command("clone", "Clone a repository")
+    clone.add_argument(Argument("url", help="Repo URL").long("url"))
+    app.add_subcommand(clone^)
+    var debug = Command("debug", "Internal debug")
+    debug.hidden()
+    debug.add_argument(Argument("level", help="Level").long("level"))
+    app.add_subcommand(debug^)
+    return app^
+
+
+fn test_fish_hidden_sub_excluded() raises:
+    """Tests that hidden subcommands are absent from Fish completion."""
+    var app = _make_app_with_hidden_sub()
+    var script = app.generate_completion("fish")
+    assert_true(
+        "clone" in script,
+        msg="Fish script should include visible sub 'clone'",
+    )
+    assert_false(
+        "debug" in script,
+        msg="Fish script should NOT include hidden sub 'debug'",
+    )
+    print("  ✓ test_fish_hidden_sub_excluded")
+
+
+fn test_zsh_hidden_sub_excluded() raises:
+    """Tests that hidden subcommands are absent from Zsh completion."""
+    var app = _make_app_with_hidden_sub()
+    var script = app.generate_completion("zsh")
+    assert_true(
+        "'clone:" in script,
+        msg="Zsh script should include visible sub 'clone'",
+    )
+    assert_false(
+        "'debug:" in script,
+        msg="Zsh script should NOT include hidden sub 'debug'",
+    )
+    print("  ✓ test_zsh_hidden_sub_excluded")
+
+
+fn test_bash_hidden_sub_excluded() raises:
+    """Tests that hidden subcommands are absent from Bash completion."""
+    var app = _make_app_with_hidden_sub()
+    var script = app.generate_completion("bash")
+    assert_true(
+        "clone" in script,
+        msg="Bash script should include visible sub 'clone'",
+    )
+    assert_false(
+        "debug" in script,
+        msg="Bash script should NOT include hidden sub 'debug'",
+    )
+    print("  ✓ test_bash_hidden_sub_excluded")
+
+
+fn test_all_hidden_no_subcommand_completion() raises:
+    """Tests that when all subs are hidden, completion is simple (no subs)."""
+    var app = Command("myapp", "A test app")
+    app.add_argument(Argument("verbose", help="Verbose").long("verbose").flag())
+    var debug = Command("debug", "Internal debug")
+    debug.hidden()
+    app.add_subcommand(debug^)
+
+    # Fish: should NOT contain subcommand-related directives.
+    var fish = app.generate_completion("fish")
+    assert_false(
+        "__fish_seen_subcommand_from" in fish,
+        msg="Fish should not have subcommand dispatching when all subs hidden",
+    )
+
+    # Bash: should not have case/subcmd detection.
+    var bash = app.generate_completion("bash")
+    assert_false(
+        "subcmd" in bash,
+        msg="Bash should not have subcmd logic when all subs hidden",
+    )
+    print("  ✓ test_all_hidden_no_subcommand_completion")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

@@ -1,5 +1,6 @@
 """Defines a CLI command and performs argument parsing."""
 
+from os import getenv
 from sys import argv, exit, stderr
 
 from .argument import Argument
@@ -101,6 +102,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
     prefixed with the same bold ``Tip:`` label as the built-in hint."""
+    var _is_hidden: Bool
+    """When True, this command is excluded from help output, shell
+    completions, and 'available commands' error lists, but remains
+    dispatchable by exact name or alias.  Set via ``hidden()``."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -138,6 +143,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_is_subcommand = False
         self._command_aliases = List[String]()
         self._tips = List[String]()
+        self._is_hidden = False
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -170,6 +176,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_is_subcommand = move._completions_is_subcommand
         self._command_aliases = move._command_aliases^
         self._tips = move._tips^
+        self._is_hidden = move._is_hidden
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -217,6 +224,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._completions_is_subcommand = copy._completions_is_subcommand
         self._command_aliases = copy._command_aliases.copy()
         self._tips = copy._tips.copy()
+        self._is_hidden = copy._is_hidden
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -559,6 +567,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(names)):
             self._command_aliases.append(names[i])
 
+    fn hidden(mut self):
+        """Marks this subcommand as hidden.
+
+        A hidden subcommand is excluded from help output, shell completion
+        scripts, and the "Available commands" error message, but remains
+        dispatchable by exact name or alias.  Useful for internal,
+        experimental, or deprecated subcommands.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "A sample application")
+        var debug = Command("debug", "Internal debug command")
+        debug.hidden()
+        app.add_subcommand(debug^)
+        # 'debug' won't appear in --help or completions, but:
+        #   app debug ...   still works
+        ```
+        """
+        self._is_hidden = True
+
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
 
@@ -764,9 +794,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # Private output helpers
     # ===------------------------------------------------------------------=== #
 
+    @staticmethod
+    fn _no_color_env() -> Bool:
+        """Returns True when the ``NO_COLOR`` environment variable is set.
+
+        Follows the `no-color.org <https://no-color.org/>`_ standard:
+        any value (including empty string) counts as "set".  An unset
+        variable returns the sentinel and is treated as "not set".
+
+        Returns:
+            True if ``NO_COLOR`` is set, False otherwise.
+        """
+        return getenv("NO_COLOR", "\x00") != "\x00"
+
     fn _warn(self, msg: String):
         """Prints a coloured warning message to stderr."""
-        print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
+        if Self._no_color_env():
+            print("warning: " + msg, file=stderr)
+        else:
+            print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
 
     fn _error(self, msg: String) raises:
         """Prints a coloured error message to stderr then raises.
@@ -777,10 +823,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
         The command name is included in the stderr output so that errors
         from subcommands show the full path (e.g. ``app search: ...``).
         """
-        print(
-            self._error_color + "error: " + self.name + ": " + msg + _RESET,
-            file=stderr,
-        )
+        if Self._no_color_env():
+            print(
+                "error: " + self.name + ": " + msg,
+                file=stderr,
+            )
+        else:
+            print(
+                self._error_color + "error: " + self.name + ": " + msg + _RESET,
+                file=stderr,
+            )
         raise Error(msg)
 
     fn _error_with_usage(self, msg: String) raises:
@@ -789,10 +841,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Used for validation errors (missing required args, too many positionals)
         where showing the usage line helps the user understand what is expected.
         """
-        print(
-            self._error_color + "error: " + self.name + ": " + msg + _RESET,
-            file=stderr,
-        )
+        if Self._no_color_env():
+            print(
+                "error: " + self.name + ": " + msg,
+                file=stderr,
+            )
+        else:
+            print(
+                self._error_color + "error: " + self.name + ": " + msg + _RESET,
+                file=stderr,
+            )
         print(
             "\n" + self._plain_usage(),
             file=stderr,
@@ -817,7 +875,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     s += " [" + self.args[i].name + "]"
         var has_subcommands = False
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 has_subcommands = True
                 break
         if has_subcommands:
@@ -1468,7 +1529,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var avail = String("")
                 var first = True
                 for _si in range(len(self.subcommands)):
-                    if not self.subcommands[_si]._is_help_subcommand:
+                    if (
+                        not self.subcommands[_si]._is_help_subcommand
+                        and not self.subcommands[_si]._is_hidden
+                    ):
                         if not first:
                             avail += ", "
                         avail += self.subcommands[_si].name
@@ -1484,7 +1548,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 # Try typo suggestion for subcommand names.
                 var sub_names = List[String]()
                 for _si2 in range(len(self.subcommands)):
-                    if not self.subcommands[_si2]._is_help_subcommand:
+                    if (
+                        not self.subcommands[_si2]._is_help_subcommand
+                        and not self.subcommands[_si2]._is_hidden
+                    ):
                         sub_names.append(self.subcommands[_si2].name)
                         for _ai2 in range(
                             len(self.subcommands[_si2]._command_aliases)
@@ -2065,9 +2132,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
             A formatted help string.
         """
         # Resolve colour tokens — empty strings when colour is off.
-        var arg_color = self._arg_color if color else ""
-        var header_color = (_BOLD_UL + self._header_color) if color else ""
-        var reset_code = _RESET if color else ""
+        # NO_COLOR env var overrides the color parameter.
+        var use_color = color and not Self._no_color_env()
+        var arg_color = self._arg_color if use_color else ""
+        var header_color = (_BOLD_UL + self._header_color) if use_color else ""
+        var reset_code = _RESET if use_color else ""
 
         var s = String("")
         s += self._help_usage_line(arg_color, header_color, reset_code)
@@ -2126,7 +2195,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Show <COMMAND> placeholder when subcommands are registered.
         var has_subcommands = False
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 has_subcommands = True
                 break
         if has_subcommands:
@@ -2443,7 +2515,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var has_subcommands = False
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 has_subcommands = True
                 break
         # Also count completions subcommand if in subcommand mode.
@@ -2457,7 +2532,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var cmd_colors = List[String]()
         var cmd_helps = List[String]()
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 # Build label: "name" or "name, alias1, alias2".
                 var label = self.subcommands[i].name
                 for _ai in range(len(self.subcommands[i]._command_aliases)):
@@ -2738,7 +2816,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # Condition: no subcommand seen yet.
             var sub_names = String("")
             for i in range(len(self.subcommands)):
-                if not self.subcommands[i]._is_help_subcommand:
+                if (
+                    not self.subcommands[i]._is_help_subcommand
+                    and not self.subcommands[i]._is_hidden
+                ):
                     if sub_names:
                         sub_names += " "
                     sub_names += self.subcommands[i].name
@@ -2753,7 +2834,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
             var no_sub_cond = "__fish_seen_subcommand_from " + sub_names
 
             for i in range(len(self.subcommands)):
-                if self.subcommands[i]._is_help_subcommand:
+                if (
+                    self.subcommands[i]._is_help_subcommand
+                    or self.subcommands[i]._is_hidden
+                ):
                     continue
                 var sub = self.subcommands[i].copy()
                 # Register the subcommand itself.
@@ -2913,7 +2997,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # If there are subcommands, generate a dispatcher function.
         var has_subcommands = False
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 has_subcommands = True
                 break
         if self._completions_enabled and self._completions_is_subcommand:
@@ -2967,7 +3054,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         s += "  local -a commands\n"
         s += "  commands=(\n"
         for i in range(len(self.subcommands)):
-            if self.subcommands[i]._is_help_subcommand:
+            if (
+                self.subcommands[i]._is_help_subcommand
+                or self.subcommands[i]._is_hidden
+            ):
                 continue
             var sub = self.subcommands[i].copy()
             var desc = self._zsh_escape(
@@ -3011,7 +3101,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         s += "    args)\n"
         s += "      case $words[1] in\n"
         for i in range(len(self.subcommands)):
-            if self.subcommands[i]._is_help_subcommand:
+            if (
+                self.subcommands[i]._is_help_subcommand
+                or self.subcommands[i]._is_hidden
+            ):
                 continue
             var sub = self.subcommands[i].copy()
             # Build pattern: name|alias1|alias2
@@ -3149,7 +3242,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Check if there are subcommands.
         var has_subcommands = False
         for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
                 has_subcommands = True
                 break
         if self._completions_enabled and self._completions_is_subcommand:
@@ -3200,7 +3296,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Collect subcommand names.
         var sub_names = String("")
         for i in range(len(self.subcommands)):
-            if self.subcommands[i]._is_help_subcommand:
+            if (
+                self.subcommands[i]._is_help_subcommand
+                or self.subcommands[i]._is_hidden
+            ):
                 continue
             if sub_names:
                 sub_names += " "
@@ -3252,7 +3351,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         s += "  case $subcmd in\n"
         for i in range(len(self.subcommands)):
-            if self.subcommands[i]._is_help_subcommand:
+            if (
+                self.subcommands[i]._is_help_subcommand
+                or self.subcommands[i]._is_hidden
+            ):
                 continue
             var sub = self.subcommands[i].copy()
             var sub_words = String("--help")
