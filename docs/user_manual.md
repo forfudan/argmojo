@@ -970,7 +970,7 @@ myapp --port 50 --port 101
 
 ### Range Clamping (`.clamp()`)
 
-By default, an out-of-range value causes a hard error. If you prefer a gentler approach, chain `.clamp()` after `.range()` to **adjust** the value to the nearest boundary and print a warning instead of failing.
+By default, an out-of-range value causes a hard error. If you prefer a gentler approach, chain `.clamp()` after `.range[min, max]()` to **adjust** the value to the nearest boundary and print a warning instead of failing.
 
 ```mojo
 command.add_argument(

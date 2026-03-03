@@ -98,7 +98,8 @@ fn test_multiple_negative_positionals() raises:
 
     var args: List[String] = ["test", "-1", "-2.5"]
     var result = command.parse_arguments(args)
-    assert_equal(len(result._positionals), 2)
+    assert_true(result.has("a"))
+    assert_true(result.has("b"))
     assert_equal(result.get_string("a"), "-1")
     assert_equal(result.get_string("b"), "-2.5")
     print("  ✓ test_multiple_negative_positionals")

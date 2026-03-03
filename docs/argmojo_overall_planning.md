@@ -522,7 +522,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 #### Features
 
 - [x] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
-- [x] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 with a warning (no major library has this)
+- [x] **Flag counter with ceiling** — `.count().max[3]()` caps `-vvvvv` at 3 with a warning (no major library has this)
 - [x] **Range clamping** — `.range[min, max]().clamp()` adjusts out-of-range values to the nearest boundary with a warning instead of erroring (Click has `IntRange(clamp=True)`)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [x] **Shell completion script generation** — `generate_completion("bash"|"zsh"|"fish")` returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
@@ -647,7 +647,7 @@ These features represent the "next generation" of CLI parser design, inspired by
 | Typed retrieval              | `get_flag()->Bool`, `get_int()->Int`, `get_string()->String`, `get_count()->Int`, `get_list()->List[String]`, `get_map()->Dict[String,String]` | Already typed at retrieval                      |
 | Enum validation              | `.choices(["debug", "release"])`                                                                                                               | String-level enum; help shows `{debug,release}` |
 | Required / optional          | `.required()` / `.default("...")`                                                                                                              | Parse-time enforcement with coloured errors     |
-| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max(N)` caps at ceiling   |
+| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
 | Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
 | Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
 
