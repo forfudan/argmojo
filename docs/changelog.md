@@ -2,9 +2,9 @@
 
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
-<!-->
+<!--
 Do not add unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
-<-->
+-->
 
 ## 20260228 (v0.2.0)
 

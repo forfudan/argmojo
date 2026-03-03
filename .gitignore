@@ -30,6 +30,7 @@ logs/
 # Built example binaries
 /mgrep
 /mgit
+/demo
 
 # Local notes (not tracked)
 local/

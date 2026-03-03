@@ -1673,9 +1673,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for j in range(len(self.args)):
             var a = self.args[j].copy()
             if a.has_range and result.has(a.name):
-                var display = String("'") + a.name + "'"
-                if a.long_name:
-                    display = "'--" + a.long_name + "'"
+                var display = self._display_name(a.name)
                 # Get the raw string value(s) for this argument.
                 if a.is_append:
                     var lst = result.get_list(a.name)
@@ -1762,6 +1760,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + String(clamped)
                             )
                             result.values[a.name] = String(clamped)
+                            if a.is_positional:
+                                for pi in range(len(result._positional_names)):
+                                    if result._positional_names[pi] == a.name:
+                                        result.positionals[pi] = String(clamped)
+                                        break
                         else:
                             self._error(
                                 "Value "

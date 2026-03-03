@@ -1,5 +1,7 @@
 """Defines a single command-line argument."""
 
+from sys import exit, stderr
+
 
 comptime Arg = Argument
 """Shorthand alias for ``Argument``."""
@@ -393,6 +395,24 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the count ceiling set.
         """
+        if ceiling < 1:
+            print(
+                (
+                    "Argument.max(): ceiling must be >= 1; call .max() with"
+                    " a value of at least 1."
+                ),
+                file=stderr,
+            )
+            exit(1)
+        if not self.is_count:
+            print(
+                (
+                    "Argument.max(): can only be used after .count(); call"
+                    " .count() before .max()."
+                ),
+                file=stderr,
+            )
+            exit(1)
         self.count_max = ceiling
         self.has_count_max = True
         return self^
