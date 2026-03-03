@@ -399,7 +399,7 @@ myapp -vv            # verbose = 2  (below ceiling, not affected)
 The warning looks like:
 
 ```bash
-Warning: '--verbose' count 5 exceeds maximum 3, capped to 3
+warning: '--verbose' count 5 exceeds maximum 3, capped to 3
 ```
 
 This is useful when verbosity levels above a certain threshold have no additional effect, or to prevent accidental over-counting. From users' perspective, they get a clear warning rather than a hard error, which is friendlier than using the count option without a ceiling and silently ignoring extra occurrences.
@@ -696,7 +696,7 @@ command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").n
 ```
 
 `.number_of_values(N)` automatically implies `.append()` — values are stored in
-`ParseResult.lists` and retrieved with `get_list()`.
+`ParseResult._lists` and retrieved with `get_list()`.
 
 ---
 
@@ -990,7 +990,7 @@ myapp --level -3     # Warning, level = 0  (clamped to min)
 The warning looks like:
 
 ```bash
-Warning: '--level' value 20 is out of range [0, 9], clamped to 9
+warning: '--level' value 20 is out of range [0, 9], clamped to 9
 ```
 
 ---
@@ -1005,8 +1005,8 @@ command.add_argument(
 
 ```bash
 myapp --port 50 --port 200 --port 0
-# Warning: '--port' value 200 is out of range [1, 100], clamped to 100
-# Warning: '--port' value 0 is out of range [1, 100], clamped to 1
+# warning: '--port' value 200 is out of range [1, 100], clamped to 100
+# warning: '--port' value 0 is out of range [1, 100], clamped to 1
 # Result: ports = [50, 100, 1]
 ```
 
@@ -1643,7 +1643,7 @@ app.add_argument(Argument("fallback", help="Fallback").positional())
 # "foo" doesn't match any subcommand → treated as positional
 var args: List[String] = ["app", "foo"]
 var result = app.parse_arguments(args)
-print(result.positionals[0])  # "foo"
+print(result.get_string("fallback"))  # "foo"
 ```
 
 Please seriously **think twice** before doing this — it's usually better to design your CLI with a clear separation between subcommands and positionals. Allowing both on the same command can lead to confusing user experiences and error messages.

@@ -41,7 +41,8 @@ test = """\
 # build example binaries
 build = """pixi run package \
 && mojo build -I src examples/mgrep.mojo -o mgrep \
-&& mojo build -I src examples/mgit.mojo -o mgit"""
+&& mojo build -I src examples/mgit.mojo -o mgit \
+&& mojo build -I src examples/demo.mojo -o demo"""
 
 # clean build artifacts
-clean = "rm -f argmojo.mojopkg mgrep mgit"
+clean = "rm -f argmojo.mojopkg mgrep mgit demo"

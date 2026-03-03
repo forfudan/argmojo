@@ -30,6 +30,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     ```
     """
 
+    # === Public fields ===
     var name: String
     """The command name (typically the program name)."""
     var description: String
@@ -40,6 +41,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """Registered argument definitions."""
     var subcommands: List[Command]
     """Registered subcommand definitions. Each is a full Command instance."""
+
+    # === Private fields ===
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
     var _required_groups: List[List[String]]
@@ -245,7 +248,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         # Guard: positional args + subcommands require explicit opt-in.
         if (
-            argument.is_positional
+            argument._is_positional
             and len(self.subcommands) > 0
             and not self._allow_positional_with_subcommands
         ):
@@ -294,7 +297,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Guard: subcommands + positional args require explicit opt-in.
         if not self._allow_positional_with_subcommands:
             for _pi in range(len(self.args)):
-                if self.args[_pi].is_positional:
+                if self.args[_pi]._is_positional:
                     self._error(
                         "Cannot add subcommand '"
                         + sub.name
@@ -309,39 +312,39 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # any local arg in the child — that would make the option ambiguous
         # after injection.
         for pi in range(len(self.args)):
-            if not self.args[pi].is_persistent:
+            if not self.args[pi]._is_persistent:
                 continue
             var pa = self.args[pi].copy()
             for ci in range(len(sub.args)):
                 var ca = sub.args[ci].copy()
                 if (
-                    pa.long_name
-                    and ca.long_name
-                    and pa.long_name == ca.long_name
+                    pa._long_name
+                    and ca._long_name
+                    and pa._long_name == ca._long_name
                 ):
                     self._error(
                         "Persistent flag '--"
-                        + pa.long_name
+                        + pa._long_name
                         + "' on '"
                         + self.name
                         + "' conflicts with '--"
-                        + ca.long_name
+                        + ca._long_name
                         + "' on subcommand '"
                         + sub.name
                         + "'"
                     )
                 if (
-                    pa.short_name
-                    and ca.short_name
-                    and pa.short_name == ca.short_name
+                    pa._short_name
+                    and ca._short_name
+                    and pa._short_name == ca._short_name
                 ):
                     self._error(
                         "Persistent flag '-"
-                        + pa.short_name
+                        + pa._short_name
                         + "' on '"
                         + self.name
                         + "' conflicts with '-"
-                        + ca.short_name
+                        + ca._short_name
                         + "' on subcommand '"
                         + sub.name
                         + "'"
@@ -807,8 +810,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var s = String("Usage: ") + self.name
         for i in range(len(self.args)):
-            if self.args[i].is_positional and not self.args[i].is_hidden:
-                if self.args[i].is_required:
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                if self.args[i]._is_required:
                     s += " <" + self.args[i].name + ">"
                 else:
                     s += " [" + self.args[i].name + "]"
@@ -913,7 +916,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
-            if self.args[i].is_positional:
+            if self.args[i]._is_positional:
                 result._positional_names.append(self.args[i].name)
 
         # Skip argv[0] and start from argv[1].
@@ -937,7 +940,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 continue
 
             if stop_parsing_options:
-                result.positionals.append(arg)
+                result._positionals.append(arg)
                 i += 1
                 continue
 
@@ -989,12 +992,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if _looks_like_number(arg):
                     var has_digit_short = False
                     for _ni in range(len(self.args)):
-                        var sn = self.args[_ni].short_name
+                        var sn = self.args[_ni]._short_name
                         if sn >= "0" and sn <= "9":
                             has_digit_short = True
                             break
                     if self._allow_negative_numbers or not has_digit_short:
-                        result.positionals.append(arg)
+                        result._positionals.append(arg)
                         i += 1
                         continue
                 # ────────────────────────────────────────────────────────────
@@ -1033,7 +1036,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     i = new_i
                     continue
 
-            result.positionals.append(arg)
+            result._positionals.append(arg)
             i += 1
 
         # Apply defaults and validate constraints.
@@ -1085,8 +1088,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # Exact match first.
             for idx in range(len(self.args)):
                 if (
-                    self.args[idx].long_name == base_key
-                    and self.args[idx].is_negatable
+                    self.args[idx]._long_name == base_key
+                    and self.args[idx]._is_negatable
                 ):
                     is_negation = True
                     key = base_key
@@ -1097,15 +1100,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var neg_idx: Int = -1
                 for idx in range(len(self.args)):
                     if (
-                        self.args[idx].long_name
-                        and self.args[idx].long_name.startswith(base_key)
-                        and self.args[idx].is_negatable
+                        self.args[idx]._long_name
+                        and self.args[idx]._long_name.startswith(base_key)
+                        and self.args[idx]._is_negatable
                     ):
-                        neg_candidates.append(self.args[idx].long_name)
+                        neg_candidates.append(self.args[idx]._long_name)
                         neg_idx = idx
                 if len(neg_candidates) == 1:
                     is_negation = True
-                    key = self.args[neg_idx].long_name
+                    key = self.args[neg_idx]._long_name
                 elif len(neg_candidates) > 1:
                     var opts = String("")
                     for j in range(len(neg_candidates)):
@@ -1121,59 +1124,59 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         var matched: Argument = self._find_by_long(key)
         # Emit deprecation warning if applicable.
-        if matched.deprecated_msg:
+        if matched._deprecated_msg:
             self._warn(
-                "'--" + key + "' is deprecated: " + matched.deprecated_msg
+                "'--" + key + "' is deprecated: " + matched._deprecated_msg
             )
         if is_negation:
-            result.flags[matched.name] = False
-        elif matched.is_count and not has_eq:
+            result._flags[matched.name] = False
+        elif matched._is_count and not has_eq:
             # Count flag: increment counter.
             var cur: Int = 0
             try:
-                cur = result.counts[matched.name]
+                cur = result._counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
-        elif matched.is_flag and not has_eq:
-            result.flags[matched.name] = True
-        elif matched.num_values > 0:
+            result._counts[matched.name] = cur + 1
+        elif matched._is_flag and not has_eq:
+            result._flags[matched.name] = True
+        elif matched._number_of_values > 0:
             # nargs: consume exactly N values.
             if has_eq:
                 self._error(
                     "Option '--"
                     + key
                     + "' takes "
-                    + String(matched.num_values)
+                    + String(matched._number_of_values)
                     + " values; '=' syntax is not supported"
                 )
-            if matched.name not in result.lists:
-                result.lists[matched.name] = List[String]()
-            for _n in range(matched.num_values):
+            if matched.name not in result._lists:
+                result._lists[matched.name] = List[String]()
+            for _n in range(matched._number_of_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '--"
                         + key
                         + "' requires "
-                        + String(matched.num_values)
+                        + String(matched._number_of_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
-                result.lists[matched.name].append(raw_args[i])
+                result._lists[matched.name].append(raw_args[i])
         else:
             if not has_eq:
                 i += 1
                 if i >= len(raw_args):
                     self._error("Option '--" + key + "' requires a value")
                 value = raw_args[i]
-            if matched.is_map:
+            if matched._is_map:
                 self._store_map_value(matched, value, result)
-            elif matched.is_append:
+            elif matched._is_append:
                 self._store_append_value(matched, value, result)
             else:
                 self._validate_choices(matched, value)
-                result.values[matched.name] = value
+                result._values[matched.name] = value
         i += 1
         return i
 
@@ -1198,47 +1201,47 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var i = start
         var matched = self._find_by_short(key)
         # Emit deprecation warning if applicable.
-        if matched.deprecated_msg:
+        if matched._deprecated_msg:
             self._warn(
-                "'-" + key + "' is deprecated: " + matched.deprecated_msg
+                "'-" + key + "' is deprecated: " + matched._deprecated_msg
             )
-        if matched.is_count:
+        if matched._is_count:
             var cur: Int = 0
             try:
-                cur = result.counts[matched.name]
+                cur = result._counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
-        elif matched.is_flag:
-            result.flags[matched.name] = True
-        elif matched.num_values > 0:
+            result._counts[matched.name] = cur + 1
+        elif matched._is_flag:
+            result._flags[matched.name] = True
+        elif matched._number_of_values > 0:
             # nargs: consume exactly N values.
-            if matched.name not in result.lists:
-                result.lists[matched.name] = List[String]()
-            for _n in range(matched.num_values):
+            if matched.name not in result._lists:
+                result._lists[matched.name] = List[String]()
+            for _n in range(matched._number_of_values):
                 i += 1
                 if i >= len(raw_args):
                     self._error(
                         "Option '-"
                         + key
                         + "' requires "
-                        + String(matched.num_values)
+                        + String(matched._number_of_values)
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
-                result.lists[matched.name].append(raw_args[i])
+                result._lists[matched.name].append(raw_args[i])
         else:
             i += 1
             if i >= len(raw_args):
                 self._error("Option '-" + key + "' requires a value")
             var val = raw_args[i]
-            if matched.is_map:
+            if matched._is_map:
                 self._store_map_value(matched, val, result)
-            elif matched.is_append:
+            elif matched._is_append:
                 self._store_append_value(matched, val, result)
             else:
                 self._validate_choices(matched, val)
-                result.values[matched.name] = val
+                result._values[matched.name] = val
         i += 1
         return i
 
@@ -1272,7 +1275,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var first_char = String(key[0:1])
         var first_match = self._find_by_short(first_char)
 
-        if first_match.is_flag:
+        if first_match._is_flag:
             # First char is a flag — treat entire string as merged
             # flags, except the last char which may take a value.
             var j: Int = 0
@@ -1280,38 +1283,38 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var ch = String(key[j : j + 1])
                 var m = self._find_by_short(ch)
                 # Emit deprecation warning if applicable.
-                if m.deprecated_msg:
+                if m._deprecated_msg:
                     self._warn(
-                        "'-" + ch + "' is deprecated: " + m.deprecated_msg
+                        "'-" + ch + "' is deprecated: " + m._deprecated_msg
                     )
-                if m.is_count:
+                if m._is_count:
                     var cur: Int = 0
                     try:
-                        cur = result.counts[m.name]
+                        cur = result._counts[m.name]
                     except:
                         pass
-                    result.counts[m.name] = cur + 1
+                    result._counts[m.name] = cur + 1
                     j += 1
-                elif m.is_flag:
-                    result.flags[m.name] = True
+                elif m._is_flag:
+                    result._flags[m.name] = True
                     j += 1
-                elif m.num_values > 0:
+                elif m._number_of_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
-                    if m.name not in result.lists:
-                        result.lists[m.name] = List[String]()
-                    for _n in range(m.num_values):
+                    if m.name not in result._lists:
+                        result._lists[m.name] = List[String]()
+                    for _n in range(m._number_of_values):
                         i += 1
                         if i >= len(raw_args):
                             self._error(
                                 "Option '-"
                                 + ch
                                 + "' requires "
-                                + String(m.num_values)
+                                + String(m._number_of_values)
                                 + " values"
                             )
                         self._validate_choices(m, raw_args[i])
-                        result.lists[m.name].append(raw_args[i])
+                        result._lists[m.name].append(raw_args[i])
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -1322,51 +1325,51 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         if i >= len(raw_args):
                             self._error("Option '-" + ch + "' requires a value")
                         val = raw_args[i]
-                    if m.is_map:
+                    if m._is_map:
                         self._store_map_value(m, val, result)
-                    elif m.is_append:
+                    elif m._is_append:
                         self._store_append_value(m, val, result)
                     else:
                         self._validate_choices(m, val)
-                        result.values[m.name] = val
+                        result._values[m.name] = val
                     j = len(key)  # break
         else:
             # First char takes a value — rest of string is the
             # attached value (e.g., -ofile.txt).
             # Emit deprecation warning if applicable.
-            if first_match.deprecated_msg:
+            if first_match._deprecated_msg:
                 self._warn(
                     "'-"
                     + first_char
                     + "' is deprecated: "
-                    + first_match.deprecated_msg
+                    + first_match._deprecated_msg
                 )
-            if first_match.num_values > 0:
+            if first_match._number_of_values > 0:
                 # nargs: consume N values from argv (ignore attached).
-                if first_match.name not in result.lists:
-                    result.lists[first_match.name] = List[String]()
-                for _n in range(first_match.num_values):
+                if first_match.name not in result._lists:
+                    result._lists[first_match.name] = List[String]()
+                for _n in range(first_match._number_of_values):
                     i += 1
                     if i >= len(raw_args):
                         self._error(
                             "Option '-"
                             + first_char
                             + "' requires "
-                            + String(first_match.num_values)
+                            + String(first_match._number_of_values)
                             + " values"
                         )
                     self._validate_choices(first_match, raw_args[i])
-                    result.lists[first_match.name].append(raw_args[i])
-            elif first_match.is_map:
+                    result._lists[first_match.name].append(raw_args[i])
+            elif first_match._is_map:
                 var val = String(key[1:])
                 self._store_map_value(first_match, val, result)
-            elif first_match.is_append:
+            elif first_match._is_append:
                 var val = String(key[1:])
                 self._store_append_value(first_match, val, result)
             else:
                 var val = String(key[1:])
                 self._validate_choices(first_match, val)
-                result.values[first_match.name] = val
+                result._values[first_match.name] = val
         i += 1
         return i
 
@@ -1424,7 +1427,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # Set full command path so child help/errors show "app sub".
             child_copy.name = self.name + " " + canon
             for _pi in range(len(self.args)):
-                if self.args[_pi].is_persistent:
+                if self.args[_pi]._is_persistent:
                     child_copy.args.append(self.args[_pi].copy())
             var child_result = child_copy.parse_arguments(child_argv)
             # Bubble up persistent values from child to root result so
@@ -1435,23 +1438,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # Also push down root-parsed persistent values to child
             # result so that sub_result.get_flag("x") always works too.
             for _pi in range(len(self.args)):
-                if not self.args[_pi].is_persistent:
+                if not self.args[_pi]._is_persistent:
                     continue
                 var _pn = self.args[_pi].name
                 # Bubble up: child parsed flag after subcommand token.
-                if _pn in child_result.flags and _pn not in result.flags:
-                    result.flags[_pn] = child_result.flags[_pn]
-                if _pn in child_result.values and _pn not in result.values:
-                    result.values[_pn] = child_result.values[_pn]
-                if _pn in child_result.counts and _pn not in result.counts:
-                    result.counts[_pn] = child_result.counts[_pn]
+                if _pn in child_result._flags and _pn not in result._flags:
+                    result._flags[_pn] = child_result._flags[_pn]
+                if _pn in child_result._values and _pn not in result._values:
+                    result._values[_pn] = child_result._values[_pn]
+                if _pn in child_result._counts and _pn not in result._counts:
+                    result._counts[_pn] = child_result._counts[_pn]
                 # Push down: root parsed flag before subcommand token.
-                if _pn in result.flags and _pn not in child_result.flags:
-                    child_result.flags[_pn] = result.flags[_pn]
-                if _pn in result.values and _pn not in child_result.values:
-                    child_result.values[_pn] = result.values[_pn]
-                if _pn in result.counts and _pn not in child_result.counts:
-                    child_result.counts[_pn] = result.counts[_pn]
+                if _pn in result._flags and _pn not in child_result._flags:
+                    child_result._flags[_pn] = result._flags[_pn]
+                if _pn in result._values and _pn not in child_result._values:
+                    child_result._values[_pn] = result._values[_pn]
+                if _pn in result._counts and _pn not in child_result._counts:
+                    child_result._counts[_pn] = result._counts[_pn]
             result.subcommand = canon
             result._subcommand_results.append(child_result^)
             # All remaining tokens were consumed by the child.
@@ -1510,7 +1513,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Fills in default values for arguments not provided by the user.
 
         For positional arguments, defaults are placed into the correct slot.
-        For named arguments, the default is stored in ``result.values``.
+        For named arguments, the default is stored in ``result._values``.
 
         Args:
             result: The parse result to mutate in-place.
@@ -1521,17 +1524,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         for j in range(len(self.args)):
             var a = self.args[j].copy()
-            if a.has_default and not result.has(a.name):
-                if a.is_positional:
+            if a._has_default and not result.has(a.name):
+                if a._is_positional:
                     # Fill positional to the right slot.
                     for k in range(len(result._positional_names)):
                         if result._positional_names[k] == a.name:
-                            while len(result.positionals) <= k:
-                                result.positionals.append("")
-                            if not result.positionals[k]:
-                                result.positionals[k] = a.default_value
+                            while len(result._positionals) <= k:
+                                result._positionals.append("")
+                            if not result._positionals[k]:
+                                result._positionals[k] = a._default_value
                 else:
-                    result.values[a.name] = a.default_value
+                    result._values[a.name] = a._default_value
 
     fn _validate(self, mut result: ParseResult) raises:
         """Runs all post-parse validation checks on the result.
@@ -1555,19 +1558,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Validate required arguments.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
-            if a.is_required and not result.has(a.name):
+            if a._is_required and not result.has(a.name):
                 self._error_with_usage(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
-        if expected_count > 0 and len(result.positionals) > expected_count:
+        if expected_count > 0 and len(result._positionals) > expected_count:
             self._error_with_usage(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
-                + String(len(result.positionals))
+                + String(len(result._positionals))
             )
 
         # Validate mutually exclusive groups.
@@ -1651,33 +1654,31 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Validate count ceilings — clamp and warn.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
-            if a.is_count and a.has_count_max:
+            if a._is_count and a._has_count_max:
                 var cur: Int
                 try:
-                    cur = result.counts[a.name]
+                    cur = result._counts[a.name]
                 except:
                     continue
-                if cur > a.count_max:
+                if cur > a._count_max:
                     self._warn(
                         self._display_name(a.name)
                         + " count "
                         + String(cur)
                         + " exceeds maximum "
-                        + String(a.count_max)
+                        + String(a._count_max)
                         + ", capped to "
-                        + String(a.count_max)
+                        + String(a._count_max)
                     )
-                    result.counts[a.name] = a.count_max
+                    result._counts[a.name] = a._count_max
 
         # Validate numeric range constraints.
         for j in range(len(self.args)):
             var a = self.args[j].copy()
-            if a.has_range and result.has(a.name):
-                var display = String("'") + a.name + "'"
-                if a.long_name:
-                    display = "'--" + a.long_name + "'"
+            if a._has_range and result.has(a.name):
+                var display = self._display_name(a.name)
                 # Get the raw string value(s) for this argument.
-                if a.is_append:
+                if a._is_append:
                     var lst = result.get_list(a.name)
                     for k in range(len(lst)):
                         var v: Int = (
@@ -1693,25 +1694,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + lst[k]
                                 + "'"
                             )
-                        if v < a.range_min or v > a.range_max:
-                            if a.is_clamp:
+                        if v < a._range_min or v > a._range_max:
+                            if a._is_clamp:
                                 var clamped = v
-                                if v < a.range_min:
-                                    clamped = a.range_min
-                                elif v > a.range_max:
-                                    clamped = a.range_max
+                                if v < a._range_min:
+                                    clamped = a._range_min
+                                elif v > a._range_max:
+                                    clamped = a._range_max
                                 self._warn(
                                     display
                                     + " value "
                                     + String(v)
                                     + " is out of range ["
-                                    + String(a.range_min)
+                                    + String(a._range_min)
                                     + ", "
-                                    + String(a.range_max)
+                                    + String(a._range_max)
                                     + "], clamped to "
                                     + String(clamped)
                                 )
-                                result.lists[a.name][k] = String(clamped)
+                                result._lists[a.name][k] = String(clamped)
                             else:
                                 self._error(
                                     "Value "
@@ -1719,9 +1720,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                     + " for "
                                     + display
                                     + " is out of range ["
-                                    + String(a.range_min)
+                                    + String(a._range_min)
                                     + ", "
-                                    + String(a.range_max)
+                                    + String(a._range_max)
                                     + "]"
                                 )
                 else:
@@ -1743,25 +1744,32 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             + raw
                             + "'"
                         )
-                    if v < a.range_min or v > a.range_max:
-                        if a.is_clamp:
+                    if v < a._range_min or v > a._range_max:
+                        if a._is_clamp:
                             var clamped = v
-                            if v < a.range_min:
-                                clamped = a.range_min
-                            elif v > a.range_max:
-                                clamped = a.range_max
+                            if v < a._range_min:
+                                clamped = a._range_min
+                            elif v > a._range_max:
+                                clamped = a._range_max
                             self._warn(
                                 display
                                 + " value "
                                 + String(v)
                                 + " is out of range ["
-                                + String(a.range_min)
+                                + String(a._range_min)
                                 + ", "
-                                + String(a.range_max)
+                                + String(a._range_max)
                                 + "], clamped to "
                                 + String(clamped)
                             )
-                            result.values[a.name] = String(clamped)
+                            result._values[a.name] = String(clamped)
+                            if a._is_positional:
+                                for pi in range(len(result._positional_names)):
+                                    if result._positional_names[pi] == a.name:
+                                        result._positionals[pi] = String(
+                                            clamped
+                                        )
+                                        break
                         else:
                             self._error(
                                 "Value "
@@ -1769,9 +1777,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + " for "
                                 + display
                                 + " is out of range ["
-                                + String(a.range_min)
+                                + String(a._range_min)
                                 + ", "
-                                + String(a.range_max)
+                                + String(a._range_max)
                                 + "]"
                             )
 
@@ -1799,37 +1807,37 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         # 1. Exact match on long_name.
         for i in range(len(self.args)):
-            if self.args[i].long_name == name:
+            if self.args[i]._long_name == name:
                 return self.args[i].copy()
 
         # 2. Exact match on aliases.
         for i in range(len(self.args)):
-            for j in range(len(self.args[i].alias_names)):
-                if self.args[i].alias_names[j] == name:
+            for j in range(len(self.args[i]._alias_names)):
+                if self.args[i]._alias_names[j] == name:
                     return self.args[i].copy()
 
         # 3. Prefix match on long_name.
         var candidates = List[String]()
         var candidate_idx: Int = -1
         for i in range(len(self.args)):
-            if self.args[i].long_name and self.args[i].long_name.startswith(
+            if self.args[i]._long_name and self.args[i]._long_name.startswith(
                 name
             ):
-                candidates.append(self.args[i].long_name)
+                candidates.append(self.args[i]._long_name)
                 candidate_idx = i
 
         # 4. Prefix match on aliases.
         for i in range(len(self.args)):
-            for j in range(len(self.args[i].alias_names)):
-                if self.args[i].alias_names[j].startswith(name):
+            for j in range(len(self.args[i]._alias_names)):
+                if self.args[i]._alias_names[j].startswith(name):
                     # Avoid duplicate if the same arg already matched via long_name.
                     var already = False
                     for k in range(len(candidates)):
-                        if candidates[k] == self.args[i].long_name:
+                        if candidates[k] == self.args[i]._long_name:
                             already = True
                             break
                     if not already:
-                        candidates.append(self.args[i].long_name)
+                        candidates.append(self.args[i]._long_name)
                         candidate_idx = i
 
         if len(candidates) == 1:
@@ -1848,10 +1856,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Collect all known long names + aliases for typo suggestion.
         var all_longs = List[String]()
         for i in range(len(self.args)):
-            if self.args[i].long_name != "":
-                all_longs.append(self.args[i].long_name)
-            for j in range(len(self.args[i].alias_names)):
-                all_longs.append(self.args[i].alias_names[j])
+            if self.args[i]._long_name != "":
+                all_longs.append(self.args[i]._long_name)
+            for j in range(len(self.args[i]._alias_names)):
+                all_longs.append(self.args[i]._alias_names[j])
         var suggestion = _suggest_similar(name, all_longs)
         if suggestion != "":
             self._error(
@@ -1879,7 +1887,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             Error if no argument matches.
         """
         for i in range(len(self.args)):
-            if self.args[i].short_name == name:
+            if self.args[i]._short_name == name:
                 return self.args[i].copy()
         # Short options are always a single character; any two single-character
         # inputs have Levenshtein distance ≤ 1, so the threshold would always
@@ -1926,10 +1934,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         for i in range(len(self.args)):
             if self.args[i].name == name:
-                if self.args[i].long_name:
-                    return "'--" + self.args[i].long_name + "'"
-                elif self.args[i].short_name:
-                    return "'-" + self.args[i].short_name + "'"
+                if self.args[i]._long_name:
+                    return "'--" + self.args[i]._long_name + "'"
+                elif self.args[i]._short_name:
+                    return "'-" + self.args[i]._short_name + "'"
                 break
         return "'" + name + "'"
 
@@ -1943,16 +1951,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error if the value is not in the allowed choices.
         """
-        if len(arg.choice_values) == 0:
+        if len(arg._choice_values) == 0:
             return
-        for i in range(len(arg.choice_values)):
-            if arg.choice_values[i] == value:
+        for i in range(len(arg._choice_values)):
+            if arg._choice_values[i] == value:
                 return
         var allowed = String("")
-        for i in range(len(arg.choice_values)):
+        for i in range(len(arg._choice_values)):
             if i > 0:
                 allowed += ", "
-            allowed += "'" + arg.choice_values[i] + "'"
+            allowed += "'" + arg._choice_values[i] + "'"
         self._error(
             "Invalid value '"
             + value
@@ -1977,18 +1985,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
             value: The raw value string.
             result: The ParseResult to store into.
         """
-        if arg.name not in result.lists:
-            result.lists[arg.name] = List[String]()
-        if arg.delimiter_char:
-            var parts = value.split(arg.delimiter_char)
+        if arg.name not in result._lists:
+            result._lists[arg.name] = List[String]()
+        if arg._delimiter_char:
+            var parts = value.split(arg._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:  # skip empty pieces from e.g. trailing comma
                     self._validate_choices(arg, piece)
-                    result.lists[arg.name].append(piece)
+                    result._lists[arg.name].append(piece)
         else:
             self._validate_choices(arg, value)
-            result.lists[arg.name].append(value)
+            result._lists[arg.name].append(value)
 
     fn _store_map_value(
         self, arg: Argument, value: String, mut result: ParseResult
@@ -2004,14 +2012,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
             value: The raw value string (e.g., "key=value").
             result: The ParseResult to store into.
         """
-        if arg.name not in result.maps:
-            result.maps[arg.name] = Dict[String, String]()
+        if arg.name not in result._maps:
+            result._maps[arg.name] = Dict[String, String]()
         # Also store in lists for has() detection.
-        if arg.name not in result.lists:
-            result.lists[arg.name] = List[String]()
+        if arg.name not in result._lists:
+            result._lists[arg.name] = List[String]()
 
-        if arg.delimiter_char:
-            var parts = value.split(arg.delimiter_char)
+        if arg._delimiter_char:
+            var parts = value.split(arg._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:
@@ -2026,8 +2034,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         )
                     var k = String(piece[:eq])
                     var v = String(piece[eq + 1 :])
-                    result.maps[arg.name][k] = v
-                    result.lists[arg.name].append(piece)
+                    result._maps[arg.name][k] = v
+                    result._lists[arg.name].append(piece)
         else:
             var eq = value.find("=")
             if eq < 0:
@@ -2040,8 +2048,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
             var k = String(value[:eq])
             var v = String(value[eq + 1 :])
-            result.maps[arg.name][k] = v
-            result.lists[arg.name].append(value)
+            result._maps[arg.name][k] = v
+            result._lists[arg.name].append(value)
 
     fn _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
@@ -2095,8 +2103,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Show positional args in usage line.
         for i in range(len(self.args)):
-            if self.args[i].is_positional and not self.args[i].is_hidden:
-                if self.args[i].is_required:
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                if self.args[i]._is_required:
                     s += (
                         " "
                         + arg_color
@@ -2148,7 +2156,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var has_positional = False
         for i in range(len(self.args)):
-            if self.args[i].is_positional and not self.args[i].is_hidden:
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
                 has_positional = True
                 break
 
@@ -2160,7 +2168,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var pos_colors = List[String]()  # coloured text for display
         var pos_helps = List[String]()
         for i in range(len(self.args)):
-            if self.args[i].is_positional and not self.args[i].is_hidden:
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
                 var plain = String("  ") + self.args[i].name
                 var colored = (
                     String("  ") + arg_color + self.args[i].name + reset_code
@@ -2214,57 +2222,57 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var opt_persistent = List[Bool]()
 
         for i in range(len(self.args)):
-            if not self.args[i].is_positional and not self.args[i].is_hidden:
+            if not self.args[i]._is_positional and not self.args[i]._is_hidden:
                 var plain = String("  ")
                 var colored = String("  ")
-                if self.args[i].short_name:
-                    plain += "-" + self.args[i].short_name
+                if self.args[i]._short_name:
+                    plain += "-" + self.args[i]._short_name
                     colored += (
-                        arg_color + "-" + self.args[i].short_name + reset_code
+                        arg_color + "-" + self.args[i]._short_name + reset_code
                     )
-                    if self.args[i].long_name:
+                    if self.args[i]._long_name:
                         plain += ", "
                         colored += ", "
                 else:
                     plain += "    "
                     colored += "    "
-                if self.args[i].long_name:
-                    var long_part = String("--") + self.args[i].long_name
+                if self.args[i]._long_name:
+                    var long_part = String("--") + self.args[i]._long_name
                     plain += long_part
                     colored += arg_color + long_part + reset_code
-                    if self.args[i].is_negatable:
+                    if self.args[i]._is_negatable:
                         var neg_part = (
-                            String(" / --no-") + self.args[i].long_name
+                            String(" / --no-") + self.args[i]._long_name
                         )
                         plain += neg_part
                         colored += (
                             " / "
                             + arg_color
                             + "--no-"
-                            + self.args[i].long_name
+                            + self.args[i]._long_name
                             + reset_code
                         )
                     # Show aliases.
-                    for j in range(len(self.args[i].alias_names)):
+                    for j in range(len(self.args[i]._alias_names)):
                         var alias_part = (
-                            String(", --") + self.args[i].alias_names[j]
+                            String(", --") + self.args[i]._alias_names[j]
                         )
                         plain += alias_part
                         colored += (
                             ", "
                             + arg_color
                             + "--"
-                            + self.args[i].alias_names[j]
+                            + self.args[i]._alias_names[j]
                             + reset_code
                         )
 
                 # Show metavar or choices for value-taking options.
-                if not self.args[i].is_flag:
-                    var ncount = self.args[i].num_values
+                if not self.args[i]._is_flag:
+                    var ncount = self.args[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
-                    var append_dots = self.args[i].is_append and ncount == 0
-                    if self.args[i].metavar_name:
-                        var mv = self.args[i].metavar_name
+                    var append_dots = self.args[i]._is_append and ncount == 0
+                    if self.args[i]._metavar:
+                        var mv = self.args[i]._metavar
                         var mv_plain = String("")
                         var mv_colored = String("")
                         for _r in range(repeat - 1):
@@ -2276,12 +2284,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         mv_colored += " " + arg_color + last + reset_code
                         plain += mv_plain
                         colored += mv_colored
-                    elif len(self.args[i].choice_values) > 0:
+                    elif len(self.args[i]._choice_values) > 0:
                         var choices_str = String("{")
-                        for j in range(len(self.args[i].choice_values)):
+                        for j in range(len(self.args[i]._choice_values)):
                             if j > 0:
                                 choices_str += ","
-                            choices_str += self.args[i].choice_values[j]
+                            choices_str += self.args[i]._choice_values[j]
                         choices_str += "}"
                         var suffix = choices_str
                         if append_dots:
@@ -2291,7 +2299,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     else:
                         # Default placeholder: <key=value> for map, <name> otherwise.
                         var tag: String
-                        if self.args[i].is_map:
+                        if self.args[i]._is_map:
                             tag = "<key=value>"
                         else:
                             tag = "<" + self.args[i].name + ">"
@@ -2309,13 +2317,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
                 opt_plains.append(plain)
                 opt_colors.append(colored)
-                opt_persistent.append(self.args[i].is_persistent)
+                opt_persistent.append(self.args[i]._is_persistent)
                 # Append deprecation notice to help text if applicable.
                 var help = self.args[i].help_text
-                if self.args[i].deprecated_msg:
+                if self.args[i]._deprecated_msg:
                     if help:
                         help += " "
-                    help += "[deprecated: " + self.args[i].deprecated_msg + "]"
+                    help += "[deprecated: " + self.args[i]._deprecated_msg + "]"
                 opt_helps.append(help)
 
         # Built-in options (always shown under local "Options:" section).
@@ -2505,7 +2513,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var has_positional = False
         for i in range(len(self.args)):
-            if self.args[i].is_positional and not self.args[i].is_hidden:
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
                 has_positional = True
                 break
 
@@ -2520,7 +2528,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not neg_auto:
                 var has_digit_short = False
                 for _ti in range(len(self.args)):
-                    var sc = self.args[_ti].short_name
+                    var sc = self.args[_ti]._short_name
                     if len(sc) == 1 and sc[0:1] >= "0" and sc[0:1] <= "9":
                         has_digit_short = True
                         break
@@ -2567,7 +2575,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Positional arguments.
         for i in range(len(self.args)):
-            if self.args[i].is_positional:
+            if self.args[i]._is_positional:
                 var val = String("(not set)")
                 try:
                     val = result.get_string(self.args[i].name)
@@ -2580,28 +2588,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var displays = List[String]()
         var value_strs = List[String]()
         for i in range(len(self.args)):
-            if self.args[i].is_positional:
+            if self.args[i]._is_positional:
                 continue
             # Skip hidden args that weren't provided.
-            if self.args[i].is_hidden and not result.has(self.args[i].name):
+            if self.args[i]._is_hidden and not result.has(self.args[i].name):
                 continue
 
             var display = String("")
-            if self.args[i].short_name:
-                display += "-" + self.args[i].short_name
-            if self.args[i].long_name:
+            if self.args[i]._short_name:
+                display += "-" + self.args[i]._short_name
+            if self.args[i]._long_name:
                 if display:
                     display += ", "
-                display += "--" + self.args[i].long_name
+                display += "--" + self.args[i]._long_name
             displays.append(display)
 
             var val_str: String
-            if self.args[i].is_count:
+            if self.args[i]._is_count:
                 val_str = String(result.get_count(self.args[i].name))
-            elif self.args[i].is_flag:
+            elif self.args[i]._is_flag:
                 val_str = String(result.get_flag(self.args[i].name))
-            elif self.args[i].is_map:
-                if self.args[i].name in result.maps:
+            elif self.args[i]._is_map:
+                if self.args[i].name in result._maps:
                     var m = result.get_map(self.args[i].name)
                     var s = String("{")
                     var first = True
@@ -2614,7 +2622,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     val_str = s
                 else:
                     val_str = "{}"
-            elif self.args[i].is_append:
+            elif self.args[i]._is_append:
                 var lst = result.get_list(self.args[i].name)
                 if len(lst) > 0:
                     var s = String("[")
@@ -2788,22 +2796,22 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 # Iterate sub.args for subcommand's own arguments.
                 for j in range(len(sub.args)):
                     var arg = sub.args[j].copy()
-                    if arg.is_hidden or arg.is_positional:
+                    if arg._is_hidden or arg._is_positional:
                         continue
                     var line = "complete -c " + self.name
                     line += " -n '" + sub_cond + "'"
-                    if arg.short_name:
-                        line += " -s " + arg.short_name
-                    if arg.long_name:
-                        line += " -l " + arg.long_name
-                    if not arg.is_flag and not arg.is_count:
+                    if arg._short_name:
+                        line += " -s " + arg._short_name
+                    if arg._long_name:
+                        line += " -l " + arg._long_name
+                    if not arg._is_flag and not arg._is_count:
                         line += " -r"
-                    if len(arg.choice_values) > 0:
+                    if len(arg._choice_values) > 0:
                         var choices = String("")
-                        for k in range(len(arg.choice_values)):
+                        for k in range(len(arg._choice_values)):
                             if choices:
                                 choices += " "
-                            choices += arg.choice_values[k]
+                            choices += arg._choice_values[k]
                         line += " -a '" + choices + "'"
                     if arg.help_text:
                         line += " -d '" + self._fish_escape(arg.help_text) + "'"
@@ -2849,25 +2857,25 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var s = String("")
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
-            if arg.is_hidden or arg.is_positional:
+            if arg._is_hidden or arg._is_positional:
                 continue
-            if persistent_only and not arg.is_persistent:
+            if persistent_only and not arg._is_persistent:
                 continue
             var line = "complete -c " + cmd_name
             if condition:
                 line += " -n '" + condition + "'"
-            if arg.short_name:
-                line += " -s " + arg.short_name
-            if arg.long_name:
-                line += " -l " + arg.long_name
-            if not arg.is_flag and not arg.is_count:
+            if arg._short_name:
+                line += " -s " + arg._short_name
+            if arg._long_name:
+                line += " -l " + arg._long_name
+            if not arg._is_flag and not arg._is_count:
                 line += " -r"
-            if len(arg.choice_values) > 0:
+            if len(arg._choice_values) > 0:
                 var choices = String("")
-                for k in range(len(arg.choice_values)):
+                for k in range(len(arg._choice_values)):
                     if choices:
                         choices += " "
-                    choices += arg.choice_values[k]
+                    choices += arg._choice_values[k]
                 line += " -a '" + choices + "'"
             if arg.help_text:
                 line += " -d '" + self._fish_escape(arg.help_text) + "'"
@@ -2930,9 +2938,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # User-defined arguments.
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
-            if arg.is_hidden:
+            if arg._is_hidden:
                 continue
-            if arg.is_positional:
+            if arg._is_positional:
                 continue
             s += "    " + self._zsh_arg_spec(arg) + " \\\n"
         # Built-in options.
@@ -2981,7 +2989,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Root-level options.
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
-            if arg.is_hidden or arg.is_positional:
+            if arg._is_hidden or arg._is_positional:
                 continue
             s += "    " + self._zsh_arg_spec(arg) + " \\\n"
         s += "    '(- *)'{-h,--help}'[Show this help message]' \\\n"
@@ -3014,9 +3022,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += "          _arguments \\\n"
             for j in range(len(sub.args)):
                 var arg = sub.args[j].copy()
-                if arg.is_hidden:
+                if arg._is_hidden:
                     continue
-                if arg.is_positional:
+                if arg._is_positional:
                     continue
                 s += "            " + self._zsh_arg_spec(arg) + " \\\n"
             s += "            '(- *)'{-h,--help}'[Show this help message]'\n"
@@ -3049,51 +3057,51 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var spec = String("")
         var desc = self._zsh_escape(arg.help_text) if arg.help_text else ""
 
-        if arg.short_name and arg.long_name:
+        if arg._short_name and arg._long_name:
             # Grouped short+long form.
             spec += (
                 "'(-"
-                + arg.short_name
+                + arg._short_name
                 + " --"
-                + arg.long_name
+                + arg._long_name
                 + ")'"
                 + "{-"
-                + arg.short_name
+                + arg._short_name
                 + ",--"
-                + arg.long_name
+                + arg._long_name
                 + "}"
             )
-        elif arg.long_name:
-            spec += "'--" + arg.long_name
-        elif arg.short_name:
-            spec += "'-" + arg.short_name
+        elif arg._long_name:
+            spec += "'--" + arg._long_name
+        elif arg._short_name:
+            spec += "'-" + arg._short_name
 
-        if arg.short_name and arg.long_name:
+        if arg._short_name and arg._long_name:
             # Description + value spec.
             spec += "'[" + desc + "]"
-            if not arg.is_flag and not arg.is_count:
-                if len(arg.choice_values) > 0:
+            if not arg._is_flag and not arg._is_count:
+                if len(arg._choice_values) > 0:
                     var choices = String("")
-                    for k in range(len(arg.choice_values)):
+                    for k in range(len(arg._choice_values)):
                         if choices:
                             choices += " "
-                        choices += arg.choice_values[k]
+                        choices += arg._choice_values[k]
                     spec += ":value:(" + choices + ")"
                 else:
-                    var mv = arg.metavar_name if arg.metavar_name else arg.name
+                    var mv = arg._metavar if arg._metavar else arg.name
                     spec += ":" + mv + ":"
             spec += "'"
         else:
-            if not arg.is_flag and not arg.is_count:
-                if len(arg.choice_values) > 0:
+            if not arg._is_flag and not arg._is_count:
+                if len(arg._choice_values) > 0:
                     var choices = String("")
-                    for k in range(len(arg.choice_values)):
+                    for k in range(len(arg._choice_values)):
                         if choices:
                             choices += " "
-                        choices += arg.choice_values[k]
+                        choices += arg._choice_values[k]
                     spec += "[" + desc + "]:value:(" + choices + ")'"
                 else:
-                    var mv = arg.metavar_name if arg.metavar_name else arg.name
+                    var mv = arg._metavar if arg._metavar else arg.name
                     spec += "[" + desc + "]:" + mv + ":'"
             else:
                 spec += "[" + desc + "]'"
@@ -3168,12 +3176,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
             words += " --" + self._completions_name
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
-            if arg.is_hidden or arg.is_positional:
+            if arg._is_hidden or arg._is_positional:
                 continue
-            if arg.long_name:
-                words += " --" + arg.long_name
-            if arg.short_name:
-                words += " -" + arg.short_name
+            if arg._long_name:
+                words += " --" + arg._long_name
+            if arg._short_name:
+                words += " -" + arg._short_name
 
         # Handle value completion for prev.
         var s = self._bash_prev_cases()
@@ -3211,12 +3219,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
             root_words += " --" + self._completions_name
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
-            if arg.is_hidden or arg.is_positional:
+            if arg._is_hidden or arg._is_positional:
                 continue
-            if arg.long_name:
-                root_words += " --" + arg.long_name
-            if arg.short_name:
-                root_words += " -" + arg.short_name
+            if arg._long_name:
+                root_words += " --" + arg._long_name
+            if arg._short_name:
+                root_words += " -" + arg._short_name
 
         # Detect subcommand in COMP_WORDS.
         s += "  local subcmd=''\n"
@@ -3250,12 +3258,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
             var sub_words = String("--help")
             for j in range(len(sub.args)):
                 var arg = sub.args[j].copy()
-                if arg.is_hidden or arg.is_positional:
+                if arg._is_hidden or arg._is_positional:
                     continue
-                if arg.long_name:
-                    sub_words += " --" + arg.long_name
-                if arg.short_name:
-                    sub_words += " -" + arg.short_name
+                if arg._long_name:
+                    sub_words += " --" + arg._long_name
+                if arg._short_name:
+                    sub_words += " -" + arg._short_name
             # Build pattern: name|alias1|alias2
             var bash_pat = sub.name
             for _ai in range(len(sub._command_aliases)):
@@ -3291,9 +3299,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         if not has_choices:
             for i in range(len(self.args)):
                 if (
-                    not self.args[i].is_hidden
-                    and not self.args[i].is_positional
-                    and len(self.args[i].choice_values) > 0
+                    not self.args[i]._is_hidden
+                    and not self.args[i]._is_positional
+                    and len(self.args[i]._choice_values) > 0
                 ):
                     has_choices = True
                     break
@@ -3310,23 +3318,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(self.args)):
             var arg = self.args[i].copy()
             if (
-                arg.is_hidden
-                or arg.is_positional
-                or len(arg.choice_values) == 0
+                arg._is_hidden
+                or arg._is_positional
+                or len(arg._choice_values) == 0
             ):
                 continue
             var pattern = String("")
-            if arg.long_name:
-                pattern += "--" + arg.long_name
-            if arg.short_name:
+            if arg._long_name:
+                pattern += "--" + arg._long_name
+            if arg._short_name:
                 if pattern:
                     pattern += "|"
-                pattern += "-" + arg.short_name
+                pattern += "-" + arg._short_name
             var choices = String("")
-            for k in range(len(arg.choice_values)):
+            for k in range(len(arg._choice_values)):
                 if choices:
                     choices += " "
-                choices += arg.choice_values[k]
+                choices += arg._choice_values[k]
             s += "    " + pattern + ")\n"
             s += '      COMPREPLY=($(compgen -W "' + choices + '" -- "$cur"))\n'
             s += "      return\n"
@@ -3352,9 +3360,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var has_choices = False
         for i in range(len(args)):
             if (
-                not args[i].is_hidden
-                and not args[i].is_positional
-                and len(args[i].choice_values) > 0
+                not args[i]._is_hidden
+                and not args[i]._is_positional
+                and len(args[i]._choice_values) > 0
             ):
                 has_choices = True
                 break
@@ -3365,23 +3373,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for i in range(len(args)):
             var arg = args[i].copy()
             if (
-                arg.is_hidden
-                or arg.is_positional
-                or len(arg.choice_values) == 0
+                arg._is_hidden
+                or arg._is_positional
+                or len(arg._choice_values) == 0
             ):
                 continue
             var pattern = String("")
-            if arg.long_name:
-                pattern += "--" + arg.long_name
-            if arg.short_name:
+            if arg._long_name:
+                pattern += "--" + arg._long_name
+            if arg._short_name:
                 if pattern:
                     pattern += "|"
-                pattern += "-" + arg.short_name
+                pattern += "-" + arg._short_name
             var choices = String("")
-            for k in range(len(arg.choice_values)):
+            for k in range(len(arg._choice_values)):
                 if choices:
                     choices += " "
-                choices += arg.choice_values[k]
+                choices += arg._choice_values[k]
             s += indent + "  " + pattern + ")\n"
             s += (
                 indent

@@ -1,5 +1,7 @@
 """Defines a single command-line argument."""
 
+from sys import exit, stderr
+
 
 comptime Arg = Argument
 """Shorthand alias for ``Argument``."""
@@ -14,115 +16,101 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
     ```mojo
     from argmojo import Command, Argument
-
     # Boolean flag  →  result.get_flag("verbose")
     _ = Argument("verbose", help="...").long("verbose").short("v").flag()
-
     # Key-value option  →  result.get_string("output")
     _ = Argument("output", help="...").long("output").short("o")
-
     # Key-value with default  →  result.get_string("format")
     _ = Argument("format", help="...").long("format").default("json")
-
     # Restrict to a set of values
     _ = Argument("level", help="...").long("level").choices(["debug","info","warn"])
-
     # Positional (matched by order)  →  result.get_string("path")
     _ = Argument("path", help="...").positional().required()
     _ = Argument("dest", help="...").positional().default(".")
-
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
     _ = Argument("verbose", help="...").long("verbose").short("v").count()
-
     # Count flag with ceiling  (-vvvvv capped at 3)
     _ = Argument("verbose", help="...").long("verbose").short("v").count().max(3)
-
     # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
     _ = Argument("color", help="...").long("color").flag().negatable()
-
     # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
     _ = Argument("tag", help="...").long("tag").short("t").append()
-
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
     _ = Argument("env", help="...").long("env").delimiter(",")
-
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
     _ = Argument("point", help="...").long("point").number_of_values(2)
-
     # Numeric range validation  →  result.get_int("port")
     _ = Argument("port", help="...").long("port").range(1, 65535)
-
     # Numeric range with clamping  (--level 200 → 100 with warning)
     _ = Argument("level", help="...").long("level").range(0, 100).clamp()
-
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long("define").short("D").map_option()
-
     # Aliases  (--colour and --color both work)
     _ = Argument("colour", help="...").long("colour").aliases(["color"])
-
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
-
     # Display helpers
     _ = Argument("file", help="...").long("file").metavar("PATH")  # help: --file PATH
     _ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
     ```
     """
 
+    # === Public fields ===
     var name: String
     """Internal name used to retrieve this argument's value from ParseResult."""
     var help_text: String
     """Help text displayed in usage information."""
-    var long_name: String
+
+    # === Private fields ===
+    var _long_name: String
     """Long option name (e.g., 'output' for --output). Empty if not set."""
-    var short_name: String
+    var _short_name: String
     """Short option name (e.g., 'o' for -o). Empty if not set."""
-    var is_flag: Bool
+    var _is_flag: Bool
     """If True, this argument is a boolean flag that takes no value."""
-    var is_required: Bool
+    var _is_required: Bool
     """If True, parsing fails when this argument is not provided."""
-    var is_positional: Bool
+    var _is_positional: Bool
     """If True, this argument is matched by position rather than by name."""
-    var default_value: String
+    var _default_value: String
     """Default value used when the argument is not provided."""
-    var has_default: Bool
+    var _has_default: Bool
     """Whether a default value has been set."""
-    var choice_values: List[String]
+    var _choice_values: List[String]
     """Allowed values for this argument. Empty means any value is accepted."""
-    var metavar_name: String
+    var _metavar: String
     """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
-    var is_hidden: Bool
+    var _is_hidden: Bool
     """If True, this argument is not shown in help output."""
-    var is_count: Bool
+    var _is_count: Bool
     """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
-    var is_negatable: Bool
+    var _is_negatable: Bool
     """If True, this flag also accepts --no-X to set it to False."""
-    var is_append: Bool
+    var _is_append: Bool
     """If True, repeated uses collect values into a list (e.g., --tag x --tag y)."""
-    var delimiter_char: String
+    var _delimiter_char: String
     """If non-empty, each value is split by this delimiter into multiple list entries."""
-    var num_values: Int
+    var _number_of_values: Int
     """Number of values to consume per occurrence (0 means single-value mode)."""
-    var range_min: Int
+    var _range_min: Int
     """Minimum allowed value (inclusive) for numeric range validation."""
-    var range_max: Int
+    var _range_max: Int
     """Maximum allowed value (inclusive) for numeric range validation."""
-    var has_range: Bool
+    var _has_range: Bool
     """Whether numeric range validation is active."""
-    var is_clamp: Bool
+    var _is_clamp: Bool
     """If True, out-of-range values are clamped (adjusted with warning) instead of rejected."""
-    var is_map: Bool
+    var _is_map: Bool
     """If True, each value is parsed as key=value and stored in a Dict."""
-    var alias_names: List[String]
+    var _alias_names: List[String]
     """Alternative long names that resolve to this argument."""
-    var deprecated_msg: String
+    var _deprecated_msg: String
     """If non-empty, this argument is deprecated; the string is the warning message."""
-    var count_max: Int
+    var _count_max: Int
     """Maximum count value (ceiling) for counter flags. 0 means no limit."""
-    var has_count_max: Bool
+    var _has_count_max: Bool
     """Whether a count ceiling has been set via ``.max()``."""
-    var is_persistent: Bool
+    var _is_persistent: Bool
     """If True, this argument is automatically inherited by every subcommand.
     Persistent flags/options are injected into child command parsers at
     dispatch time so the user may place them either before or after the
@@ -141,31 +129,31 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """
         self.name = name
         self.help_text = help
-        self.long_name = ""
-        self.short_name = ""
-        self.is_flag = False
-        self.is_required = False
-        self.is_positional = False
-        self.default_value = ""
-        self.has_default = False
-        self.choice_values = List[String]()
-        self.metavar_name = ""
-        self.is_hidden = False
-        self.is_count = False
-        self.is_negatable = False
-        self.is_append = False
-        self.delimiter_char = ""
-        self.num_values = 0
-        self.range_min = 0
-        self.range_max = 0
-        self.has_range = False
-        self.is_clamp = False
-        self.is_map = False
-        self.alias_names = List[String]()
-        self.deprecated_msg = ""
-        self.count_max = 0
-        self.has_count_max = False
-        self.is_persistent = False
+        self._long_name = ""
+        self._short_name = ""
+        self._is_flag = False
+        self._is_required = False
+        self._is_positional = False
+        self._default_value = ""
+        self._has_default = False
+        self._choice_values = List[String]()
+        self._metavar = ""
+        self._is_hidden = False
+        self._is_count = False
+        self._is_negatable = False
+        self._is_append = False
+        self._delimiter_char = ""
+        self._number_of_values = 0
+        self._range_min = 0
+        self._range_max = 0
+        self._has_range = False
+        self._is_clamp = False
+        self._is_map = False
+        self._alias_names = List[String]()
+        self._deprecated_msg = ""
+        self._count_max = 0
+        self._has_count_max = False
+        self._is_persistent = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -175,35 +163,35 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """
         self.name = copy.name
         self.help_text = copy.help_text
-        self.long_name = copy.long_name
-        self.short_name = copy.short_name
-        self.is_flag = copy.is_flag
-        self.is_required = copy.is_required
-        self.is_positional = copy.is_positional
-        self.default_value = copy.default_value
-        self.has_default = copy.has_default
-        self.choice_values = List[String]()
-        for i in range(len(copy.choice_values)):
-            self.choice_values.append(copy.choice_values[i])
-        self.metavar_name = copy.metavar_name
-        self.is_hidden = copy.is_hidden
-        self.is_count = copy.is_count
-        self.is_negatable = copy.is_negatable
-        self.is_append = copy.is_append
-        self.delimiter_char = copy.delimiter_char
-        self.num_values = copy.num_values
-        self.range_min = copy.range_min
-        self.range_max = copy.range_max
-        self.has_range = copy.has_range
-        self.is_clamp = copy.is_clamp
-        self.is_map = copy.is_map
-        self.alias_names = List[String]()
-        for i in range(len(copy.alias_names)):
-            self.alias_names.append(copy.alias_names[i])
-        self.deprecated_msg = copy.deprecated_msg
-        self.count_max = copy.count_max
-        self.has_count_max = copy.has_count_max
-        self.is_persistent = copy.is_persistent
+        self._long_name = copy._long_name
+        self._short_name = copy._short_name
+        self._is_flag = copy._is_flag
+        self._is_required = copy._is_required
+        self._is_positional = copy._is_positional
+        self._default_value = copy._default_value
+        self._has_default = copy._has_default
+        self._choice_values = List[String]()
+        for i in range(len(copy._choice_values)):
+            self._choice_values.append(copy._choice_values[i])
+        self._metavar = copy._metavar
+        self._is_hidden = copy._is_hidden
+        self._is_count = copy._is_count
+        self._is_negatable = copy._is_negatable
+        self._is_append = copy._is_append
+        self._delimiter_char = copy._delimiter_char
+        self._number_of_values = copy._number_of_values
+        self._range_min = copy._range_min
+        self._range_max = copy._range_max
+        self._has_range = copy._has_range
+        self._is_clamp = copy._is_clamp
+        self._is_map = copy._is_map
+        self._alias_names = List[String]()
+        for i in range(len(copy._alias_names)):
+            self._alias_names.append(copy._alias_names[i])
+        self._deprecated_msg = copy._deprecated_msg
+        self._count_max = copy._count_max
+        self._has_count_max = copy._has_count_max
+        self._is_persistent = copy._is_persistent
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -213,31 +201,31 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """
         self.name = move.name^
         self.help_text = move.help_text^
-        self.long_name = move.long_name^
-        self.short_name = move.short_name^
-        self.is_flag = move.is_flag
-        self.is_required = move.is_required
-        self.is_positional = move.is_positional
-        self.default_value = move.default_value^
-        self.has_default = move.has_default
-        self.choice_values = move.choice_values^
-        self.metavar_name = move.metavar_name^
-        self.is_hidden = move.is_hidden
-        self.is_count = move.is_count
-        self.is_negatable = move.is_negatable
-        self.is_append = move.is_append
-        self.delimiter_char = move.delimiter_char^
-        self.num_values = move.num_values
-        self.range_min = move.range_min
-        self.range_max = move.range_max
-        self.has_range = move.has_range
-        self.is_clamp = move.is_clamp
-        self.is_map = move.is_map
-        self.alias_names = move.alias_names^
-        self.deprecated_msg = move.deprecated_msg^
-        self.count_max = move.count_max
-        self.has_count_max = move.has_count_max
-        self.is_persistent = move.is_persistent
+        self._long_name = move._long_name^
+        self._short_name = move._short_name^
+        self._is_flag = move._is_flag
+        self._is_required = move._is_required
+        self._is_positional = move._is_positional
+        self._default_value = move._default_value^
+        self._has_default = move._has_default
+        self._choice_values = move._choice_values^
+        self._metavar = move._metavar^
+        self._is_hidden = move._is_hidden
+        self._is_count = move._is_count
+        self._is_negatable = move._is_negatable
+        self._is_append = move._is_append
+        self._delimiter_char = move._delimiter_char^
+        self._number_of_values = move._number_of_values
+        self._range_min = move._range_min
+        self._range_max = move._range_max
+        self._has_range = move._has_range
+        self._is_clamp = move._is_clamp
+        self._is_map = move._is_map
+        self._alias_names = move._alias_names^
+        self._deprecated_msg = move._deprecated_msg^
+        self._count_max = move._count_max
+        self._has_count_max = move._has_count_max
+        self._is_persistent = move._is_persistent
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -252,7 +240,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the long name set.
         """
-        self.long_name = name
+        self._long_name = name
         return self^
 
     fn short(var self, name: String) -> Self:
@@ -264,7 +252,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the short name set.
         """
-        self.short_name = name
+        self._short_name = name
         return self^
 
     fn flag(var self) -> Self:
@@ -278,7 +266,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             For example --verbose would set a 'verbose' flag to True, while its
             absence leaves it False.
         """
-        self.is_flag = True
+        self._is_flag = True
         return self^
 
     fn required(var self) -> Self:
@@ -291,7 +279,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             Required arguments must be provided in the input; otherwise, parsing
             will fail.
         """
-        self.is_required = True
+        self._is_required = True
         return self^
 
     fn positional(var self) -> Self:
@@ -300,7 +288,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as positional.
         """
-        self.is_positional = True
+        self._is_positional = True
         return self^
 
     fn takes_value(var self) -> Self:
@@ -309,9 +297,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         This is the default behavior; use this for clarity when needed.
 
         Returns:
-            Self with is_flag set to False.
+            Self with _is_flag set to False.
         """
-        self.is_flag = False
+        self._is_flag = False
         return self^
 
     fn default(var self, value: String) -> Self:
@@ -323,8 +311,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the default value set.
         """
-        self.default_value = value
-        self.has_default = True
+        self._default_value = value
+        self._has_default = True
         return self^
 
     fn choices(var self, var values: List[String]) -> Self:
@@ -336,7 +324,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the choices set.
         """
-        self.choice_values = values^
+        self._choice_values = values^
         return self^
 
     fn metavar(var self, name: String) -> Self:
@@ -351,7 +339,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the metavar set.
         """
-        self.metavar_name = name
+        self._metavar = name
         return self^
 
     fn hidden(var self) -> Self:
@@ -360,7 +348,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as hidden.
         """
-        self.is_hidden = True
+        self._is_hidden = True
         return self^
 
     fn count(var self) -> Self:
@@ -374,8 +362,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as a counter.
         """
-        self.is_count = True
-        self.is_flag = True
+        self._is_count = True
+        self._is_flag = True
         return self^
 
     fn max(var self, ceiling: Int) -> Self:
@@ -393,8 +381,26 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the count ceiling set.
         """
-        self.count_max = ceiling
-        self.has_count_max = True
+        if ceiling < 1:
+            print(
+                (
+                    "Argument.max(): ceiling must be >= 1; call .max() with"
+                    " a value of at least 1."
+                ),
+                file=stderr,
+            )
+            exit(1)
+        if not self._is_count:
+            print(
+                (
+                    "Argument.max(): can only be used after .count(); call"
+                    " .count() before .max()."
+                ),
+                file=stderr,
+            )
+            exit(1)
+        self._count_max = ceiling
+        self._has_count_max = True
         return self^
 
     fn negatable(var self) -> Self:
@@ -407,7 +413,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as negatable.
         """
-        self.is_negatable = True
+        self._is_negatable = True
         return self^
 
     fn append(var self) -> Self:
@@ -420,7 +426,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as append.
         """
-        self.is_append = True
+        self._is_append = True
         return self^
 
     # TODO: Allow auto-translating full-width punctuation to ASCII for delimiter.
@@ -442,8 +448,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the delimiter and append mode set.
         """
-        self.delimiter_char = sep
-        self.is_append = True
+        self._delimiter_char = sep
+        self._is_append = True
         return self^
 
     fn number_of_values(var self, n: Int) -> Self:
@@ -453,16 +459,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         consecutive arguments.  For example, ``.number_of_values(2)`` on
         ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
         Implies ``.append()`` so values are stored in
-        ``ParseResult.lists``.
+        ``ParseResult._lists``.
 
         Args:
             n: Number of values to consume (must be ≥ 2).
 
         Returns:
-            Self with num_values and append mode set.
+            Self with _number_of_values and append mode set.
         """
-        self.num_values = n
-        self.is_append = True
+        self._number_of_values = n
+        self._is_append = True
         return self^
 
     fn range(var self, min_val: Int, max_val: Int) -> Self:
@@ -483,9 +489,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with range validation enabled.
         """
-        self.range_min = min_val
-        self.range_max = max_val
-        self.has_range = True
+        self._range_min = min_val
+        self._range_max = max_val
+        self._has_range = True
         return self^
 
     fn clamp(var self) -> Self:
@@ -504,14 +510,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with clamping enabled.
         """
-        self.is_clamp = True
+        self._is_clamp = True
         return self^
 
     fn map_option(var self) -> Self:
         """Marks this argument as a key-value map option.
 
         Each value must be in ``key=value`` format.  Values are
-        stored in ``ParseResult.maps`` and retrieved with
+        stored in ``ParseResult._maps`` and retrieved with
         ``get_map()``.  Implies ``.append()`` for repeated uses.
 
         For example, ``--define DEBUG=1 --define VERSION=2`` produces
@@ -520,8 +526,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as a map option.
         """
-        self.is_map = True
-        self.is_append = True
+        self._is_map = True
+        self._is_append = True
         return self^
 
     fn aliases(var self, var names: List[String]) -> Self:
@@ -537,7 +543,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with aliases registered.
         """
-        self.alias_names = names^
+        self._alias_names = names^
         return self^
 
     fn deprecated(var self, message: String) -> Self:
@@ -552,7 +558,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self marked as deprecated.
         """
-        self.deprecated_msg = message
+        self._deprecated_msg = message
         return self^
 
     fn persistent(var self) -> Self:
@@ -571,14 +577,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         The child result also carries the value when the flag appears
         after the subcommand token.
 
-        Persistent arguments may not share a ``long_name`` or ``short_name``
+        Persistent arguments may not share a ``_long_name`` or ``_short_name``
         with any local argument of a registered subcommand — ArgMojo raises
         an error at ``add_subcommand()`` time if a conflict is detected.
 
         Returns:
             Self marked as persistent.
         """
-        self.is_persistent = True
+        self._is_persistent = True
         return self^
 
     # ===------------------------------------------------------------------=== #
@@ -588,15 +594,15 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn __str__(self) -> String:
         """Returns a string representation of this argument definition."""
         var s = String("Argument(name='") + self.name + "'"
-        if self.long_name:
-            s += ", long='--" + self.long_name + "'"
-        if self.short_name:
-            s += ", short='-" + self.short_name + "'"
-        if self.is_flag:
+        if self._long_name:
+            s += ", long='--" + self._long_name + "'"
+        if self._short_name:
+            s += ", short='-" + self._short_name + "'"
+        if self._is_flag:
             s += ", flag"
-        if self.is_positional:
+        if self._is_positional:
             s += ", positional"
-        if self.is_required:
+        if self._is_required:
             s += ", required"
         s += ")"
         return s
@@ -613,18 +619,18 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         writer.write("Argument(name='")
         writer.write(self.name)
         writer.write("'")
-        if self.long_name:
+        if self._long_name:
             writer.write(", long='--")
-            writer.write(self.long_name)
+            writer.write(self._long_name)
             writer.write("'")
-        if self.short_name:
+        if self._short_name:
             writer.write(", short='-")
-            writer.write(self.short_name)
+            writer.write(self._short_name)
             writer.write("'")
-        if self.is_flag:
+        if self._is_flag:
             writer.write(", flag")
-        if self.is_positional:
+        if self._is_positional:
             writer.write(", positional")
-        if self.is_required:
+        if self._is_required:
             writer.write(", required")
         writer.write(")")

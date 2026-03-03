@@ -7,37 +7,39 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
     Provides typed accessors to retrieve argument values by name.
     """
 
-    var flags: Dict[String, Bool]
+    # === Public fields ===
+    var subcommand: String
+    """Name of the selected subcommand. Empty string if no subcommand was given."""
+
+    # === Private fields ===
+    var _flags: Dict[String, Bool]
     """Boolean flag values, keyed by argument name."""
-    var values: Dict[String, String]
+    var _values: Dict[String, String]
     """String argument values, keyed by argument name."""
-    var positionals: List[String]
+    var _positionals: List[String]
     """Positional argument values, in order."""
-    var counts: Dict[String, Int]
+    var _counts: Dict[String, Int]
     """Counter values for count-type arguments (e.g., -vvv → 3)."""
-    var lists: Dict[String, List[String]]
+    var _lists: Dict[String, List[String]]
     """Collected list values for append-type arguments (e.g., --tag x --tag y)."""
-    var maps: Dict[String, Dict[String, String]]
+    var _maps: Dict[String, Dict[String, String]]
     """Key-value map values for map-type arguments (e.g., --define key=val)."""
     var _positional_names: List[String]
     """Names of positional arguments, in declaration order."""
-    var subcommand: String
-    """Name of the selected subcommand. Empty string if no subcommand was given."""
     var _subcommand_results: List[ParseResult]
     """Child ParseResult from subcommand parsing. Contains 0 or 1 elements.
-
     Use ``has_subcommand_result()`` to check presence and
     ``get_subcommand_result()`` to retrieve the value.
     """
 
     fn __init__(out self):
         """Creates an empty ParseResult."""
-        self.flags = Dict[String, Bool]()
-        self.values = Dict[String, String]()
-        self.positionals = List[String]()
-        self.counts = Dict[String, Int]()
-        self.lists = Dict[String, List[String]]()
-        self.maps = Dict[String, Dict[String, String]]()
+        self._flags = Dict[String, Bool]()
+        self._values = Dict[String, String]()
+        self._positionals = List[String]()
+        self._counts = Dict[String, Int]()
+        self._lists = Dict[String, List[String]]()
+        self._maps = Dict[String, Dict[String, String]]()
         self._positional_names = List[String]()
         self.subcommand = ""
         self._subcommand_results = List[ParseResult]()
@@ -48,16 +50,16 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         Args:
             copy: The ParseResult to copy from.
         """
-        self.flags = copy.flags.copy()
-        self.values = copy.values.copy()
-        self.positionals = copy.positionals.copy()
-        self.counts = copy.counts.copy()
-        self.lists = Dict[String, List[String]]()
-        for entry in copy.lists.items():
-            self.lists[entry.key] = entry.value.copy()
-        self.maps = Dict[String, Dict[String, String]]()
-        for entry in copy.maps.items():
-            self.maps[entry.key] = entry.value.copy()
+        self._flags = copy._flags.copy()
+        self._values = copy._values.copy()
+        self._positionals = copy._positionals.copy()
+        self._counts = copy._counts.copy()
+        self._lists = Dict[String, List[String]]()
+        for entry in copy._lists.items():
+            self._lists[entry.key] = entry.value.copy()
+        self._maps = Dict[String, Dict[String, String]]()
+        for entry in copy._maps.items():
+            self._maps[entry.key] = entry.value.copy()
         self._positional_names = copy._positional_names.copy()
         self.subcommand = copy.subcommand
         self._subcommand_results = copy._subcommand_results.copy()
@@ -68,12 +70,12 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         Args:
             move: The ParseResult to move from.
         """
-        self.flags = move.flags^
-        self.values = move.values^
-        self.positionals = move.positionals^
-        self.counts = move.counts^
-        self.lists = move.lists^
-        self.maps = move.maps^
+        self._flags = move._flags^
+        self._values = move._values^
+        self._positionals = move._positionals^
+        self._counts = move._counts^
+        self._lists = move._lists^
+        self._maps = move._maps^
         self._positional_names = move._positional_names^
         self.subcommand = move.subcommand^
         self._subcommand_results = move._subcommand_results^
@@ -88,7 +90,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
             True if the flag was set, False otherwise.
         """
         try:
-            return self.flags[name]
+            return self._flags[name]
         except:
             return False
 
@@ -106,15 +108,15 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         """
         # Check named values first.
         try:
-            return self.values[name]
+            return self._values[name]
         except:
             pass
 
         # Check positional arguments by name.
         for i in range(len(self._positional_names)):
             if self._positional_names[i] == name:
-                if i < len(self.positionals):
-                    return self.positionals[i]
+                if i < len(self._positionals):
+                    return self._positionals[i]
 
         raise Error("Argument '" + name + "' not found")
 
@@ -143,7 +145,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
             The number of times the flag was provided.
         """
         try:
-            return self.counts[name]
+            return self._counts[name]
         except:
             return 0
 
@@ -165,7 +167,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         """
         try:
             var result = List[String]()
-            var lst = self.lists[name].copy()
+            var lst = self._lists[name].copy()
             for i in range(len(lst)):
                 result.append(String(lst[i]))
             return result^
@@ -186,7 +188,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         try:
             # Return a copy of the stored map.
             var result = Dict[String, String]()
-            var m = self.maps[name].copy()
+            var m = self._maps[name].copy()
             for entry in m.items():
                 result[entry.key] = entry.value
             return result^
@@ -202,19 +204,19 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         Returns:
             True if the argument was provided.
         """
-        if name in self.flags:
+        if name in self._flags:
             return True
-        if name in self.values:
+        if name in self._values:
             return True
-        if name in self.counts:
+        if name in self._counts:
             return True
-        if name in self.lists:
+        if name in self._lists:
             return True
-        if name in self.maps:
+        if name in self._maps:
             return True
         for i in range(len(self._positional_names)):
             if self._positional_names[i] == name:
-                return i < len(self.positionals)
+                return i < len(self._positionals)
         return False
 
     fn has_subcommand_result(self) -> Bool:
@@ -247,9 +249,9 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
     fn __str__(self) -> String:
         """Return a string representation of the parse result."""
         var s = String("ParseResult(")
-        s += "flags=" + String(len(self.flags))
-        s += ", values=" + String(len(self.values))
-        s += ", positionals=" + String(len(self.positionals))
+        s += "flags=" + String(len(self._flags))
+        s += ", values=" + String(len(self._values))
+        s += ", positionals=" + String(len(self._positionals))
         if self.subcommand != "":
             s += ", subcommand='" + self.subcommand + "'"
         s += ")"
