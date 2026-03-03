@@ -24,7 +24,7 @@ from argmojo import Argument, Command
   - [Attached Short Values](#attached-short-values)
 - [Flag Variants](#flag-variants)
   - [Count Flags](#count-flags)
-  - [Count Ceiling (`.max()`)](#count-ceiling-max)
+  - [Count Ceiling (`.max[N]()`)](#count-ceiling-maxn)
   - [Negatable Flags](#negatable-flags)
 - [Collecting Multiple Values](#collecting-multiple-values)
   - [Append / Collect Action](#append--collect-action)
@@ -378,14 +378,14 @@ Count flags are a special kind of boolean flag — calling `.count()` automatica
 
 Merged short flags work seamlessly: `-vvv` is three occurrences of `-v`.
 
-### Count Ceiling (`.max()`)
+### Count Ceiling (`.max[N]()`)
 
-You can cap a count flag at a maximum value with `.max(n)`. Any occurrences beyond the ceiling are clamped to the maximum and a warning is printed to stderr informing the user of the adjustment.
+You can cap a count flag at a maximum value with `.max[n]()`. The ceiling value `n` is a compile-time parameter (must be ≥ 1); invalid values are caught at build time. Any occurrences beyond the ceiling are clamped to the maximum and a warning is printed to stderr informing the user of the adjustment.
 
 ```mojo
 command.add_argument(
     Argument("verbose", help="Increase verbosity (capped at 3)")
-    .long("verbose").short("v").count().max(3)
+    .long("verbose").short("v").count().max[3]()
 )
 ```
 
@@ -695,8 +695,8 @@ command.add_argument(Argument("point", help="X Y coordinates").long("point").num
 command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values(3))
 ```
 
-`.number_of_values(N)` automatically implies `.append()` — values are stored in
-`ParseResult._lists` and retrieved with `get_list()`.
+`.number_of_values(N)` automatically implies `.append()` — values are
+retrieved with `get_list()`.
 
 ---
 

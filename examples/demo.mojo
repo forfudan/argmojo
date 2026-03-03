@@ -109,7 +109,7 @@ fn main() raises:
         .long("verbose")
         .short("v")
         .count()
-        .max(3)
+        .max[3]()
     )
 
     # ── Numeric range with clamping ──────────────────────────────────────
