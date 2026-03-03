@@ -30,6 +30,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     ```
     """
 
+    # === Public fields ===
     var name: String
     """The command name (typically the program name)."""
     var description: String
@@ -40,6 +41,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """Registered argument definitions."""
     var subcommands: List[Command]
     """Registered subcommand definitions. Each is a full Command instance."""
+
+    # === Private fields ===
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
     var _required_groups: List[List[String]]
@@ -937,7 +940,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 continue
 
             if stop_parsing_options:
-                result.positionals.append(arg)
+                result._positionals.append(arg)
                 i += 1
                 continue
 
@@ -994,7 +997,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             has_digit_short = True
                             break
                     if self._allow_negative_numbers or not has_digit_short:
-                        result.positionals.append(arg)
+                        result._positionals.append(arg)
                         i += 1
                         continue
                 # ────────────────────────────────────────────────────────────
@@ -1033,7 +1036,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     i = new_i
                     continue
 
-            result.positionals.append(arg)
+            result._positionals.append(arg)
             i += 1
 
         # Apply defaults and validate constraints.
@@ -1126,17 +1129,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 "'--" + key + "' is deprecated: " + matched.deprecated_msg
             )
         if is_negation:
-            result.flags[matched.name] = False
+            result._flags[matched.name] = False
         elif matched.is_count and not has_eq:
             # Count flag: increment counter.
             var cur: Int = 0
             try:
-                cur = result.counts[matched.name]
+                cur = result._counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
+            result._counts[matched.name] = cur + 1
         elif matched.is_flag and not has_eq:
-            result.flags[matched.name] = True
+            result._flags[matched.name] = True
         elif matched.num_values > 0:
             # nargs: consume exactly N values.
             if has_eq:
@@ -1147,8 +1150,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + String(matched.num_values)
                     + " values; '=' syntax is not supported"
                 )
-            if matched.name not in result.lists:
-                result.lists[matched.name] = List[String]()
+            if matched.name not in result._lists:
+                result._lists[matched.name] = List[String]()
             for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
@@ -1160,7 +1163,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
-                result.lists[matched.name].append(raw_args[i])
+                result._lists[matched.name].append(raw_args[i])
         else:
             if not has_eq:
                 i += 1
@@ -1173,7 +1176,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 self._store_append_value(matched, value, result)
             else:
                 self._validate_choices(matched, value)
-                result.values[matched.name] = value
+                result._values[matched.name] = value
         i += 1
         return i
 
@@ -1205,16 +1208,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
         if matched.is_count:
             var cur: Int = 0
             try:
-                cur = result.counts[matched.name]
+                cur = result._counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
+            result._counts[matched.name] = cur + 1
         elif matched.is_flag:
-            result.flags[matched.name] = True
+            result._flags[matched.name] = True
         elif matched.num_values > 0:
             # nargs: consume exactly N values.
-            if matched.name not in result.lists:
-                result.lists[matched.name] = List[String]()
+            if matched.name not in result._lists:
+                result._lists[matched.name] = List[String]()
             for _n in range(matched.num_values):
                 i += 1
                 if i >= len(raw_args):
@@ -1226,7 +1229,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + " values"
                     )
                 self._validate_choices(matched, raw_args[i])
-                result.lists[matched.name].append(raw_args[i])
+                result._lists[matched.name].append(raw_args[i])
         else:
             i += 1
             if i >= len(raw_args):
@@ -1238,7 +1241,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 self._store_append_value(matched, val, result)
             else:
                 self._validate_choices(matched, val)
-                result.values[matched.name] = val
+                result._values[matched.name] = val
         i += 1
         return i
 
@@ -1287,19 +1290,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if m.is_count:
                     var cur: Int = 0
                     try:
-                        cur = result.counts[m.name]
+                        cur = result._counts[m.name]
                     except:
                         pass
-                    result.counts[m.name] = cur + 1
+                    result._counts[m.name] = cur + 1
                     j += 1
                 elif m.is_flag:
-                    result.flags[m.name] = True
+                    result._flags[m.name] = True
                     j += 1
                 elif m.num_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
-                    if m.name not in result.lists:
-                        result.lists[m.name] = List[String]()
+                    if m.name not in result._lists:
+                        result._lists[m.name] = List[String]()
                     for _n in range(m.num_values):
                         i += 1
                         if i >= len(raw_args):
@@ -1311,7 +1314,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + " values"
                             )
                         self._validate_choices(m, raw_args[i])
-                        result.lists[m.name].append(raw_args[i])
+                        result._lists[m.name].append(raw_args[i])
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -1328,7 +1331,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         self._store_append_value(m, val, result)
                     else:
                         self._validate_choices(m, val)
-                        result.values[m.name] = val
+                        result._values[m.name] = val
                     j = len(key)  # break
         else:
             # First char takes a value — rest of string is the
@@ -1343,8 +1346,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
             if first_match.num_values > 0:
                 # nargs: consume N values from argv (ignore attached).
-                if first_match.name not in result.lists:
-                    result.lists[first_match.name] = List[String]()
+                if first_match.name not in result._lists:
+                    result._lists[first_match.name] = List[String]()
                 for _n in range(first_match.num_values):
                     i += 1
                     if i >= len(raw_args):
@@ -1356,7 +1359,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             + " values"
                         )
                     self._validate_choices(first_match, raw_args[i])
-                    result.lists[first_match.name].append(raw_args[i])
+                    result._lists[first_match.name].append(raw_args[i])
             elif first_match.is_map:
                 var val = String(key[1:])
                 self._store_map_value(first_match, val, result)
@@ -1366,7 +1369,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             else:
                 var val = String(key[1:])
                 self._validate_choices(first_match, val)
-                result.values[first_match.name] = val
+                result._values[first_match.name] = val
         i += 1
         return i
 
@@ -1439,19 +1442,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     continue
                 var _pn = self.args[_pi].name
                 # Bubble up: child parsed flag after subcommand token.
-                if _pn in child_result.flags and _pn not in result.flags:
-                    result.flags[_pn] = child_result.flags[_pn]
-                if _pn in child_result.values and _pn not in result.values:
-                    result.values[_pn] = child_result.values[_pn]
-                if _pn in child_result.counts and _pn not in result.counts:
-                    result.counts[_pn] = child_result.counts[_pn]
+                if _pn in child_result._flags and _pn not in result._flags:
+                    result._flags[_pn] = child_result._flags[_pn]
+                if _pn in child_result._values and _pn not in result._values:
+                    result._values[_pn] = child_result._values[_pn]
+                if _pn in child_result._counts and _pn not in result._counts:
+                    result._counts[_pn] = child_result._counts[_pn]
                 # Push down: root parsed flag before subcommand token.
-                if _pn in result.flags and _pn not in child_result.flags:
-                    child_result.flags[_pn] = result.flags[_pn]
-                if _pn in result.values and _pn not in child_result.values:
-                    child_result.values[_pn] = result.values[_pn]
-                if _pn in result.counts and _pn not in child_result.counts:
-                    child_result.counts[_pn] = result.counts[_pn]
+                if _pn in result._flags and _pn not in child_result._flags:
+                    child_result._flags[_pn] = result._flags[_pn]
+                if _pn in result._values and _pn not in child_result._values:
+                    child_result._values[_pn] = result._values[_pn]
+                if _pn in result._counts and _pn not in child_result._counts:
+                    child_result._counts[_pn] = result._counts[_pn]
             result.subcommand = canon
             result._subcommand_results.append(child_result^)
             # All remaining tokens were consumed by the child.
@@ -1510,7 +1513,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Fills in default values for arguments not provided by the user.
 
         For positional arguments, defaults are placed into the correct slot.
-        For named arguments, the default is stored in ``result.values``.
+        For named arguments, the default is stored in ``result._values``.
 
         Args:
             result: The parse result to mutate in-place.
@@ -1526,12 +1529,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # Fill positional to the right slot.
                     for k in range(len(result._positional_names)):
                         if result._positional_names[k] == a.name:
-                            while len(result.positionals) <= k:
-                                result.positionals.append("")
-                            if not result.positionals[k]:
-                                result.positionals[k] = a.default_value
+                            while len(result._positionals) <= k:
+                                result._positionals.append("")
+                            if not result._positionals[k]:
+                                result._positionals[k] = a.default_value
                 else:
-                    result.values[a.name] = a.default_value
+                    result._values[a.name] = a.default_value
 
     fn _validate(self, mut result: ParseResult) raises:
         """Runs all post-parse validation checks on the result.
@@ -1562,12 +1565,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Validate positional argument count — too many args is an error.
         var expected_count: Int = len(result._positional_names)
-        if expected_count > 0 and len(result.positionals) > expected_count:
+        if expected_count > 0 and len(result._positionals) > expected_count:
             self._error_with_usage(
                 "Too many positional arguments: expected "
                 + String(expected_count)
                 + ", got "
-                + String(len(result.positionals))
+                + String(len(result._positionals))
             )
 
         # Validate mutually exclusive groups.
@@ -1654,7 +1657,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if a.is_count and a.has_count_max:
                 var cur: Int
                 try:
-                    cur = result.counts[a.name]
+                    cur = result._counts[a.name]
                 except:
                     continue
                 if cur > a.count_max:
@@ -1667,7 +1670,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + ", capped to "
                         + String(a.count_max)
                     )
-                    result.counts[a.name] = a.count_max
+                    result._counts[a.name] = a.count_max
 
         # Validate numeric range constraints.
         for j in range(len(self.args)):
@@ -1709,7 +1712,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                     + "], clamped to "
                                     + String(clamped)
                                 )
-                                result.lists[a.name][k] = String(clamped)
+                                result._lists[a.name][k] = String(clamped)
                             else:
                                 self._error(
                                     "Value "
@@ -1759,11 +1762,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 + "], clamped to "
                                 + String(clamped)
                             )
-                            result.values[a.name] = String(clamped)
+                            result._values[a.name] = String(clamped)
                             if a.is_positional:
                                 for pi in range(len(result._positional_names)):
                                     if result._positional_names[pi] == a.name:
-                                        result.positionals[pi] = String(clamped)
+                                        result._positionals[pi] = String(
+                                            clamped
+                                        )
                                         break
                         else:
                             self._error(
@@ -1980,18 +1985,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
             value: The raw value string.
             result: The ParseResult to store into.
         """
-        if arg.name not in result.lists:
-            result.lists[arg.name] = List[String]()
+        if arg.name not in result._lists:
+            result._lists[arg.name] = List[String]()
         if arg.delimiter_char:
             var parts = value.split(arg.delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:  # skip empty pieces from e.g. trailing comma
                     self._validate_choices(arg, piece)
-                    result.lists[arg.name].append(piece)
+                    result._lists[arg.name].append(piece)
         else:
             self._validate_choices(arg, value)
-            result.lists[arg.name].append(value)
+            result._lists[arg.name].append(value)
 
     fn _store_map_value(
         self, arg: Argument, value: String, mut result: ParseResult
@@ -2007,11 +2012,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
             value: The raw value string (e.g., "key=value").
             result: The ParseResult to store into.
         """
-        if arg.name not in result.maps:
-            result.maps[arg.name] = Dict[String, String]()
+        if arg.name not in result._maps:
+            result._maps[arg.name] = Dict[String, String]()
         # Also store in lists for has() detection.
-        if arg.name not in result.lists:
-            result.lists[arg.name] = List[String]()
+        if arg.name not in result._lists:
+            result._lists[arg.name] = List[String]()
 
         if arg.delimiter_char:
             var parts = value.split(arg.delimiter_char)
@@ -2029,8 +2034,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         )
                     var k = String(piece[:eq])
                     var v = String(piece[eq + 1 :])
-                    result.maps[arg.name][k] = v
-                    result.lists[arg.name].append(piece)
+                    result._maps[arg.name][k] = v
+                    result._lists[arg.name].append(piece)
         else:
             var eq = value.find("=")
             if eq < 0:
@@ -2043,8 +2048,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
             var k = String(value[:eq])
             var v = String(value[eq + 1 :])
-            result.maps[arg.name][k] = v
-            result.lists[arg.name].append(value)
+            result._maps[arg.name][k] = v
+            result._lists[arg.name].append(value)
 
     fn _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
@@ -2604,7 +2609,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             elif self.args[i].is_flag:
                 val_str = String(result.get_flag(self.args[i].name))
             elif self.args[i].is_map:
-                if self.args[i].name in result.maps:
+                if self.args[i].name in result._maps:
                     var m = result.get_map(self.args[i].name)
                     var s = String("{")
                     var first = True

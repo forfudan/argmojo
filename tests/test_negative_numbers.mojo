@@ -29,7 +29,7 @@ fn test_negative_integer_auto_detect() raises:
 
     var args: List[String] = ["test", "-9876543"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-9876543")
+    assert_equal(result._positionals[0], "-9876543")
     print("  ✓ test_negative_integer_auto_detect")
 
 
@@ -42,7 +42,7 @@ fn test_negative_float_auto_detect() raises:
 
     var args: List[String] = ["test", "-3.14"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-3.14")
+    assert_equal(result._positionals[0], "-3.14")
     print("  ✓ test_negative_float_auto_detect")
 
 
@@ -55,7 +55,7 @@ fn test_negative_leading_dot_auto_detect() raises:
 
     var args: List[String] = ["test", "-.5"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-.5")
+    assert_equal(result._positionals[0], "-.5")
     print("  ✓ test_negative_leading_dot_auto_detect")
 
 
@@ -69,7 +69,7 @@ fn test_negative_scientific_auto_detect() raises:
 
     var args: List[String] = ["test", "-1.5e10"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-1.5e10")
+    assert_equal(result._positionals[0], "-1.5e10")
     print("  ✓ test_negative_scientific_auto_detect")
 
 
@@ -82,7 +82,7 @@ fn test_negative_scientific_negative_exp_auto_detect() raises:
 
     var args: List[String] = ["test", "-2.0e-3"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-2.0e-3")
+    assert_equal(result._positionals[0], "-2.0e-3")
     print("  ✓ test_negative_scientific_negative_exp_auto_detect")
 
 
@@ -98,9 +98,9 @@ fn test_multiple_negative_positionals() raises:
 
     var args: List[String] = ["test", "-1", "-2.5"]
     var result = command.parse_arguments(args)
-    assert_equal(len(result.positionals), 2)
-    assert_equal(result.positionals[0], "-1")
-    assert_equal(result.positionals[1], "-2.5")
+    assert_equal(len(result._positionals), 2)
+    assert_equal(result._positionals[0], "-1")
+    assert_equal(result._positionals[1], "-2.5")
     print("  ✓ test_multiple_negative_positionals")
 
 
@@ -117,7 +117,7 @@ fn test_mixed_negative_and_options() raises:
     var args: List[String] = ["test", "--verbose", "-10.18"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
-    assert_equal(result.positionals[0], "-10.18")
+    assert_equal(result._positionals[0], "-10.18")
     print("  ✓ test_mixed_negative_and_options")
 
 
@@ -141,7 +141,7 @@ fn test_explicit_allow_negative_numbers() raises:
     # "-3.14" should still pass through as a positional.
     var args: List[String] = ["test", "-3.14"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-3.14")
+    assert_equal(result._positionals[0], "-3.14")
     print("  ✓ test_explicit_allow_negative_numbers")
 
 
@@ -162,7 +162,7 @@ fn test_explicit_allow_keeps_digit_short_option() raises:
     # With allow_negative_numbers set, even bare "-3" becomes a positional.
     var args: List[String] = ["test", "-3"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-3")
+    assert_equal(result._positionals[0], "-3")
     print("  ✓ test_explicit_allow_keeps_digit_short_option")
 
 
@@ -182,7 +182,7 @@ fn test_digit_short_suppresses_auto_detect() raises:
     var result = command.parse_arguments(args)
     # The flag should be set; no positionals.
     assert_true(result.get_flag("triple"))
-    assert_equal(len(result.positionals), 0)
+    assert_equal(len(result._positionals), 0)
     print("  ✓ test_digit_short_suppresses_auto_detect")
 
 
@@ -199,7 +199,7 @@ fn test_double_dash_passes_negative_number() raises:
 
     var args: List[String] = ["test", "--", "-10.18"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "-10.18")
+    assert_equal(result._positionals[0], "-10.18")
     print("  ✓ test_double_dash_passes_negative_number")
 
 
@@ -212,7 +212,7 @@ fn test_double_dash_passes_option_like_string() raises:
 
     var args: List[String] = ["test", "--", "--foo"]
     var result = command.parse_arguments(args)
-    assert_equal(result.positionals[0], "--foo")
+    assert_equal(result._positionals[0], "--foo")
     print("  ✓ test_double_dash_passes_option_like_string")
 
 

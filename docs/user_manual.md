@@ -696,7 +696,7 @@ command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").n
 ```
 
 `.number_of_values(N)` automatically implies `.append()` — values are stored in
-`ParseResult.lists` and retrieved with `get_list()`.
+`ParseResult._lists` and retrieved with `get_list()`.
 
 ---
 
@@ -1643,7 +1643,7 @@ app.add_argument(Argument("fallback", help="Fallback").positional())
 # "foo" doesn't match any subcommand → treated as positional
 var args: List[String] = ["app", "foo"]
 var result = app.parse_arguments(args)
-print(result.positionals[0])  # "foo"
+print(result.get_string("fallback"))  # "foo"
 ```
 
 Please seriously **think twice** before doing this — it's usually better to design your CLI with a clear separation between subcommands and positionals. Allowing both on the same command can lead to confusing user experiences and error messages.

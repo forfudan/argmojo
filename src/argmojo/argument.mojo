@@ -473,7 +473,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         consecutive arguments.  For example, ``.number_of_values(2)`` on
         ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
         Implies ``.append()`` so values are stored in
-        ``ParseResult.lists``.
+        ``ParseResult._lists``.
 
         Args:
             n: Number of values to consume (must be ≥ 2).
@@ -531,7 +531,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Marks this argument as a key-value map option.
 
         Each value must be in ``key=value`` format.  Values are
-        stored in ``ParseResult.maps`` and retrieved with
+        stored in ``ParseResult._maps`` and retrieved with
         ``get_map()``.  Implies ``.append()`` for repeated uses.
 
         For example, ``--define DEBUG=1 --define VERSION=2`` produces

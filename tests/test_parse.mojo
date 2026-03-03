@@ -182,8 +182,8 @@ fn test_double_dash_stop() raises:
         result.get_flag("verbose"),
         msg="--verbose after -- should not be parsed as flag",
     )
-    assert_equal(len(result.positionals), 1)
-    assert_equal(result.positionals[0], "--verbose")
+    assert_equal(len(result._positionals), 1)
+    assert_equal(result._positionals[0], "--verbose")
     print("  ✓ test_double_dash_stop")
 
 
