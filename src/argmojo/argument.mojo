@@ -78,7 +78,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Whether a default value has been set."""
     var _choice_values: List[String]
     """Allowed values for this argument. Empty means any value is accepted."""
-    var _metavar_name: String
+    var _metavar: String
     """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
     var _is_hidden: Bool
     """If True, this argument is not shown in help output."""
@@ -137,7 +137,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_value = ""
         self._has_default = False
         self._choice_values = List[String]()
-        self._metavar_name = ""
+        self._metavar = ""
         self._is_hidden = False
         self._is_count = False
         self._is_negatable = False
@@ -173,7 +173,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values = List[String]()
         for i in range(len(copy._choice_values)):
             self._choice_values.append(copy._choice_values[i])
-        self._metavar_name = copy._metavar_name
+        self._metavar = copy._metavar
         self._is_hidden = copy._is_hidden
         self._is_count = copy._is_count
         self._is_negatable = copy._is_negatable
@@ -209,7 +209,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_value = move._default_value^
         self._has_default = move._has_default
         self._choice_values = move._choice_values^
-        self._metavar_name = move._metavar_name^
+        self._metavar = move._metavar^
         self._is_hidden = move._is_hidden
         self._is_count = move._is_count
         self._is_negatable = move._is_negatable
@@ -339,7 +339,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Returns:
             Self with the metavar set.
         """
-        self._metavar_name = name
+        self._metavar = name
         return self^
 
     fn hidden(var self) -> Self:

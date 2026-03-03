@@ -2271,8 +2271,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     var ncount = self.args[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
                     var append_dots = self.args[i]._is_append and ncount == 0
-                    if self.args[i]._metavar_name:
-                        var mv = self.args[i]._metavar_name
+                    if self.args[i]._metavar:
+                        var mv = self.args[i]._metavar
                         var mv_plain = String("")
                         var mv_colored = String("")
                         for _r in range(repeat - 1):
@@ -3088,9 +3088,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         choices += arg._choice_values[k]
                     spec += ":value:(" + choices + ")"
                 else:
-                    var mv = (
-                        arg._metavar_name if arg._metavar_name else arg.name
-                    )
+                    var mv = arg._metavar if arg._metavar else arg.name
                     spec += ":" + mv + ":"
             spec += "'"
         else:
@@ -3103,9 +3101,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         choices += arg._choice_values[k]
                     spec += "[" + desc + "]:value:(" + choices + ")'"
                 else:
-                    var mv = (
-                        arg._metavar_name if arg._metavar_name else arg.name
-                    )
+                    var mv = arg._metavar if arg._metavar else arg.name
                     spec += "[" + desc + "]:" + mv + ":'"
             else:
                 spec += "[" + desc + "]'"
