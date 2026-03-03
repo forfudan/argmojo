@@ -109,7 +109,7 @@ fn main() raises:
         .long("verbose")
         .short("v")
         .count()
-        .max(3)
+        .max[3]()
     )
 
     # ── Numeric range with clamping ──────────────────────────────────────
@@ -118,7 +118,7 @@ fn main() raises:
         Argument("level", help="Processing level [0–9]")
         .long("level")
         .short("l")
-        .range(0, 9)
+        .range[0, 9]()
         .clamp()
     )
 
@@ -145,7 +145,7 @@ fn main() raises:
         .long("port")
         .short("P")
         .append()
-        .range(1, 65535)
+        .range[1, 65535]()
         .clamp()
     )
     var net_group: List[String] = ["host", "port"]
@@ -171,7 +171,7 @@ fn main() raises:
     app.add_argument(
         Argument("point", help="A 3D point (X Y Z)")
         .long("point")
-        .number_of_values(3)
+        .number_of_values[3]()
         .metavar("COORD")
     )
 
@@ -263,7 +263,7 @@ fn main() raises:
         Argument("workers", help="Number of parallel workers [1-32]")
         .long("workers")
         .short("w")
-        .range(1, 32)
+        .range[1, 32]()
         .clamp()
         .default("4")
     )
@@ -271,7 +271,7 @@ fn main() raises:
         Argument("threshold", help="Confidence threshold [0-100]")
         .long("threshold")
         .metavar("PCT")
-        .range(0, 100)
+        .range[0, 100]()
         .clamp()
     )
     analyze.help_on_no_arguments()

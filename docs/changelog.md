@@ -6,6 +6,18 @@ This document tracks all notable changes to ArgMojo, including new features, API
 Do not add unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
 -->
 
+<!-- 
+## 20260303 (v0.3.0)
+
+ArgMojo v0.3.0 enables shell completion script generation for Bash, Zsh, and Fish. 
+
+### ⭐️ New in v0.3.0
+1. completion (PR #4)
+1. typo suggestions (PR #3)
+1. Command aliases (PR #5)
+1. Range clamping with warning message if users pass out-of-range values (#6)
+-->
+
 ## 20260228 (v0.2.0)
 
 ArgMojo v0.2.0 is a major release that transforms the library from a single-command parser into a full **subcommand-capable CLI framework**. It introduces hierarchical subcommands with automatic dispatch, persistent (global) flags with bidirectional sync, negative number passthrough, colored error messages, custom tips, and significant help/UX improvements. The public API is also refined: `Arg` → `Argument`, `Result` → `ParseResult` (old names kept as aliases). Two complete example CLIs (`mgrep` and `mgit`) replace the previous demo.
@@ -97,7 +109,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 1. Negatable flags — `--color` / `--no-color` paired flags with `.negatable()`.
 1. Long option prefix matching — `--verb` auto-resolves to `--verbose` when unambiguous.
 1. Conditional requirements — `--output` required only when `--save` is present.
-1. Numeric range validation — `.range(1, 65535)` validates value is within bounds.
+1. Numeric range validation — `.range[1, 65535]()` validates value is within bounds.
 
 **Groups:**
 
@@ -109,7 +121,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 
 1. Append / collect action — `--tag x --tag y` collects repeated options into a list with `.append()`.
 1. Value delimiter — `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
-1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.number_of_values(N)`.
+1. Multi-value options (nargs) — `--point 10 20` consumes N consecutive values with `.number_of_values[N]()` (breaking change from v0.1.0: replaces the old `.number_of_values(N)` runtime form, which no longer works).
 1. Key-value map option — `--define key=value` builds a `Dict` with `.key_value()`.
 
 **Help & display:**

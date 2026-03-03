@@ -78,7 +78,7 @@ fn main() raises:
         Argument("depth", help="Create a shallow clone with N commits")
         .long("depth")
         .metavar("N")
-        .range(1, 999999)
+        .range[1, 999999]()
     )
     clone.add_argument(
         Argument("branch", help="Check out this branch instead of HEAD")
@@ -268,7 +268,7 @@ fn main() raises:
         .long("number")
         .short("n")
         .metavar("N")
-        .range(1, 999999)
+        .range[1, 999999]()
     )
     log.add_argument(
         Argument("author", help="Filter by author")

@@ -418,7 +418,7 @@ fn test_nargs_basic() raises:
     command.add_argument(
         Argument("point", help="X Y coordinates")
         .long("point")
-        .number_of_values(2)
+        .number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--point", "10", "20"]
@@ -434,7 +434,7 @@ fn test_nargs_three() raises:
     """Tests that number_of_values(3) consumes exactly 3 values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("rgb", help="RGB colour").long("rgb").number_of_values(3)
+        Argument("rgb", help="RGB colour").long("rgb").number_of_values[3]()
     )
 
     var args: List[String] = ["test", "--rgb", "255", "128", "0"]
@@ -454,7 +454,7 @@ fn test_nargs_short_option() raises:
         Argument("point", help="X Y")
         .long("point")
         .short("p")
-        .number_of_values(2)
+        .number_of_values[2]()
     )
 
     var args: List[String] = ["test", "-p", "3", "4"]
@@ -472,7 +472,7 @@ fn test_nargs_repeated() raises:
     """Tests that nargs collects across repeated occurrences."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values(2)
+        Argument("point", help="X Y").long("point").number_of_values[2]()
     )
 
     var args: List[String] = [
@@ -500,7 +500,7 @@ fn test_nargs_too_few_values() raises:
     """Tests that nargs raises when not enough values are available."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values(2)
+        Argument("point", help="X Y").long("point").number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--point", "10"]
@@ -522,7 +522,7 @@ fn test_nargs_too_few_short() raises:
     """Tests that nargs raises with short option when not enough values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").short("p").number_of_values(2)
+        Argument("point", help="X Y").short("p").number_of_values[2]()
     )
 
     var args: List[String] = ["test", "-p", "10"]
@@ -547,7 +547,7 @@ fn test_nargs_with_choices() raises:
     command.add_argument(
         Argument("dir", help="Two directions")
         .long("dir")
-        .number_of_values(2)
+        .number_of_values[2]()
         .choices(dirs^)
     )
 
@@ -578,7 +578,7 @@ fn test_nargs_with_other_args() raises:
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
     )
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values(2)
+        Argument("point", help="X Y").long("point").number_of_values[2]()
     )
     command.add_argument(
         Argument("output", help="File").long("output").short("o")
@@ -609,7 +609,7 @@ fn test_nargs_equals_syntax_rejected() raises:
     """Tests that = syntax is rejected for nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values(2)
+        Argument("point", help="X Y").long("point").number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--point=10", "20"]
@@ -631,7 +631,7 @@ fn test_nargs_prefix_match() raises:
     """Tests that prefix matching works with nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("position", help="X Y").long("position").number_of_values(2)
+        Argument("position", help="X Y").long("position").number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--pos", "7", "8"]

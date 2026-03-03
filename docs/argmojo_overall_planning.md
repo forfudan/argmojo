@@ -191,16 +191,16 @@ examples/
 | Append / collect action (`--tag x --tag y` → list)                                                 | ✓      | ✓     |
 | One-required groups (`command.one_required(["json", "yaml"])`)                                     | ✓      | ✓     |
 | Value delimiter (`.delimiter(",")` → split into list)                                              | ✓      | ✓     |
-| Nargs (`.number_of_values(N)` → consume N values per occurrence)                                   | ✓      | ✓     |
+| Nargs (`.number_of_values[N]()` → consume N values per occurrence)                                 | ✓      | ✓     |
 | Conditional requirements (`command.required_if("output", "save")`)                                 | ✓      | ✓     |
-| Numeric range validation (`.range(1, 65535)`)                                                      | ✓      | ✓     |
+| Numeric range validation (`.range[1, 65535]()`)                                                    | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                    | ✓      | ✓     |
 | Aliases (`.aliases(["color"])` for `--colour` / `--color`)                                         | ✓      | ✓     |
 | Deprecated arguments (`.deprecated("msg")` → stderr warning)                                       | ✓      | ✓     |
 | Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals)                              | ✓      | ✓     |
 | Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                   | ✓      | ✓     |
 | Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr) | ✓      | ✓     |
-| Range clamping (`.range(1, 100).clamp()` → adjust + warn instead of error)                         | ✓      | ✓     |
+| Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                       | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -368,7 +368,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
 - [x] **nargs (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
-- [x] **Numeric range validation** — `.range(1, 65535)` validates `--port` value is within range (no major library has this built-in)
+- [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)
 - [x] **Key-value map option** — `--define key=value --define k2=v2` → `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
 - [x] **Aliases** for long names — `.aliases(["color"])` for `--colour` / `--color`
 - [x] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning to stderr (argparse 3.13)
@@ -522,8 +522,8 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 #### Features
 
 - [x] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?" (Levenshtein distance; cobra, argparse 3.14)
-- [x] **Flag counter with ceiling** — `.count().max(3)` caps `-vvvvv` at 3 with a warning (no major library has this)
-- [x] **Range clamping** — `.range(min, max).clamp()` adjusts out-of-range values to the nearest boundary with a warning instead of erroring (Click has `IntRange(clamp=True)`)
+- [x] **Flag counter with ceiling** — `.count().max[3]()` caps `-vvvvv` at 3 with a warning (no major library has this)
+- [x] **Range clamping** — `.range[min, max]().clamp()` adjusts out-of-range values to the nearest boundary with a warning instead of erroring (Click has `IntRange(clamp=True)`)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [x] **Shell completion script generation** — `generate_completion("bash"|"zsh"|"fish")` returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
@@ -647,8 +647,8 @@ These features represent the "next generation" of CLI parser design, inspired by
 | Typed retrieval              | `get_flag()->Bool`, `get_int()->Int`, `get_string()->String`, `get_count()->Int`, `get_list()->List[String]`, `get_map()->Dict[String,String]` | Already typed at retrieval                      |
 | Enum validation              | `.choices(["debug", "release"])`                                                                                                               | String-level enum; help shows `{debug,release}` |
 | Required / optional          | `.required()` / `.default("...")`                                                                                                              | Parse-time enforcement with coloured errors     |
-| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max(N)` caps at ceiling   |
-| Range clamping               | `.range(min, max).clamp()`                                                                                                                     | Adjusts out-of-range values with a warning      |
+| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
+| Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
 | Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
 
 ## 6. Parsing Algorithm
@@ -729,13 +729,13 @@ ArgMojo follows a consistent naming philosophy. When in doubt, apply these prior
 
 ### Decisions made
 
-| Abbreviation (rejected)   | Full form (adopted)                 | Rationale                                                                                      |
-| ------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `Arg`                     | `Argument`                          | Internal struct name; aligns with `add_argument()`                                             |
-| `parse_args()`            | `parse_arguments()`                 | Consistent with `Argument` naming; `parse_args` was an argparse legacy                         |
-| `help_on_no_args()`       | `help_on_no_arguments()`            | Same reason                                                                                    |
-| `_aliases`                | `_command_aliases`                  | Disambiguates from `Argument.aliases()` (option-level aliases)                                 |
-| `nargs()` / `nargs_count` | `number_of_values()` / `num_values` | Method uses full descriptive name; field uses short form to avoid Mojo field/method name clash |
+| Abbreviation (rejected)   | Full form (adopted)                    | Rationale                                                                                      |
+| ------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Arg`                     | `Argument`                             | Internal struct name; aligns with `add_argument()`                                             |
+| `parse_args()`            | `parse_arguments()`                    | Consistent with `Argument` naming; `parse_args` was an argparse legacy                         |
+| `help_on_no_args()`       | `help_on_no_arguments()`               | Same reason                                                                                    |
+| `_aliases`                | `_command_aliases`                     | Disambiguates from `Argument.aliases()` (option-level aliases)                                 |
+| `nargs()` / `nargs_count` | `number_of_values[N]()` / `num_values` | Method uses full descriptive name; field uses short form to avoid Mojo field/method name clash |
 
 ## 8. Notes on Mojo versions
 

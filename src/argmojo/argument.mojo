@@ -30,7 +30,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
     _ = Argument("verbose", help="...").long("verbose").short("v").count()
     # Count flag with ceiling  (-vvvvv capped at 3)
-    _ = Argument("verbose", help="...").long("verbose").short("v").count().max(3)
+    _ = Argument("verbose", help="...").long("verbose").short("v").count().max[3]()
     # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
     _ = Argument("color", help="...").long("color").flag().negatable()
     # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
@@ -38,11 +38,11 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
     _ = Argument("env", help="...").long("env").delimiter(",")
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
-    _ = Argument("point", help="...").long("point").number_of_values(2)
+    _ = Argument("point", help="...").long("point").number_of_values[2]()
     # Numeric range validation  →  result.get_int("port")
-    _ = Argument("port", help="...").long("port").range(1, 65535)
+    _ = Argument("port", help="...").long("port").range[1, 65535]()
     # Numeric range with clamping  (--level 200 → 100 with warning)
-    _ = Argument("level", help="...").long("level").range(0, 100).clamp()
+    _ = Argument("level", help="...").long("level").range[0, 100]().clamp()
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long("define").short("D").map_option()
     # Aliases  (--colour and --color both work)
@@ -357,7 +357,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Each occurrence increments a counter. For example, ``-vvv`` sets
         the count to 3. Use ``get_count()`` on ParseResult to retrieve.
 
-        Chain with ``.max(n)`` to cap the counter at a ceiling value.
+        Chain with ``.max[n]()`` to cap the counter at a ceiling value.
 
         Returns:
             Self marked as a counter.
@@ -366,30 +366,29 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_flag = True
         return self^
 
-    fn max(var self, ceiling: Int) -> Self:
+    # [Mojo Miji]
+    # We set `ceiling` as a parameter, instead of an argument, because we
+    # want to check at compile time that it is a positive integer.
+    # If we made it an argument, we could not check it at compile time,
+    # and the check would be deferred to runtime, which means that the users,
+    # rather than developers, may encounter errors about a wrong ceiling value
+    # in the terminal when they use the API, no matter they are using it
+    # correctly or not. That would be catastrophic.
+    fn max[ceiling: Int](var self) -> Self where ceiling >= 1:
         """Sets a ceiling for a counter flag.
 
         When a counter flag has a ceiling, the count is capped at the
         given value regardless of how many times the flag appears.
-        For example, ``.count().max(3)`` caps ``-vvvvv`` at 3.
+        For example, ``.count().max[3]()`` caps ``-vvvvv`` at 3.
 
         Must be used after ``.count()``.
 
-        Args:
+        Parameters:
             ceiling: The maximum count value (must be ≥ 1).
 
         Returns:
             Self with the count ceiling set.
         """
-        if ceiling < 1:
-            print(
-                (
-                    "Argument.max(): ceiling must be >= 1; call .max() with"
-                    " a value of at least 1."
-                ),
-                file=stderr,
-            )
-            exit(1)
         if not self._is_count:
             print(
                 (
@@ -452,16 +451,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn number_of_values(var self, n: Int) -> Self:
+    fn number_of_values[n: Int](var self) -> Self where n >= 2:
         """Sets the number of values consumed per occurrence.
 
         When set, each use of the option consumes exactly ``n``
-        consecutive arguments.  For example, ``.number_of_values(2)`` on
+        consecutive arguments.  For example, ``.number_of_values[2]()`` on
         ``--point`` causes ``--point 1 2`` to collect ``["1", "2"]``.
-        Implies ``.append()`` so values are stored in
-        ``ParseResult._lists``.
+        Implies ``.append()`` so values are retrieved with
+        ``ParseResult.get_list()``.
 
-        Args:
+        Parameters:
             n: Number of values to consume (must be ≥ 2).
 
         Returns:
@@ -471,7 +470,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn range(var self, min_val: Int, max_val: Int) -> Self:
+    fn range[
+        min_val: Int, max_val: Int
+    ](var self) -> Self where max_val >= min_val:
         """Sets numeric range validation for this argument.
 
         When set, the parsed value must be an integer within
@@ -482,7 +483,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``.clamp()`` to silently adjust the value (with a warning)
         instead of erroring.
 
-        Args:
+        Parameters:
             min_val: Minimum allowed value (inclusive).
             max_val: Maximum allowed value (inclusive).
 
@@ -497,12 +498,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn clamp(var self) -> Self:
         """Enables clamping for numeric range validation.
 
-        When clamping is enabled (used after ``.range(min, max)``),
+        When clamping is enabled (used after ``.range[min, max]()``),
         out-of-range values are adjusted to the nearest boundary
         instead of causing an error.  A warning is printed to stderr
         to inform the user of the adjustment.
 
-        For example, ``.range(1, 100).clamp()`` causes ``--level 200``
+        For example, ``.range[1, 100]().clamp()`` causes ``--level 200``
         to be silently adjusted to 100 with a warning.
 
         Must be used after ``.range()``.
@@ -517,8 +518,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Marks this argument as a key-value map option.
 
         Each value must be in ``key=value`` format.  Values are
-        stored in ``ParseResult._maps`` and retrieved with
-        ``get_map()``.  Implies ``.append()`` for repeated uses.
+        retrieved with ``get_map()``.  Implies ``.append()`` for
+        repeated uses.
 
         For example, ``--define DEBUG=1 --define VERSION=2`` produces
         ``{"DEBUG": "1", "VERSION": "2"}``.
@@ -577,8 +578,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         The child result also carries the value when the flag appears
         after the subcommand token.
 
-        Persistent arguments may not share a ``_long_name`` or ``_short_name``
-        with any local argument of a registered subcommand — ArgMojo raises
+        Persistent arguments may not use the same long or short option
+        strings (as configured via ``.long()`` and ``.short()``) as any
+        argument that is local to a registered subcommand.  ArgMojo raises
         an error at ``add_subcommand()`` time if a conflict is detected.
 
         Returns:

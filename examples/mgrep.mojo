@@ -140,7 +140,7 @@ fn main() raises:
         .long("max-depth")
         .short("d")
         .metavar("N")
-        .range(0, 999)
+        .range[0, 999]()
     )
 
     # ── Context control (nargs) ──────────────────────────────────────────
@@ -148,7 +148,7 @@ fn main() raises:
         Argument("context", help="Print B lines before and A lines after match")
         .long("context")
         .short("C")
-        .number_of_values(2)
+        .number_of_values[2]()
         .metavar("N")
     )
 

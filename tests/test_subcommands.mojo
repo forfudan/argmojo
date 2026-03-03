@@ -300,7 +300,7 @@ fn test_validate_range_out_of_bounds() raises:
     """Tests that a value outside numeric range fails validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100)
+        Argument("port", help="Port").long("port").range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "200"]
@@ -321,7 +321,7 @@ fn test_validate_range_in_bounds() raises:
     """Tests that a value within numeric range passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100)
+        Argument("port", help="Port").long("port").range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "50"]
@@ -358,7 +358,7 @@ fn test_full_parse_with_defaults_and_range() raises:
     """Tests that default values also pass range validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range(1, 100).default("50")
+        Argument("port", help="Port").long("port").range[1, 100]().default("50")
     )
 
     # Not providing --port should use default "50" which is in range.
@@ -958,7 +958,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     var args: List[String] = ["app", "help"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
-    assert_equal(result._positionals[0], "help")
+    assert_equal(result.get_string("query"), "help")
     print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
 
 
@@ -1002,7 +1002,7 @@ fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
     var args: List[String] = ["app", "foo"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
-    assert_equal(result._positionals[0], "foo")
+    assert_equal(result.get_string("query"), "foo")
     print("  ✓ test_unknown_token_becomes_positional_when_positionals_defined")
 
 
@@ -1134,7 +1134,7 @@ fn test_allow_positional_with_subcommands_opt_in() raises:
     var args: List[String] = ["app", "hello"]
     var result = app2.parse_arguments(args)
     assert_equal(result.subcommand, "")
-    assert_equal(result._positionals[0], "hello")
+    assert_equal(result.get_string("query"), "hello")
     print("  ✓ test_allow_positional_with_subcommands_opt_in")
 
 
@@ -1186,7 +1186,7 @@ fn test_alias_dispatch_basic() raises:
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "clone")
     var sub_result = result.get_subcommand_result()
-    assert_equal(sub_result._positionals[0], "https://example.com/repo.git")
+    assert_equal(sub_result.get_string("url"), "https://example.com/repo.git")
     print("  ✓ test_alias_dispatch_basic")
 
 
