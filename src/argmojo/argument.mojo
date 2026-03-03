@@ -52,6 +52,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Numeric range validation  →  result.get_int("port")
     _ = Argument("port", help="...").long("port").range(1, 65535)
 
+    # Numeric range with clamping  (--level 200 → 100 with warning)
+    _ = Argument("level", help="...").long("level").range(0, 100).clamp()
+
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long("define").short("D").map_option()
 
@@ -107,6 +110,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Maximum allowed value (inclusive) for numeric range validation."""
     var has_range: Bool
     """Whether numeric range validation is active."""
+    var is_clamp: Bool
+    """If True, out-of-range values are clamped (adjusted with warning) instead of rejected."""
     var is_map: Bool
     """If True, each value is parsed as key=value and stored in a Dict."""
     var alias_names: List[String]
@@ -154,6 +159,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = 0
         self.range_max = 0
         self.has_range = False
+        self.is_clamp = False
         self.is_map = False
         self.alias_names = List[String]()
         self.deprecated_msg = ""
@@ -189,6 +195,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = copy.range_min
         self.range_max = copy.range_max
         self.has_range = copy.has_range
+        self.is_clamp = copy.is_clamp
         self.is_map = copy.is_map
         self.alias_names = List[String]()
         for i in range(len(copy.alias_names)):
@@ -224,6 +231,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = move.range_min
         self.range_max = move.range_max
         self.has_range = move.has_range
+        self.is_clamp = move.is_clamp
         self.is_map = move.is_map
         self.alias_names = move.alias_names^
         self.deprecated_msg = move.deprecated_msg^
@@ -464,6 +472,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``[min_val, max_val]`` (inclusive).  Validation occurs
         after parsing, during the validation phase.
 
+        By default, out-of-range values cause an error.  Chain with
+        ``.clamp()`` to silently adjust the value (with a warning)
+        instead of erroring.
+
         Args:
             min_val: Minimum allowed value (inclusive).
             max_val: Maximum allowed value (inclusive).
@@ -474,6 +486,25 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.range_min = min_val
         self.range_max = max_val
         self.has_range = True
+        return self^
+
+    fn clamp(var self) -> Self:
+        """Enables clamping for numeric range validation.
+
+        When clamping is enabled (used after ``.range(min, max)``),
+        out-of-range values are adjusted to the nearest boundary
+        instead of causing an error.  A warning is printed to stderr
+        to inform the user of the adjustment.
+
+        For example, ``.range(1, 100).clamp()`` causes ``--level 200``
+        to be silently adjusted to 100 with a warning.
+
+        Must be used after ``.range()``.
+
+        Returns:
+            Self with clamping enabled.
+        """
+        self.is_clamp = True
         return self^
 
     fn map_option(var self) -> Self:

@@ -35,6 +35,7 @@ from argmojo import Argument, Command
   - [Choices Validation](#choices-validation)
   - [Positional Argument Count Validation](#positional-argument-count-validation)
   - [Numeric Range Validation](#numeric-range-validation)
+  - [Range Clamping (`.clamp()`)](#range-clamping-clamp)
 - [Group Constraints](#group-constraints)
   - [Mutually Exclusive Groups](#mutually-exclusive-groups)
   - [One-Required Groups](#one-required-groups)
@@ -379,7 +380,7 @@ Merged short flags work seamlessly: `-vvv` is three occurrences of `-v`.
 
 ### Count Ceiling (`.max()`)
 
-You can cap a count flag at a maximum value with `.max(n)`. Any occurrences beyond the ceiling are silently ignored — the count never exceeds the specified maximum.
+You can cap a count flag at a maximum value with `.max(n)`. Any occurrences beyond the ceiling are clamped to the maximum and a warning is printed to stderr informing the user of the adjustment.
 
 ```mojo
 command.add_argument(
@@ -390,12 +391,18 @@ command.add_argument(
 
 ```bash
 myapp -vvv           # verbose = 3
-myapp -vvvvv         # verbose = 3  (capped at ceiling)
-myapp -vvvvvvvvvv    # verbose = 3  (still capped)
+myapp -vvvvv         # verbose = 3  (capped, warning printed)
+myapp -vvvvvvvvvv    # verbose = 3  (capped, warning printed)
 myapp -vv            # verbose = 2  (below ceiling, not affected)
 ```
 
-This is useful when verbosity levels above a certain threshold have no additional effect, or to prevent accidental over-counting. From users perspective, they may encounter less error messages compared to use an option with a range validation (e.g., `.range(0, 3)`) which would reject `-vvvv` with an error instead of silently capping it.
+The warning looks like:
+
+```bash
+Warning: '--verbose' count 5 exceeds maximum 3, capped to 3
+```
+
+This is useful when verbosity levels above a certain threshold have no additional effect, or to prevent accidental over-counting. From users' perspective, they get a clear warning rather than a hard error, which is friendlier than using the count option without a ceiling and silently ignoring extra occurrences.
 
 ### Negatable Flags
 
@@ -959,6 +966,57 @@ command.add_argument(
 ```bash
 myapp --port 50 --port 101
 # Error: Value 101 for '--port' is out of range [1, 100]
+```
+
+### Range Clamping (`.clamp()`)
+
+By default, an out-of-range value causes a hard error. If you prefer a gentler approach, chain `.clamp()` after `.range()` to **adjust** the value to the nearest boundary and print a warning instead of failing.
+
+```mojo
+command.add_argument(
+    Argument("level", help="Compression level (0–9)")
+        .long("level")
+        .range(0, 9)
+        .clamp()
+)
+```
+
+```bash
+myapp --level 5      # OK — level = 5
+myapp --level 20     # Warning, level = 9  (clamped to max)
+myapp --level -3     # Warning, level = 0  (clamped to min)
+```
+
+The warning looks like:
+
+```bash
+Warning: '--level' value 20 is out of range [0, 9], clamped to 9
+```
+
+---
+
+**With append mode** — each collected value is clamped individually:
+
+```mojo
+command.add_argument(
+    Argument("port", help="Ports").long("port").append().range(1, 100).clamp()
+)
+```
+
+```bash
+myapp --port 50 --port 200 --port 0
+# Warning: '--port' value 200 is out of range [1, 100], clamped to 100
+# Warning: '--port' value 0 is out of range [1, 100], clamped to 1
+# Result: ports = [50, 100, 1]
+```
+
+---
+
+**Without `.clamp()`** — the existing behaviour is unchanged; an out-of-range value raises an error:
+
+```bash
+myapp --port 200
+# Error: Value 200 for '--port' is out of range [1, 100]
 ```
 
 ## Group Constraints

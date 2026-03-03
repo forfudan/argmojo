@@ -2,6 +2,10 @@
 
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
+<!-->
+Do not add unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
+<-->
+
 ## 20260228 (v0.2.0)
 
 ArgMojo v0.2.0 is a major release that transforms the library from a single-command parser into a full **subcommand-capable CLI framework**. It introduces hierarchical subcommands with automatic dispatch, persistent (global) flags with bidirectional sync, negative number passthrough, colored error messages, custom tips, and significant help/UX improvements. The public API is also refined: `Arg` → `Argument`, `Result` → `ParseResult` (old names kept as aliases). Two complete example CLIs (`mgrep` and `mgit`) replace the previous demo.
