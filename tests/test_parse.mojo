@@ -426,6 +426,182 @@ fn test_count_default_zero() raises:
     print("  ✓ test_count_default_zero")
 
 
+# ── Count ceiling (.max()) ───────────────────────────────────────────────────────
+
+
+fn test_count_max_caps_merged_short() raises:
+    """Tests that .count().max(3) caps -vvvvv at 3."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(3)
+    )
+
+    var args: List[String] = ["test", "-vvvvv"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        3,
+        msg="-vvvvv with max(3) should cap at 3",
+    )
+    print("  ✓ test_count_max_caps_merged_short")
+
+
+fn test_count_max_caps_repeated_long() raises:
+    """Tests that .max(2) caps repeated --verbose at 2."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(2)
+    )
+
+    var args: List[String] = [
+        "test",
+        "--verbose",
+        "--verbose",
+        "--verbose",
+        "--verbose",
+    ]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        2,
+        msg="4x --verbose with max(2) should cap at 2",
+    )
+    print("  ✓ test_count_max_caps_repeated_long")
+
+
+fn test_count_max_caps_mixed() raises:
+    """Tests that .max(3) caps mixed -vv --verbose --verbose at 3."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(3)
+    )
+
+    var args: List[String] = ["test", "-vv", "--verbose", "--verbose"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        3,
+        msg="Mixed 4 occurrences with max(3) should cap at 3",
+    )
+    print("  ✓ test_count_max_caps_mixed")
+
+
+fn test_count_max_below_ceiling() raises:
+    """Tests that .max(5) does not affect -vv (below ceiling)."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(5)
+    )
+
+    var args: List[String] = ["test", "-vv"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        2,
+        msg="-vv with max(5) should remain 2",
+    )
+    print("  ✓ test_count_max_below_ceiling")
+
+
+fn test_count_max_exact_ceiling() raises:
+    """Tests that -vvv with .max(3) returns exactly 3."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(3)
+    )
+
+    var args: List[String] = ["test", "-vvv"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        3,
+        msg="-vvv with max(3) should be exactly 3",
+    )
+    print("  ✓ test_count_max_exact_ceiling")
+
+
+fn test_count_max_single_short() raises:
+    """Tests that .max(2) caps -v -v -v via separate short flags at 2."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(2)
+    )
+
+    var args: List[String] = ["test", "-v", "-v", "-v"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        2,
+        msg="3x -v with max(2) should cap at 2",
+    )
+    print("  ✓ test_count_max_single_short")
+
+
+fn test_count_without_max_no_ceiling() raises:
+    """Tests that .count() without .max() has no ceiling."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+    )
+
+    var args: List[String] = ["test", "-vvvvvvvvvv"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        10,
+        msg="-vvvvvvvvvv without max should be 10",
+    )
+    print("  ✓ test_count_without_max_no_ceiling")
+
+
+fn test_count_max_one() raises:
+    """Tests that .max(1) caps any number of flags at 1 (boolean-like)."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long("verbose")
+        .short("v")
+        .count()
+        .max(1)
+    )
+
+    var args: List[String] = ["test", "-vvv"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_count("verbose"),
+        1,
+        msg="-vvv with max(1) should cap at 1",
+    )
+    print("  ✓ test_count_max_one")
+
+
 # ── Positional arg count validation ──────────────────────────────────────────────
 
 

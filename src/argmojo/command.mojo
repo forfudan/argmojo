@@ -1128,13 +1128,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
         if is_negation:
             result.flags[matched.name] = False
         elif matched.is_count and not has_eq:
-            # Count flag: increment counter.
+            # Count flag: increment counter (with optional ceiling).
             var cur: Int = 0
             try:
                 cur = result.counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
+            var new_val = cur + 1
+            if matched.has_count_max and new_val > matched.count_max:
+                new_val = matched.count_max
+            result.counts[matched.name] = new_val
         elif matched.is_flag and not has_eq:
             result.flags[matched.name] = True
         elif matched.num_values > 0:
@@ -1208,7 +1211,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 cur = result.counts[matched.name]
             except:
                 pass
-            result.counts[matched.name] = cur + 1
+            var new_val = cur + 1
+            if matched.has_count_max and new_val > matched.count_max:
+                new_val = matched.count_max
+            result.counts[matched.name] = new_val
         elif matched.is_flag:
             result.flags[matched.name] = True
         elif matched.num_values > 0:
@@ -1290,7 +1296,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         cur = result.counts[m.name]
                     except:
                         pass
-                    result.counts[m.name] = cur + 1
+                    var new_val = cur + 1
+                    if m.has_count_max and new_val > m.count_max:
+                        new_val = m.count_max
+                    result.counts[m.name] = new_val
                     j += 1
                 elif m.is_flag:
                     result.flags[m.name] = True

@@ -34,6 +34,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
     _ = Argument("verbose", help="...").long("verbose").short("v").count()
 
+    # Count flag with ceiling  (-vvvvv capped at 3)
+    _ = Argument("verbose", help="...").long("verbose").short("v").count().max(3)
+
     # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
     _ = Argument("color", help="...").long("color").flag().negatable()
 
@@ -110,6 +113,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Alternative long names that resolve to this argument."""
     var deprecated_msg: String
     """If non-empty, this argument is deprecated; the string is the warning message."""
+    var count_max: Int
+    """Maximum count value (ceiling) for counter flags. 0 means no limit."""
+    var has_count_max: Bool
+    """Whether a count ceiling has been set via ``.max()``."""
     var is_persistent: Bool
     """If True, this argument is automatically inherited by every subcommand.
     Persistent flags/options are injected into child command parsers at
@@ -150,6 +157,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_map = False
         self.alias_names = List[String]()
         self.deprecated_msg = ""
+        self.count_max = 0
+        self.has_count_max = False
         self.is_persistent = False
 
     fn __copyinit__(out self, copy: Self):
@@ -185,6 +194,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         for i in range(len(copy.alias_names)):
             self.alias_names.append(copy.alias_names[i])
         self.deprecated_msg = copy.deprecated_msg
+        self.count_max = copy.count_max
+        self.has_count_max = copy.has_count_max
         self.is_persistent = copy.is_persistent
 
     fn __moveinit__(out self, deinit move: Self):
@@ -216,6 +227,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self.is_map = move.is_map
         self.alias_names = move.alias_names^
         self.deprecated_msg = move.deprecated_msg^
+        self.count_max = move.count_max
+        self.has_count_max = move.has_count_max
         self.is_persistent = move.is_persistent
 
     # ===------------------------------------------------------------------=== #
@@ -348,11 +361,32 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Each occurrence increments a counter. For example, ``-vvv`` sets
         the count to 3. Use ``get_count()`` on ParseResult to retrieve.
 
+        Chain with ``.max(n)`` to cap the counter at a ceiling value.
+
         Returns:
             Self marked as a counter.
         """
         self.is_count = True
         self.is_flag = True
+        return self^
+
+    fn max(var self, ceiling: Int) -> Self:
+        """Sets a ceiling for a counter flag.
+
+        When a counter flag has a ceiling, the count is capped at the
+        given value regardless of how many times the flag appears.
+        For example, ``.count().max(3)`` caps ``-vvvvv`` at 3.
+
+        Must be used after ``.count()``.
+
+        Args:
+            ceiling: The maximum count value (must be ≥ 1).
+
+        Returns:
+            Self with the count ceiling set.
+        """
+        self.count_max = ceiling
+        self.has_count_max = True
         return self^
 
     fn negatable(var self) -> Self:

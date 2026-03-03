@@ -24,6 +24,7 @@ from argmojo import Argument, Command
   - [Attached Short Values](#attached-short-values)
 - [Flag Variants](#flag-variants)
   - [Count Flags](#count-flags)
+  - [Count Ceiling (`.max()`)](#count-ceiling-max)
   - [Negatable Flags](#negatable-flags)
 - [Collecting Multiple Values](#collecting-multiple-values)
   - [Append / Collect Action](#append--collect-action)
@@ -44,6 +45,7 @@ from argmojo import Argument, Command
   - [Parsing Subcommand Results](#parsing-subcommand-results)
   - [Persistent (Global) Flags](#persistent-global-flags)
   - [The help Subcommand](#the-help-subcommand)
+  - [Subcommand Aliases](#subcommand-aliases)
   - [Unknown Subcommand Error](#unknown-subcommand-error)
   - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
 - [Help \& Display](#help--display)
@@ -374,6 +376,26 @@ if level >= 2:
 Count flags are a special kind of boolean flag — calling `.count()` automatically sets `.flag()` as well, so they don't expect a value.
 
 Merged short flags work seamlessly: `-vvv` is three occurrences of `-v`.
+
+### Count Ceiling (`.max()`)
+
+You can cap a count flag at a maximum value with `.max(n)`. Any occurrences beyond the ceiling are silently ignored — the count never exceeds the specified maximum.
+
+```mojo
+command.add_argument(
+    Argument("verbose", help="Increase verbosity (capped at 3)")
+    .long("verbose").short("v").count().max(3)
+)
+```
+
+```bash
+myapp -vvv           # verbose = 3
+myapp -vvvvv         # verbose = 3  (capped at ceiling)
+myapp -vvvvvvvvvv    # verbose = 3  (still capped)
+myapp -vv            # verbose = 2  (below ceiling, not affected)
+```
+
+This is useful when verbosity levels above a certain threshold have no additional effect, or to prevent accidental over-counting. From users perspective, they may encounter less error messages compared to use an option with a range validation (e.g., `.range(0, 3)`) which would reject `-vvvv` with an error instead of silently capping it.
 
 ### Negatable Flags
 
