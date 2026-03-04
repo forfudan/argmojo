@@ -1041,7 +1041,7 @@ Argument("name", help="...")
 ║   │   ├── .required()
 ║   │   ├── .default("val")
 ║   │   ├── .choices(["a","b","c"])
-║   │   ├── .range[1,100]() ─── .clamp()
+║   │   ├── .range[1, 100]() ─── .clamp()
 ║   │   ├── .append()
 ║   │   │   ├── .delimiter(",")
 ║   │   │   └── .number_of_values[2]()
@@ -1076,7 +1076,7 @@ Argument("name", help="...")
 ```
 
 > **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
-> indented under `.range[]()` because it requires range.  The three main
+> indented under `.range[min,max]()` because it requires range.  The three main
 > paths (value / flag / count) under *Named option* are **mutually
 > exclusive** — pick exactly one mode per argument.
 
@@ -1096,15 +1096,15 @@ flowchart LR
     VAL --> req1[".required()"]
     VAL --> def1[".default()"]
     VAL --> cho1[".choices()"]
-    VAL --> rng[".range[]()"]
+    VAL --> rng[".range[min,max]()"]
     rng --> clp[".clamp()"]
     VAL --> app[".append()"]
     app --> delim[".delimiter()"]
-    app --> nvals[".number_of_values[]()"]
+    app --> nvals[".number_of_values[N]()"]
     VAL --> mapopt[".map_option()"]
 
     FLAG --> neg[".negatable()"]
-    COUNT --> maxn[".max[]()"]
+    COUNT --> maxn[".max[N]()"]
 
     POS --> req2[".required()"]
     POS --> def2[".default()"]
@@ -1142,7 +1142,7 @@ The table below shows which builder methods can be used with each argument mode.
 | -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
 | `.long("x")`                     |      ✓      |     ✓     |     ✓      |        —        |
 | `.short("x")`                    |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                    |      ✓      |     —     |     —      |        ✓        |
+| `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
 | `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
 | `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
@@ -1164,7 +1164,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
 | `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
 
-> ¹ Requires `.range[]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
 
 ## Group Constraints
 
