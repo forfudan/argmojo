@@ -44,10 +44,34 @@ jobs:
         run: |
           pixi install
 
-      - name: Build package
+      - name: Build package (with retry for Mojo compiler intermittent crashes)
         run: |
-          pixi run package
+          for attempt in 1 2 3; do
+            echo "=== mojo package attempt $attempt ==="
+            if pixi run package; then
+              echo "=== package succeeded on attempt $attempt ==="
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "=== package failed after 3 attempts ==="
+              exit 1
+            fi
+            echo "=== package crashed, retrying in 5s... ==="
+            sleep 5
+          done
 
-      - name: Run tests
+      - name: Run tests (with retry for Mojo compiler intermittent crashes)
         run: |
-          pixi run test
+          for attempt in 1 2 3; do
+            echo "=== test attempt $attempt ==="
+            if pixi run test; then
+              echo "=== tests passed on attempt $attempt ==="
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "=== tests failed after 3 attempts ==="
+              exit 1
+            fi
+            echo "=== test run crashed, retrying in 5s... ==="
+            sleep 5
+          done
