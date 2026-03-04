@@ -52,6 +52,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """Groups where at least one argument must be provided."""
     var _conditional_reqs: List[List[String]]
     """Pairs [target, condition]: target is required when condition is present."""
+    var _implications: List[List[String]]
+    """Pairs [trigger, implied]: when trigger is set, implied is auto-set."""
     var _help_on_no_arguments: Bool
     """When True, show help and exit if no arguments are provided."""
     var _header_color: String
@@ -133,6 +135,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
+        self._implications = List[List[String]]()
         self._help_on_no_arguments = False
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
@@ -164,6 +167,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._required_groups = move._required_groups^
         self._one_required_groups = move._one_required_groups^
         self._conditional_reqs = move._conditional_reqs^
+        self._implications = move._implications^
         self._help_on_no_arguments = move._help_on_no_arguments
         self._is_help_subcommand = move._is_help_subcommand
         self._help_subcommand_enabled = move._help_subcommand_enabled
@@ -212,6 +216,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._conditional_reqs = List[List[String]]()
         for i in range(len(copy._conditional_reqs)):
             self._conditional_reqs.append(copy._conditional_reqs[i].copy())
+        self._implications = List[List[String]]()
+        for i in range(len(copy._implications)):
+            self._implications.append(copy._implications[i].copy())
         self._help_on_no_arguments = copy._help_on_no_arguments
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
@@ -678,6 +685,105 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var pair: List[String] = [target, condition]
         self._conditional_reqs.append(pair^)
 
+    fn implies(mut self, trigger: String, implied: String) raises:
+        """Declares that setting one argument automatically sets another.
+
+        When ``trigger`` is present in the parse result, ``implied`` is
+        automatically set (as a flag set to ``True``, or a count
+        incremented by 1).  Chains are supported: if A implies B and B
+        implies C, setting A will also set C.  Circular implications are
+        detected at registration time and raise an error.
+
+        Both ``trigger`` and ``implied`` must be registered arguments.
+        The ``implied`` argument must be a ``.flag()`` or ``.count()``
+        argument — value-taking, positional, append, and map arguments
+        are not supported as implication targets.
+
+        Args:
+            trigger: The argument whose presence triggers the implication.
+            implied: The argument that is automatically set.
+
+        Raises:
+            Error if adding this implication would create a cycle, if
+            either argument is unknown, or if the implied argument is
+            not a flag or count.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(Argument("debug", help="Debug mode").long("debug").flag())
+        command.add_argument(Argument("verbose", help="Verbose output").long("verbose").flag())
+        command.implies("debug", "verbose")
+        # --debug now automatically sets --verbose as well
+        ```
+        """
+        # Validate that both trigger and implied are registered arguments.
+        var trigger_found = False
+        for i in range(len(self.args)):
+            if self.args[i].name == trigger:
+                trigger_found = True
+                break
+        if not trigger_found:
+            raise Error("implies(): unknown trigger argument '" + trigger + "'")
+
+        var implied_found = False
+        var implied_kind = String("flag")  # "flag" or "count"
+        for i in range(len(self.args)):
+            if self.args[i].name == implied:
+                implied_found = True
+                if self.args[i]._is_count:
+                    implied_kind = "count"
+                elif not self.args[i]._is_flag:
+                    raise Error(
+                        "implies(): implied argument '"
+                        + implied
+                        + "' must be a flag() or count()"
+                    )
+                break
+        if not implied_found:
+            raise Error("implies(): unknown implied argument '" + implied + "'")
+
+        # Cycle detection: check if `trigger` is reachable from `implied`.
+        # If so, adding implied→...→trigger would form a cycle.
+        if trigger == implied:
+            raise Error(
+                "Implication cycle detected: '" + trigger + "' implies itself"
+            )
+        # DFS from `implied` following existing edges.
+        var visited = List[String]()
+        var stack = List[String]()
+        stack.append(implied)
+        while len(stack) > 0:
+            var current = stack.pop()
+            # Check existing implications where `current` is the trigger.
+            for i in range(len(self._implications)):
+                if self._implications[i][0] == current:
+                    var target = self._implications[i][1]
+                    if target == trigger:
+                        raise Error(
+                            "Implication cycle detected: adding '"
+                            + trigger
+                            + "' implies '"
+                            + implied
+                            + "' would create a cycle"
+                        )
+                    # Only visit each node once.
+                    var already = False
+                    for v in range(len(visited)):
+                        if visited[v] == target:
+                            already = True
+                            break
+                    if not already:
+                        visited.append(target)
+                        stack.append(target)
+        # Store [trigger, implied, kind] triple.  The kind is used by
+        # _apply_implications() to set the correct result field without
+        # re-scanning self.args at parse time.
+        var imp_triple: List[String] = [trigger, implied, implied_kind]
+        self._implications.append(imp_triple^)
+
     fn help_on_no_arguments(mut self):
         """Enables showing help when invoked with no arguments.
 
@@ -1108,8 +1214,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result._positionals.append(arg)
             i += 1
 
-        # Apply defaults and validate constraints.
+        # Apply defaults, propagate implications, then validate constraints.
         self._apply_defaults(result)
+        self._apply_implications(result)
         self._validate(result)
 
         return result^
@@ -1610,6 +1717,38 @@ struct Command(Copyable, Movable, Stringable, Writable):
                                 result._positionals[k] = a._default_value
                 else:
                     result._values[a.name] = a._default_value
+
+    fn _apply_implications(self, mut result: ParseResult):
+        """Propagates implication rules on the parse result.
+
+        For each registered ``implies(trigger, implied)`` triple, if
+        ``trigger`` is present in ``result``, ``implied`` is automatically
+        set.  Uses a fixed-point loop to support chained implications
+        (A → B → C).
+
+        The implied-argument kind (``"flag"`` or ``"count"``) is stored at
+        registration time, so no argument scan is needed here.
+
+        Args:
+            result: The parse result to mutate in-place.
+        """
+        if len(self._implications) == 0:
+            return
+
+        # Fixed-point iteration: keep looping until no new values are set.
+        var changed = True
+        while changed:
+            changed = False
+            for i in range(len(self._implications)):
+                var trigger = self._implications[i][0]
+                var implied = self._implications[i][1]
+                var kind = self._implications[i][2]  # "flag" or "count"
+                if result.has(trigger) and not result.has(implied):
+                    if kind == "count":
+                        result._counts[implied] = 1
+                    else:
+                        result._flags[implied] = True
+                    changed = True
 
     fn _validate(self, mut result: ParseResult) raises:
         """Runs all post-parse validation checks on the result.

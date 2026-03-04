@@ -41,6 +41,7 @@ from argmojo import Argument, Command
   - [One-Required Groups](#one-required-groups)
   - [Required-Together Groups](#required-together-groups)
   - [Conditional Requirements](#conditional-requirements)
+  - [Mutual Implication](#mutual-implication)
 - [Subcommands](#subcommands)
   - [Defining Subcommands](#defining-subcommands)
   - [Parsing Subcommand Results](#parsing-subcommand-results)
@@ -1324,6 +1325,108 @@ Error: Argument '--output' is required when '--save' is provided
 > appear. `required_if()` is one-directional — only the target is
 > required when the condition is present, not vice versa.
 
+### Mutual Implication
+
+Use `implies()` to declare that setting one argument automatically sets another. This is useful when one mode logically entails another — for example, debug mode should always enable verbose output.
+
+---
+
+```mojo
+command.add_argument(Argument("debug", help="Debug mode").long("debug").flag())
+command.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+command.implies("debug", "verbose")
+```
+
+This means: **if `--debug` is provided, `--verbose` is automatically set too.**
+
+```bash
+myapp --debug          # OK — --verbose is auto-set
+myapp --debug -v       # OK — --verbose already set, no conflict
+myapp --verbose        # OK — --debug is NOT set (one-directional)
+myapp                  # OK — neither set
+```
+
+---
+
+**Chained implications**
+
+Implications can be chained. If A implies B and B implies C, then setting A will also set C:
+
+```mojo
+command.implies("debug", "verbose")
+command.implies("verbose", "log")
+# --debug → --verbose → --log (all three are set)
+```
+
+---
+
+**Multiple implications from one trigger**
+
+A single argument can imply multiple targets:
+
+```mojo
+command.implies("debug", "verbose")
+command.implies("debug", "log")
+# --debug sets both --verbose and --log
+```
+
+---
+
+**Works with count arguments**
+
+When the implied argument is a count (`.count()`), it is set to 1 if not already present. Explicit counts are preserved:
+
+```mojo
+command.add_argument(Argument("verbose", help="Verbosity").long("verbose").short("v").count())
+command.implies("debug", "verbose")
+# --debug        → verbose count = 1
+# --debug -vvv   → verbose count = 3 (explicit value kept)
+```
+
+---
+
+**Cycle detection**
+
+Circular implications are detected at registration time and raise an error:
+
+```mojo
+command.implies("a", "b")
+command.implies("b", "a")   # Error: cycle detected
+```
+
+This also catches indirect cycles (A → B → C → A).
+
+---
+
+**Integration with other constraints**
+
+Implications are applied *after* defaults and *before* validation, so implied arguments participate in all subsequent constraint checks:
+
+```mojo
+command.implies("debug", "verbose")
+command.required_if("output", "verbose")
+# --debug implies --verbose, which triggers the conditional requirement for --output
+```
+
+```mojo
+command.implies("debug", "verbose")
+var excl: List[String] = ["verbose", "quiet"]
+command.mutually_exclusive(excl^)
+# --debug --quiet fails: --debug implies --verbose, which conflicts with --quiet
+```
+
+---
+
+| Scenario                  | Example                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| Debug enables verbose     | `implies("debug", "verbose")`                                  |
+| Verbose enables logging   | `implies("verbose", "log")`                                    |
+| Strict enables all checks | `implies("strict", "lint")` + `implies("strict", "typecheck")` |
+
+> **Difference from `required_if()`:** `required_if()` *requires* the
+> user to provide the target argument — parsing fails if they don't.
+> `implies()` *automatically sets* the target — no user action needed.
+
 ## Subcommands
 
 Subcommands (`app <subcommand> [args]`) let you group related functionality under a single binary — similar to `git commit`, `docker run`, or `cargo build`. In ArgMojo, a subcommand is simply another `Command` instance registered on the parent.
@@ -1657,7 +1760,7 @@ By default, ArgMojo **prevents** mixing positional arguments and subcommands on 
 
 ```mojo
 var app = Command("app", "My app")
-app.add_subcommand(Command("search", "Search")^)
+app.add_subcommand(Command("search", "Search"))
 app.add_argument(Argument("query", help="Query").positional())  # raises!
 ```
 
@@ -1666,7 +1769,7 @@ The same guard triggers if you add a subcommand to a command that already has po
 ```mojo
 var app = Command("app", "My app")
 app.add_argument(Argument("file", help="File").positional())
-app.add_subcommand(Command("init", "Init")^)  # raises!
+app.add_subcommand(Command("init", "Init"))  # raises!
 ```
 
 If you genuinely need both (e.g., `--` stopping dispatch so the subcommand name becomes a positional), call `allow_positional_with_subcommands()` before adding either:
@@ -1674,7 +1777,7 @@ If you genuinely need both (e.g., `--` stopping dispatch so the subcommand name 
 ```mojo
 var app = Command("app", "My app")
 app.allow_positional_with_subcommands()
-app.add_subcommand(Command("search", "Search")^)
+app.add_subcommand(Command("search", "Search"))
 app.add_argument(Argument("fallback", help="Fallback").positional())
 
 # "foo" doesn't match any subcommand → treated as positional

@@ -36,7 +36,8 @@ test = """\
     && mojo run -I src tests/test_negative_numbers.mojo \
     && mojo run -I src tests/test_persistent.mojo \
     && mojo run -I src tests/test_typo_suggestions.mojo \
-    && mojo run -I src tests/test_completion.mojo"""
+    && mojo run -I src tests/test_completion.mojo \
+    && mojo run -I src tests/test_implies.mojo"""
 
 # build example binaries
 build = """pixi run package \

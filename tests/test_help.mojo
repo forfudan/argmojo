@@ -27,7 +27,6 @@ fn test_hidden_not_in_help() raises:
     var help = command._generate_help()
     assert_true("verbose" in help, msg="visible arg should be in help")
     assert_false("debug" in help, msg="hidden arg should NOT be in help")
-    print("  ✓ test_hidden_not_in_help")
 
 
 fn test_hidden_still_works() raises:
@@ -44,7 +43,6 @@ fn test_hidden_still_works() raises:
     var args: List[String] = ["test", "--debug"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("debug"), msg="hidden --debug should work")
-    print("  ✓ test_hidden_still_works")
 
 
 # ── Metavar ──────────────────────────────────────────────────────────────────────
@@ -67,7 +65,6 @@ fn test_metavar_in_help() raises:
         "<output>" in help,
         msg="default placeholder should not appear when metavar is set",
     )
-    print("  ✓ test_metavar_in_help")
 
 
 fn test_choices_in_help() raises:
@@ -86,7 +83,6 @@ fn test_choices_in_help() raises:
         "{json,csv,table}" in help,
         msg="choices should appear in help as {json,csv,table}",
     )
-    print("  ✓ test_choices_in_help")
 
 
 # ── Count action ──────────────────────────────────────────────────────────────────
@@ -109,7 +105,6 @@ fn test_negatable_in_help() raises:
         "--color / --no-color" in help,
         msg="Help should show --color / --no-color",
     )
-    print("  ✓ test_negatable_in_help")
 
 
 fn test_append_in_help() raises:
@@ -131,7 +126,6 @@ fn test_append_in_help() raises:
         "ENV..." in help,
         msg="append arg with metavar should show ENV... in help",
     )
-    print("  ✓ test_append_in_help")
 
 
 # ===------------------------------------------------------------------=== #
@@ -151,7 +145,6 @@ fn test_help_question_mark_in_help_output() raises:
         "-h, --help" in help,
         msg="help output should show -h, --help",
     )
-    print("  ✓ test_help_question_mark_in_help_output")
 
 
 fn test_dynamic_padding_short_options() raises:
@@ -173,7 +166,6 @@ fn test_dynamic_padding_short_options() raises:
                 msg="-v line should contain help text",
             )
             break
-    print("  ✓ test_dynamic_padding_short_options")
 
 
 fn test_dynamic_padding_long_options() raises:
@@ -212,7 +204,6 @@ fn test_dynamic_padding_long_options() raises:
         desc_col_short,
         msg="Help descriptions should be aligned at the same column",
     )
-    print("  ✓ test_dynamic_padding_long_options")
 
 
 fn test_help_and_version_aligned() raises:
@@ -249,7 +240,6 @@ fn test_help_and_version_aligned() raises:
         desc_col_version,
         msg="output and version should be aligned",
     )
-    print("  ✓ test_help_and_version_aligned")
 
 
 fn test_help_on_no_arguments_disabled_by_default() raises:
@@ -264,7 +254,6 @@ fn test_help_on_no_arguments_disabled_by_default() raises:
     # Should NOT exit — just parse with defaults.
     var result = command.parse_arguments(args)
     assert_false(result.get_flag("verbose"), msg="verbose should be False")
-    print("  ✓ test_help_on_no_arguments_disabled_by_default")
 
 
 fn test_positional_args_aligned_in_help() raises:
@@ -295,7 +284,6 @@ fn test_positional_args_aligned_in_help() raises:
         desc_col_long,
         msg="positional arg descriptions should be aligned",
     )
-    print("  ✓ test_positional_args_aligned_in_help")
 
 
 fn test_help_contains_ansi_colors() raises:
@@ -325,7 +313,6 @@ fn test_help_contains_ansi_colors() raises:
         "Options:" in colored, msg="colored help should have 'Options:'"
     )
     assert_true("Options:" in plain, msg="plain help should have 'Options:'")
-    print("  ✓ test_help_contains_ansi_colors")
 
 
 fn test_help_color_false_no_codes() raises:
@@ -341,7 +328,6 @@ fn test_help_color_false_no_codes() raises:
     assert_true("Options:\n" in help, msg="Options header should be plain")
     # No escape character anywhere.
     assert_false("\x1b" in help, msg="No escape chars in plain mode")
-    print("  ✓ test_help_color_false_no_codes")
 
 
 fn test_custom_header_color() raises:
@@ -361,7 +347,6 @@ fn test_custom_header_color() raises:
         "\x1b[93m" in help,
         msg="Default yellow header code should be absent",
     )
-    print("  ✓ test_custom_header_color")
 
 
 fn test_custom_arg_color() raises:
@@ -383,7 +368,6 @@ fn test_custom_arg_color() raises:
         "\x1b[95m" in help,
         msg="Default magenta arg code should be absent",
     )
-    print("  ✓ test_custom_arg_color")
 
 
 fn test_custom_both_colors() raises:
@@ -400,7 +384,6 @@ fn test_custom_both_colors() raises:
     assert_true(
         "\x1b[1;4m" in help, msg="Bold+underline should still be present"
     )
-    print("  ✓ test_custom_both_colors")
 
 
 fn test_default_colors_unchanged() raises:
@@ -412,7 +395,6 @@ fn test_default_colors_unchanged() raises:
     # Default header = yellow \x1b[93m , default arg = magenta \x1b[95m
     assert_true("\x1b[93m" in help, msg="Default header should be yellow (93)")
     assert_true("\x1b[95m" in help, msg="Default arg should be magenta (95)")
-    print("  ✓ test_default_colors_unchanged")
 
 
 fn test_color_case_insensitive() raises:
@@ -434,7 +416,6 @@ fn test_color_case_insensitive() raises:
     command3.header_color("GREEN")
     var h3 = command3._generate_help(color=True)
     assert_true("\x1b[92m" in h3, msg="'GREEN' uppercase should resolve")
-    print("  ✓ test_color_case_insensitive")
 
 
 fn test_pink_alias_for_magenta() raises:
@@ -448,7 +429,6 @@ fn test_pink_alias_for_magenta() raises:
         "\x1b[95m" in help,
         msg="PINK alias should produce magenta ANSI code",
     )
-    print("  ✓ test_pink_alias_for_magenta")
 
 
 fn test_invalid_color_raises() raises:
@@ -475,7 +455,6 @@ fn test_invalid_color_raises() raises:
             msg="Error message should mention 'Unknown colour'",
         )
     assert_true(raised, msg="arg_color('LIME') should raise an error")
-    print("  ✓ test_invalid_color_raises")
 
 
 fn test_custom_color_plain_mode_unaffected() raises:
@@ -488,7 +467,6 @@ fn test_custom_color_plain_mode_unaffected() raises:
     var help = command._generate_help(color=False)
     assert_false("\x1b" in help, msg="Plain mode should have no ANSI codes")
     assert_true("Options:" in help, msg="Plain mode should still have content")
-    print("  ✓ test_custom_color_plain_mode_unaffected")
 
 
 # ===------------------------------------------------------------------=== #
@@ -525,7 +503,6 @@ fn test_nargs_in_help() raises:
         "<point>..." in help,
         msg="nargs should NOT show '...' suffix",
     )
-    print("  ✓ test_nargs_in_help")
 
 
 fn test_nargs_with_metavar() raises:
@@ -543,7 +520,6 @@ fn test_nargs_with_metavar() raises:
         "PX PX" in help,
         msg="number_of_values(2) with metavar PX should show 'PX PX'",
     )
-    print("  ✓ test_nargs_with_metavar")
 
 
 # ── Subcommand help UX ───────────────────────────────────────────────────────────
@@ -576,7 +552,6 @@ fn test_root_help_shows_commands_section() raises:
         "Initialize a new project" in help,
         msg="Help should include init description",
     )
-    print("  ✓ test_root_help_shows_commands_section")
 
 
 fn test_root_help_no_commands_when_no_subcommands() raises:
@@ -589,14 +564,13 @@ fn test_root_help_no_commands_when_no_subcommands() raises:
 
     var help = command._generate_help(color=False)
     assert_false("Commands:" in help, msg="No Commands: without subcommands")
-    print("  ✓ test_root_help_no_commands_when_no_subcommands")
 
 
 fn test_root_help_commands_excludes_help_sub() raises:
     """Tests that the auto-inserted 'help' subcommand is not listed in Commands.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
     # 'help' subcommand is auto-added.
 
     var help = app._generate_help(color=False)
@@ -627,21 +601,19 @@ fn test_root_help_commands_excludes_help_sub() raises:
     assert_false(
         found_help_cmd, msg="'help' sub should not appear in Commands:"
     )
-    print("  ✓ test_root_help_commands_excludes_help_sub")
 
 
 fn test_root_help_usage_shows_command_placeholder() raises:
     """Tests that usage line includes <COMMAND> when subcommands are registered.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var help = app._generate_help(color=False)
     assert_true(
         "<COMMAND>" in help,
         msg="Usage should show <COMMAND> placeholder",
     )
-    print("  ✓ test_root_help_usage_shows_command_placeholder")
 
 
 fn test_root_help_usage_no_command_placeholder_without_subs() raises:
@@ -656,7 +628,6 @@ fn test_root_help_usage_no_command_placeholder_without_subs() raises:
         "<COMMAND>" in help,
         msg="Usage should NOT show <COMMAND> without subcommands",
     )
-    print("  ✓ test_root_help_usage_no_command_placeholder_without_subs")
 
 
 fn test_persistent_args_under_global_options() raises:
@@ -672,7 +643,7 @@ fn test_persistent_args_under_global_options() raises:
     app.add_argument(
         Argument("output", help="Output file").long("output").short("o")
     )
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var help = app._generate_help(color=False)
     assert_true(
@@ -688,7 +659,6 @@ fn test_persistent_args_under_global_options() raises:
         opt_pos < global_pos,
         msg="Options: should come before Global Options:",
     )
-    print("  ✓ test_persistent_args_under_global_options")
 
 
 fn test_no_global_options_without_persistent() raises:
@@ -697,14 +667,13 @@ fn test_no_global_options_without_persistent() raises:
     app.add_argument(
         Argument("verbose", help="Verbose output").long("verbose").flag()
     )
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var help = app._generate_help(color=False)
     assert_false(
         "Global Options:" in help,
         msg="No Global Options: without persistent args",
     )
-    print("  ✓ test_no_global_options_without_persistent")
 
 
 fn test_child_help_shows_full_command_path() raises:
@@ -730,7 +699,6 @@ fn test_child_help_shows_full_command_path() raises:
         "app search" in help,
         msg="Child help should show full command path",
     )
-    print("  ✓ test_child_help_shows_full_command_path")
 
 
 fn test_child_help_shows_inherited_persistent_args() raises:
@@ -773,7 +741,6 @@ fn test_child_help_shows_inherited_persistent_args() raises:
         "--max-depth" in help,
         msg="Local --max-depth should appear in child help",
     )
-    print("  ✓ test_child_help_shows_inherited_persistent_args")
 
 
 fn test_add_tip_appears_in_help() raises:
@@ -791,7 +758,6 @@ fn test_add_tip_appears_in_help() raises:
         "Config: ~/.config/test/config.toml" in help,
         msg="Second tip should appear in help",
     )
-    print("  ✓ test_add_tip_appears_in_help")
 
 
 # ── Alias in help output ──────────────────────────────────────────────────────
@@ -810,7 +776,6 @@ fn test_alias_shown_inline_in_help() raises:
         "clone, cl" in help,
         msg="Help should show alias inline: 'clone, cl'",
     )
-    print("  ✓ test_alias_shown_inline_in_help")
 
 
 fn test_multiple_aliases_shown_in_help() raises:
@@ -826,7 +791,6 @@ fn test_multiple_aliases_shown_in_help() raises:
         "commit, ci, cm" in help,
         msg="Help should show all aliases: 'commit, ci, cm'",
     )
-    print("  ✓ test_multiple_aliases_shown_in_help")
 
 
 # ── Hidden subcommands ────────────────────────────────────────────────────────
@@ -844,7 +808,6 @@ fn test_hidden_subcommand_not_in_help() raises:
     var help = app._generate_help(color=False)
     assert_true("clone" in help, msg="visible sub should be in help")
     assert_false("debug" in help, msg="hidden sub should NOT be in help")
-    print("  ✓ test_hidden_subcommand_not_in_help")
 
 
 fn test_hidden_subcommand_not_in_usage_line() raises:
@@ -859,7 +822,6 @@ fn test_hidden_subcommand_not_in_usage_line() raises:
         "<COMMAND>" in help,
         msg="usage line should not show <COMMAND> when only subs are hidden",
     )
-    print("  ✓ test_hidden_subcommand_not_in_usage_line")
 
 
 fn test_hidden_subcommand_usage_line_with_visible() raises:
@@ -876,7 +838,6 @@ fn test_hidden_subcommand_usage_line_with_visible() raises:
         "<COMMAND>" in help,
         msg="usage line should show <COMMAND> when visible subs exist",
     )
-    print("  ✓ test_hidden_subcommand_usage_line_with_visible")
 
 
 # ── NO_COLOR ──────────────────────────────────────────────────────────────────

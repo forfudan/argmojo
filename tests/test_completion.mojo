@@ -22,7 +22,6 @@ fn test_fish_dispatch() raises:
         "complete -c myapp" in script,
         msg="Fish script should contain 'complete -c myapp'",
     )
-    print("  ✓ test_fish_dispatch")
 
 
 fn test_zsh_dispatch() raises:
@@ -43,7 +42,6 @@ fn test_zsh_dispatch() raises:
         "compdef _myapp myapp" in script,
         msg="Zsh script should register with 'compdef'",
     )
-    print("  ✓ test_zsh_dispatch")
 
 
 fn test_bash_dispatch() raises:
@@ -60,7 +58,6 @@ fn test_bash_dispatch() raises:
         "complete -F _myapp_completion myapp" in script,
         msg="Bash script should register with 'complete -F'",
     )
-    print("  ✓ test_bash_dispatch")
 
 
 fn test_case_insensitive_shell() raises:
@@ -81,7 +78,6 @@ fn test_case_insensitive_shell() raises:
         "complete -F" in bash_mixed,
         msg="Bash (mixed case) should work",
     )
-    print("  ✓ test_case_insensitive_shell")
 
 
 fn test_unknown_shell_raises() raises:
@@ -93,7 +89,6 @@ fn test_unknown_shell_raises() raises:
     except:
         raised = True
     assert_true(raised, msg="Unknown shell should raise an error")
-    print("  ✓ test_unknown_shell_raises")
 
 
 # ── Fish completion details ──────────────────────────────────────────────────
@@ -114,7 +109,6 @@ fn test_fish_long_option() raises:
         "-s o" in script,
         msg="Fish script should contain '-s o'",
     )
-    print("  ✓ test_fish_long_option")
 
 
 fn test_fish_flag_no_require_value() raises:
@@ -132,7 +126,7 @@ fn test_fish_flag_no_require_value() raises:
                 " -r" in lines[i],
                 msg="Flag should not have -r in Fish completion",
             )
-            print("  ✓ test_fish_flag_no_require_value")
+
             return
     assert_true(False, msg="Should have found --verbose in Fish output")
 
@@ -149,7 +143,7 @@ fn test_fish_value_option_has_require() raises:
                 " -r" in lines[i],
                 msg="Value option should have -r in Fish completion",
             )
-            print("  ✓ test_fish_value_option_has_require")
+
             return
     assert_true(False, msg="Should have found --output in Fish output")
 
@@ -168,7 +162,6 @@ fn test_fish_choices() raises:
         "-a 'json csv table'" in script,
         msg="Fish script should list choices with -a",
     )
-    print("  ✓ test_fish_choices")
 
 
 fn test_fish_help_text() raises:
@@ -180,7 +173,6 @@ fn test_fish_help_text() raises:
         "-d 'Output file'" in script,
         msg="Fish script should include help text with -d",
     )
-    print("  ✓ test_fish_help_text")
 
 
 fn test_fish_hidden_excluded() raises:
@@ -204,7 +196,6 @@ fn test_fish_hidden_excluded() raises:
         "-l visible" in script,
         msg="Visible args should appear in Fish completion",
     )
-    print("  ✓ test_fish_hidden_excluded")
 
 
 fn test_fish_builtin_help_version() raises:
@@ -219,7 +210,6 @@ fn test_fish_builtin_help_version() raises:
         "-l version" in script,
         msg="Fish script should include --version",
     )
-    print("  ✓ test_fish_builtin_help_version")
 
 
 fn test_fish_subcommands() raises:
@@ -248,7 +238,6 @@ fn test_fish_subcommands() raises:
         "-l max-depth" in script,
         msg="Fish script should include subcommand options",
     )
-    print("  ✓ test_fish_subcommands")
 
 
 fn test_fish_escape_single_quote() raises:
@@ -262,7 +251,6 @@ fn test_fish_escape_single_quote() raises:
         "It\\'s a test" in script,
         msg="Fish script should escape single quotes",
     )
-    print("  ✓ test_fish_escape_single_quote")
 
 
 # ── Zsh completion details ───────────────────────────────────────────────────
@@ -286,7 +274,6 @@ fn test_zsh_simple_flag() raises:
         "-v" in script,
         msg="Zsh script should contain -v",
     )
-    print("  ✓ test_zsh_simple_flag")
 
 
 fn test_zsh_choices() raises:
@@ -303,7 +290,6 @@ fn test_zsh_choices() raises:
         "json csv" in script,
         msg="Zsh script should include choice values",
     )
-    print("  ✓ test_zsh_choices")
 
 
 fn test_zsh_subcommands() raises:
@@ -327,7 +313,6 @@ fn test_zsh_subcommands() raises:
         "--release" in script,
         msg="Zsh script should include subcommand options",
     )
-    print("  ✓ test_zsh_subcommands")
 
 
 fn test_zsh_escape_brackets() raises:
@@ -341,7 +326,6 @@ fn test_zsh_escape_brackets() raises:
         "Test \\[option\\]" in script,
         msg="Zsh script should escape brackets",
     )
-    print("  ✓ test_zsh_escape_brackets")
 
 
 fn test_zsh_escape_colon() raises:
@@ -355,7 +339,6 @@ fn test_zsh_escape_colon() raises:
         "Key\\: value" in script,
         msg="Zsh script should escape colons",
     )
-    print("  ✓ test_zsh_escape_colon")
 
 
 fn test_zsh_builtin_help() raises:
@@ -370,7 +353,6 @@ fn test_zsh_builtin_help() raises:
         "--version" in script,
         msg="Zsh script should include --version",
     )
-    print("  ✓ test_zsh_builtin_help")
 
 
 # ── Bash completion details ──────────────────────────────────────────────────
@@ -402,7 +384,6 @@ fn test_bash_simple_options() raises:
         "-o" in script,
         msg="Bash script should contain -o",
     )
-    print("  ✓ test_bash_simple_options")
 
 
 fn test_bash_subcommands() raises:
@@ -424,7 +405,6 @@ fn test_bash_subcommands() raises:
         "subcmd" in script,
         msg="Bash script should detect subcommand",
     )
-    print("  ✓ test_bash_subcommands")
 
 
 fn test_bash_choices_prev() raises:
@@ -443,7 +423,6 @@ fn test_bash_choices_prev() raises:
         "debug info warn" in script,
         msg="Bash script should include choice values",
     )
-    print("  ✓ test_bash_choices_prev")
 
 
 fn test_bash_hidden_excluded() raises:
@@ -464,7 +443,6 @@ fn test_bash_hidden_excluded() raises:
         "--public" in script,
         msg="Visible args should appear in Bash completion",
     )
-    print("  ✓ test_bash_hidden_excluded")
 
 
 fn test_bash_builtin_help_version() raises:
@@ -479,7 +457,6 @@ fn test_bash_builtin_help_version() raises:
         "--version" in script,
         msg="Bash script should include --version",
     )
-    print("  ✓ test_bash_builtin_help_version")
 
 
 # ── Cross-shell consistency ──────────────────────────────────────────────────
@@ -515,7 +492,6 @@ fn test_all_shells_include_same_options() raises:
     assert_true("--verbose" in bash, msg="bash should include --verbose")
     assert_true("--output" in bash, msg="bash should include --output")
     assert_true("--format" in bash, msg="bash should include --format")
-    print("  ✓ test_all_shells_include_same_options")
 
 
 fn test_count_option_no_value() raises:
@@ -540,7 +516,6 @@ fn test_count_option_no_value() raises:
             )
             break
     assert_true(found, msg="Fish script should contain '-l verbose' line")
-    print("  ✓ test_count_option_no_value")
 
 
 fn test_persistent_flags_in_root() raises:
@@ -557,7 +532,6 @@ fn test_persistent_flags_in_root() raises:
         "-l debug" in fish,
         msg="Persistent flag should appear in Fish root completions",
     )
-    print("  ✓ test_persistent_flags_in_root")
 
 
 fn test_positional_excluded() raises:
@@ -581,7 +555,6 @@ fn test_positional_excluded() raises:
         "--pattern" in bash,
         msg="Positional args should not appear as Bash options",
     )
-    print("  ✓ test_positional_excluded")
 
 
 fn test_generated_by_comment() raises:
@@ -602,7 +575,6 @@ fn test_generated_by_comment() raises:
         "Generated by ArgMojo" in bash,
         msg="Bash script should have ArgMojo attribution",
     )
-    print("  ✓ test_generated_by_comment")
 
 
 # ── Built-in --completions flag ───────────────────────────────────────────────
@@ -620,7 +592,6 @@ fn test_fish_builtin_completions() raises:
         "bash zsh fish" in script,
         msg="Fish script should list 'bash zsh fish' as completion choices",
     )
-    print("  ✓ test_fish_builtin_completions")
 
 
 fn test_zsh_builtin_completions() raises:
@@ -635,7 +606,6 @@ fn test_zsh_builtin_completions() raises:
         "(bash zsh fish)" in script,
         msg="Zsh script should list '(bash zsh fish)' as choices",
     )
-    print("  ✓ test_zsh_builtin_completions")
 
 
 fn test_bash_builtin_completions() raises:
@@ -650,7 +620,6 @@ fn test_bash_builtin_completions() raises:
         "bash zsh fish" in script,
         msg="Bash script should list 'bash zsh fish' as prev-case choices",
     )
-    print("  ✓ test_bash_builtin_completions")
 
 
 fn test_disable_default_completions_not_in_script() raises:
@@ -682,7 +651,6 @@ fn test_disable_default_completions_not_in_script() raises:
             " disable_default_completions()"
         ),
     )
-    print("  ✓ test_disable_default_completions_not_in_script")
 
 
 fn test_disable_default_completions_not_in_help() raises:
@@ -698,7 +666,6 @@ fn test_disable_default_completions_not_in_help() raises:
             " disable_default_completions()"
         ),
     )
-    print("  ✓ test_disable_default_completions_not_in_help")
 
 
 fn test_completions_in_help_by_default() raises:
@@ -714,7 +681,6 @@ fn test_completions_in_help_by_default() raises:
         "bash,zsh,fish" in help_text or "{bash,zsh,fish}" in help_text,
         msg="Help text should show shell choices for --completions",
     )
-    print("  ✓ test_completions_in_help_by_default")
 
 
 # ── completions_name() ──────────────────────────────────────────────────────
@@ -747,7 +713,6 @@ fn test_completions_custom_name_in_scripts() raises:
         "--completions" in bash,
         msg="Bash script should NOT have '--completions' after rename",
     )
-    print("  ✓ test_completions_custom_name_in_scripts")
 
 
 fn test_completions_custom_name_in_help() raises:
@@ -763,7 +728,6 @@ fn test_completions_custom_name_in_help() raises:
         "--completions" in help_text,
         msg="Help text should NOT show '--completions' after rename",
     )
-    print("  ✓ test_completions_custom_name_in_help")
 
 
 fn test_completions_custom_name_in_bash_prev() raises:
@@ -779,7 +743,6 @@ fn test_completions_custom_name_in_bash_prev() raises:
         "--completions)" in bash,
         msg="Bash prev-case should NOT have '--completions)' after rename",
     )
-    print("  ✓ test_completions_custom_name_in_bash_prev")
 
 
 # ── completions_as_subcommand() ─────────────────────────────────────────────
@@ -809,7 +772,6 @@ fn test_completions_as_subcommand_in_help() raises:
             " when using subcommand mode"
         ),
     )
-    print("  ✓ test_completions_as_subcommand_in_help")
 
 
 fn test_completions_as_subcommand_in_fish() raises:
@@ -835,7 +797,6 @@ fn test_completions_as_subcommand_in_fish() raises:
             " in subcommand mode"
         ),
     )
-    print("  ✓ test_completions_as_subcommand_in_fish")
 
 
 fn test_completions_as_subcommand_in_zsh() raises:
@@ -860,7 +821,6 @@ fn test_completions_as_subcommand_in_zsh() raises:
         "completions)" in zsh,
         msg="Zsh script should have completions) case handler",
     )
-    print("  ✓ test_completions_as_subcommand_in_zsh")
 
 
 fn test_completions_as_subcommand_in_bash() raises:
@@ -886,7 +846,6 @@ fn test_completions_as_subcommand_in_bash() raises:
             " names in subcommand mode"
         ),
     )
-    print("  ✓ test_completions_as_subcommand_in_bash")
 
 
 fn test_completions_custom_name_with_subcommand() raises:
@@ -924,7 +883,6 @@ fn test_completions_custom_name_with_subcommand() raises:
         "comp)" in bash,
         msg="Bash should have 'comp)' case handler with custom name",
     )
-    print("  ✓ test_completions_custom_name_with_subcommand")
 
 
 # ── Alias in completion scripts ──────────────────────────────────────────────
@@ -951,7 +909,6 @@ fn test_fish_completion_includes_alias() raises:
         "__fish_seen_subcommand_from clone cl" in script,
         msg="Fish should include alias in seen_subcommand_from",
     )
-    print("  ✓ test_fish_completion_includes_alias")
 
 
 fn test_zsh_completion_includes_alias() raises:
@@ -970,7 +927,6 @@ fn test_zsh_completion_includes_alias() raises:
         "clone|cl)" in script,
         msg="Zsh script should dispatch clone|cl pattern",
     )
-    print("  ✓ test_zsh_completion_includes_alias")
 
 
 fn test_bash_completion_includes_alias() raises:
@@ -990,7 +946,6 @@ fn test_bash_completion_includes_alias() raises:
         "clone cl" in script,
         msg="Bash should list alias in subcommand names",
     )
-    print("  ✓ test_bash_completion_includes_alias")
 
 
 # ── Hidden subcommands in completions ─────────────────────────────────────────
@@ -1021,7 +976,6 @@ fn test_fish_hidden_sub_excluded() raises:
         "debug" in script,
         msg="Fish script should NOT include hidden sub 'debug'",
     )
-    print("  ✓ test_fish_hidden_sub_excluded")
 
 
 fn test_zsh_hidden_sub_excluded() raises:
@@ -1036,7 +990,6 @@ fn test_zsh_hidden_sub_excluded() raises:
         "'debug:" in script,
         msg="Zsh script should NOT include hidden sub 'debug'",
     )
-    print("  ✓ test_zsh_hidden_sub_excluded")
 
 
 fn test_bash_hidden_sub_excluded() raises:
@@ -1051,7 +1004,6 @@ fn test_bash_hidden_sub_excluded() raises:
         "debug" in script,
         msg="Bash script should NOT include hidden sub 'debug'",
     )
-    print("  ✓ test_bash_hidden_sub_excluded")
 
 
 fn test_all_hidden_no_subcommand_completion() raises:
@@ -1075,7 +1027,6 @@ fn test_all_hidden_no_subcommand_completion() raises:
         "subcmd" in bash,
         msg="Bash should not have subcmd logic when all subs hidden",
     )
-    print("  ✓ test_all_hidden_no_subcommand_completion")
 
 
 fn main() raises:

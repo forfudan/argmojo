@@ -18,7 +18,6 @@ fn test_flag_long() raises:
     var args: List[String] = ["test", "--verbose"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
-    print("  ✓ test_flag_long")
 
 
 fn test_flag_short() raises:
@@ -34,7 +33,6 @@ fn test_flag_short() raises:
     var args: List[String] = ["test", "-v"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="-v should be True")
-    print("  ✓ test_flag_short")
 
 
 fn test_flag_default_false() raises:
@@ -50,7 +48,6 @@ fn test_flag_default_false() raises:
     var args: List[String] = ["test"]
     var result = command.parse_arguments(args)
     assert_false(result.get_flag("verbose"), msg="unset flag should be False")
-    print("  ✓ test_flag_default_false")
 
 
 fn test_key_value_long_space() raises:
@@ -63,7 +60,6 @@ fn test_key_value_long_space() raises:
     var args: List[String] = ["test", "--output", "file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_key_value_long_space")
 
 
 fn test_key_value_long_equals() raises:
@@ -76,7 +72,6 @@ fn test_key_value_long_equals() raises:
     var args: List[String] = ["test", "--output=file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_key_value_long_equals")
 
 
 fn test_key_value_short() raises:
@@ -89,7 +84,6 @@ fn test_key_value_short() raises:
     var args: List[String] = ["test", "-o", "file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_key_value_short")
 
 
 fn test_positional_args() raises:
@@ -106,7 +100,6 @@ fn test_positional_args() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), "./src")
-    print("  ✓ test_positional_args")
 
 
 fn test_positional_with_default() raises:
@@ -123,7 +116,6 @@ fn test_positional_with_default() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), ".")
-    print("  ✓ test_positional_with_default")
 
 
 fn test_mixed_args() raises:
@@ -168,7 +160,6 @@ fn test_mixed_args() raises:
     assert_true(result.get_flag("ling"), msg="--ling should be True")
     assert_true(result.get_flag("ignore-case"), msg="-i should be True")
     assert_equal(result.get_string("max-depth"), "3")
-    print("  ✓ test_mixed_args")
 
 
 fn test_double_dash_stop() raises:
@@ -184,7 +175,6 @@ fn test_double_dash_stop() raises:
     )
     assert_equal(len(result._positionals), 1)
     assert_equal(result._positionals[0], "--verbose")
-    print("  ✓ test_double_dash_stop")
 
 
 fn test_has() raises:
@@ -197,7 +187,6 @@ fn test_has() raises:
     var result = command.parse_arguments(args)
     assert_true(result.has("verbose"), msg="verbose should exist")
     assert_false(result.has("output"), msg="output should not exist")
-    print("  ✓ test_has")
 
 
 # ── Short flag merging ────────────────────────────────────────────────────────────
@@ -215,7 +204,6 @@ fn test_merged_short_flags() raises:
     assert_true(result.get_flag("all"), msg="-a should be True from -abc")
     assert_true(result.get_flag("brief"), msg="-b should be True from -abc")
     assert_true(result.get_flag("color"), msg="-c should be True from -abc")
-    print("  ✓ test_merged_short_flags")
 
 
 fn test_merged_flags_partial() raises:
@@ -230,7 +218,6 @@ fn test_merged_flags_partial() raises:
     assert_true(result.get_flag("all"), msg="-a should be True from -ab")
     assert_true(result.get_flag("brief"), msg="-b should be True from -ab")
     assert_false(result.get_flag("color"), msg="-c should be False (not given)")
-    print("  ✓ test_merged_flags_partial")
 
 
 fn test_merged_flags_with_trailing_value() raises:
@@ -245,7 +232,6 @@ fn test_merged_flags_with_trailing_value() raises:
     assert_true(result.get_flag("all"), msg="-a should be True")
     assert_true(result.get_flag("verbose"), msg="-v should be True")
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_merged_flags_with_trailing_value")
 
 
 # ── Attached short value ─────────────────────────────────────────────────────────
@@ -259,7 +245,6 @@ fn test_attached_short_value() raises:
     var args: List[String] = ["test", "-ofile.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_attached_short_value")
 
 
 fn test_merged_flags_with_attached_value() raises:
@@ -274,7 +259,6 @@ fn test_merged_flags_with_attached_value() raises:
     assert_true(result.get_flag("all"), msg="-a should be True")
     assert_true(result.get_flag("brief"), msg="-b should be True")
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_merged_flags_with_attached_value")
 
 
 # ── Choices validation ───────────────────────────────────────────────────────────
@@ -294,7 +278,6 @@ fn test_choices_valid() raises:
     var args: List[String] = ["test", "--format", "json"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
-    print("  ✓ test_choices_valid")
 
 
 fn test_choices_invalid() raises:
@@ -323,7 +306,6 @@ fn test_choices_invalid() raises:
             "xml" in msg, msg="Error should mention the bad value 'xml'"
         )
     assert_true(caught, msg="Should have raised an error for invalid choice")
-    print("  ✓ test_choices_invalid")
 
 
 fn test_choices_with_short_attached() raises:
@@ -340,7 +322,6 @@ fn test_choices_with_short_attached() raises:
     var args: List[String] = ["test", "-fjson"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
-    print("  ✓ test_choices_with_short_attached")
 
 
 # ── Count action ─────────────────────────────────────────────────────────────────
@@ -359,7 +340,6 @@ fn test_count_single() raises:
     var args: List[String] = ["test", "-v"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 1)
-    print("  ✓ test_count_single")
 
 
 fn test_count_triple() raises:
@@ -375,7 +355,6 @@ fn test_count_triple() raises:
     var args: List[String] = ["test", "-vvv"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 3)
-    print("  ✓ test_count_triple")
 
 
 fn test_count_long_repeated() raises:
@@ -391,7 +370,6 @@ fn test_count_long_repeated() raises:
     var args: List[String] = ["test", "--verbose", "--verbose"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 2)
-    print("  ✓ test_count_long_repeated")
 
 
 fn test_count_mixed_short_long() raises:
@@ -407,7 +385,6 @@ fn test_count_mixed_short_long() raises:
     var args: List[String] = ["test", "-vv", "--verbose"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 3)
-    print("  ✓ test_count_mixed_short_long")
 
 
 fn test_count_default_zero() raises:
@@ -423,7 +400,6 @@ fn test_count_default_zero() raises:
     var args: List[String] = ["test"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_count("verbose"), 0)
-    print("  ✓ test_count_default_zero")
 
 
 # ── Count ceiling (.max()) ───────────────────────────────────────────────────────
@@ -447,7 +423,6 @@ fn test_count_max_caps_merged_short() raises:
         3,
         msg="-vvvvv with max[3] should cap at 3",
     )
-    print("  ✓ test_count_max_caps_merged_short")
 
 
 fn test_count_max_caps_repeated_long() raises:
@@ -474,7 +449,6 @@ fn test_count_max_caps_repeated_long() raises:
         2,
         msg="4x --verbose with max[2] should cap at 2",
     )
-    print("  ✓ test_count_max_caps_repeated_long")
 
 
 fn test_count_max_caps_mixed() raises:
@@ -495,7 +469,6 @@ fn test_count_max_caps_mixed() raises:
         3,
         msg="Mixed 4 occurrences with max[3] should cap at 3",
     )
-    print("  ✓ test_count_max_caps_mixed")
 
 
 fn test_count_max_below_ceiling() raises:
@@ -516,7 +489,6 @@ fn test_count_max_below_ceiling() raises:
         2,
         msg="-vv with max[5] should remain 2",
     )
-    print("  ✓ test_count_max_below_ceiling")
 
 
 fn test_count_max_exact_ceiling() raises:
@@ -537,7 +509,6 @@ fn test_count_max_exact_ceiling() raises:
         3,
         msg="-vvv with max[3] should be exactly 3",
     )
-    print("  ✓ test_count_max_exact_ceiling")
 
 
 fn test_count_max_single_short() raises:
@@ -558,7 +529,6 @@ fn test_count_max_single_short() raises:
         2,
         msg="3x -v with max[2] should cap at 2",
     )
-    print("  ✓ test_count_max_single_short")
 
 
 fn test_count_without_max_no_ceiling() raises:
@@ -578,7 +548,6 @@ fn test_count_without_max_no_ceiling() raises:
         10,
         msg="-vvvvvvvvvv without max should be 10",
     )
-    print("  ✓ test_count_without_max_no_ceiling")
 
 
 fn test_count_max_one() raises:
@@ -599,7 +568,6 @@ fn test_count_max_one() raises:
         1,
         msg="-vvv with max[1] should cap at 1",
     )
-    print("  ✓ test_count_max_one")
 
 
 # ── Positional arg count validation ──────────────────────────────────────────────
@@ -626,7 +594,6 @@ fn test_too_many_positionals() raises:
     assert_true(
         caught, msg="Should have raised error for extra positional args"
     )
-    print("  ✓ test_too_many_positionals")
 
 
 fn test_exact_positionals_ok() raises:
@@ -643,7 +610,6 @@ fn test_exact_positionals_ok() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), "./src")
-    print("  ✓ test_exact_positionals_ok")
 
 
 # ── Negatable flags (--no-X) ─────────────────────────────────────────────────────
@@ -662,7 +628,6 @@ fn test_negatable_positive() raises:
     var args: List[String] = ["test", "--color"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("color"), msg="--color should be True")
-    print("  ✓ test_negatable_positive")
 
 
 fn test_negatable_negative() raises:
@@ -681,7 +646,6 @@ fn test_negatable_negative() raises:
     assert_true(
         result.has("color"), msg="color should be present after --no-color"
     )
-    print("  ✓ test_negatable_negative")
 
 
 fn test_negatable_default() raises:
@@ -702,7 +666,6 @@ fn test_negatable_default() raises:
     assert_false(
         result.has("color"), msg="unset negatable should not be present"
     )
-    print("  ✓ test_negatable_default")
 
 
 fn test_non_negatable_rejects_no_prefix() raises:
@@ -726,7 +689,6 @@ fn test_non_negatable_rejects_no_prefix() raises:
     assert_true(
         caught, msg="Should have raised error for --no-verbose on non-negatable"
     )
-    print("  ✓ test_non_negatable_rejects_no_prefix")
 
 
 fn test_prefix_match_unambiguous() raises:
@@ -747,7 +709,6 @@ fn test_prefix_match_unambiguous() raises:
     assert_true(
         result.get_flag("verbose"), msg="--verb should resolve to --verbose"
     )
-    print("  ✓ test_prefix_match_unambiguous")
 
 
 fn test_prefix_match_value() raises:
@@ -760,7 +721,6 @@ fn test_prefix_match_value() raises:
     var args: List[String] = ["test", "--out", "file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_prefix_match_value")
 
 
 fn test_prefix_match_equals() raises:
@@ -773,7 +733,6 @@ fn test_prefix_match_equals() raises:
     var args: List[String] = ["test", "--out=file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
-    print("  ✓ test_prefix_match_equals")
 
 
 fn test_prefix_match_ambiguous() raises:
@@ -800,7 +759,6 @@ fn test_prefix_match_ambiguous() raises:
         var msg = String(e)
         assert_true("Ambiguous" in msg, msg="Error should mention ambiguity")
     assert_true(caught, msg="Should have raised error for ambiguous prefix")
-    print("  ✓ test_prefix_match_ambiguous")
 
 
 fn test_prefix_match_exact_preferred() raises:
@@ -824,7 +782,6 @@ fn test_prefix_match_exact_preferred() raises:
         result.get_flag("colorize"),
         msg="--colorize should not be set",
     )
-    print("  ✓ test_prefix_match_exact_preferred")
 
 
 fn test_prefix_match_negatable() raises:
@@ -843,7 +800,6 @@ fn test_prefix_match_negatable() raises:
     assert_true(
         result.has("color"), msg="color should be present after --no-col"
     )
-    print("  ✓ test_prefix_match_negatable")
 
 
 fn main() raises:

@@ -19,6 +19,7 @@ ArgMojo v0.3.0 enables shell completion script generation for Bash, Zsh, and Fis
 1. Compile-time parameter APIs: `.max[ceiling]()`, `.range[min, max]()`, `.number_of_values[N]()` replace the former runtime methods (PR #8). **Breaking change**: callers must update call sites.
 1. Hidden subcommands — `Command.hidden()` excludes a subcommand from help output, shell completions, available-commands error messages, and typo suggestions while keeping it dispatchable by exact name or alias (PR #9)
 1. `NO_COLOR` environment variable support — when `NO_COLOR` is set (any value, including empty), all ANSI colour output from `_generate_help()`, `_warn()`, `_error()`, and `_error_with_usage()` is suppressed, following the [no-color.org](https://no-color.org/) standard (PR #9)
+1. Mutual implication — `Command.implies(trigger, implied)` automatically sets one argument when another is present. Supports chained implications (A → B → C) with cycle detection at registration time. Works with flags, count arguments, and integrates with existing constraints (`required_if`, `mutually_exclusive`) (PR #10)
 
 ### 🦋 Changed in v0.2.0
 -->
