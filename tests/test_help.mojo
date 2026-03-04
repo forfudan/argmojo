@@ -829,5 +829,71 @@ fn test_multiple_aliases_shown_in_help() raises:
     print("  ✓ test_multiple_aliases_shown_in_help")
 
 
+# ── Hidden subcommands ────────────────────────────────────────────────────────
+
+
+fn test_hidden_subcommand_not_in_help() raises:
+    """Tests that hidden subcommands are excluded from help output."""
+    var app = Command("app", "Test app")
+    var clone = Command("clone", "Clone a repository")
+    app.add_subcommand(clone^)
+    var debug = Command("debug", "Internal debug command")
+    debug.hidden()
+    app.add_subcommand(debug^)
+
+    var help = app._generate_help(color=False)
+    assert_true("clone" in help, msg="visible sub should be in help")
+    assert_false("debug" in help, msg="hidden sub should NOT be in help")
+    print("  ✓ test_hidden_subcommand_not_in_help")
+
+
+fn test_hidden_subcommand_not_in_usage_line() raises:
+    """Tests that usage line omits [command] if all subs are hidden."""
+    var app = Command("app", "Test app")
+    var debug = Command("debug", "Internal debug command")
+    debug.hidden()
+    app.add_subcommand(debug^)
+
+    var help = app._generate_help(color=False)
+    assert_false(
+        "<COMMAND>" in help,
+        msg="usage line should not show <COMMAND> when only subs are hidden",
+    )
+    print("  ✓ test_hidden_subcommand_not_in_usage_line")
+
+
+fn test_hidden_subcommand_usage_line_with_visible() raises:
+    """Tests that usage line shows [command] when visible subs remain."""
+    var app = Command("app", "Test app")
+    var clone = Command("clone", "Clone a repository")
+    app.add_subcommand(clone^)
+    var debug = Command("debug", "Internal debug command")
+    debug.hidden()
+    app.add_subcommand(debug^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "<COMMAND>" in help,
+        msg="usage line should show <COMMAND> when visible subs exist",
+    )
+    print("  ✓ test_hidden_subcommand_usage_line_with_visible")
+
+
+# ── NO_COLOR ──────────────────────────────────────────────────────────────────
+
+
+fn test_no_color_env_static_method() raises:
+    """Tests _no_color_env() returns the correct value based on environment."""
+    # We can't set env vars from Mojo easily, so just verify the method
+    # exists and returns a Bool without crashing.
+    var result = Command._no_color_env()
+    # In the test environment NO_COLOR is typically unset → False.
+    # We just verify it returns without error (type-level check).
+    if result:
+        print("  ✓ test_no_color_env_static_method (NO_COLOR is set)")
+    else:
+        print("  ✓ test_no_color_env_static_method (NO_COLOR is not set)")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

@@ -3,7 +3,7 @@
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
 <!--
-Do not add unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
+Comment out unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
 -->
 
 <!-- 
@@ -16,6 +16,11 @@ ArgMojo v0.3.0 enables shell completion script generation for Bash, Zsh, and Fis
 1. typo suggestions (PR #3)
 1. Command aliases (PR #5)
 1. Range clamping with warning message if users pass out-of-range values (#6)
+1. Compile-time parameter APIs: `.max[ceiling]()`, `.range[min, max]()`, `.number_of_values[N]()` replace the former runtime methods (PR #8). **Breaking change**: callers must update call sites.
+1. Hidden subcommands — `Command.hidden()` excludes a subcommand from help output, shell completions, available-commands error messages, and typo suggestions while keeping it dispatchable by exact name or alias (PR #9)
+1. `NO_COLOR` environment variable support — when `NO_COLOR` is set (any value, including empty), all ANSI colour output from `_generate_help()`, `_warn()`, `_error()`, and `_error_with_usage()` is suppressed, following the [no-color.org](https://no-color.org/) standard (PR #9)
+
+### 🦋 Changed in v0.2.0
 -->
 
 ## 20260228 (v0.2.0)
