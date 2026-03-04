@@ -1,6 +1,6 @@
 """Defines a CLI command and performs argument parsing."""
 
-from python import Python
+from os import getenv
 from sys import argv, exit, stderr
 
 from .argument import Argument
@@ -802,14 +802,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
         any value (including empty string) counts as "set".  Only a
         genuinely *unset* variable returns ``False``.
 
+        Implementation note: we use a long, printable sentinel as the
+        ``getenv`` default.  If the returned value differs from the
+        sentinel, ``NO_COLOR`` is set (even to an empty string).  A raw
+        null-byte sentinel (``"\x00"``) cannot be used because the Mojo
+        compiler on Linux crashes when it encounters one during
+        ``mojo package``.
+
         Returns:
             True if ``NO_COLOR`` is set (to any value), False otherwise.
         """
-        try:
-            var py_os = Python.import_module("os")
-            return py_os.environ.__contains__("NO_COLOR").__bool__()
-        except:
-            return False
+        comptime _SENTINEL = "__ARGMOJO_NO_COLOR_UNSET_SENTINEL__"
+        return getenv("NO_COLOR", _SENTINEL) != _SENTINEL
 
     fn _warn(self, msg: String):
         """Prints a coloured warning message to stderr."""
