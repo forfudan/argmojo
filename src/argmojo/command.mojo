@@ -1,6 +1,6 @@
 """Defines a CLI command and performs argument parsing."""
 
-from os import getenv
+from python import Python
 from sys import argv, exit, stderr
 
 from .argument import Argument
@@ -799,13 +799,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """Returns True when the ``NO_COLOR`` environment variable is set.
 
         Follows the `no-color.org <https://no-color.org/>`_ standard:
-        any value (including empty string) counts as "set".  An unset
-        variable returns the sentinel and is treated as "not set".
+        any value (including empty string) counts as "set".  Only a
+        genuinely *unset* variable returns ``False``.
 
         Returns:
-            True if ``NO_COLOR`` is set, False otherwise.
+            True if ``NO_COLOR`` is set (to any value), False otherwise.
         """
-        return getenv("NO_COLOR", "\x00") != "\x00"
+        try:
+            var py_os = Python.import_module("os")
+            return py_os.environ.__contains__("NO_COLOR").__bool__()
+        except:
+            return False
 
     fn _warn(self, msg: String):
         """Prints a coloured warning message to stderr."""
