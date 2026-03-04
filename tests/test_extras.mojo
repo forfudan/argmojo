@@ -17,7 +17,6 @@ fn test_range_valid_value() raises:
     var args: List[String] = ["test", "--port", "8080"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "8080")
-    print("  ✓ test_range_valid_value")
 
 
 fn test_range_boundary_min() raises:
@@ -30,7 +29,6 @@ fn test_range_boundary_min() raises:
     var args: List[String] = ["test", "--port", "1"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "1")
-    print("  ✓ test_range_boundary_min")
 
 
 fn test_range_boundary_max() raises:
@@ -43,7 +41,6 @@ fn test_range_boundary_max() raises:
     var args: List[String] = ["test", "--port", "65535"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "65535")
-    print("  ✓ test_range_boundary_max")
 
 
 fn test_range_below_min() raises:
@@ -65,7 +62,6 @@ fn test_range_below_min() raises:
         )
         assert_true("[1, 65535]" in msg, msg="error should show range bounds")
     assert_true(caught, msg="Should have raised for value below min")
-    print("  ✓ test_range_below_min")
 
 
 fn test_range_above_max() raises:
@@ -86,7 +82,6 @@ fn test_range_above_max() raises:
             "out of range" in msg, msg="error should mention 'out of range'"
         )
     assert_true(caught, msg="Should have raised for value above max")
-    print("  ✓ test_range_above_max")
 
 
 fn test_range_not_provided_ok() raises:
@@ -99,7 +94,6 @@ fn test_range_not_provided_ok() raises:
     var args: List[String] = ["test"]
     var result = command.parse_arguments(args)
     assert_false(result.has("port"), msg="port should not be set")
-    print("  ✓ test_range_not_provided_ok")
 
 
 fn test_range_with_append() raises:
@@ -121,7 +115,6 @@ fn test_range_with_append() raises:
         )
         assert_true("101" in msg, msg="error should mention the bad value")
     assert_true(caught, msg="Should have raised for one value out of range")
-    print("  ✓ test_range_with_append")
 
 
 fn test_range_with_short_option() raises:
@@ -134,7 +127,6 @@ fn test_range_with_short_option() raises:
     var args: List[String] = ["test", "-l", "3"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("level"), "3")
-    print("  ✓ test_range_with_short_option")
 
 
 # ── Range clamping (.clamp()) ────────────────────────────────────────────────
@@ -154,7 +146,6 @@ fn test_clamp_above_max() raises:
         100,
         msg="200 should be clamped to 100",
     )
-    print("  ✓ test_clamp_above_max")
 
 
 fn test_clamp_below_min() raises:
@@ -171,7 +162,6 @@ fn test_clamp_below_min() raises:
         1,
         msg="-5 should be clamped to 1",
     )
-    print("  ✓ test_clamp_below_min")
 
 
 fn test_clamp_within_range_no_change() raises:
@@ -188,7 +178,6 @@ fn test_clamp_within_range_no_change() raises:
         50,
         msg="50 should remain 50",
     )
-    print("  ✓ test_clamp_within_range_no_change")
 
 
 fn test_clamp_at_boundary() raises:
@@ -207,7 +196,6 @@ fn test_clamp_at_boundary() raises:
     assert_equal(
         result2.get_int("port"), 65535, msg="65535 at max boundary is fine"
     )
-    print("  ✓ test_clamp_at_boundary")
 
 
 fn test_clamp_with_short_option() raises:
@@ -228,7 +216,6 @@ fn test_clamp_with_short_option() raises:
         10,
         msg="99 with range [0,10] should clamp to 10",
     )
-    print("  ✓ test_clamp_with_short_option")
 
 
 fn test_clamp_with_append() raises:
@@ -256,7 +243,6 @@ fn test_clamp_with_append() raises:
     assert_equal(lst[0], "50", msg="50 should remain 50")
     assert_equal(lst[1], "100", msg="200 should clamp to 100")
     assert_equal(lst[2], "1", msg="0 should clamp to 1")
-    print("  ✓ test_clamp_with_append")
 
 
 fn test_range_without_clamp_still_errors() raises:
@@ -275,7 +261,6 @@ fn test_range_without_clamp_still_errors() raises:
         var msg = String(e)
         assert_true("out of range" in msg, msg="should error on out of range")
     assert_true(caught, msg="Should have raised for out-of-range without clamp")
-    print("  ✓ test_range_without_clamp_still_errors")
 
 
 # ── Key-value map option ─────────────────────────────────────────────────────
@@ -295,7 +280,6 @@ fn test_map_single_pair() raises:
     var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
-    print("  ✓ test_map_single_pair")
 
 
 fn test_map_multiple_pairs() raises:
@@ -313,7 +297,6 @@ fn test_map_multiple_pairs() raises:
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     assert_equal(m["CXX"], "g++")
-    print("  ✓ test_map_multiple_pairs")
 
 
 fn test_map_equals_syntax() raises:
@@ -327,7 +310,6 @@ fn test_map_equals_syntax() raises:
     var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
-    print("  ✓ test_map_equals_syntax")
 
 
 fn test_map_with_delimiter() raises:
@@ -346,7 +328,6 @@ fn test_map_with_delimiter() raises:
     var m = result.get_map("define")
     assert_equal(m["CC"], "gcc")
     assert_equal(m["CXX"], "g++")
-    print("  ✓ test_map_with_delimiter")
 
 
 fn test_map_invalid_no_equals() raises:
@@ -365,7 +346,6 @@ fn test_map_invalid_no_equals() raises:
         var msg = String(e)
         assert_true("key=value" in msg, msg="error should mention format")
     assert_true(caught, msg="Should have raised for missing '='")
-    print("  ✓ test_map_invalid_no_equals")
 
 
 fn test_map_has_check() raises:
@@ -378,7 +358,6 @@ fn test_map_has_check() raises:
     var args: List[String] = ["test", "--define", "A=1"]
     var result = command.parse_arguments(args)
     assert_true(result.has("define"), msg="has() should be True for map arg")
-    print("  ✓ test_map_has_check")
 
 
 fn test_map_empty_value() raises:
@@ -392,7 +371,6 @@ fn test_map_empty_value() raises:
     var result = command.parse_arguments(args)
     var m = result.get_map("define")
     assert_equal(m["KEY"], "")
-    print("  ✓ test_map_empty_value")
 
 
 fn test_map_value_with_equals() raises:
@@ -406,7 +384,6 @@ fn test_map_value_with_equals() raises:
     var result = command.parse_arguments(args)
     var m = result.get_map("env")
     assert_equal(m["PATH"], "/usr/bin:/bin")
-    print("  ✓ test_map_value_with_equals")
 
 
 # ── Aliases ──────────────────────────────────────────────────────────────────
@@ -425,7 +402,6 @@ fn test_alias_basic() raises:
     var args: List[String] = ["test", "--color", "red"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "red")
-    print("  ✓ test_alias_basic")
 
 
 fn test_alias_primary_still_works() raises:
@@ -441,7 +417,6 @@ fn test_alias_primary_still_works() raises:
     var args: List[String] = ["test", "--colour", "blue"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "blue")
-    print("  ✓ test_alias_primary_still_works")
 
 
 fn test_alias_multiple() raises:
@@ -461,7 +436,6 @@ fn test_alias_multiple() raises:
     var args2: List[String] = ["test", "--out", "yaml"]
     var result2 = command.parse_arguments(args2)
     assert_equal(result2.get_string("output"), "yaml")
-    print("  ✓ test_alias_multiple")
 
 
 fn test_alias_prefix_match() raises:
@@ -477,7 +451,6 @@ fn test_alias_prefix_match() raises:
     var args: List[String] = ["test", "--colo", "green"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("colour"), "green")
-    print("  ✓ test_alias_prefix_match")
 
 
 fn test_alias_with_flag() raises:
@@ -496,7 +469,6 @@ fn test_alias_with_flag() raises:
     assert_true(
         result.get_flag("verbose"), msg="--debug alias should set verbose flag"
     )
-    print("  ✓ test_alias_with_flag")
 
 
 # ── Deprecated arguments ─────────────────────────────────────────────────────
@@ -514,7 +486,6 @@ fn test_deprecated_still_parses() raises:
     var args: List[String] = ["test", "--format-old", "csv"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("format_old"), "csv")
-    print("  ✓ test_deprecated_still_parses")
 
 
 fn test_deprecated_short_option() raises:
@@ -531,7 +502,6 @@ fn test_deprecated_short_option() raises:
     var args: List[String] = ["test", "-C"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("compat"), msg="-C should still set the flag")
-    print("  ✓ test_deprecated_short_option")
 
 
 fn test_deprecated_not_provided_ok() raises:
@@ -548,7 +518,6 @@ fn test_deprecated_not_provided_ok() raises:
     var result = command.parse_arguments(args)
     assert_false(result.has("old"), msg="old should not be present")
     assert_equal(result.get_string("new"), "val")
-    print("  ✓ test_deprecated_not_provided_ok")
 
 
 fn test_deprecated_with_alias() raises:
@@ -565,7 +534,6 @@ fn test_deprecated_with_alias() raises:
     var args: List[String] = ["test", "--out", "json"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "json")
-    print("  ✓ test_deprecated_with_alias")
 
 
 # ── Help display: deprecated tag and map placeholder ─────────────────────────
@@ -586,7 +554,6 @@ fn test_help_deprecated_tag() raises:
         "[deprecated: Use --new instead]" in help,
         msg="help should contain deprecated tag",
     )
-    print("  ✓ test_help_deprecated_tag")
 
 
 fn test_help_map_placeholder() raises:
@@ -604,7 +571,6 @@ fn test_help_map_placeholder() raises:
         "<key=value>" in help,
         msg="help should show <key=value> placeholder for map options",
     )
-    print("  ✓ test_help_map_placeholder")
 
 
 fn test_help_alias_shown() raises:
@@ -623,7 +589,6 @@ fn test_help_alias_shown() raises:
         "--colour, --color" in help,
         msg="help should show '--colour, --color' for aliased option",
     )
-    print("  ✓ test_help_alias_shown")
 
 
 fn main() raises:

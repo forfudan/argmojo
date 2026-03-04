@@ -20,7 +20,6 @@ fn test_append_single() raises:
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "alpha")
     assert_true(result.has("tag"), msg="tag should be present")
-    print("  ✓ test_append_single")
 
 
 fn test_append_multiple() raises:
@@ -45,7 +44,6 @@ fn test_append_multiple() raises:
     assert_equal(tags[0], "alpha")
     assert_equal(tags[1], "beta")
     assert_equal(tags[2], "gamma")
-    print("  ✓ test_append_multiple")
 
 
 fn test_append_short_option() raises:
@@ -61,7 +59,6 @@ fn test_append_short_option() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
     assert_equal(tags[1], "beta")
-    print("  ✓ test_append_short_option")
 
 
 fn test_append_equals_syntax() raises:
@@ -77,7 +74,6 @@ fn test_append_equals_syntax() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
     assert_equal(tags[1], "beta")
-    print("  ✓ test_append_equals_syntax")
 
 
 fn test_append_attached_short() raises:
@@ -93,7 +89,6 @@ fn test_append_attached_short() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "alpha")
     assert_equal(tags[1], "beta")
-    print("  ✓ test_append_attached_short")
 
 
 fn test_append_mixed_syntax() raises:
@@ -111,7 +106,6 @@ fn test_append_mixed_syntax() raises:
     assert_equal(tags[1], "b")
     assert_equal(tags[2], "c")
     assert_equal(tags[3], "d")
-    print("  ✓ test_append_mixed_syntax")
 
 
 fn test_append_empty() raises:
@@ -126,7 +120,6 @@ fn test_append_empty() raises:
     var tags = result.get_list("tag")
     assert_equal(len(tags), 0)
     assert_false(result.has("tag"), msg="tag should not be present")
-    print("  ✓ test_append_empty")
 
 
 fn test_append_with_choices() raises:
@@ -163,7 +156,6 @@ fn test_append_with_choices() raises:
             msg="Error should mention invalid value",
         )
     assert_true(caught, msg="Should have raised error for invalid choice")
-    print("  ✓ test_append_with_choices")
 
 
 fn test_append_with_other_args() raises:
@@ -195,7 +187,6 @@ fn test_append_with_other_args() raises:
     assert_equal(len(includes), 2)
     assert_equal(includes[0], "/usr/lib")
     assert_equal(includes[1], "/opt/lib")
-    print("  ✓ test_append_with_other_args")
 
 
 # ===------------------------------------------------------------------=== #
@@ -217,7 +208,6 @@ fn test_delimiter_comma() raises:
     assert_equal(tags[0], "a")
     assert_equal(tags[1], "b")
     assert_equal(tags[2], "c")
-    print("  ✓ test_delimiter_comma")
 
 
 fn test_delimiter_equals_syntax() raises:
@@ -234,7 +224,6 @@ fn test_delimiter_equals_syntax() raises:
     assert_equal(tags[0], "x")
     assert_equal(tags[1], "y")
     assert_equal(tags[2], "z")
-    print("  ✓ test_delimiter_equals_syntax")
 
 
 fn test_delimiter_short_option() raises:
@@ -250,7 +239,6 @@ fn test_delimiter_short_option() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "foo")
     assert_equal(tags[1], "bar")
-    print("  ✓ test_delimiter_short_option")
 
 
 fn test_delimiter_attached_short() raises:
@@ -271,7 +259,6 @@ fn test_delimiter_attached_short() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "a")
     assert_equal(tags[1], "b")
-    print("  ✓ test_delimiter_attached_short")
 
 
 fn test_delimiter_repeated() raises:
@@ -289,7 +276,6 @@ fn test_delimiter_repeated() raises:
     assert_equal(tags[1], "b")
     assert_equal(tags[2], "c")
     assert_equal(tags[3], "d")
-    print("  ✓ test_delimiter_repeated")
 
 
 fn test_delimiter_single_value() raises:
@@ -304,7 +290,6 @@ fn test_delimiter_single_value() raises:
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "single")
-    print("  ✓ test_delimiter_single_value")
 
 
 fn test_delimiter_with_choices() raises:
@@ -339,7 +324,6 @@ fn test_delimiter_with_choices() raises:
     assert_true(
         caught, msg="Should raise error for invalid choice in delimited value"
     )
-    print("  ✓ test_delimiter_with_choices")
 
 
 fn test_delimiter_semicolon() raises:
@@ -356,7 +340,6 @@ fn test_delimiter_semicolon() raises:
     assert_equal(paths[0], "/usr/lib")
     assert_equal(paths[1], "/opt/lib")
     assert_equal(paths[2], "/home/lib")
-    print("  ✓ test_delimiter_semicolon")
 
 
 fn test_delimiter_implies_append() raises:
@@ -374,7 +357,6 @@ fn test_delimiter_implies_append() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "x")
     assert_equal(tags[1], "y")
-    print("  ✓ test_delimiter_implies_append")
 
 
 fn test_delimiter_empty_not_provided() raises:
@@ -388,7 +370,6 @@ fn test_delimiter_empty_not_provided() raises:
     var result = command.parse_arguments(args)
     var tags = result.get_list("tag")
     assert_equal(len(tags), 0)
-    print("  ✓ test_delimiter_empty_not_provided")
 
 
 fn test_delimiter_trailing_comma() raises:
@@ -404,7 +385,6 @@ fn test_delimiter_trailing_comma() raises:
     assert_equal(len(tags), 2)
     assert_equal(tags[0], "a")
     assert_equal(tags[1], "b")
-    print("  ✓ test_delimiter_trailing_comma")
 
 
 # ===------------------------------------------------------------------=== #
@@ -427,7 +407,6 @@ fn test_nargs_basic() raises:
     assert_equal(len(lst), 2, msg="number_of_values(2) should produce 2 values")
     assert_equal(lst[0], "10", msg="First value should be '10'")
     assert_equal(lst[1], "20", msg="Second value should be '20'")
-    print("  ✓ test_nargs_basic")
 
 
 fn test_nargs_three() raises:
@@ -444,7 +423,6 @@ fn test_nargs_three() raises:
     assert_equal(lst[0], "255", msg="First = 255")
     assert_equal(lst[1], "128", msg="Second = 128")
     assert_equal(lst[2], "0", msg="Third = 0")
-    print("  ✓ test_nargs_three")
 
 
 fn test_nargs_short_option() raises:
@@ -465,7 +443,6 @@ fn test_nargs_short_option() raises:
     )
     assert_equal(lst[0], "3", msg="First = 3")
     assert_equal(lst[1], "4", msg="Second = 4")
-    print("  ✓ test_nargs_short_option")
 
 
 fn test_nargs_repeated() raises:
@@ -493,7 +470,6 @@ fn test_nargs_repeated() raises:
     assert_equal(lst[1], "2", msg="2nd = 2")
     assert_equal(lst[2], "3", msg="3rd = 3")
     assert_equal(lst[3], "4", msg="4th = 4")
-    print("  ✓ test_nargs_repeated")
 
 
 fn test_nargs_too_few_values() raises:
@@ -515,7 +491,6 @@ fn test_nargs_too_few_values() raises:
             msg="Error should mention 'requires 2 values'",
         )
     assert_true(caught, msg="Should raise when not enough values for nargs")
-    print("  ✓ test_nargs_too_few_values")
 
 
 fn test_nargs_too_few_short() raises:
@@ -537,7 +512,6 @@ fn test_nargs_too_few_short() raises:
             msg="Error should mention 'requires 2 values'",
         )
     assert_true(caught, msg="Should raise when not enough values for nargs")
-    print("  ✓ test_nargs_too_few_short")
 
 
 fn test_nargs_with_choices() raises:
@@ -568,7 +542,6 @@ fn test_nargs_with_choices() raises:
         var msg = String(e)
         assert_true("Invalid value" in msg, msg="Should mention invalid value")
     assert_true(caught, msg="Bad choice in nargs should raise")
-    print("  ✓ test_nargs_with_choices")
 
 
 fn test_nargs_with_other_args() raises:
@@ -602,7 +575,6 @@ fn test_nargs_with_other_args() raises:
     assert_equal(
         result.get_string("output"), "out.txt", msg="output should be out.txt"
     )
-    print("  ✓ test_nargs_with_other_args")
 
 
 fn test_nargs_equals_syntax_rejected() raises:
@@ -624,7 +596,6 @@ fn test_nargs_equals_syntax_rejected() raises:
             msg="Error should mention = syntax not supported",
         )
     assert_true(caught, msg="nargs with = should raise")
-    print("  ✓ test_nargs_equals_syntax_rejected")
 
 
 fn test_nargs_prefix_match() raises:
@@ -640,7 +611,6 @@ fn test_nargs_prefix_match() raises:
     assert_equal(len(lst), 2, msg="prefix --pos should resolve to --position")
     assert_equal(lst[0], "7", msg="First = 7")
     assert_equal(lst[1], "8", msg="Second = 8")
-    print("  ✓ test_nargs_prefix_match")
 
 
 fn main() raises:

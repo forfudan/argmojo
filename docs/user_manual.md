@@ -1760,7 +1760,7 @@ By default, ArgMojo **prevents** mixing positional arguments and subcommands on 
 
 ```mojo
 var app = Command("app", "My app")
-app.add_subcommand(Command("search", "Search")^)
+app.add_subcommand(Command("search", "Search"))
 app.add_argument(Argument("query", help="Query").positional())  # raises!
 ```
 
@@ -1769,7 +1769,7 @@ The same guard triggers if you add a subcommand to a command that already has po
 ```mojo
 var app = Command("app", "My app")
 app.add_argument(Argument("file", help="File").positional())
-app.add_subcommand(Command("init", "Init")^)  # raises!
+app.add_subcommand(Command("init", "Init"))  # raises!
 ```
 
 If you genuinely need both (e.g., `--` stopping dispatch so the subcommand name becomes a positional), call `allow_positional_with_subcommands()` before adding either:
@@ -1777,7 +1777,7 @@ If you genuinely need both (e.g., `--` stopping dispatch so the subcommand name 
 ```mojo
 var app = Command("app", "My app")
 app.allow_positional_with_subcommands()
-app.add_subcommand(Command("search", "Search")^)
+app.add_subcommand(Command("search", "Search"))
 app.add_argument(Argument("fallback", help="Fallback").positional())
 
 # "foo" doesn't match any subcommand → treated as positional

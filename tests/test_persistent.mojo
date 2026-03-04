@@ -38,7 +38,6 @@ fn test_persistent_flag_on_root_no_subcommand() raises:
     )
     var r = command.parse_arguments(["app", "--verbose"])
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
-    print("  ✓ test_persistent_flag_on_root_no_subcommand")
 
 
 fn test_persistent_flag_absent_on_root() raises:
@@ -53,7 +52,6 @@ fn test_persistent_flag_absent_on_root() raises:
     )
     var r = command.parse_arguments(["app"])
     assert_false(r.get_flag("verbose"), msg="absent verbose should be False")
-    print("  ✓ test_persistent_flag_absent_on_root")
 
 
 # ── Persistent flag BEFORE the subcommand token ────────────────────────────
@@ -77,7 +75,6 @@ fn test_persistent_flag_before_subcommand_in_root_result() raises:
     var r = app.parse_arguments(["app", "--verbose", "search", "pattern"])
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
     assert_equal(r.subcommand, "search")
-    print("  ✓ test_persistent_flag_before_subcommand_in_root_result")
 
 
 fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
@@ -101,7 +98,6 @@ fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
         sub.get_flag("verbose"),
         msg="child result should also have verbose=True via push-down",
     )
-    print("  ✓ test_persistent_flag_before_subcommand_pushed_to_child")
 
 
 # ── Persistent flag AFTER the subcommand token ─────────────────────────────
@@ -127,7 +123,6 @@ fn test_persistent_flag_after_subcommand_in_child_result() raises:
     assert_true(
         sub.get_flag("verbose"), msg="child result should have verbose=True"
     )
-    print("  ✓ test_persistent_flag_after_subcommand_in_child_result")
 
 
 fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
@@ -150,7 +145,6 @@ fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
         r.get_flag("verbose"),
         msg="root result should have verbose=True via bubble-up",
     )
-    print("  ✓ test_persistent_flag_after_subcommand_bubbles_to_root")
 
 
 fn test_persistent_short_flag_after_subcommand() raises:
@@ -176,7 +170,6 @@ fn test_persistent_short_flag_after_subcommand() raises:
         r.get_subcommand_result().get_flag("verbose"),
         msg="child verbose via short form should be True",
     )
-    print("  ✓ test_persistent_short_flag_after_subcommand")
 
 
 # ── Persistent value-taking option ─────────────────────────────────────────
@@ -198,7 +191,6 @@ fn test_persistent_value_option_after_subcommand() raises:
     )
     assert_equal(r.get_string("output"), "json")
     assert_equal(r.get_subcommand_result().get_string("output"), "json")
-    print("  ✓ test_persistent_value_option_after_subcommand")
 
 
 fn test_persistent_flag_absent_defaults_false_in_both() raises:
@@ -224,7 +216,6 @@ fn test_persistent_flag_absent_defaults_false_in_both() raises:
         r.get_subcommand_result().get_flag("verbose"),
         msg="child verbose should default to False",
     )
-    print("  ✓ test_persistent_flag_absent_defaults_false_in_both")
 
 
 # ── Non-persistent flag isolation ──────────────────────────────────────────
@@ -250,14 +241,13 @@ fn test_non_persistent_root_flag_not_injected_into_child() raises:
         raised,
         msg="Non-persistent flag after subcommand should cause an error",
     )
-    print("  ✓ test_non_persistent_root_flag_not_injected_into_child")
 
 
 # ── Conflict detection ──────────────────────────────────────────────────────
 
 
 fn test_persistent_conflict_long_name_raises() raises:
-    """add_subcommand() raises when a persistent parent long_name conflicts
+    """Tests add_subcommand() raises when a persistent parent long_name conflicts
     with a child long_name."""
     var app = Command("app", "")
     app.add_argument(
@@ -277,11 +267,10 @@ fn test_persistent_conflict_long_name_raises() raises:
         raised,
         msg="Persistent long_name conflict should raise at add_subcommand time",
     )
-    print("  ✓ test_persistent_conflict_long_name_raises")
 
 
 fn test_persistent_conflict_short_name_raises() raises:
-    """add_subcommand() raises when a persistent parent short_name conflicts
+    """Tests add_subcommand() raises when a persistent parent short_name conflicts
     with a child short_name."""
     var app = Command("app", "")
     app.add_argument(
@@ -307,7 +296,6 @@ fn test_persistent_conflict_short_name_raises() raises:
             "Persistent short_name conflict should raise at add_subcommand time"
         ),
     )
-    print("  ✓ test_persistent_conflict_short_name_raises")
 
 
 fn test_no_conflict_for_non_persistent_same_name() raises:
@@ -326,7 +314,6 @@ fn test_no_conflict_for_non_persistent_same_name() raises:
     assert_true(
         True, msg="No conflict should be detected for non-persistent args"
     )
-    print("  ✓ test_no_conflict_for_non_persistent_same_name")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────

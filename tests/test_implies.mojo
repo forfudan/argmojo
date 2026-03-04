@@ -24,7 +24,6 @@ fn test_implies_basic_flag() raises:
     assert_true(
         result.get_flag("verbose"), msg="verbose should be implied by debug"
     )
-    print("  ✓ test_implies_basic_flag")
 
 
 fn test_implies_no_trigger() raises:
@@ -42,7 +41,6 @@ fn test_implies_no_trigger() raises:
     var result = command.parse_arguments(args)
     assert_false(result.has("debug"), msg="debug should not be set")
     assert_false(result.has("verbose"), msg="verbose should not be set")
-    print("  ✓ test_implies_no_trigger")
 
 
 fn test_implies_both_set_explicitly() raises:
@@ -60,7 +58,6 @@ fn test_implies_both_set_explicitly() raises:
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("debug"), msg="debug should be True")
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
-    print("  ✓ test_implies_both_set_explicitly")
 
 
 fn test_implies_unidirectional() raises:
@@ -79,7 +76,6 @@ fn test_implies_unidirectional() raises:
     var result = command.parse_arguments(args)
     assert_false(result.has("debug"), msg="debug should not be set")
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
-    print("  ✓ test_implies_unidirectional")
 
 
 # ── Chained implication ──────────────────────────────────────────────────────
@@ -109,7 +105,6 @@ fn test_implies_chain() raises:
     assert_true(
         result.get_flag("log"), msg="log should be implied by verbose (chain)"
     )
-    print("  ✓ test_implies_chain")
 
 
 fn test_implies_chain_middle() raises:
@@ -132,7 +127,6 @@ fn test_implies_chain_middle() raises:
     assert_false(result.has("debug"), msg="debug should NOT be set")
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
     assert_true(result.get_flag("log"), msg="log should be implied by verbose")
-    print("  ✓ test_implies_chain_middle")
 
 
 # ── Multiple implications from same trigger ──────────────────────────────────
@@ -158,7 +152,6 @@ fn test_implies_multiple_from_same_trigger() raises:
     assert_true(result.get_flag("debug"), msg="debug should be True")
     assert_true(result.get_flag("verbose"), msg="verbose should be implied")
     assert_true(result.get_flag("log"), msg="log should be implied")
-    print("  ✓ test_implies_multiple_from_same_trigger")
 
 
 # ── Count arguments ──────────────────────────────────────────────────────────
@@ -186,7 +179,6 @@ fn test_implies_count_argument() raises:
         1,
         msg="verbose count should be 1 (implied)",
     )
-    print("  ✓ test_implies_count_argument")
 
 
 fn test_implies_count_already_set() raises:
@@ -211,7 +203,6 @@ fn test_implies_count_already_set() raises:
         3,
         msg="verbose count should stay at 3 (explicit)",
     )
-    print("  ✓ test_implies_count_already_set")
 
 
 # ── Cycle detection ──────────────────────────────────────────────────────────
@@ -235,7 +226,6 @@ fn test_implies_self_cycle() raises:
             msg="error should mention 'cycle'",
         )
     assert_true(caught, msg="self-cycle should raise an error")
-    print("  ✓ test_implies_self_cycle")
 
 
 fn test_implies_direct_cycle() raises:
@@ -256,7 +246,6 @@ fn test_implies_direct_cycle() raises:
             msg="error should mention 'cycle'",
         )
     assert_true(caught, msg="direct cycle should raise an error")
-    print("  ✓ test_implies_direct_cycle")
 
 
 fn test_implies_indirect_cycle() raises:
@@ -279,7 +268,6 @@ fn test_implies_indirect_cycle() raises:
             msg="error should mention 'cycle'",
         )
     assert_true(caught, msg="indirect cycle should raise an error")
-    print("  ✓ test_implies_indirect_cycle")
 
 
 fn test_implies_no_false_cycle() raises:
@@ -300,7 +288,6 @@ fn test_implies_no_false_cycle() raises:
     assert_true(result.get_flag("b"), msg="b should be implied")
     assert_true(result.get_flag("c"), msg="c should be implied")
     assert_true(result.get_flag("d"), msg="d should be implied")
-    print("  ✓ test_implies_no_false_cycle")
 
 
 # ── Integration with other constraints ───────────────────────────────────────
@@ -334,7 +321,6 @@ fn test_implies_with_required_if() raises:
             "should fail because --output is required when --verbose is present"
         ),
     )
-    print("  ✓ test_implies_with_required_if")
 
 
 fn test_implies_with_required_if_satisfied() raises:
@@ -355,7 +341,6 @@ fn test_implies_with_required_if_satisfied() raises:
     assert_true(result.get_flag("debug"), msg="debug should be True")
     assert_true(result.get_flag("verbose"), msg="verbose should be implied")
     assert_equal(result.get_string("output"), "/tmp/log")
-    print("  ✓ test_implies_with_required_if_satisfied")
 
 
 fn test_implies_with_mutually_exclusive() raises:
@@ -383,7 +368,70 @@ fn test_implies_with_mutually_exclusive() raises:
     except e:
         caught = True
     assert_true(caught, msg="debug implies verbose, which conflicts with quiet")
-    print("  ✓ test_implies_with_mutually_exclusive")
+
+
+# ── Registration validation ──────────────────────────────────────────────────
+
+
+fn test_implies_unknown_trigger() raises:
+    """Tests that implies() rejects unknown trigger argument."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output").long("verbose").flag()
+    )
+
+    var caught = False
+    try:
+        command.implies("nonexistent", "verbose")
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+    assert_true(caught, msg="unknown trigger should raise an error")
+
+
+fn test_implies_unknown_implied() raises:
+    """Tests that implies() rejects unknown implied argument."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("debug", help="Debug mode").long("debug").flag()
+    )
+
+    var caught = False
+    try:
+        command.implies("debug", "nonexistent")
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+    assert_true(caught, msg="unknown implied should raise an error")
+
+
+fn test_implies_rejects_value_taking_implied() raises:
+    """Tests that implies() rejects value-taking argument as implied target."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("debug", help="Debug mode").long("debug").flag()
+    )
+    command.add_argument(Argument("output", help="Output file").long("output"))
+
+    var caught = False
+    try:
+        command.implies("debug", "output")
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "flag" in String.lower(msg) or "count" in String.lower(msg),
+            msg="error should mention flag or count",
+        )
+    assert_true(caught, msg="value-taking implied should raise an error")
 
 
 fn main() raises:

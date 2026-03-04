@@ -51,7 +51,6 @@ fn test_defaults_named_arg() raises:
     var args: List[String] = ["test"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "json")
-    print("  ✓ test_defaults_named_arg")
 
 
 fn test_defaults_positional_arg() raises:
@@ -69,7 +68,6 @@ fn test_defaults_positional_arg() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("pattern"), "hello")
     assert_equal(result.get_string("path"), ".")
-    print("  ✓ test_defaults_positional_arg")
 
 
 fn test_defaults_not_applied_when_provided() raises:
@@ -82,7 +80,6 @@ fn test_defaults_not_applied_when_provided() raises:
     var args: List[String] = ["test", "--format", "csv"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("format"), "csv")
-    print("  ✓ test_defaults_not_applied_when_provided")
 
 
 fn test_defaults_multiple_positional() raises:
@@ -100,7 +97,6 @@ fn test_defaults_multiple_positional() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("src"), "input.txt")
     assert_equal(result.get_string("dst"), "b.txt")
-    print("  ✓ test_defaults_multiple_positional")
 
 
 # ── Step 0: _validate() — required args ──────────────────────────────────────
@@ -126,7 +122,6 @@ fn test_validate_required_missing() raises:
         )
         assert_true("output" in msg, msg="Error should mention 'output'")
     assert_true(caught, msg="Should have raised for missing required arg")
-    print("  ✓ test_validate_required_missing")
 
 
 fn test_validate_required_provided() raises:
@@ -139,7 +134,6 @@ fn test_validate_required_provided() raises:
     var args: List[String] = ["test", "--output", "out.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "out.txt")
-    print("  ✓ test_validate_required_provided")
 
 
 # ── Step 0: _validate() — positional count ───────────────────────────────────
@@ -162,7 +156,6 @@ fn test_validate_too_many_positionals() raises:
             msg="Error should mention 'Too many positional'",
         )
     assert_true(caught, msg="Should have raised for too many positionals")
-    print("  ✓ test_validate_too_many_positionals")
 
 
 # ── Step 0: _validate() — mutually exclusive ─────────────────────────────────
@@ -187,7 +180,6 @@ fn test_validate_exclusive_conflict() raises:
             msg="Error should mention 'mutually exclusive'",
         )
     assert_true(caught, msg="Should have raised for exclusive conflict")
-    print("  ✓ test_validate_exclusive_conflict")
 
 
 fn test_validate_exclusive_ok() raises:
@@ -201,7 +193,6 @@ fn test_validate_exclusive_ok() raises:
     var args: List[String] = ["test", "--json"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"))
-    print("  ✓ test_validate_exclusive_ok")
 
 
 # ── Step 0: _validate() — required-together ──────────────────────────────────
@@ -227,7 +218,6 @@ fn test_validate_together_partial() raises:
             msg="Error should mention required together",
         )
     assert_true(caught, msg="Should have raised for partial together group")
-    print("  ✓ test_validate_together_partial")
 
 
 # ── Step 0: _validate() — one-required ───────────────────────────────────────
@@ -252,7 +242,6 @@ fn test_validate_one_required_none() raises:
             msg="Error should mention 'At least one'",
         )
     assert_true(caught, msg="Should have raised for one-required group")
-    print("  ✓ test_validate_one_required_none")
 
 
 # ── Step 0: _validate() — conditional requirements ───────────────────────────
@@ -276,7 +265,6 @@ fn test_validate_conditional_triggered() raises:
             msg="Error should mention 'required when'",
         )
     assert_true(caught, msg="Should have raised for conditional requirement")
-    print("  ✓ test_validate_conditional_triggered")
 
 
 fn test_validate_conditional_satisfied() raises:
@@ -290,7 +278,6 @@ fn test_validate_conditional_satisfied() raises:
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("save"))
     assert_equal(result.get_string("output"), "out.txt")
-    print("  ✓ test_validate_conditional_satisfied")
 
 
 # ── Step 0: _validate() — numeric range ──────────────────────────────────────
@@ -314,7 +301,6 @@ fn test_validate_range_out_of_bounds() raises:
             msg="Error should mention 'out of range'",
         )
     assert_true(caught, msg="Should have raised for out-of-range value")
-    print("  ✓ test_validate_range_out_of_bounds")
 
 
 fn test_validate_range_in_bounds() raises:
@@ -327,7 +313,6 @@ fn test_validate_range_in_bounds() raises:
     var args: List[String] = ["test", "--port", "50"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "50")
-    print("  ✓ test_validate_range_in_bounds")
 
 
 # ── Step 0: full round-trip (defaults + validation combined) ─────────────────
@@ -351,7 +336,6 @@ fn test_defaults_then_validation_combined() raises:
     var result = command.parse_arguments(args1)
     assert_false(result.has("user"))
     assert_false(result.has("pass"))
-    print("  ✓ test_defaults_then_validation_combined")
 
 
 fn test_full_parse_with_defaults_and_range() raises:
@@ -365,7 +349,6 @@ fn test_full_parse_with_defaults_and_range() raises:
     var args: List[String] = ["test"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("port"), "50")
-    print("  ✓ test_full_parse_with_defaults_and_range")
 
 
 # ── Step 1: Data model — Command.subcommands field ───────────────────────────
@@ -375,7 +358,6 @@ fn test_command_subcommands_empty_initially() raises:
     """Tests that a fresh Command has no subcommands registered."""
     var app = Command("app", "My app")
     assert_equal(len(app.subcommands), 0)
-    print("  ✓ test_command_subcommands_empty_initially")
 
 
 fn test_add_subcommand_single() raises:
@@ -393,7 +375,6 @@ fn test_add_subcommand_single() raises:
     assert_true(idx >= 0)
     assert_equal(app.subcommands[idx].name, "search")
     assert_equal(app.subcommands[idx].description, "Search for patterns")
-    print("  ✓ test_add_subcommand_single")
 
 
 fn test_add_subcommand_multiple() raises:
@@ -415,7 +396,6 @@ fn test_add_subcommand_multiple() raises:
     assert_equal(app.subcommands[1].name, "search")
     assert_equal(app.subcommands[2].name, "init")
     assert_equal(app.subcommands[3].name, "build")
-    print("  ✓ test_add_subcommand_multiple")
 
 
 fn test_add_subcommand_preserves_child_args() raises:
@@ -437,7 +417,6 @@ fn test_add_subcommand_preserves_child_args() raises:
     assert_equal(len(app.subcommands[idx].args), 2)
     assert_equal(app.subcommands[idx].args[0].name, "pattern")
     assert_equal(app.subcommands[idx].args[1].name, "max-depth")
-    print("  ✓ test_add_subcommand_preserves_child_args")
 
 
 fn test_subcommand_has_own_version() raises:
@@ -448,7 +427,6 @@ fn test_subcommand_has_own_version() raises:
     assert_equal(app.version, "1.0.0")
     var idx = app._find_subcommand("serve")
     assert_equal(app.subcommands[idx].version, "2.0.0-beta")
-    print("  ✓ test_subcommand_has_own_version")
 
 
 # ── Step 1: Data model — ParseResult.subcommand field ────────────────────────
@@ -458,7 +436,6 @@ fn test_parseresult_subcommand_defaults_empty() raises:
     """Tests that ParseResult.subcommand defaults to empty string."""
     var result = ParseResult()
     assert_equal(result.subcommand, "")
-    print("  ✓ test_parseresult_subcommand_defaults_empty")
 
 
 fn test_parseresult_subcommand_can_be_set() raises:
@@ -466,7 +443,6 @@ fn test_parseresult_subcommand_can_be_set() raises:
     var result = ParseResult()
     result.subcommand = "search"
     assert_equal(result.subcommand, "search")
-    print("  ✓ test_parseresult_subcommand_can_be_set")
 
 
 fn test_parseresult_no_subcommand_result_initially() raises:
@@ -474,7 +450,6 @@ fn test_parseresult_no_subcommand_result_initially() raises:
     """
     var result = ParseResult()
     assert_false(result.has_subcommand_result())
-    print("  ✓ test_parseresult_no_subcommand_result_initially")
 
 
 fn test_parseresult_get_subcommand_result_raises_when_empty() raises:
@@ -490,7 +465,6 @@ fn test_parseresult_get_subcommand_result_raises_when_empty() raises:
             msg="Error should mention 'No subcommand result'",
         )
     assert_true(caught, msg="Should have raised for empty subcommand result")
-    print("  ✓ test_parseresult_get_subcommand_result_raises_when_empty")
 
 
 fn test_parseresult_subcommand_result_stored_and_retrieved() raises:
@@ -503,7 +477,6 @@ fn test_parseresult_subcommand_result_stored_and_retrieved() raises:
     assert_true(parent.has_subcommand_result())
     var retrieved = parent.get_subcommand_result()
     assert_equal(retrieved.get_string("pattern"), "hello")
-    print("  ✓ test_parseresult_subcommand_result_stored_and_retrieved")
 
 
 fn test_parseresult_str_includes_subcommand() raises:
@@ -512,7 +485,6 @@ fn test_parseresult_str_includes_subcommand() raises:
     result.subcommand = "build"
     var s = String(result)
     assert_true("build" in s, msg="__str__ should include the subcommand name")
-    print("  ✓ test_parseresult_str_includes_subcommand")
 
 
 fn test_parseresult_str_no_subcommand_section_when_empty() raises:
@@ -523,7 +495,6 @@ fn test_parseresult_str_no_subcommand_section_when_empty() raises:
         "subcommand" in s,
         msg="__str__ should not include 'subcommand' when empty",
     )
-    print("  ✓ test_parseresult_str_no_subcommand_section_when_empty")
 
 
 fn test_parseresult_copy_preserves_subcommand() raises:
@@ -539,7 +510,6 @@ fn test_parseresult_copy_preserves_subcommand() raises:
     assert_equal(copy.subcommand, "init")
     assert_true(copy.has_subcommand_result())
     assert_equal(copy.get_subcommand_result().get_string("name"), "myproject")
-    print("  ✓ test_parseresult_copy_preserves_subcommand")
 
 
 fn test_parse_without_subcommands_unaffected() raises:
@@ -554,7 +524,6 @@ fn test_parse_without_subcommands_unaffected() raises:
     assert_true(result.get_flag("verbose"))
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
-    print("  ✓ test_parse_without_subcommands_unaffected")
 
 
 # ── Step 2: Parse routing ─────────────────────────────────────────────────────
@@ -575,7 +544,6 @@ fn test_dispatch_basic() raises:
     assert_true(result.has_subcommand_result())
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("pattern"), "hello")
-    print("  ✓ test_dispatch_basic")
 
 
 fn test_dispatch_root_flag_before_subcommand() raises:
@@ -596,7 +564,6 @@ fn test_dispatch_root_flag_before_subcommand() raises:
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("pattern"), "hello")
-    print("  ✓ test_dispatch_root_flag_before_subcommand")
 
 
 fn test_dispatch_root_short_flag_before_subcommand() raises:
@@ -617,7 +584,6 @@ fn test_dispatch_root_short_flag_before_subcommand() raises:
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("pattern"), "hello")
-    print("  ✓ test_dispatch_root_short_flag_before_subcommand")
 
 
 fn test_dispatch_child_flag() raises:
@@ -638,7 +604,6 @@ fn test_dispatch_child_flag() raises:
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("max-depth"), "3")
     assert_equal(sub.get_string("pattern"), "hello")
-    print("  ✓ test_dispatch_child_flag")
 
 
 fn test_dispatch_child_flag_short() raises:
@@ -659,7 +624,6 @@ fn test_dispatch_child_flag_short() raises:
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("max-depth"), "5")
     assert_equal(sub.get_string("pattern"), "hello")
-    print("  ✓ test_dispatch_child_flag_short")
 
 
 fn test_dispatch_double_dash_stops_dispatch() raises:
@@ -677,7 +641,6 @@ fn test_dispatch_double_dash_stops_dispatch() raises:
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
     assert_equal(result.get_string("arg1"), "search")
-    print("  ✓ test_dispatch_double_dash_stops_dispatch")
 
 
 fn test_dispatch_unknown_token_is_positional() raises:
@@ -693,7 +656,6 @@ fn test_dispatch_unknown_token_is_positional() raises:
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.get_string("name"), "hello")
-    print("  ✓ test_dispatch_unknown_token_is_positional")
 
 
 fn test_dispatch_two_subcommands_route_first() raises:
@@ -712,7 +674,6 @@ fn test_dispatch_two_subcommands_route_first() raises:
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "search")
     assert_equal(result.get_subcommand_result().get_string("pattern"), "foo")
-    print("  ✓ test_dispatch_two_subcommands_route_first")
 
 
 fn test_dispatch_two_subcommands_route_second() raises:
@@ -731,7 +692,6 @@ fn test_dispatch_two_subcommands_route_second() raises:
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "init")
     assert_equal(result.get_subcommand_result().get_string("name"), "myproject")
-    print("  ✓ test_dispatch_two_subcommands_route_second")
 
 
 fn test_dispatch_child_validation_error() raises:
@@ -754,7 +714,6 @@ fn test_dispatch_child_validation_error() raises:
             msg="Error should mention 'Required argument'",
         )
     assert_true(caught, msg="Should have raised for missing child required arg")
-    print("  ✓ test_dispatch_child_validation_error")
 
 
 fn test_dispatch_child_default_value() raises:
@@ -776,7 +735,6 @@ fn test_dispatch_child_default_value() raises:
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("pattern"), "hello")
     assert_equal(sub.get_string("path"), ".")
-    print("  ✓ test_dispatch_child_default_value")
 
 
 fn test_dispatch_no_subcommand_when_none_match() raises:
@@ -791,7 +749,6 @@ fn test_dispatch_no_subcommand_when_none_match() raises:
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_false(result.has_subcommand_result())
-    print("  ✓ test_dispatch_no_subcommand_when_none_match")
 
 
 fn test_dispatch_root_still_validates_own_required() raises:
@@ -815,7 +772,6 @@ fn test_dispatch_root_still_validates_own_required() raises:
         assert_true("Required argument" in String(e))
         assert_true("token" in String(e))
     assert_true(caught, msg="Root required arg should still be validated")
-    print("  ✓ test_dispatch_root_still_validates_own_required")
 
 
 fn test_dispatch_child_receives_no_root_tokens() raises:
@@ -837,7 +793,6 @@ fn test_dispatch_child_receives_no_root_tokens() raises:
     assert_equal(child.get_string("script"), "main.mojo")
     # --verbose is not in child result (child doesn't know about it).
     assert_false(child.has("verbose"))
-    print("  ✓ test_dispatch_child_receives_no_root_tokens")
 
 
 # ── Step 2b: auto-registered 'help' subcommand ───────────────────────────────
@@ -854,16 +809,15 @@ fn test_help_sub_auto_added() raises:
     var help_idx = app._find_subcommand("help")
     assert_true(help_idx >= 0)
     assert_true(app.subcommands[help_idx]._is_help_subcommand)
-    print("  ✓ test_help_sub_auto_added")
 
 
 fn test_help_sub_added_only_once() raises:
     """Tests that 'help' is not duplicated on multiple add_subcommand() calls.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
-    app.add_subcommand(Command("init", "Init")^)
-    app.add_subcommand(Command("build", "Build")^)
+    app.add_subcommand(Command("search", "Search"))
+    app.add_subcommand(Command("init", "Init"))
+    app.add_subcommand(Command("build", "Build"))
 
     # 3 user subs + 1 help = 4 total.
     assert_equal(len(app.subcommands), 4)
@@ -872,31 +826,28 @@ fn test_help_sub_added_only_once() raises:
         if app.subcommands[i].name == "help":
             count += 1
     assert_equal(count, 1)
-    print("  ✓ test_help_sub_added_only_once")
 
 
 fn test_help_sub_appears_after_user_subs() raises:
     """Tests that 'help' is at index 0 and user subs follow in order."""
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
-    app.add_subcommand(Command("init", "Init")^)
+    app.add_subcommand(Command("search", "Search"))
+    app.add_subcommand(Command("init", "Init"))
 
     # help [0], search [1], init [2].
     assert_equal(app.subcommands[0].name, "help")
     assert_equal(app.subcommands[1].name, "search")
     assert_equal(app.subcommands[2].name, "init")
-    print("  ✓ test_help_sub_appears_after_user_subs")
 
 
 fn test_help_sub_flag_on_user_subs() raises:
     """Tests that user-registered subcommands do NOT have the flag set."""
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var search_idx = app._find_subcommand("search")
     assert_true(search_idx >= 0)
     assert_false(app.subcommands[search_idx]._is_help_subcommand)
-    print("  ✓ test_help_sub_flag_on_user_subs")
 
 
 fn test_disable_help_sub_before_add() raises:
@@ -904,19 +855,18 @@ fn test_disable_help_sub_before_add() raises:
     """
     var app = Command("app", "My app")
     app.disable_help_subcommand()
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     # Only 1 subcommand — no 'help'.
     assert_equal(len(app.subcommands), 1)
     assert_equal(app._find_subcommand("help"), -1)
-    print("  ✓ test_disable_help_sub_before_add")
 
 
 fn test_disable_help_sub_after_add() raises:
     """Tests that disable_help_subcommand() after add_subcommand() removes it.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
     # 'help' is now present.
     assert_equal(len(app.subcommands), 2)
 
@@ -925,7 +875,6 @@ fn test_disable_help_sub_after_add() raises:
     assert_equal(len(app.subcommands), 1)
     assert_equal(app.subcommands[0].name, "search")
     assert_equal(app._find_subcommand("help"), -1)
-    print("  ✓ test_disable_help_sub_after_add")
 
 
 fn test_dispatch_unaffected_by_help_sub() raises:
@@ -942,7 +891,6 @@ fn test_dispatch_unaffected_by_help_sub() raises:
     assert_equal(result.subcommand, "search")
     var child = result.get_subcommand_result()
     assert_equal(child.get_string("pattern"), "TODO")
-    print("  ✓ test_dispatch_unaffected_by_help_sub")
 
 
 fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
@@ -952,14 +900,13 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
     app.allow_positional_with_subcommands()
     app.add_argument(Argument("query", help="Query").positional())
     app.disable_help_subcommand()
-    app.add_subcommand(Command("init", "Init")^)
+    app.add_subcommand(Command("init", "Init"))
 
     # "help" should be treated as a root positional, not dispatch.
     var args: List[String] = ["app", "help"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.get_string("query"), "help")
-    print("  ✓ test_help_sub_disabled_unknown_word_becomes_positional")
 
 
 # ── Error handling ───────────────────────────────────────────────────────────
@@ -969,8 +916,8 @@ fn test_unknown_subcommand_error_no_positionals() raises:
     """Tests that an unknown subcommand name gives an error when no positional args are defined.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
-    app.add_subcommand(Command("init", "Init")^)
+    app.add_subcommand(Command("search", "Search"))
+    app.add_subcommand(Command("init", "Init"))
 
     var args: List[String] = ["app", "foo"]
     var caught = False
@@ -987,7 +934,6 @@ fn test_unknown_subcommand_error_no_positionals() raises:
         assert_true("search" in msg, msg="Should list available 'search'")
         assert_true("init" in msg, msg="Should list available 'init'")
     assert_true(caught, msg="Should have raised for unknown subcommand")
-    print("  ✓ test_unknown_subcommand_error_no_positionals")
 
 
 fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
@@ -996,14 +942,13 @@ fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
     var app = Command("app", "My app")
     app.allow_positional_with_subcommands()
     app.add_argument(Argument("query", help="Query").positional())
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     # "foo" doesn't match any subcommand but root has positional args → positional.
     var args: List[String] = ["app", "foo"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.get_string("query"), "foo")
-    print("  ✓ test_unknown_token_becomes_positional_when_positionals_defined")
 
 
 fn test_child_error_includes_command_path() raises:
@@ -1029,14 +974,13 @@ fn test_child_error_includes_command_path() raises:
         )
         assert_true("pattern" in msg, msg="Should mention 'pattern'")
     assert_true(caught, msg="Should have raised for missing required in child")
-    print("  ✓ test_child_error_includes_command_path")
 
 
 fn test_unknown_subcommand_error_excludes_help_sub() raises:
     """Tests that the error message for unknown subcommand does not list 'help'.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var args: List[String] = ["app", "foo"]
     var caught = False
@@ -1061,7 +1005,6 @@ fn test_unknown_subcommand_error_excludes_help_sub() raises:
                 msg="'help' sub should not appear in available commands",
             )
     assert_true(caught, msg="Should have raised")
-    print("  ✓ test_unknown_subcommand_error_excludes_help_sub")
 
 
 # ── Positional + subcommand guard ────────────────────────────────────────────
@@ -1071,7 +1014,7 @@ fn test_add_positional_after_subcommand_raises() raises:
     """Tests that adding a positional after a subcommand raises without opt-in.
     """
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
 
     var caught = False
     try:
@@ -1088,7 +1031,6 @@ fn test_add_positional_after_subcommand_raises() raises:
             msg="Should mention opt-in method",
         )
     assert_true(caught, msg="Should have raised")
-    print("  ✓ test_add_positional_after_subcommand_raises")
 
 
 fn test_add_subcommand_after_positional_raises() raises:
@@ -1099,7 +1041,7 @@ fn test_add_subcommand_after_positional_raises() raises:
 
     var caught = False
     try:
-        app.add_subcommand(Command("init", "Init")^)
+        app.add_subcommand(Command("init", "Init"))
     except e:
         caught = True
         var msg = String(e)
@@ -1112,7 +1054,6 @@ fn test_add_subcommand_after_positional_raises() raises:
             msg="Should mention opt-in method",
         )
     assert_true(caught, msg="Should have raised")
-    print("  ✓ test_add_subcommand_after_positional_raises")
 
 
 fn test_allow_positional_with_subcommands_opt_in() raises:
@@ -1121,13 +1062,13 @@ fn test_allow_positional_with_subcommands_opt_in() raises:
     var app1 = Command("app", "My app")
     app1.allow_positional_with_subcommands()
     app1.add_argument(Argument("file", help="File").positional())
-    app1.add_subcommand(Command("init", "Init")^)
+    app1.add_subcommand(Command("init", "Init"))
     assert_equal(len(app1.subcommands), 2)  # init + auto help
 
     # Direction 2: subcommand first, then positional.
     var app2 = Command("app", "My app")
     app2.allow_positional_with_subcommands()
-    app2.add_subcommand(Command("search", "Search")^)
+    app2.add_subcommand(Command("search", "Search"))
     app2.add_argument(Argument("query", help="Query").positional())
 
     # Verify parsing works: unknown token → positional.
@@ -1135,19 +1076,17 @@ fn test_allow_positional_with_subcommands_opt_in() raises:
     var result = app2.parse_arguments(args)
     assert_equal(result.subcommand, "")
     assert_equal(result.get_string("query"), "hello")
-    print("  ✓ test_allow_positional_with_subcommands_opt_in")
 
 
 fn test_non_positional_args_unaffected_by_guard() raises:
     """Tests that adding non-positional (flags/options) with subcommands
     does not trigger the guard, even without opt-in."""
     var app = Command("app", "My app")
-    app.add_subcommand(Command("search", "Search")^)
+    app.add_subcommand(Command("search", "Search"))
     # These should NOT raise:
     app.add_argument(Argument("verbose", help="Verbose").long("verbose").flag())
     app.add_argument(Argument("output", help="Output").long("output"))
     assert_true(True, msg="Non-positional args should not trigger guard")
-    print("  ✓ test_non_positional_args_unaffected_by_guard")
 
 
 # ── Step 5: Subcommand aliases ───────────────────────────────────────────────
@@ -1157,7 +1096,6 @@ fn test_command_aliases_empty_by_default() raises:
     """Tests that a fresh Command has no aliases registered."""
     var sub = Command("clone", "Clone a repo")
     assert_equal(len(sub._command_aliases), 0)
-    print("  ✓ test_command_aliases_empty_by_default")
 
 
 fn test_command_aliases_builder() raises:
@@ -1168,7 +1106,6 @@ fn test_command_aliases_builder() raises:
     assert_equal(len(sub._command_aliases), 2)
     assert_equal(sub._command_aliases[0], "cl")
     assert_equal(sub._command_aliases[1], "cln")
-    print("  ✓ test_command_aliases_builder")
 
 
 fn test_alias_dispatch_basic() raises:
@@ -1187,7 +1124,6 @@ fn test_alias_dispatch_basic() raises:
     assert_equal(result.subcommand, "clone")
     var sub_result = result.get_subcommand_result()
     assert_equal(sub_result.get_string("url"), "https://example.com/repo.git")
-    print("  ✓ test_alias_dispatch_basic")
 
 
 fn test_alias_stores_canonical_name() raises:
@@ -1202,7 +1138,6 @@ fn test_alias_stores_canonical_name() raises:
     var args: List[String] = ["app", "cm"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "commit")
-    print("  ✓ test_alias_stores_canonical_name")
 
 
 fn test_alias_dispatch_with_child_flags() raises:
@@ -1223,7 +1158,6 @@ fn test_alias_dispatch_with_child_flags() raises:
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("message"), "fix bug")
     assert_true(sub.get_flag("amend"))
-    print("  ✓ test_alias_dispatch_with_child_flags")
 
 
 fn test_alias_primary_name_still_works() raises:
@@ -1238,7 +1172,6 @@ fn test_alias_primary_name_still_works() raises:
     var args: List[String] = ["app", "clone"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "clone")
-    print("  ✓ test_alias_primary_name_still_works")
 
 
 fn test_alias_find_subcommand() raises:
@@ -1258,7 +1191,6 @@ fn test_alias_find_subcommand() raises:
     assert_equal(idx_name, idx_alias1)
     assert_equal(idx_name, idx_alias2)
     assert_equal(idx_none, -1)
-    print("  ✓ test_alias_find_subcommand")
 
 
 fn test_alias_copy_init() raises:
@@ -1269,7 +1201,6 @@ fn test_alias_copy_init() raises:
     var sub2 = sub.copy()
     assert_equal(len(sub2._command_aliases), 1)
     assert_equal(sub2._command_aliases[0], "cl")
-    print("  ✓ test_alias_copy_init")
 
 
 fn test_alias_multiple_subcommands() raises:
@@ -1303,7 +1234,6 @@ fn test_alias_multiple_subcommands() raises:
     var args4: List[String] = ["app", "commit"]
     var r4 = app.parse_arguments(args4)
     assert_equal(r4.subcommand, "commit")
-    print("  ✓ test_alias_multiple_subcommands")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -1330,7 +1260,6 @@ fn test_hidden_subcommand_still_dispatchable() raises:
     assert_equal(result.subcommand, "debug")
     var sub = result.get_subcommand_result()
     assert_equal(sub.get_string("level"), "trace")
-    print("  ✓ test_hidden_subcommand_still_dispatchable")
 
 
 fn test_hidden_subcommand_alias_dispatchable() raises:
@@ -1348,7 +1277,6 @@ fn test_hidden_subcommand_alias_dispatchable() raises:
     var args: List[String] = ["app", "dbg"]
     var result = app.parse_arguments(args)
     assert_equal(result.subcommand, "debug")
-    print("  ✓ test_hidden_subcommand_alias_dispatchable")
 
 
 fn test_hidden_is_hidden_field() raises:
@@ -1357,7 +1285,6 @@ fn test_hidden_is_hidden_field() raises:
     assert_false(cmd._is_hidden, msg="_is_hidden should default to False")
     cmd.hidden()
     assert_true(cmd._is_hidden, msg="hidden() should set _is_hidden to True")
-    print("  ✓ test_hidden_is_hidden_field")
 
 
 fn test_hidden_subcommand_copy() raises:
@@ -1366,7 +1293,6 @@ fn test_hidden_subcommand_copy() raises:
     cmd.hidden()
     var copy = cmd.copy()
     assert_true(copy._is_hidden, msg="_is_hidden should survive copy")
-    print("  ✓ test_hidden_subcommand_copy")
 
 
 fn main() raises:

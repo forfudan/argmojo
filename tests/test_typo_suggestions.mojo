@@ -17,7 +17,7 @@ fn test_typo_long_option_suggests() raises:
         Argument("version", help="Show version").long("version").flag()
     )
 
-    var args: List[String] = ["test", "--verbos"]
+    var _args: List[String] = ["test", "--verbos"]
     # --verbos is a prefix match for --verbose, so it should resolve.
     # Use a more distant typo to test suggestion path.
     var args2: List[String] = ["test", "--vrebose"]
@@ -36,7 +36,6 @@ fn test_typo_long_option_suggests() raises:
             msg="Error should suggest --verbose",
         )
     assert_true(caught, msg="Should have raised error for --vrebose")
-    print("  ✓ test_typo_long_option_suggests")
 
 
 fn test_typo_long_option_no_suggestion() raises:
@@ -58,7 +57,6 @@ fn test_typo_long_option_no_suggestion() raises:
             msg="Error should not suggest anything for unrelated option",
         )
     assert_true(caught, msg="Should have raised error for --zzzzzzz")
-    print("  ✓ test_typo_long_option_no_suggestion")
 
 
 fn test_typo_long_option_single_char_diff() raises:
@@ -84,7 +82,6 @@ fn test_typo_long_option_single_char_diff() raises:
             msg="Error should suggest --output",
         )
     assert_true(caught, msg="Should have raised error for --outptu")
-    print("  ✓ test_typo_long_option_single_char_diff")
 
 
 # ── Subcommand typo suggestions ──────────────────────────────────────────────
@@ -114,7 +111,6 @@ fn test_typo_subcommand_suggests() raises:
             msg="Error should suggest 'search'",
         )
     assert_true(caught, msg="Should have raised error for 'serach'")
-    print("  ✓ test_typo_subcommand_suggests")
 
 
 fn test_typo_subcommand_no_suggestion() raises:
@@ -136,7 +132,6 @@ fn test_typo_subcommand_no_suggestion() raises:
             msg="Error should not suggest anything for unrelated command",
         )
     assert_true(caught, msg="Should have raised error for 'xxxxxxx'")
-    print("  ✓ test_typo_subcommand_no_suggestion")
 
 
 # ── Alias typo suggestions ──────────────────────────────────────────────────
@@ -165,7 +160,6 @@ fn test_typo_alias_suggests() raises:
             msg="Error should suggest a correction for --colro",
         )
     assert_true(caught, msg="Should have raised error for --colro")
-    print("  ✓ test_typo_alias_suggests")
 
 
 fn test_typo_subcommand_alias_suggests() raises:
@@ -193,7 +187,6 @@ fn test_typo_subcommand_alias_suggests() raises:
             msg="Error should suggest 'clone' for 'clon'",
         )
     assert_true(caught, msg="Should have raised error for 'clon'")
-    print("  ✓ test_typo_subcommand_alias_suggests")
 
 
 fn test_typo_hidden_subcommand_not_suggested() raises:
@@ -224,7 +217,6 @@ fn test_typo_hidden_subcommand_not_suggested() raises:
         "clone" in err_msg,
         msg="Visible sub 'clone' should still be in error message",
     )
-    print("  ✓ test_typo_hidden_subcommand_not_suggested")
 
 
 fn main() raises:

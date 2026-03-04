@@ -26,7 +26,6 @@ fn test_exclusive_one_provided() raises:
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
-    print("  ✓ test_exclusive_one_provided")
 
 
 fn test_exclusive_none_provided() raises:
@@ -45,7 +44,6 @@ fn test_exclusive_none_provided() raises:
     var result = command.parse_arguments(args)
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
-    print("  ✓ test_exclusive_none_provided")
 
 
 fn test_exclusive_conflict() raises:
@@ -83,7 +81,6 @@ fn test_exclusive_conflict() raises:
             msg="Error should mention --yaml",
         )
     assert_true(caught, msg="Should have raised error for exclusive conflict")
-    print("  ✓ test_exclusive_conflict")
 
 
 fn test_exclusive_value_args() raises:
@@ -108,7 +105,6 @@ fn test_exclusive_value_args() raises:
             msg="Error should mention mutually exclusive",
         )
     assert_true(caught, msg="Should have raised error for exclusive conflict")
-    print("  ✓ test_exclusive_value_args")
 
 
 # ── Required-together groups ─────────────────────────────────────────────────────
@@ -136,7 +132,6 @@ fn test_required_together_all_provided() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("username"), "admin")
     assert_equal(result.get_string("password"), "secret")
-    print("  ✓ test_required_together_all_provided")
 
 
 fn test_required_together_none_provided() raises:
@@ -155,7 +150,6 @@ fn test_required_together_none_provided() raises:
     var result = command.parse_arguments(args)
     assert_false(result.has("username"), msg="username should not be set")
     assert_false(result.has("password"), msg="password should not be set")
-    print("  ✓ test_required_together_none_provided")
 
 
 fn test_required_together_partial() raises:
@@ -187,7 +181,6 @@ fn test_required_together_partial() raises:
             msg="Error should mention --password",
         )
     assert_true(caught, msg="Should have raised error for partial group")
-    print("  ✓ test_required_together_partial")
 
 
 fn test_required_together_three_args() raises:
@@ -215,7 +208,6 @@ fn test_required_together_three_args() raises:
             msg="Error should mention --proto",
         )
     assert_true(caught, msg="Should have raised error for partial group")
-    print("  ✓ test_required_together_three_args")
 
 
 # ===------------------------------------------------------------------=== #
@@ -243,7 +235,6 @@ fn test_one_required_one_provided() raises:
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
     assert_false(result.get_flag("json"), msg="--json should be False")
     assert_false(result.get_flag("toml"), msg="--toml should be False")
-    print("  ✓ test_one_required_one_provided")
 
 
 fn test_one_required_multiple_provided() raises:
@@ -263,7 +254,6 @@ fn test_one_required_multiple_provided() raises:
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="--json should be True")
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
-    print("  ✓ test_one_required_multiple_provided")
 
 
 fn test_one_required_none_provided() raises:
@@ -298,7 +288,6 @@ fn test_one_required_none_provided() raises:
             msg="Error should mention '--yaml'",
         )
     assert_true(caught, msg="Should have raised error for one-required group")
-    print("  ✓ test_one_required_none_provided")
 
 
 fn test_one_required_with_value_args() raises:
@@ -317,7 +306,6 @@ fn test_one_required_with_value_args() raises:
     var args: List[String] = ["test", "--input", "data.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("input"), "data.txt")
-    print("  ✓ test_one_required_with_value_args")
 
 
 fn test_one_required_with_short_option() raises:
@@ -335,7 +323,6 @@ fn test_one_required_with_short_option() raises:
     var args: List[String] = ["test", "-j"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("json"), msg="-j should satisfy one_required")
-    print("  ✓ test_one_required_with_short_option")
 
 
 fn test_one_required_error_shows_display_names() raises:
@@ -362,7 +349,6 @@ fn test_one_required_error_shows_display_names() raises:
         assert_true("'--json'" in msg, msg="Should show '--json' in error")
         assert_true("'--yaml'" in msg, msg="Should show '--yaml' in error")
     assert_true(caught, msg="Should have raised error")
-    print("  ✓ test_one_required_error_shows_display_names")
 
 
 fn test_one_required_combined_with_exclusive() raises:
@@ -403,7 +389,6 @@ fn test_one_required_combined_with_exclusive() raises:
     except:
         caught_both = True
     assert_true(caught_both, msg="Should error when both provided")
-    print("  ✓ test_one_required_combined_with_exclusive")
 
 
 fn test_one_required_multiple_groups() raises:
@@ -439,7 +424,6 @@ fn test_one_required_multiple_groups() raises:
             msg="Error should mention missing group",
         )
     assert_true(caught, msg="Should error when second group unsatisfied")
-    print("  ✓ test_one_required_multiple_groups")
 
 
 fn test_one_required_with_append_arg() raises:
@@ -458,7 +442,6 @@ fn test_one_required_with_append_arg() raises:
     var tags = result.get_list("tag")
     assert_equal(len(tags), 1)
     assert_equal(tags[0], "v1")
-    print("  ✓ test_one_required_with_append_arg")
 
 
 # ===------------------------------------------------------------------=== #
@@ -481,7 +464,6 @@ fn test_conditional_req_satisfied() raises:
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("save"), msg="--save should be True")
     assert_equal(result.get_string("output"), "out.txt")
-    print("  ✓ test_conditional_req_satisfied")
 
 
 fn test_conditional_req_condition_absent() raises:
@@ -501,7 +483,6 @@ fn test_conditional_req_condition_absent() raises:
     var result = command.parse_arguments(args)
     assert_false(result.has("save"), msg="save should not be present")
     assert_false(result.has("output"), msg="output should not be present")
-    print("  ✓ test_conditional_req_condition_absent")
 
 
 fn test_conditional_req_violated() raises:
@@ -536,7 +517,6 @@ fn test_conditional_req_violated() raises:
             msg="Error should say 'is required when'",
         )
     assert_true(caught, msg="Should raise error for missing conditional arg")
-    print("  ✓ test_conditional_req_violated")
 
 
 fn test_conditional_req_target_alone_ok() raises:
@@ -555,7 +535,6 @@ fn test_conditional_req_target_alone_ok() raises:
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "out.txt")
     assert_false(result.has("save"), msg="save should not be present")
-    print("  ✓ test_conditional_req_target_alone_ok")
 
 
 fn test_conditional_req_multiple_rules() raises:
@@ -620,7 +599,6 @@ fn test_conditional_req_multiple_rules() raises:
             msg="Error should mention '--compress'",
         )
     assert_true(caught, msg="Should raise error for second conditional rule")
-    print("  ✓ test_conditional_req_multiple_rules")
 
 
 fn test_conditional_req_with_short_option() raises:
@@ -653,7 +631,6 @@ fn test_conditional_req_with_short_option() raises:
     var result = command.parse_arguments(args2)
     assert_true(result.get_flag("save"), msg="-s should set save")
     assert_equal(result.get_string("output"), "out.txt")
-    print("  ✓ test_conditional_req_with_short_option")
 
 
 fn test_conditional_req_with_value_condition() raises:
@@ -676,7 +653,6 @@ fn test_conditional_req_with_value_condition() raises:
         assert_true("'--output'" in msg, msg="Error should mention --output")
         assert_true("'--format'" in msg, msg="Error should mention --format")
     assert_true(caught, msg="Value condition should trigger requirement")
-    print("  ✓ test_conditional_req_with_value_condition")
 
 
 fn test_conditional_req_error_uses_display_names() raises:
@@ -708,7 +684,6 @@ fn test_conditional_req_error_uses_display_names() raises:
             msg="Should show '--save' not 'do-save'",
         )
     assert_true(caught, msg="Should raise error")
-    print("  ✓ test_conditional_req_error_uses_display_names")
 
 
 fn main() raises:

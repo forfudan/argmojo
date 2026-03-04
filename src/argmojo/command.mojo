@@ -694,12 +694,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
         implies C, setting A will also set C.  Circular implications are
         detected at registration time and raise an error.
 
+        Both ``trigger`` and ``implied`` must be registered arguments.
+        The ``implied`` argument must be a ``.flag()`` or ``.count()``
+        argument — value-taking, positional, append, and map arguments
+        are not supported as implication targets.
+
         Args:
             trigger: The argument whose presence triggers the implication.
             implied: The argument that is automatically set.
 
         Raises:
-            Error if adding this implication would create a cycle.
+            Error if adding this implication would create a cycle, if
+            either argument is unknown, or if the implied argument is
+            not a flag or count.
 
         Example:
 
@@ -712,18 +719,44 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # --debug now automatically sets --verbose as well
         ```
         """
+        # Validate that both trigger and implied are registered arguments.
+        var trigger_found = False
+        for i in range(len(self.args)):
+            if self.args[i].name == trigger:
+                trigger_found = True
+                break
+        if not trigger_found:
+            raise Error("implies(): unknown trigger argument '" + trigger + "'")
+
+        var implied_found = False
+        var implied_kind = String("flag")  # "flag" or "count"
+        for i in range(len(self.args)):
+            if self.args[i].name == implied:
+                implied_found = True
+                if self.args[i]._is_count:
+                    implied_kind = "count"
+                elif not self.args[i]._is_flag:
+                    raise Error(
+                        "implies(): implied argument '"
+                        + implied
+                        + "' must be a flag() or count()"
+                    )
+                break
+        if not implied_found:
+            raise Error("implies(): unknown implied argument '" + implied + "'")
+
         # Cycle detection: check if `trigger` is reachable from `implied`.
         # If so, adding implied→...→trigger would form a cycle.
         if trigger == implied:
             raise Error(
                 "Implication cycle detected: '" + trigger + "' implies itself"
             )
-        # BFS from `implied` following existing edges.
+        # DFS from `implied` following existing edges.
         var visited = List[String]()
-        var queue = List[String]()
-        queue.append(implied)
-        while len(queue) > 0:
-            var current = queue.pop()
+        var stack = List[String]()
+        stack.append(implied)
+        while len(stack) > 0:
+            var current = stack.pop()
             # Check existing implications where `current` is the trigger.
             for i in range(len(self._implications)):
                 if self._implications[i][0] == current:
@@ -744,9 +777,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             break
                     if not already:
                         visited.append(target)
-                        queue.append(target)
-        var imp_pair: List[String] = [trigger, implied]
-        self._implications.append(imp_pair^)
+                        stack.append(target)
+        # Store [trigger, implied, kind] triple.  The kind is used by
+        # _apply_implications() to set the correct result field without
+        # re-scanning self.args at parse time.
+        var imp_triple: List[String] = [trigger, implied, implied_kind]
+        self._implications.append(imp_triple^)
 
     fn help_on_no_arguments(mut self):
         """Enables showing help when invoked with no arguments.
@@ -1685,12 +1721,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn _apply_implications(self, mut result: ParseResult):
         """Propagates implication rules on the parse result.
 
-        For each registered ``implies(trigger, implied)`` pair, if ``trigger``
-        is present in ``result``, ``implied`` is automatically set.  Uses a
-        fixed-point loop to support chained implications (A → B → C).
+        For each registered ``implies(trigger, implied)`` triple, if
+        ``trigger`` is present in ``result``, ``implied`` is automatically
+        set.  Uses a fixed-point loop to support chained implications
+        (A → B → C).
 
-        Flags are set to ``True``; count arguments are incremented by 1.
-        Arguments that are already present are left untouched.
+        The implied-argument kind (``"flag"`` or ``"count"``) is stored at
+        registration time, so no argument scan is needed here.
 
         Args:
             result: The parse result to mutate in-place.
@@ -1705,23 +1742,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
             for i in range(len(self._implications)):
                 var trigger = self._implications[i][0]
                 var implied = self._implications[i][1]
+                var kind = self._implications[i][2]  # "flag" or "count"
                 if result.has(trigger) and not result.has(implied):
-                    # Determine the type of the implied argument.
-                    var is_count = False
-                    var is_flag = False
-                    for j in range(len(self.args)):
-                        if self.args[j].name == implied:
-                            is_count = self.args[j]._is_count
-                            is_flag = self.args[j]._is_flag
-                            break
-                    if is_count:
+                    if kind == "count":
                         result._counts[implied] = 1
-                    elif is_flag:
-                        result._flags[implied] = True
                     else:
-                        # Value-taking argument: set to "true" as a
-                        # sentinel so that result.has() returns True.
-                        result._values[implied] = "true"
+                        result._flags[implied] = True
                     changed = True
 
     fn _validate(self, mut result: ParseResult) raises:
