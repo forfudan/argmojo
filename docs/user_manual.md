@@ -157,7 +157,7 @@ myapp "hello" ./src
 #     pattern   path
 ```
 
-Positional arguments are assigned in the order they are registered with `add_argument()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Argument Count Validation](#positional-arg-count-validation)).
+Positional arguments are assigned in the order they are registered with `add_argument()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Argument Count Validation](#positional-argument-count-validation)).
 
 **Retrieving:**
 
@@ -1065,6 +1065,13 @@ Argument("name", help="...")
 ║   .aliases(["alt"])     alternative --names       (named only)
 ║   .deprecated("msg")    deprecation warning       (any)
 ║   .persistent()         inherit to subcommands    (named only)
+║
+╠══ Command-level constraints (called on Command, not Argument) ════════════════
+║   command.mutually_exclusive(["a","b"])  at most one from the group
+║   command.one_required(["a","b"])        at least one from the group
+║   command.required_together(["a","b"])   all or none from the group
+║   command.required_if("target","cond")   target required when cond is set
+║   command.implies("trigger","implied")   auto-set implied when trigger is set
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
 
@@ -1110,6 +1117,13 @@ flowchart LR
     DEC --> dep[".deprecated()"]
     DEC --> per[".persistent()"]
 
+    ARG -.-> CMDCON["Command-level\nConstraints"]
+    CMDCON --> mutex["command.mutually_exclusive()"]
+    CMDCON --> onereq["command.one_required()"]
+    CMDCON --> reqtog["command.required_together()"]
+    CMDCON --> reqif["command.required_if()"]
+    CMDCON --> imp["command.implies()"]
+
     style ARG fill:#e8f4fd,stroke:#333
     style NAMED fill:#d4edda,stroke:#333
     style POS fill:#d4edda,stroke:#333
@@ -1117,34 +1131,40 @@ flowchart LR
     style COUNT fill:#fff3cd,stroke:#333
     style VAL fill:#fff3cd,stroke:#333
     style DEC fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
+    style CMDCON fill:#fce4ec,stroke:#999,stroke-dasharray: 5 5
 ```
 
 ### Compatibility Table
 
 The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
 
-| Method                   | Named value | `.flag()` | `.count()` | `.positional()` |
-| ------------------------ | :---------: | :-------: | :--------: | :-------------: |
-| `.long("x")`             |      ✓      |     ✓     |     ✓      |        —        |
-| `.short("x")`            |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`            |      ✓      |     —     |     —      |        ✓        |
-| `.default("val")`        |      ✓      |     —     |     —      |        ✓        |
-| `.choices(["a","b"])`    |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`      |      ✓      |     —     |     —      |        —        |
-| `.clamp()`               |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`              |      ✓      |     —     |     —      |        —        |
-| `.delimiter(",")`        |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()` |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`          |      ✓      |     —     |     —      |        —        |
-| `.negatable()`           |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`              |      —      |     —     |     ✓      |        —        |
-| `.metavar("FILE")`       |      ✓      |     —     |     —      |        ✓        |
-| `.hidden()`              |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.aliases(["alt"])`      |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated("msg")`     |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`          |      ✓      |     ✓     |     ✓      |        —        |
+| Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
+| -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long("x")`                     |      ✓      |     ✓     |     ✓      |        —        |
+| `.short("x")`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                    |      ✓      |     —     |     —      |        ✓        |
+| `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
+| `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
+| `.append()`                      |      ✓      |     —     |     —      |        —        |
+| `.delimiter(",")`                |     ✓ ²     |     —     |     —      |        —        |
+| `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
+| `.map_option()`                  |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                   |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
+| `.metavar("FILE")`               |      ✓      |     —     |     —      |        ✓        |
+| `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
 
-> ¹ Requires `.range[]()` first.  ² Implies `.append()` automatically.
+> ¹ Requires `.range[]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
 
 ## Group Constraints
 
@@ -1433,7 +1453,7 @@ Each rule is checked independently after parsing.
 
 Error messages use `--long` display names when available:
 
-```
+```bash
 Error: Argument '--output' is required when '--save' is provided
 ```
 
