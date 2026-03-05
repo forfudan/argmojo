@@ -10,7 +10,7 @@ conditional requirements, negatable flags, color customisation
 (header_color, arg_color), numeric range validation, append with range
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
-and help_on_no_arguments.
+help_on_no_arguments, default_if_no_value, and require_equals.
 
 Note: This demo looks very strange, but useful :D
 
@@ -59,6 +59,16 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
 
   # deprecated argument: --legacy prints a warning
   ./demo input.txt --legacy
+
+  # default_if_no_value: --compress alone uses "gzip"
+  ./demo input.txt --compress
+  ./demo input.txt --compress=bzip2
+  ./demo input.txt -c
+  ./demo input.txt -cbzip2
+
+  # require equals: --separator=X only, --separator X is rejected
+  ./demo input.txt --separator="|"
+  ./demo input.txt --separator "|"            # error: requires '=' syntax
 
   # negative number passthrough
   ./demo -- -42
@@ -208,6 +218,26 @@ fn main() raises:
         .deprecated(
             "Legacy mode will be removed in v1.0; use --level 0 instead"
         )
+    )
+
+    # ── default_if_no_value ───────────────────────────────────────────────────
+    # --compress → "gzip" (default-if-no-value); --compress=bzip2 → "bzip2" (explicit).
+    app.add_argument(
+        Argument("compress", help="Compression algorithm")
+        .long("compress")
+        .short("c")
+        .default_if_no_value("gzip")
+        .metavar("ALGO")
+    )
+
+    # ── Require equals (standalone) ──────────────────────────────────────
+    # --separator=X only; --separator X is rejected.
+    app.add_argument(
+        Argument("separator", help="Field separator (must use = syntax)")
+        .long("separator")
+        .require_equals()
+        .metavar("CHAR")
+        .default(",")
     )
 
     # ── Hidden argument ──────────────────────────────────────────────────

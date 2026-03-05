@@ -49,7 +49,7 @@ These features appear across multiple libraries and depend only on string operat
 | Value delimiter (`--tag a,b,c`)    | —        | —     | ✓     | ✓    |                              | **Done**      |
 | Colored help (customisable)        | —        | ✓     | —     | ✓    | pixi                         | **Done**      |
 | Colored warning and error messages | -        | ✓     | -     | ✓    |                              | **Done**      |
-| nargs (multi-value per option)     | ✓        | ✓     | —     | ✓    |                              | **Done**      |
+| Number of values per option        | ✓        | ✓     | —     | ✓    |                              | **Done**      |
 | Conditional requirement            | —        | —     | ✓     | ✓    |                              | **Done**      |
 | Numeric range validation           | —        | —     | —     | —    |                              | **Done**      |
 | Key-value map (`-Dkey=val`)        | —        | —     | —     | —    | Java `-D`, Docker `-e`       | **Done**      |
@@ -71,10 +71,10 @@ These features appear across multiple libraries and depend only on string operat
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | Phase 5       |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
-| REMAINDER nargs                    | ✓        | —     | —     | —    |                              | Phase 5       |
+| REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | Phase 5       |
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | Phase 5       |
-| Require equals syntax              | —        | —     | —     | ✓    |                              | Phase 5       |
-| Default-if-present (const)         | ✓        | —     | —     | ✓    |                              | Phase 5       |
+| Require equals syntax              | —        | —     | —     | ✓    |                              | **Done**      |
+| Default-if-no-value                | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
@@ -148,12 +148,13 @@ src/argmojo/
 tests/
 ├── test_parse.mojo             # Core parsing tests (flags, values, shorts, etc.)
 ├── test_groups.mojo            # Group constraint tests (exclusive, conditional, etc.)
-├── test_collect.mojo           # Collection feature tests (append, delimiter, nargs)
+├── test_collect.mojo           # Collection feature tests (append, delimiter, number_of_values)
 ├── test_help.mojo              # Help output tests (formatting, colours, alignment)
 ├── test_extras.mojo            # Range, map, alias, deprecated tests
 ├── test_subcommands.mojo       # Subcommand tests (dispatch, help sub, unknown sub, etc.)
 ├── test_negative_numbers.mojo  # Negative number passthrough tests
-└── test_persistent.mojo        # Persistent (global) flag tests
+├── test_persistent.mojo        # Persistent (global) flag tests
+└── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
 examples/
 ├── mgrep.mojo                   # grep-like CLI example (no subcommands)
 └── mgit.mojo                    # git-like CLI example (with subcommands)
@@ -191,7 +192,7 @@ examples/
 | Append / collect action (`--tag x --tag y` → list)                                                 | ✓      | ✓     |
 | One-required groups (`command.one_required(["json", "yaml"])`)                                     | ✓      | ✓     |
 | Value delimiter (`.delimiter(",")` → split into list)                                              | ✓      | ✓     |
-| Nargs (`.number_of_values[N]()` → consume N values per occurrence)                                 | ✓      | ✓     |
+| Number of values (`.number_of_values[N]()` → consume N values per occurrence)                      | ✓      | ✓     |
 | Conditional requirements (`command.required_if("output", "save")`)                                 | ✓      | ✓     |
 | Numeric range validation (`.range[1, 65535]()`)                                                    | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                    | ✓      | ✓     |
@@ -201,6 +202,8 @@ examples/
 | Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                   | ✓      | ✓     |
 | Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr) | ✓      | ✓     |
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                       | ✓      | ✓     |
+| Default-if-no-value (`.default_if_no_value("gzip")` → optional value with fallback)                | ✓      | ✓     |
+| Require equals syntax (`.require_equals()` → `--key=value` only)                                   | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -366,7 +369,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **Help on no args** — `command.help_on_no_arguments()` shows help when invoked with no arguments (like git/docker/cargo)
 - [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
 - [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
-- [x] **nargs (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
+- [x] **number of values (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
 - [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)
 - [x] **Key-value map option** — `--define key=value --define k2=v2` → `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
@@ -505,7 +508,7 @@ if result.subcommand == "search":
 
 Before adding Phase 5 features, further decompose `parse_arguments()` for readability and maintainability:
 
-- [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/nargs/value)
+- [x] Extract `_parse_long_option()` — long option parsing (`--key`, `--key=value`, `--no-X` negation, prefix matching, count/flag/number_of_values/value)
 - [x] Extract `_parse_short_single()` — single-character short option parsing (`-k`, `-k value`)
 - [x] Extract `_parse_short_merged()` — merged short flags and attached values (`-abc`, `-ofile.txt`)
 - [x] Extract `_dispatch_subcommand()` — subcommand matching, child argv construction, persistent arg injection, bidirectional sync
@@ -530,14 +533,14 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
 - [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
-- [ ] **Default-if-present (const)** — `--opt` (no value) → use const; `--opt val` → use val; absent → use default (argparse `const`)
+- [ ] **Default-if-no-value** — `--opt` (no value) → use default-if-no-value; `--opt=val` → use val; absent → use default (argparse `const`)
 - [ ] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
 - [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
-- [ ] **REMAINDER nargs** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
+- [ ] **REMAINDER number_of_values** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
 - [x] **Mutual implication** — `command.implies("debug", "verbose")` — after parsing, if the trigger flag is set, automatically set the implied flag; support chained implication (`debug → verbose → log`); detect circular cycles at registration time (no major library has this built-in)
 - [ ] **Stdin value** — `.stdin_value()` on `Argument` — when parsed value is `"-"`, read from stdin; Unix convention (`cat file.txt | mytool --input -`) (cobra supports; depends on Mojo stdin API)
@@ -670,7 +673,7 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
     │     Print version and exit
     ├─ If args[i].startswith("--"):
     │     → _parse_long_option(raw_args, i, result) → new i
-    │       (--key=value, --no-key negation, prefix match, count/flag/nargs/value)
+    │       (--key=value, --no-key negation, prefix match, count/flag/number_of_values/value)
     ├─ If args[i].startswith("-") and len > 1:
     │     ├─ IF _looks_like_number(token) AND (allow_negative_numbers OR no digit short opts):
     │     │     Treat as positional argument (negative number passthrough)
@@ -729,13 +732,13 @@ ArgMojo follows a consistent naming philosophy. When in doubt, apply these prior
 
 ### Decisions made
 
-| Abbreviation (rejected)   | Full form (adopted)                    | Rationale                                                                                      |
-| ------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `Arg`                     | `Argument`                             | Internal struct name; aligns with `add_argument()`                                             |
-| `parse_args()`            | `parse_arguments()`                    | Consistent with `Argument` naming; `parse_args` was an argparse legacy                         |
-| `help_on_no_args()`       | `help_on_no_arguments()`               | Same reason                                                                                    |
-| `_aliases`                | `_command_aliases`                     | Disambiguates from `Argument.aliases()` (option-level aliases)                                 |
-| `nargs()` / `nargs_count` | `number_of_values[N]()` / `num_values` | Method uses full descriptive name; field uses short form to avoid Mojo field/method name clash |
+| Abbreviation (rejected)   | Full form (adopted)      | Rationale                                                              |
+| ------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `Arg`                     | `Argument`               | Internal struct name; aligns with `add_argument()`                     |
+| `parse_args()`            | `parse_arguments()`      | Consistent with `Argument` naming; `parse_args` was an argparse legacy |
+| `help_on_no_args()`       | `help_on_no_arguments()` | Same reason                                                            |
+| `_aliases`                | `_command_aliases`       | Disambiguates from `Argument.aliases()` (option-level aliases)         |
+| `nargs()` / `nargs_count` | `number_of_values`       | Full descriptive name                                                  |
 
 ## 8. Notes on Mojo versions
 

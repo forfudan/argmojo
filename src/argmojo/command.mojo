@@ -1342,10 +1342,23 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 result._lists[matched.name].append(raw_args[i])
         else:
             if not has_eq:
-                i += 1
-                if i >= len(raw_args):
-                    self._error("Option '--" + key + "' requires a value")
-                value = raw_args[i]
+                if matched._require_equals:
+                    if matched._has_default_if_no_value:
+                        # No '=' given — use default-if-no-value.
+                        value = matched._default_if_no_value
+                    else:
+                        self._error(
+                            "Option '--"
+                            + key
+                            + "' requires '=' syntax (use --"
+                            + key
+                            + "=VALUE)"
+                        )
+                else:
+                    i += 1
+                    if i >= len(raw_args):
+                        self._error("Option '--" + key + "' requires a value")
+                    value = raw_args[i]
             if matched._is_map:
                 self._store_map_value(matched, value, result)
             elif matched._is_append:
@@ -1407,17 +1420,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 self._validate_choices(matched, raw_args[i])
                 result._lists[matched.name].append(raw_args[i])
         else:
-            i += 1
-            if i >= len(raw_args):
-                self._error("Option '-" + key + "' requires a value")
-            var val = raw_args[i]
-            if matched._is_map:
-                self._store_map_value(matched, val, result)
-            elif matched._is_append:
-                self._store_append_value(matched, val, result)
+            if matched._has_default_if_no_value:
+                # No value given — use default-if-no-value.
+                var val = matched._default_if_no_value
+                if matched._is_map:
+                    self._store_map_value(matched, val, result)
+                elif matched._is_append:
+                    self._store_append_value(matched, val, result)
+                else:
+                    self._validate_choices(matched, val)
+                    result._values[matched.name] = val
             else:
-                self._validate_choices(matched, val)
-                result._values[matched.name] = val
+                i += 1
+                if i >= len(raw_args):
+                    self._error("Option '-" + key + "' requires a value")
+                var val = raw_args[i]
+                if matched._is_map:
+                    self._store_map_value(matched, val, result)
+                elif matched._is_append:
+                    self._store_append_value(matched, val, result)
+                else:
+                    self._validate_choices(matched, val)
+                    result._values[matched.name] = val
         i += 1
         return i
 
@@ -1497,10 +1521,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # the value.
                     var val = String(key[j + 1 :])
                     if len(val) == 0:
-                        i += 1
-                        if i >= len(raw_args):
-                            self._error("Option '-" + ch + "' requires a value")
-                        val = raw_args[i]
+                        if m._has_default_if_no_value:
+                            # No value given — use default-if-no-value,
+                            # don't consume next token.
+                            val = m._default_if_no_value
+                        else:
+                            i += 1
+                            if i >= len(raw_args):
+                                self._error(
+                                    "Option '-" + ch + "' requires a value"
+                                )
+                            val = raw_args[i]
                     if m._is_map:
                         self._store_map_value(m, val, result)
                     elif m._is_append:
@@ -2486,10 +2517,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         )
 
                 # Show metavar or choices for value-taking options.
-                if not self.args[i]._is_flag:
+                if not self.args[i]._is_flag and not self.args[i]._is_count:
                     var ncount = self.args[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
                     var append_dots = self.args[i]._is_append and ncount == 0
+                    # Determine separator and wrapping for require_equals/default_if_no_value.
+                    var sep = String("=") if self.args[
+                        i
+                    ]._require_equals else String(" ")
+                    var open_bracket = String("[") if self.args[
+                        i
+                    ]._has_default_if_no_value else String("")
+                    var close_bracket = String("]") if self.args[
+                        i
+                    ]._has_default_if_no_value else String("")
                     if self.args[i]._metavar:
                         var mv = self.args[i]._metavar
                         var mv_plain = String("")
@@ -2499,8 +2540,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             mv_colored += " " + arg_color + mv + reset_code
                         # Last (or only) occurrence — attach "..." if append.
                         var last = mv + ("..." if append_dots else "")
-                        mv_plain += " " + last
-                        mv_colored += " " + arg_color + last + reset_code
+                        mv_plain += open_bracket + sep + last + close_bracket
+                        mv_colored += (
+                            open_bracket
+                            + sep
+                            + arg_color
+                            + last
+                            + reset_code
+                            + close_bracket
+                        )
                         plain += mv_plain
                         colored += mv_colored
                     elif len(self.args[i]._choice_values) > 0:
@@ -2513,8 +2561,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         var suffix = choices_str
                         if append_dots:
                             suffix += "..."
-                        plain += " " + suffix
-                        colored += " " + arg_color + suffix + reset_code
+                        plain += open_bracket + sep + suffix + close_bracket
+                        colored += (
+                            open_bracket
+                            + sep
+                            + arg_color
+                            + suffix
+                            + reset_code
+                            + close_bracket
+                        )
                     else:
                         # Default placeholder: <key=value> for map, <name> otherwise.
                         var tag: String
@@ -2529,8 +2584,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             ph_colored += " " + arg_color + tag + reset_code
                         # Last (or only) — attach "..." if append.
                         var last = tag + ("..." if append_dots else "")
-                        ph_plain += " " + last
-                        ph_colored += " " + arg_color + last + reset_code
+                        ph_plain += open_bracket + sep + last + close_bracket
+                        ph_colored += (
+                            open_bracket
+                            + sep
+                            + arg_color
+                            + last
+                            + reset_code
+                            + close_bracket
+                        )
                         plain += ph_plain
                         colored += ph_colored
 

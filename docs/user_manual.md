@@ -59,6 +59,8 @@ from argmojo import Argument, Command
   - [Metavar](#metavar)
   - [Hidden Arguments](#hidden-arguments)
   - [Deprecated Arguments](#deprecated-arguments)
+  - [Default-if-no-value](#default-if-no-value)
+  - [Require Equals Syntax](#require-equals-syntax)
   - [Auto-generated Help](#auto-generated-help)
   - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
@@ -74,6 +76,10 @@ from argmojo import Argument, Command
   - [Generating a Script Programmatically](#generating-a-script-programmatically)
   - [Installing Completions](#installing-completions)
   - [What Gets Completed](#what-gets-completed)
+- [Cross-Library Method Name Reference](#cross-library-method-name-reference)
+  - [Argument-Level Builder Methods](#argument-level-builder-methods)
+  - [Command-Level Constraint Methods](#command-level-constraint-methods)
+  - [Notes](#notes)
 
 ## Getting Started
 
@@ -1060,11 +1066,13 @@ Argument("name", help="...")
 ║   └── .choices(["a","b","c"])
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .metavar("FILE")      display name in help      (value / positional)
-║   .hidden()             hide from --help          (any)
-║   .aliases(["alt"])     alternative --names       (named only)
-║   .deprecated("msg")    deprecation warning       (any)
-║   .persistent()         inherit to subcommands    (named only)
+║   .metavar("FILE")             display name in help      (value / positional)
+║   .hidden()                    hide from --help          (any)
+║   .aliases(["alt"])            alternative --names       (named only)
+║   .deprecated("msg")           deprecation warning       (any)
+║   .persistent()                inherit to subcommands    (named only)
+║   .default_if_no_value("val")  default-if-no-value       (value only)
+║   .require_equals()            force --key=value syntax  (named value only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -1116,6 +1124,8 @@ flowchart LR
     DEC --> ali[".aliases()"]
     DEC --> dep[".deprecated()"]
     DEC --> per[".persistent()"]
+    DEC --> dinv[".default_if_no_value()"]
+    DEC --> reqeq[".require_equals()"]
 
     ARG -.-> CMDCON["Command-level\nConstraints"]
     CMDCON --> mutex["command.mutually_exclusive()"]
@@ -1158,6 +1168,8 @@ The table below shows which builder methods can be used with each argument mode.
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
+| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
 | `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
@@ -2046,6 +2058,90 @@ Options:
   --format-old <format_old>    Legacy output format [deprecated: Use --format instead]
 ```
 
+### Default-if-no-value
+
+Use `.default_if_no_value("value")` to make an option's value **optional**. When the option is present without an explicit value, the default-if-no-value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
+
+`.default_if_no_value()` automatically implies `.require_equals()` for long options, so `--key value` (space-separated) is rejected — the user must write `--key=value` to supply an explicit value.
+
+```mojo
+command.add_argument(
+    Argument("compress", help="Compression algorithm")
+    .long("compress")
+    .short("c")
+    .default_if_no_value("gzip")
+)
+```
+
+**Behaviour:**
+
+| Syntax             | Value                                              |
+| ------------------ | -------------------------------------------------- |
+| *(omitted)*        | not set (or default, if `.default()` is also used) |
+| `--compress`       | `"gzip"` (default-if-no-value)                     |
+| `--compress=bzip2` | `"bzip2"` (explicit)                               |
+| `-c`               | `"gzip"` (default-if-no-value)                     |
+| `-cbzip2`          | `"bzip2"` (attached)                               |
+
+**Combined with `.default()`:**
+
+```mojo
+command.add_argument(
+    Argument("compress", help="Compression algorithm")
+    .long("compress")
+    .default_if_no_value("gzip")
+    .default("none")
+)
+# Not provided  → "none"  (default)
+# --compress    → "gzip"  (default-if-no-value)
+# --compress=xz → "xz"    (explicit)
+```
+
+**Help display** — the optional value is shown in brackets:
+
+```bash
+Options:
+      --compress[=<compress>]    Compression algorithm
+```
+
+With `.metavar("ALGO")`:
+
+```bash
+Options:
+      --compress[=ALGO]          Compression algorithm
+```
+
+### Require Equals Syntax
+
+Use `.require_equals()` to force `--key=value` syntax. Space-separated `--key value` is rejected, which avoids ambiguity when values might start with `-`.
+
+```mojo
+command.add_argument(
+    Argument("output", help="Output file")
+    .long("output")
+    .short("o")
+    .require_equals()
+)
+```
+
+**Behaviour:**
+
+| Syntax              | Result                                           |
+| ------------------- | ------------------------------------------------ |
+| `--output=file.txt` | `"file.txt"` (OK)                                |
+| `--output file.txt` | error                                            |
+| `--output`          | error                                            |
+| `-o file.txt`       | `"file.txt"` (OK — short options are unaffected) |
+
+**Help display** — the `=` is shown in the help:
+
+```bash
+Options:
+  -o, --output=<output>    Output file
+```
+
+**Combined with `.default_if_no_value()`** — see [Default-if-no-value](#default-if-no-value) above. When both are set, `--key` uses the default-if-no-value while `--key=val` uses the explicit value.
+
 ### Auto-generated Help
 
 Every command automatically supports `--help` (or `-h` or `-?`). The help text is generated from the registered argument definitions.
@@ -2600,3 +2696,62 @@ The generated scripts cover the full command tree:
 | Persistent (global) flags         | Yes (root level) | Inherited flags appear in the root command's completions             |
 
 > **Note:** Negatable flags (`--color` / `--no-color`) — the `--no-X` form is **not** separately listed in completions. The base `--color` flag is completed; users type `--no-` manually. This matches the behaviour of other CLI frameworks.
+
+## Cross-Library Method Name Reference
+
+The table below maps every ArgMojo builder method / command-level method to its equivalent in four popular CLI libraries. **An empty cell means the name is identical (or near-identical) to ArgMojo's.** A filled cell shows the other library's name or approach. **—** means the library has no built-in equivalent.
+
+> Libraries compared: **argparse** (Python stdlib), **click** (Python, built on top of argparse), **clap** (Rust, derive & builder API), **cobra / pflag** (Go).
+
+### Argument-Level Builder Methods
+
+| ArgMojo method                | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
+| ----------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
+| `Argument("name", help="…")`  | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
+| `.long("x")`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                    | implicit from flag name        |
+| `.short("x")`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
+| `.flag()`                     | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
+| `.required()`                 | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
+| `.positional()`               | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |
+| `.takes_value()`              | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
+| `.default("val")`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
+| `.choices(["a","b"])`         | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
+| `.metavar("FILE")`            | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
+| `.hidden()`                   | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
+| `.count()`                    | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
+| `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
+| `.negatable()`                | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` ⁵ | —                               | `--no-x` pattern ⁶             |
+| `.append()`                   | `action="append"`                 | `multiple=True`                          | `.action(ArgAction::Append)`    | `StringSliceP`                 |
+| `.delimiter(",")`             | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
+| `.number_of_values[N]()`      | `nargs=N`                         | `nargs=N`                                | `.num_args(N)`                  | —                              |
+| `.range[min,max]()`           | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
+| `.clamp()`                    | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |
+| `.map_option()`               | —                                 | —                                        | —                               | —                              |
+| `.aliases(["alt"])`           | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
+| `.deprecated("msg")`          | `deprecated` (3.13+)              | `deprecated=True`                        | `.hide(true)` + manual          | `ShorthandDeprecated()` ¹      |
+| `.persistent()`               | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
+| `.default_if_no_value("val")` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |
+| `.require_equals()`           | —                                 | —                                        | `.require_equals(true)`         | —                              |
+
+### Command-Level Constraint Methods
+
+| ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
+| --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
+| `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` ⁹ | `.conflicts_with("x")` per arg | — ⁴                             |
+| `one_required(…)`           | group + `required=True`          | —                               | `.group("G").required(true)`   | — ⁴                             |
+| `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
+| `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
+| `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
+
+### Notes
+
+1. Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command, not builder-chaining on the flag definition.
+2. clap positional args are defined by `.index(1)`, `.index(2)`, etc., or by omitting `.long()` / `.short()`.
+3. Cobra uses `cobra.ExactArgs(n)`, `cobra.MinimumNArgs(n)`, etc. — a completely different approach.
+4. No built-in support; typically implemented with custom validation logic.
+5. click supports `--flag/--no-flag` via `is_flag=True, flag_value=…` or the `secondary` parameter.
+6. Cobra / pflag has no first-class negatable flag; users manually add a `--no-x` flag.
+7. argparse has `parents=` for sharing argument definitions, but not inheritable persistent flags in a subcommand tree.
+8. click's closest equivalent is `is_eager` combined with a custom callback; there is no direct `const` equivalent for options.
+9. click has no built-in `MutuallyExclusiveOption`; it is typically implemented via a custom `cls` or callback.
+10. clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
