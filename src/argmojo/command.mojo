@@ -1343,9 +1343,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         else:
             if not has_eq:
                 if matched._require_equals:
-                    if matched._has_const:
-                        # No '=' given — use const value.
-                        value = matched._const_value
+                    if matched._has_default_if_no_value:
+                        # No '=' given — use default-if-no-value.
+                        value = matched._default_if_no_value
                     else:
                         self._error(
                             "Option '--"
@@ -1420,9 +1420,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 self._validate_choices(matched, raw_args[i])
                 result._lists[matched.name].append(raw_args[i])
         else:
-            if matched._has_const:
-                # Const: use const value, don't consume next token.
-                var val = matched._const_value
+            if matched._has_default_if_no_value:
+                # No value given — use default-if-no-value.
+                var val = matched._default_if_no_value
                 if matched._is_map:
                     self._store_map_value(matched, val, result)
                 elif matched._is_append:
@@ -1521,10 +1521,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     # the value.
                     var val = String(key[j + 1 :])
                     if len(val) == 0:
-                        if m._has_const:
-                            # Const: use const value, don't consume
-                            # next token.
-                            val = m._const_value
+                        if m._has_default_if_no_value:
+                            # No value given — use default-if-no-value,
+                            # don't consume next token.
+                            val = m._default_if_no_value
                         else:
                             i += 1
                             if i >= len(raw_args):
@@ -2521,16 +2521,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     var ncount = self.args[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
                     var append_dots = self.args[i]._is_append and ncount == 0
-                    # Determine separator and wrapping for require_equals/const.
+                    # Determine separator and wrapping for require_equals/default_if_no_value.
                     var sep = String("=") if self.args[
                         i
                     ]._require_equals else String(" ")
                     var open_bracket = String("[") if self.args[
                         i
-                    ]._has_const else String("")
+                    ]._has_default_if_no_value else String("")
                     var close_bracket = String("]") if self.args[
                         i
-                    ]._has_const else String("")
+                    ]._has_default_if_no_value else String("")
                     if self.args[i]._metavar:
                         var mv = self.args[i]._metavar
                         var mv_plain = String("")

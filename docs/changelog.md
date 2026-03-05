@@ -10,13 +10,13 @@ Comment out unreleased changes here. This file will be edited just before each r
 
 ### ⭐️ New features
 
-1. Add `.const("value")` builder method for default-if-present semantics. When an option has a const value, it may appear without an explicit value: `--compress` uses the const, while `--compress=bzip2` uses the explicit value. For long options, `.const()` implies `.require_equals()`. For short options, `-c` uses the const while `-cbzip2` uses the attached value (PR #12).
-2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.const()` (the value is optional; omitting it uses const) (PR #12).
-3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for const (PR #12).
+1. Add `.default_if_no_value("value")` builder method for default-if-no-value semantics. When an option has a default-if-no-value, it may appear without an explicit value: `--compress` uses the default-if-no-value, while `--compress=bzip2` uses the explicit value. For long options, `.default_if_no_value()` implies `.require_equals()`. For short options, `-c` uses the default-if-no-value while `-cbzip2` uses the attached value (PR #12).
+2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.default_if_no_value()` (the value is optional; omitting it uses default-if-no-value) (PR #12).
+3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for default_if_no_value (PR #12).
 
 ### 📚 Documentation and testing
 
-- Add `tests/test_const_require_equals.mojo` with 30 tests covering const, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
+- Add `tests/test_const_require_equals.mojo` with 30 tests covering default_if_no_value, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
 
 ---
 

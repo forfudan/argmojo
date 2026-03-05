@@ -1,19 +1,19 @@
-"""Tests for argmojo — const (default-if-present) and require_equals features."""
+"""Tests for argmojo — default_if_no_value and require_equals features."""
 
 from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
-# ── Const (default-if-present) — long option ────────────────────────────────
+# ── default_if_no_value — long option ────────────────────────────────────────
 
 
 fn test_const_long_without_value() raises:
-    """--compress (no value) uses the const value."""
+    """--compress (no value) uses the default-if-no-value."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "--compress"]
@@ -27,7 +27,7 @@ fn test_const_long_with_equals_value() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "--compress=bzip2"]
@@ -36,18 +36,18 @@ fn test_const_long_with_equals_value() raises:
 
 
 fn test_const_long_space_separated_rejected() raises:
-    """--compress bzip2 (space-separated) is rejected because const implies require_equals.
+    """--compress bzip2 (space-separated) is rejected because default_if_no_value implies require_equals.
     """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
     command.add_argument(Argument("file", help="File").positional())
 
     # '--compress bzip2' should treat 'bzip2' as a positional, not the value
-    # of --compress.  --compress uses the const value.
+    # of --compress.  --compress uses the default-if-no-value.
     var args: List[String] = ["test", "--compress", "myfile.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("compress"), "gzip")
@@ -61,7 +61,7 @@ fn test_const_long_not_provided() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test"]
@@ -70,13 +70,13 @@ fn test_const_long_not_provided() raises:
 
 
 fn test_const_long_with_default() raises:
-    """When const has a default, --compress uses const while omission uses default.
+    """When default_if_no_value has a default, --compress uses default-if-no-value while omission uses default.
     """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .default("none")
     )
 
@@ -85,7 +85,7 @@ fn test_const_long_with_default() raises:
     var result1 = command.parse_arguments(args1)
     assert_equal(result1.get_string("compress"), "none")
 
-    # Provided without value → const.
+    # Provided without value → default-if-no-value.
     var args2: List[String] = ["test", "--compress"]
     var result2 = command.parse_arguments(args2)
     assert_equal(result2.get_string("compress"), "gzip")
@@ -97,17 +97,17 @@ fn test_const_long_with_default() raises:
 
 
 fn test_const_long_with_choices() raises:
-    """Const value must pass choices validation when using const."""
+    """default_if_no_value must pass choices validation."""
     var command = Command("test", "Test app")
     var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .choices(choices^)
     )
 
-    # --compress → const "gzip" passes choices.
+    # --compress → default-if-no-value "gzip" passes choices.
     var args: List[String] = ["test", "--compress"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("compress"), "gzip")
@@ -125,7 +125,7 @@ fn test_const_long_choices_invalid_eq() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .choices(choices^)
     )
 
@@ -143,17 +143,17 @@ fn test_const_long_choices_invalid_eq() raises:
     assert_true(caught, msg="Should have raised for invalid choice")
 
 
-# ── Const — short option ────────────────────────────────────────────────────
+# ── default_if_no_value — short option ────────────────────────────────────────────
 
 
 fn test_const_short_without_value() raises:
-    """-c (alone) uses the const value."""
+    """-c (alone) uses the default-if-no-value."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "-c"]
@@ -168,7 +168,7 @@ fn test_const_short_with_attached_value() raises:
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "-cbzip2"]
@@ -182,7 +182,7 @@ fn test_const_short_does_not_consume_next() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
     command.add_argument(Argument("file", help="File").positional())
 
@@ -193,7 +193,8 @@ fn test_const_short_does_not_consume_next() raises:
 
 
 fn test_const_short_merged_flags() raises:
-    """-vc in merged flags, where 'c' has const, uses const for 'c'."""
+    """-vc in merged flags, where 'c' has default_if_no_value, uses default-if-no-value for 'c'.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").short("v").flag()
@@ -202,7 +203,7 @@ fn test_const_short_merged_flags() raises:
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "-vc"]
@@ -221,7 +222,7 @@ fn test_const_short_merged_with_attached() raises:
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "-vcbzip2"]
@@ -230,16 +231,16 @@ fn test_const_short_merged_with_attached() raises:
     assert_equal(result.get_string("compress"), "bzip2")
 
 
-# ── Const — prefix matching ─────────────────────────────────────────────────
+# ── default_if_no_value — prefix matching ─────────────────────────────────────────
 
 
 fn test_const_prefix_match() raises:
-    """--comp (prefix) resolves to --compress and uses const."""
+    """--comp (prefix) resolves to --compress and uses default-if-no-value."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "--comp"]
@@ -253,7 +254,7 @@ fn test_const_prefix_match_with_equals() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var args: List[String] = ["test", "--comp=bzip2"]
@@ -261,7 +262,7 @@ fn test_const_prefix_match_with_equals() raises:
     assert_equal(result.get_string("compress"), "bzip2")
 
 
-# ── Require equals — standalone (without const) ─────────────────────────────
+# ── Require equals — standalone (without default_if_no_value) ─────────────────────
 
 
 fn test_require_equals_with_eq() raises:
@@ -298,7 +299,8 @@ fn test_require_equals_space_rejected() raises:
 
 
 fn test_require_equals_no_value_rejected() raises:
-    """--output (alone, no const) is rejected when require_equals is set."""
+    """--output (alone, no default_if_no_value) is rejected when require_equals is set.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file").long("output").require_equals()
@@ -394,20 +396,23 @@ fn test_require_equals_short_still_works() raises:
     )
 
     # Short option should still work (require_equals only affects long options)
-    # unless const is set, in which case short uses const.
+    # unless default_if_no_value is set, in which case short uses default-if-no-value.
     var args: List[String] = ["test", "-o", "file.txt"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("output"), "file.txt")
 
 
-# ── Require equals + const combined ──────────────────────────────────────────
+# ── Require equals + default_if_no_value combined ────────────────────────────
 
 
 fn test_require_equals_and_const_long_bare() raises:
-    """--log (bare) uses const when both require_equals and const are set."""
+    """--log (bare) uses default-if-no-value when both require_equals and default_if_no_value are set.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("log", help="Log level").long("log").const("INFO")
+        Argument("log", help="Log level")
+        .long("log")
+        .default_if_no_value("INFO")
     )
 
     var args: List[String] = ["test", "--log"]
@@ -416,10 +421,12 @@ fn test_require_equals_and_const_long_bare() raises:
 
 
 fn test_require_equals_and_const_long_explicit() raises:
-    """--log=DEBUG uses explicit value when const is set."""
+    """--log=DEBUG uses explicit value when default_if_no_value is set."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("log", help="Log level").long("log").const("INFO")
+        Argument("log", help="Log level")
+        .long("log")
+        .default_if_no_value("INFO")
     )
 
     var args: List[String] = ["test", "--log=DEBUG"]
@@ -445,12 +452,12 @@ fn test_help_require_equals_format() raises:
 
 
 fn test_help_const_format() raises:
-    """Help shows --compress[=<compress>] format for const."""
+    """Help shows --compress[=<compress>] format for default_if_no_value."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
     )
 
     var help = command._generate_help(color=False)
@@ -461,12 +468,13 @@ fn test_help_const_format() raises:
 
 
 fn test_help_const_with_metavar() raises:
-    """Help shows --compress[=ALGO] when const and metavar are both set."""
+    """Help shows --compress[=ALGO] when default_if_no_value and metavar are both set.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .metavar("ALGO")
     )
 
@@ -498,10 +506,14 @@ fn test_help_require_equals_with_metavar() raises:
 
 
 fn test_const_with_append() raises:
-    """Const works with append: --tag collects const, --tag=x collects x."""
+    """default_if_no_value works with append: --tag collects default-if-no-value, --tag=x collects x.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tag").long("tag").const("default-tag").append()
+        Argument("tag", help="Tag")
+        .long("tag")
+        .default_if_no_value("default-tag")
+        .append()
     )
 
     var args: List[String] = ["test", "--tag", "--tag=custom"]
@@ -513,12 +525,12 @@ fn test_const_with_append() raises:
 
 
 fn test_const_with_persistent() raises:
-    """Const works on persistent flags with subcommands."""
+    """default_if_no_value works on persistent flags with subcommands."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression")
         .long("compress")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .persistent()
     )
     var sub = Command("build", "Build things")

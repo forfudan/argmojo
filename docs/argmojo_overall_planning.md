@@ -74,7 +74,7 @@ These features appear across multiple libraries and depend only on string operat
 | REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | Phase 5       |
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | Phase 5       |
 | Require equals syntax              | —        | —     | —     | ✓    |                              | **Done**      |
-| Default-if-present (const)         | ✓        | —     | —     | ✓    |                              | **Done**      |
+| Default-if-no-value                | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
@@ -154,7 +154,7 @@ tests/
 ├── test_subcommands.mojo       # Subcommand tests (dispatch, help sub, unknown sub, etc.)
 ├── test_negative_numbers.mojo  # Negative number passthrough tests
 ├── test_persistent.mojo        # Persistent (global) flag tests
-└── test_const_require_equals.mojo  # Const and require_equals tests
+└── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
 examples/
 ├── mgrep.mojo                   # grep-like CLI example (no subcommands)
 └── mgit.mojo                    # git-like CLI example (with subcommands)
@@ -202,8 +202,8 @@ examples/
 | Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                   | ✓      | ✓     |
 | Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr) | ✓      | ✓     |
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                       | ✓      | ✓     |
-| Default-if-present (`.const("gzip")` → optional value with fallback)                              | ✓      | ✓     |
-| Require equals syntax (`.require_equals()` → `--key=value` only)                                  | ✓      | ✓     |
+| Default-if-no-value (`.default_if_no_value("gzip")` → optional value with fallback)                | ✓      | ✓     |
+| Require equals syntax (`.require_equals()` → `--key=value` only)                                   | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -533,7 +533,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
 - [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
-- [ ] **Default-if-present (const)** — `--opt` (no value) → use const; `--opt val` → use val; absent → use default (argparse `const`)
+- [ ] **Default-if-no-value** — `--opt` (no value) → use default-if-no-value; `--opt=val` → use val; absent → use default (argparse `const`)
 - [ ] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
 - [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)

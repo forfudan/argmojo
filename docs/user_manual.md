@@ -59,7 +59,7 @@ from argmojo import Argument, Command
   - [Metavar](#metavar)
   - [Hidden Arguments](#hidden-arguments)
   - [Deprecated Arguments](#deprecated-arguments)
-  - [Default-if-present (Const)](#default-if-present-const)
+  - [Default-if-no-value](#default-if-no-value)
   - [Require Equals Syntax](#require-equals-syntax)
   - [Auto-generated Help](#auto-generated-help)
   - [Custom Tips](#custom-tips)
@@ -1062,13 +1062,13 @@ Argument("name", help="...")
 ║   └── .choices(["a","b","c"])
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .metavar("FILE")      display name in help      (value / positional)
-║   .hidden()             hide from --help          (any)
-║   .aliases(["alt"])     alternative --names       (named only)
-║   .deprecated("msg")    deprecation warning       (any)
-║   .persistent()         inherit to subcommands    (named only)
-║   .const("val")         default-if-present        (value only)
-║   .require_equals()     force --key=value syntax  (named value only)
+║   .metavar("FILE")             display name in help      (value / positional)
+║   .hidden()                    hide from --help          (any)
+║   .aliases(["alt"])            alternative --names       (named only)
+║   .deprecated("msg")           deprecation warning       (any)
+║   .persistent()                inherit to subcommands    (named only)
+║   .default_if_no_value("val")  default-if-no-value       (value only)
+║   .require_equals()            force --key=value syntax  (named value only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -1120,7 +1120,7 @@ flowchart LR
     DEC --> ali[".aliases()"]
     DEC --> dep[".deprecated()"]
     DEC --> per[".persistent()"]
-    DEC --> cst[".const()"]
+    DEC --> dinv[".default_if_no_value()"]
     DEC --> reqeq[".require_equals()"]
 
     ARG -.-> CMDCON["Command-level\nConstraints"]
@@ -1164,7 +1164,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.const("val")`                  |      ✓      |     —     |     —      |        —        |
+| `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
 | `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
@@ -2054,18 +2054,18 @@ Options:
   --format-old <format_old>    Legacy output format [deprecated: Use --format instead]
 ```
 
-### Default-if-present (Const)
+### Default-if-no-value
 
-Use `.const("value")` to make an option's value **optional**. When the option is present without an explicit value, the const value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
+Use `.default_if_no_value("value")` to make an option's value **optional**. When the option is present without an explicit value, the default-if-no-value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
 
-`.const()` automatically implies `.require_equals()` for long options, so `--key value` (space-separated) is rejected — the user must write `--key=value` to supply an explicit value.
+`.default_if_no_value()` automatically implies `.require_equals()` for long options, so `--key value` (space-separated) is rejected — the user must write `--key=value` to supply an explicit value.
 
 ```mojo
 command.add_argument(
     Argument("compress", help="Compression algorithm")
     .long("compress")
     .short("c")
-    .const("gzip")
+    .default_if_no_value("gzip")
 )
 ```
 
@@ -2074,9 +2074,9 @@ command.add_argument(
 | Syntax             | Value                                              |
 | ------------------ | -------------------------------------------------- |
 | *(omitted)*        | not set (or default, if `.default()` is also used) |
-| `--compress`       | `"gzip"` (const)                                   |
+| `--compress`       | `"gzip"` (default-if-no-value)                     |
 | `--compress=bzip2` | `"bzip2"` (explicit)                               |
-| `-c`               | `"gzip"` (const)                                   |
+| `-c`               | `"gzip"` (default-if-no-value)                     |
 | `-cbzip2`          | `"bzip2"` (attached)                               |
 
 **Combined with `.default()`:**
@@ -2085,11 +2085,11 @@ command.add_argument(
 command.add_argument(
     Argument("compress", help="Compression algorithm")
     .long("compress")
-    .const("gzip")
+    .default_if_no_value("gzip")
     .default("none")
 )
 # Not provided  → "none"  (default)
-# --compress    → "gzip"  (const)
+# --compress    → "gzip"  (default-if-no-value)
 # --compress=xz → "xz"    (explicit)
 ```
 
@@ -2136,7 +2136,7 @@ Options:
   -o, --output=<output>    Output file
 ```
 
-**Combined with `.const()`** — see [Default-if-present (Const)](#default-if-present-const) above. When both are set, `--key` uses the const value while `--key=val` uses the explicit value.
+**Combined with `.default_if_no_value()`** — see [Default-if-no-value](#default-if-no-value) above. When both are set, `--key` uses the default-if-no-value while `--key=val` uses the explicit value.
 
 ### Auto-generated Help
 

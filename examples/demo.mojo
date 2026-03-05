@@ -10,7 +10,7 @@ conditional requirements, negatable flags, color customisation
 (header_color, arg_color), numeric range validation, append with range
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
-help_on_no_arguments, const (default-if-present), and require_equals.
+help_on_no_arguments, default_if_no_value, and require_equals.
 
 Note: This demo looks very strange, but useful :D
 
@@ -60,7 +60,7 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   # deprecated argument: --legacy prints a warning
   ./demo input.txt --legacy
 
-  # const (default-if-present): --compress alone uses "gzip"
+  # default_if_no_value: --compress alone uses "gzip"
   ./demo input.txt --compress
   ./demo input.txt --compress=bzip2
   ./demo input.txt -c
@@ -220,13 +220,13 @@ fn main() raises:
         )
     )
 
-    # ── Const (default-if-present) ───────────────────────────────────────
-    # --compress → "gzip" (const); --compress=bzip2 → "bzip2" (explicit).
+    # ── default_if_no_value ───────────────────────────────────────────────────
+    # --compress → "gzip" (default-if-no-value); --compress=bzip2 → "bzip2" (explicit).
     app.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .short("c")
-        .const("gzip")
+        .default_if_no_value("gzip")
         .metavar("ALGO")
     )
 

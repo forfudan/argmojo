@@ -49,8 +49,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     _ = Argument("colour", help="...").long("colour").aliases(["color"])
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
-    # Default-if-present / const  (--compress → "gzip", --compress=bzip2 → "bzip2")
-    _ = Argument("compress", help="...").long("compress").short("c").const("gzip")
+    # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
+    _ = Argument("compress", help="...").long("compress").short("c").default_if_no_value("gzip")
     # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
     _ = Argument("output", help="...").long("output").require_equals()
     # Display helpers
@@ -119,11 +119,11 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     Persistent flags/options are injected into child command parsers at
     dispatch time so the user may place them either before or after the
     subcommand token on the command line."""
-    var _const_value: String
+    var _default_if_no_value: String
     """Value to use when the option appears without an explicit value.
-    Only meaningful for value-taking options with ``_has_const`` set."""
-    var _has_const: Bool
-    """Whether a const (default-if-present) value has been set via ``.const()``."""
+    Only meaningful for value-taking options with ``_has_default_if_no_value`` set."""
+    var _has_default_if_no_value: Bool
+    """Whether a default-if-no-value has been set via ``.default_if_no_value()``."""
     var _require_equals: Bool
     """If True, this option requires ``--key=value`` syntax;
     ``--key value`` (space-separated) is not allowed."""
@@ -166,8 +166,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = 0
         self._has_count_max = False
         self._is_persistent = False
-        self._const_value = ""
-        self._has_const = False
+        self._default_if_no_value = ""
+        self._has_default_if_no_value = False
         self._require_equals = False
 
     fn __copyinit__(out self, copy: Self):
@@ -207,8 +207,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = copy._count_max
         self._has_count_max = copy._has_count_max
         self._is_persistent = copy._is_persistent
-        self._const_value = copy._const_value
-        self._has_const = copy._has_const
+        self._default_if_no_value = copy._default_if_no_value
+        self._has_default_if_no_value = copy._has_default_if_no_value
         self._require_equals = copy._require_equals
 
     fn __moveinit__(out self, deinit move: Self):
@@ -244,8 +244,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = move._count_max
         self._has_count_max = move._has_count_max
         self._is_persistent = move._is_persistent
-        self._const_value = move._const_value^
-        self._has_const = move._has_const
+        self._default_if_no_value = move._default_if_no_value^
+        self._has_default_if_no_value = move._has_default_if_no_value
         self._require_equals = move._require_equals
 
     # ===------------------------------------------------------------------=== #
@@ -610,13 +610,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_persistent = True
         return self^
 
-    fn const(var self, value: String) -> Self:
-        """Sets a const value for this option (default-if-present).
+    fn default_if_no_value(var self, value: String) -> Self:
+        """Sets a default value for when the option appears without an explicit value.
 
         When set, the option may appear without a value.  If no value
-        is given, the const value is used.  If a value is provided
-        via ``=`` syntax for long options (``--compress=bzip2``) or
-        attached form for short options (``-cbzip2``), that explicit
+        is given, this default-if-no-value is used.  If a value is
+        provided via ``=`` syntax for long options (``--compress=bzip2``)
+        or attached form for short options (``-cbzip2``), that explicit
         value is used instead.
 
         For long options this implies ``require_equals()``, so
@@ -625,20 +625,20 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
         Examples::
 
-            # --compress        → "gzip"  (const)
+            # --compress        → "gzip"  (default-if-no-value)
             # --compress=bzip2  → "bzip2" (explicit)
-            # -c                → "gzip"  (const)
+            # -c                → "gzip"  (default-if-no-value)
             # -cbzip2           → "bzip2" (attached)
-            _ = Argument("compress", help="...").long("compress").short("c").const("gzip")
+            _ = Argument("compress", help="...").long("compress").short("c").default_if_no_value("gzip")
 
         Args:
-            value: The const value to use when no explicit value is given.
+            value: The value to use when no explicit value is given.
 
         Returns:
-            Self with the const value set.
+            Self with the default-if-no-value set.
         """
-        self._const_value = value
-        self._has_const = True
+        self._default_if_no_value = value
+        self._has_default_if_no_value = True
         self._require_equals = True  # implied for long options
         return self^
 
@@ -649,8 +649,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         only ``--key=value`` is accepted.  This avoids ambiguity
         when values may start with ``-``.
 
-        Can be combined with ``.const()`` so that ``--key`` without
-        ``=`` uses the const value, while ``--key=val`` uses ``val``.
+        Can be combined with ``.default_if_no_value()`` so that ``--key``
+        without ``=`` uses the default-if-no-value, while ``--key=val``
+        uses ``val``.
 
         Examples::
 
