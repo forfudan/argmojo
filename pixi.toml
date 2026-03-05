@@ -38,7 +38,8 @@ test = """\
     && mojo run -I src tests/test_typo_suggestions.mojo \
     && mojo run -I src tests/test_completion.mojo \
     && mojo run -I src tests/test_implies.mojo \
-    && mojo run -I src tests/test_const_require_equals.mojo"""
+    && mojo run -I src tests/test_const_require_equals.mojo \
+    && mojo run -I src tests/test_response_file.mojo"""
 
 # build example binaries
 build = """pixi run package \

@@ -619,9 +619,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         or attached form for short options (``-cbzip2``), that explicit
         value is used instead.
 
-        For long options this implies ``require_equals()``, so
-        ``--compress val`` (space-separated) is rejected — the user
-        must write ``--compress=val`` to supply an explicit value.
+        For long options this implies ``require_equals()``.  A
+        space-separated token like ``--compress val`` is not accepted
+        as the option's value; in that case ``--compress`` uses its
+        default-if-no-value and ``val`` is parsed as a separate
+        argument (positional or another option).  To supply an
+        explicit value for the option, the user must write
+        ``--compress=val``.
 
         Examples::
 

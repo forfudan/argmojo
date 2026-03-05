@@ -13,10 +13,18 @@ Comment out unreleased changes here. This file will be edited just before each r
 1. Add `.default_if_no_value("value")` builder method for default-if-no-value semantics. When an option has a default-if-no-value, it may appear without an explicit value: `--compress` uses the default-if-no-value, while `--compress=bzip2` uses the explicit value. For long options, `.default_if_no_value()` implies `.require_equals()`. For short options, `-c` uses the default-if-no-value while `-cbzip2` uses the attached value (PR #12).
 2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.default_if_no_value()` (the value is optional; omitting it uses default-if-no-value) (PR #12).
 3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for default_if_no_value (PR #12).
+4. Add `response_file_prefix()` builder method on `Command` for response-file support. When enabled, tokens starting with the prefix (default `@`) are expanded by reading the referenced file — each non-empty, non-comment line becomes a separate argument. Supports comments (`#`), escape (`@@literal`), recursive nesting (configurable depth), and custom prefix characters (PR #12).
+
+### 🔧 Fixes
+
+- Clarify documentation and docstrings: `default_if_no_value` does not "reject" `--key value`; it simply does not consume the next token as a value (PR #12, review feedback).
+- Fix cross-library comparison: click is described as "Python CLI framework" instead of incorrectly saying "built on top of argparse" (PR #12, review feedback).
+- Reject `.require_equals()` / `.default_if_no_value()` combined with `.number_of_values[N]()` at `add_argument()` time with a clear error (PR #12, review feedback).
 
 ### 📚 Documentation and testing
 
 - Add `tests/test_const_require_equals.mojo` with 30 tests covering default_if_no_value, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
+- Add `tests/test_response_file.mojo` with 17 tests covering basic expansion, comments, whitespace stripping, escape, recursive nesting, depth limit, custom prefix, disabled-by-default, and error handling (PR #12).
 
 ---
 
