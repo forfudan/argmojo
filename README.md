@@ -75,7 +75,7 @@ Then, you can install ArgMojo using any of these methods:
 1. In the `mojoproject.toml` file of your project, add the following dependency:
 
     ```toml
-    argmojo = "==0.2.0"
+    argmojo = "==0.3.0"
     ```
 
     Then run `pixi install` to download and install the package.
@@ -85,7 +85,7 @@ The following table summarizes the package versions and their corresponding Mojo
 | `argmojo` version | `mojo` version | package manager |
 | ----------------- | -------------- | --------------- |
 | 0.1.0             | ==0.26.1       | pixi            |
-| 0.2.0             | ==0.26.1       | pixi            |
+| 0.3.0             | ==0.26.1       | pixi            |
 
 ## Quick Start
 
