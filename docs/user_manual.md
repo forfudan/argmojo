@@ -59,6 +59,8 @@ from argmojo import Argument, Command
   - [Metavar](#metavar)
   - [Hidden Arguments](#hidden-arguments)
   - [Deprecated Arguments](#deprecated-arguments)
+  - [Default-if-present (Const)](#default-if-present-const)
+  - [Require Equals Syntax](#require-equals-syntax)
   - [Auto-generated Help](#auto-generated-help)
   - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
@@ -1065,6 +1067,8 @@ Argument("name", help="...")
 ║   .aliases(["alt"])     alternative --names       (named only)
 ║   .deprecated("msg")    deprecation warning       (any)
 ║   .persistent()         inherit to subcommands    (named only)
+║   .const("val")         default-if-present        (value only)
+║   .require_equals()     force --key=value syntax  (named value only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -1116,6 +1120,8 @@ flowchart LR
     DEC --> ali[".aliases()"]
     DEC --> dep[".deprecated()"]
     DEC --> per[".persistent()"]
+    DEC --> cst[".const()"]
+    DEC --> reqeq[".require_equals()"]
 
     ARG -.-> CMDCON["Command-level\nConstraints"]
     CMDCON --> mutex["command.mutually_exclusive()"]
@@ -1158,6 +1164,8 @@ The table below shows which builder methods can be used with each argument mode.
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
+| `.const("val")`                  |      ✓      |     —     |     —      |        —        |
+| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
 | `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
@@ -2045,6 +2053,90 @@ message in the help text:
 Options:
   --format-old <format_old>    Legacy output format [deprecated: Use --format instead]
 ```
+
+### Default-if-present (Const)
+
+Use `.const("value")` to make an option's value **optional**. When the option is present without an explicit value, the const value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
+
+`.const()` automatically implies `.require_equals()` for long options, so `--key value` (space-separated) is rejected — the user must write `--key=value` to supply an explicit value.
+
+```mojo
+command.add_argument(
+    Argument("compress", help="Compression algorithm")
+    .long("compress")
+    .short("c")
+    .const("gzip")
+)
+```
+
+**Behaviour:**
+
+| Syntax             | Value                                              |
+| ------------------ | -------------------------------------------------- |
+| *(omitted)*        | not set (or default, if `.default()` is also used) |
+| `--compress`       | `"gzip"` (const)                                   |
+| `--compress=bzip2` | `"bzip2"` (explicit)                               |
+| `-c`               | `"gzip"` (const)                                   |
+| `-cbzip2`          | `"bzip2"` (attached)                               |
+
+**Combined with `.default()`:**
+
+```mojo
+command.add_argument(
+    Argument("compress", help="Compression algorithm")
+    .long("compress")
+    .const("gzip")
+    .default("none")
+)
+# Not provided  → "none"  (default)
+# --compress    → "gzip"  (const)
+# --compress=xz → "xz"    (explicit)
+```
+
+**Help display** — the optional value is shown in brackets:
+
+```bash
+Options:
+      --compress[=<compress>]    Compression algorithm
+```
+
+With `.metavar("ALGO")`:
+
+```bash
+Options:
+      --compress[=ALGO]          Compression algorithm
+```
+
+### Require Equals Syntax
+
+Use `.require_equals()` to force `--key=value` syntax. Space-separated `--key value` is rejected, which avoids ambiguity when values might start with `-`.
+
+```mojo
+command.add_argument(
+    Argument("output", help="Output file")
+    .long("output")
+    .short("o")
+    .require_equals()
+)
+```
+
+**Behaviour:**
+
+| Syntax              | Result                                           |
+| ------------------- | ------------------------------------------------ |
+| `--output=file.txt` | `"file.txt"` (OK)                                |
+| `--output file.txt` | error                                            |
+| `--output`          | error                                            |
+| `-o file.txt`       | `"file.txt"` (OK — short options are unaffected) |
+
+**Help display** — the `=` is shown in the help:
+
+```bash
+Options:
+  -o, --output=<output>    Output file
+```
+
+**Combined with `.const()`** — see [Default-if-present (Const)](#default-if-present-const) above. When both are set, `--key` uses the const value while `--key=val` uses the explicit value.
 
 ### Auto-generated Help
 

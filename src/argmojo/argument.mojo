@@ -49,6 +49,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     _ = Argument("colour", help="...").long("colour").aliases(["color"])
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
+    # Default-if-present / const  (--compress → "gzip", --compress=bzip2 → "bzip2")
+    _ = Argument("compress", help="...").long("compress").short("c").const("gzip")
+    # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
+    _ = Argument("output", help="...").long("output").require_equals()
     # Display helpers
     _ = Argument("file", help="...").long("file").metavar("PATH")  # help: --file PATH
     _ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
@@ -115,6 +119,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     Persistent flags/options are injected into child command parsers at
     dispatch time so the user may place them either before or after the
     subcommand token on the command line."""
+    var _const_value: String
+    """Value to use when the option appears without an explicit value.
+    Only meaningful for value-taking options with ``_has_const`` set."""
+    var _has_const: Bool
+    """Whether a const (default-if-present) value has been set via ``.const()``."""
+    var _require_equals: Bool
+    """If True, this option requires ``--key=value`` syntax;
+    ``--key value`` (space-separated) is not allowed."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -154,6 +166,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = 0
         self._has_count_max = False
         self._is_persistent = False
+        self._const_value = ""
+        self._has_const = False
+        self._require_equals = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -192,6 +207,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = copy._count_max
         self._has_count_max = copy._has_count_max
         self._is_persistent = copy._is_persistent
+        self._const_value = copy._const_value
+        self._has_const = copy._has_const
+        self._require_equals = copy._require_equals
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -226,6 +244,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._count_max = move._count_max
         self._has_count_max = move._has_count_max
         self._is_persistent = move._is_persistent
+        self._const_value = move._const_value^
+        self._has_const = move._has_const
+        self._require_equals = move._require_equals
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -587,6 +608,60 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             Self marked as persistent.
         """
         self._is_persistent = True
+        return self^
+
+    fn const(var self, value: String) -> Self:
+        """Sets a const value for this option (default-if-present).
+
+        When set, the option may appear without a value.  If no value
+        is given, the const value is used.  If a value is provided
+        via ``=`` syntax for long options (``--compress=bzip2``) or
+        attached form for short options (``-cbzip2``), that explicit
+        value is used instead.
+
+        For long options this implies ``require_equals()``, so
+        ``--compress val`` (space-separated) is rejected — the user
+        must write ``--compress=val`` to supply an explicit value.
+
+        Examples::
+
+            # --compress        → "gzip"  (const)
+            # --compress=bzip2  → "bzip2" (explicit)
+            # -c                → "gzip"  (const)
+            # -cbzip2           → "bzip2" (attached)
+            _ = Argument("compress", help="...").long("compress").short("c").const("gzip")
+
+        Args:
+            value: The const value to use when no explicit value is given.
+
+        Returns:
+            Self with the const value set.
+        """
+        self._const_value = value
+        self._has_const = True
+        self._require_equals = True  # implied for long options
+        return self^
+
+    fn require_equals(var self) -> Self:
+        """Requires that values be provided using ``=`` syntax.
+
+        When set, ``--key value`` (space-separated) is rejected;
+        only ``--key=value`` is accepted.  This avoids ambiguity
+        when values may start with ``-``.
+
+        Can be combined with ``.const()`` so that ``--key`` without
+        ``=`` uses the const value, while ``--key=val`` uses ``val``.
+
+        Examples::
+
+            # --output=file.txt  → "file.txt" (OK)
+            # --output file.txt  → error
+            _ = Argument("output", help="...").long("output").require_equals()
+
+        Returns:
+            Self with require-equals enabled.
+        """
+        self._require_equals = True
         return self^
 
     # ===------------------------------------------------------------------=== #

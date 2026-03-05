@@ -6,6 +6,20 @@ This document tracks all notable changes to ArgMojo, including new features, API
 Comment out unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
 -->
 
+## Unreleased
+
+### ⭐️ New features
+
+1. Add `.const("value")` builder method for default-if-present semantics. When an option has a const value, it may appear without an explicit value: `--compress` uses the const, while `--compress=bzip2` uses the explicit value. For long options, `.const()` implies `.require_equals()`. For short options, `-c` uses the const while `-cbzip2` uses the attached value (PR #12).
+2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.const()` (the value is optional; omitting it uses const) (PR #12).
+3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for const (PR #12).
+
+### 📚 Documentation and testing
+
+- Add `tests/test_const_require_equals.mojo` with 30 tests covering const, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
+
+---
+
 ## 20260305 (v0.3.0)
 
 ArgMojo v0.3.0 adds shell completion, typo suggestions, mutual implication, hidden subcommands, `NO_COLOR` support, and several builder-method improvements. Internally the code is decomposed into smaller helpers and a new `utils.mojo` module; several API names are refined for consistency. Two breaking changes affect call sites that use `nargs`, `max`, or `range` (now compile-time parameters) and the renamed methods listed below.
