@@ -359,14 +359,16 @@ fn test_response_file_preserves_argv0() raises:
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").flag()
     )
+    command.add_argument(Argument("output", help="Output").long("output"))
 
-    # argv[0] = "@/tmp/..." — should be treated as program name, not expanded.
-    # But actually expansion happens on all tokens; argv[0] is skipped by
-    # parse_arguments (i starts at 1), so the expanded content would just
-    # sit at index 0 which is harmless.  Let's verify the rest still works.
-    var args: List[String] = ["test", "@" + path]
+    # Set argv[0] to a token starting with '@'.  Expansion must NOT
+    # touch it — it should remain as the program name verbatim.
+    var args: List[String] = ["@" + path, "--output=hello"]
     var result = command.parse_arguments(args)
-    assert_true(result.get_flag("verbose"))
+    # --verbose comes from the file; if argv[0] were expanded, --verbose
+    # would appear *before* argv[0] and be lost.  Assert it is NOT set.
+    assert_false(result.has("verbose"), msg="argv[0] must not be expanded")
+    assert_equal(result.get_string("output"), "hello")
     _remove_file(path)
 
 

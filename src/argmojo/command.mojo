@@ -633,7 +633,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         - Blank lines and lines starting with ``#`` are ignored.
         - Leading / trailing whitespace on each line is stripped.
         - Response files may reference other response files (recursive),
-          up to ``max_depth`` levels (default 10).
+          up to the configured nesting depth (set via
+          ``response_file_max_depth()``; default 10).
         - To pass a literal token that starts with the prefix (e.g. an
           email ``@user``), escape it by doubling the prefix: ``@@user``
           is inserted as ``@user``.
@@ -1045,6 +1046,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         for idx in range(len(raw_args)):
             var token = raw_args[idx]
+
+            # Preserve argv[0] (program name) verbatim — never expand it.
+            if idx == 0:
+                expanded.append(token)
+                continue
 
             # Check for escape: doubled prefix → literal.
             if (
