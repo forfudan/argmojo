@@ -24,7 +24,6 @@ Comment out unreleased changes here. This file will be edited just before each r
 
 ### 🔧 Fixes
 
-- **Rename `.metavar()` to `.value_name()`** — see above under "Fixes and API changes" (PR #13).
 - Clarify documentation and docstrings: `default_if_no_value` does not "reject" `--key value`; it simply does not consume the next token as a value (PR #12, review feedback).
 - Fix cross-library comparison: click is described as "Python CLI framework" instead of incorrectly saying "built on top of argparse" (PR #12, review feedback).
 - Reject `.require_equals()` / `.default_if_no_value()` combined with `.number_of_values[N]()` at `add_argument()` time with a clear error (PR #12, review feedback).

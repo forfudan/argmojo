@@ -716,12 +716,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         return self^
 
     fn allow_hyphen_values(var self) -> Self:
-        """Allows the literal token ``-`` as a valid value.
+        """Allows tokens starting with ``-`` as valid values.
 
-        By default, a bare ``-`` is treated as a short-option prefix and
-        triggers an "unknown option" error.  Call this method to accept
-        ``-`` as a regular value, following the Unix convention where
-        ``-`` means read from stdin or write to stdout.
+        By default, tokens that start with ``-`` are interpreted as option
+        flags.  Call this method to accept such tokens as regular values
+        instead, without requiring ``--`` first.  This covers the common
+        Unix convention where a bare ``-`` means stdin/stdout, as well as
+        any other dash-prefixed literal value.
 
         Can be used on positional arguments and value-taking options.
 

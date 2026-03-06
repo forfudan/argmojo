@@ -1086,7 +1086,10 @@ Argument("name", help="...")
 ║   .positional()                          ← matched by position
 ║   ├── .required()
 ║   ├── .default("val")
-║   └── .choices(["a","b","c"])
+║   ├── .choices(["a","b","c"])
+║   ├── .allow_hyphen_values()               accept -x as a value, not option
+║   └── .remainder()                         consume ALL remaining tokens
+║       └── (implies .allow_hyphen_values())
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
 ║   .value_name("FILE")          display name in help      (value / positional)
@@ -1140,6 +1143,9 @@ flowchart LR
     POS --> req2[".required()"]
     POS --> def2[".default()"]
     POS --> cho2[".choices()"]
+    POS --> ahv[".allow_hyphen_values()"]
+    POS --> rem[".remainder()"]
+    rem -.-> ahv
 
     ARG -.-> DEC["Decorators"]
     DEC --> meta[".value_name()"]
@@ -1192,6 +1198,8 @@ The table below shows which builder methods can be used with each argument mode.
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
 | `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                   |      —      |     —     |     —      |        ✓        |
 | `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
@@ -2603,7 +2611,7 @@ The remainder positional automatically implies `.positional()` and `.append()`. 
 
 ### Allow Hyphen Values (`.allow_hyphen_values()`)
 
-By default, tokens starting with `-` are interpreted as options. The `.allow_hyphen_values()` builder method tells the parser that a specific positional argument may accept values starting with `-` without requiring `--` beforehand.
+By default, tokens starting with `-` are interpreted as options. The `.allow_hyphen_values()` builder method tells the parser that a specific positional argument may accept tokens starting with `-` as regular values without requiring `--` beforehand. This covers both the bare `-` (Unix stdin/stdout convention) and any other dash-prefixed literal.
 
 A common use case is accepting `-` as a conventional shorthand for **stdin/stdout**:
 
@@ -2639,11 +2647,12 @@ command.add_argument(
     Argument("file", help="Input file").positional().required()
 )
 
-var result = command.parse_known_arguments()
+var args: List[String] = ["wrapper", "input.txt", "--verbose", "--color", "-x"]
+var result = command.parse_known_arguments(args)
 
 # Known arguments are accessed normally:
-var verbose = result.get_bool("verbose")
-var file = result.get("file")
+var verbose = result.get_flag("verbose")
+var file = result.get_string("file")
 
 # Unknown arguments are collected separately:
 var unknown = result.get_unknown_args()
@@ -2658,6 +2667,8 @@ wrapper input.txt --verbose --color -x --threads=4
 ```
 
 All other validation (required arguments, choices, range) still applies. Only the "Unknown option" error is suppressed.
+
+> **Note:** Unknown options using `=` syntax (e.g., `--color=auto`) are captured as a single token. For space-separated syntax (`--color auto`), only `--color` is recorded as unknown; `auto` flows to positional arguments because the parser cannot tell whether the unknown option takes a value. Use `=` syntax when forwarding unknown options reliably.
 
 <!-- Response Files section temporarily disabled — Mojo compiler deadlock with -D ASSERT=all.
      The implementation is preserved as module-level functions and will be re-enabled

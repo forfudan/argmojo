@@ -299,6 +299,76 @@ fn test_hyphen_value_positional() raises:
     assert_equal(result.get_string("input"), "-")
 
 
+fn test_hyphen_value_multi_char_short() raises:
+    """Tests that '-x' is consumed as a positional when allow_hyphen_values
+    is set and '-x' is NOT a known option.  Without the flag, '-x' would
+    be treated as an unknown short option and error."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("pattern", help="Regex pattern")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    var args: List[String] = ["test", "-foo"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("pattern"), "-foo")
+
+
+fn test_hyphen_value_long_token() raises:
+    """Tests that '--unknown-thing' is consumed as a positional when
+    allow_hyphen_values is set and it is not a known long option."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("expr", help="Expression")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    var args: List[String] = ["test", "--not-an-option"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "--not-an-option")
+
+
+fn test_hyphen_value_known_option_still_parsed() raises:
+    """Tests that a known option is still parsed normally even when the
+    current positional has allow_hyphen_values."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+    )
+    command.add_argument(
+        Argument("pattern", help="Pattern")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    # -v is a known short option → parsed as flag, not as positional.
+    var args: List[String] = ["test", "-v", "-foo"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.get_string("pattern"), "-foo")
+
+
+fn test_hyphen_value_without_flag_errors() raises:
+    """Tests that without allow_hyphen_values, '-x' raises an error."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("input", help="Input").positional().required()
+    )
+
+    var args: List[String] = ["test", "-x"]
+    var failed = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        failed = True
+    assert_true(failed, msg="'-x' without allow_hyphen_values should error")
+
+
 fn test_hyphen_value_with_other_positional() raises:
     """Tests '-' alongside a regular positional."""
     var command = Command("test", "Test app")
@@ -332,6 +402,39 @@ fn test_hyphen_value_with_option() raises:
     var args: List[String] = ["test", "--file", "-"]
     var result = command.parse_arguments(args)
     assert_equal(result.get_string("file"), "-")
+
+
+fn test_hyphen_value_in_parse_known() raises:
+    """Tests allow_hyphen_values with parse_known_arguments: unknown
+    dash tokens go to positional instead of unknown_args."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose").long("verbose").flag()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    var args: List[String] = ["test", "--verbose", "-pattern"]
+    var result = command.parse_known_arguments(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.get_string("expr"), "-pattern")
+    assert_equal(len(result.get_unknown_args()), 0)
+
+
+fn test_remainder_guard_positional_after() raises:
+    """Tests that adding a positional after a remainder is rejected."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("rest", help="Rest").remainder())
+    var failed = False
+    try:
+        command.add_argument(Argument("extra", help="Extra").positional())
+    except:
+        failed = True
+    assert_true(failed, msg="positional after remainder should be rejected")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

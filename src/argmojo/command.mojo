@@ -430,6 +430,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + self.args[_ri].name
                         + "')"
                     )
+        # Guard: no positional may be added after a remainder.
+        if argument._is_positional and not argument._is_remainder:
+            for _ri in range(len(self.args)):
+                if self.args[_ri]._is_remainder:
+                    self._error(
+                        "Argument '"
+                        + argument.name
+                        + "': cannot add a positional argument after"
+                        " a .remainder() positional ('"
+                        + self.args[_ri].name
+                        + "')"
+                    )
         self.args.append(argument^)
 
     fn add_subcommand(mut self, var sub: Command) raises:
@@ -1400,6 +1412,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     )
                     exit(2)
 
+            # ── allow_hyphen_values ──────────────────────────────────
+            # If the next positional slot accepts dash-prefixed tokens
+            # and this token is NOT a known option, consume as positional.
+            if arg.startswith("-") and len(arg) > 1:
+                var _ahv_consumed = False
+                var _ahv_slot = len(result._positionals)
+                if _ahv_slot < len(result._positional_names):
+                    var _ahv_name = result._positional_names[_ahv_slot]
+                    for _ai in range(len(self.args)):
+                        if (
+                            self.args[_ai].name == _ahv_name
+                            and self.args[_ai]._allow_hyphen_values
+                        ):
+                            if not self._is_known_option(arg):
+                                result._positionals.append(arg)
+                                i += 1
+                                _ahv_consumed = True
+                            break
+                if _ahv_consumed:
+                    continue
+            # ────────────────────────────────────────────────────────
+
             # Long option: --key, --key=value, --key value
             if arg.startswith("--"):
                 i = self._parse_long_option(args_to_parse, i, result)
@@ -1494,6 +1528,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Raises:
             Error on validation failures (required args, groups, etc.)
             — only *unknown-option* errors are suppressed.
+
+
+        Notes:
+
+        Unknown options using ``=`` syntax (e.g. ``--color=auto``) are
+        captured as a single token in the unknown list.  For space-
+        separated syntax (``--color auto``), only ``--color`` is
+        recorded as unknown; ``auto`` flows to positional arguments
+        because the parser cannot determine whether the unknown option
+        takes a value.  Prefer ``=`` syntax when forwarding unknown
+        options reliably.
         """
         var result = ParseResult()
 
@@ -1578,6 +1623,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + " requires a shell name: bash, zsh, or fish"
                     )
                     exit(2)
+
+            # ── allow_hyphen_values (same logic as parse_arguments) ──
+            if arg.startswith("-") and len(arg) > 1:
+                var _ahv_consumed = False
+                var _ahv_slot = len(result._positionals)
+                if _ahv_slot < len(result._positional_names):
+                    var _ahv_name = result._positional_names[_ahv_slot]
+                    for _ai in range(len(self.args)):
+                        if (
+                            self.args[_ai].name == _ahv_name
+                            and self.args[_ai]._allow_hyphen_values
+                        ):
+                            if not self._is_known_option(arg):
+                                result._positionals.append(arg)
+                                i += 1
+                                _ahv_consumed = True
+                            break
+                if _ahv_consumed:
+                    continue
+            # ────────────────────────────────────────────────────────
 
             # Long option — try to parse; collect as unknown if it fails.
             if arg.startswith("--"):
@@ -2190,12 +2255,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         for j in range(len(self.args)):
             if self.args[j]._is_positional:
                 if self.args[j]._is_remainder:
-                    # Collect all positionals from this slot onward into _lists.
+                    # Always set the remainder list so callers can reliably
+                    # get an empty list when no remainder tokens were present.
                     var lst = List[String]()
                     for k in range(pos_slot, len(result._positionals)):
                         lst.append(result._positionals[k])
-                    if len(lst) > 0:
-                        result._lists[self.args[j].name] = lst^
+                    result._lists[self.args[j].name] = lst^
                     break
                 pos_slot += 1
 
@@ -2492,6 +2557,45 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # ===------------------------------------------------------------------=== #
     # Argument lookup helpers
     # ===------------------------------------------------------------------=== #
+
+    fn _is_known_option(self, token: String) -> Bool:
+        """Check if a dash-prefixed token matches a defined option.
+
+        Used by the ``allow_hyphen_values`` logic to decide whether a
+        token should be dispatched to option parsing or consumed as a
+        positional value.
+
+        Args:
+            token: The raw CLI token (e.g. ``--verbose``, ``-v``).
+
+        Returns:
+            True if the token matches a known long/short option.
+        """
+        if token.startswith("--"):
+            var key = String(token[2:])
+            var eq = key.find("=")
+            if eq >= 0:
+                key = String(key[:eq])
+            for idx in range(len(self.args)):
+                if self.args[idx]._long_name == key:
+                    return True
+                if self.args[idx]._long_name and self.args[
+                    idx
+                ]._long_name.startswith(key):
+                    return True
+                for j in range(len(self.args[idx]._alias_names)):
+                    if self.args[idx]._alias_names[j] == key or self.args[
+                        idx
+                    ]._alias_names[j].startswith(key):
+                        return True
+            return False
+        elif token.startswith("-") and len(token) > 1:
+            var ch = String(token[1:2])
+            for idx in range(len(self.args)):
+                if self.args[idx]._short_name == ch:
+                    return True
+            return False
+        return False
 
     fn _find_by_long(self, name: String) raises -> Argument:
         """Finds an argument definition by its long name, alias, or unambiguous prefix.
