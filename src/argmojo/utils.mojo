@@ -24,69 +24,126 @@ comptime _DEFAULT_ERROR_COLOR = _RED
 # ── Utility functions ────────────────────────────────────────────────────────
 
 
-fn _is_wide_codepoint(cp: Int) -> Bool:
+fn _is_wide_codepoint(codepoint: Int) -> Bool:
     """Returns True if the Unicode codepoint occupies two terminal columns.
 
     Covers CJK Unified Ideographs, CJK Compatibility Ideographs,
     CJK Extension blocks (A-J), Fullwidth Forms, and a selection of
     other commonly wide ranges (Hangul Syllables, CJK Symbols, etc.).
     """
-    # CJK Unified Ideographs.
-    if cp >= 0x4E00 and cp <= 0x9FFF:
+
+    # Unicode East Asian Width W/F 範圍表（Unicode 16.0）
+    # 相鄰區塊已合併以減少分支數（38 → 15）。
+    #
+    # ── 合併區 [0x2E80, 0x9FFF] ──────────────────────────────────────
+    # [0x2E80,  0x2EFF]  # 中日韓漢字部首補充
+    # [0x2F00,  0x2FDF]  # 康熙部首
+    # [0x2FF0,  0x2FFF]  # 表意文字描述字符
+    # [0x3000,  0x303F]  # 中日韓符號和標點
+    # [0x3040,  0x309F]  # 平假名
+    # [0x30A0,  0x30FF]  # 片假名
+    # [0x3100,  0x312F]  # 注音符號
+    # [0x3130,  0x318F]  # 諺文兼容字母
+    # [0x3190,  0x319F]  # 漢文訓讀
+    # [0x31A0,  0x31BF]  # 注音符號擴展
+    # [0x31C0,  0x31EF]  # 中日韓筆畫
+    # [0x31F0,  0x31FF]  # 片假名音標擴展
+    # [0x3200,  0x32FF]  # 中日韓帶圈字符及月份
+    # [0x3300,  0x33FF]  # 中日韓兼容字符
+    # [0x3400,  0x4DBF]  # 中日韓統一表意文字擴展區A
+    # [0x4DC0,  0x4DFF]  # 易經六十四卦
+    # [0x4E00,  0x9FFF]  # 中日韓統一表意文字
+    #
+    # ── 合併區 [0xE000, 0xFAFF] ──────────────────────────────────────
+    # [0xE000,  0xF8FF]  # 私用區（宇浩字根在此區，EAW=A）
+    # [0xF900,  0xFAFF]  # 中日韓兼容表意文字
+    #
+    # ── 合併區 [0x16FE0, 0x18D7F] ────────────────────────────────────
+    # [0x16FE0, 0x16FFF] # 表意文字符號和標點
+    # [0x17000, 0x187FF] # 西夏文
+    # [0x18800, 0x18AFF] # 西夏文部件
+    # [0x18B00, 0x18CFF] # 契丹小字
+    # [0x18D00, 0x18D7F] # 西夏文補充
+    #
+    # ── 合併區 [0x1B000, 0x1B16F] ────────────────────────────────────
+    # [0x1B000, 0x1B0FF] # 補充假名
+    # [0x1B100, 0x1B12F] # 假名擴展
+    # [0x1B130, 0x1B16F] # 小型假名擴展
+    #
+    # ── 獨立區 ────────────────────────────────────────────────────────
+    # [0x1100,  0x115F]  # 諺文字母初聲
+    # [0xA960,  0xA97C]  # 諺文字母擴展A
+    # [0xAC00,  0xD7AF]  # 韓文音節
+    # [0xFE30,  0xFE4F]  # 中日韓兼容形式
+    # [0xFF01,  0xFF60]  # 全形ASCII和標點
+    # [0xFFE0,  0xFFE6]  # 全形特殊符號
+    # [0x1D300, 0x1D35F] # 太玄經卦爻
+    # [0x1F200, 0x1F2FF] # 帶圈表意文字補充
+    # [0x20000, 0x2EE5F] # 中日韓統一表意文字擴展區BCDEFI
+    # [0x2F800, 0x2FA1F] # 中日韓兼容表意文字補充
+    # [0x30000, 0x3347F] # 中日韓統一表意文字擴展區GHJ
+    #
+    # ── 已排除（EAW ≠ W/F）───────────────────────────────────────────
+    # [0x1160,  0x11FF]  # 諺文字母中聲/終聲 — EAW=N
+    # [0x2600,  0x26FF]  # 雜項符號 — 多數 EAW=N
+    # [0xD7B0,  0xD7FF]  # 諺文字母擴展B — EAW=N
+    # [0x1F000, 0x1F02F] # 麻將牌 — 僅 U+1F004 為 W
+    # [0x1FA00, 0x1FA6F] # 棋類符號 — EAW=N
+
+    # Fast path: ASCII and Latin/Greek/Cyrillic/Arabic etc.
+    if codepoint < 0x1100:
+        return False
+    # Fast path: above all known wide ranges.
+    if codepoint > 0x3347F:
+        return False
+
+    # ── BMP: U+0000 – U+FFFF ────────────────────────────────────────
+    if codepoint <= 0xFFFF:
+        # CJK 大區（17 個相鄰區塊合併）
+        if codepoint >= 0x2E80 and codepoint <= 0x9FFF:
+            return True
+        # 韓文音節
+        if codepoint >= 0xAC00 and codepoint <= 0xD7AF:
+            return True
+        # 私用區 + 中日韓兼容表意文字
+        if codepoint >= 0xE000 and codepoint <= 0xFAFF:
+            return True
+        # 全形 ASCII 和標點
+        if codepoint >= 0xFF01 and codepoint <= 0xFF60:
+            return True
+        # 諺文字母擴展A
+        if codepoint >= 0xA960 and codepoint <= 0xA97C:
+            return True
+        # 全形特殊符號
+        if codepoint >= 0xFFE0 and codepoint <= 0xFFE6:
+            return True
+        # 中日韓兼容形式
+        if codepoint >= 0xFE30 and codepoint <= 0xFE4F:
+            return True
+        # 諺文字母初聲（0x1100 ≤ cp guaranteed by early exit）
+        return codepoint <= 0x115F
+
+    # ── SMP/SIP/TIP: U+10000+ ───────────────────────────────────────
+    # CJK 統一漢字擴展 BCDEFI
+    if codepoint >= 0x20000 and codepoint <= 0x2EE5F:
         return True
-    # CJK Unified Ideographs Extension A.
-    if cp >= 0x3400 and cp <= 0x4DBF:
+    # CJK 統一漢字擴展 GHJ（≤ 0x3347F guaranteed by early exit）
+    if codepoint >= 0x30000:
         return True
-    # CJK Compatibility Ideographs.
-    if cp >= 0xF900 and cp <= 0xFAFF:
+    # 表意符號 + 西夏文 + 西夏部件 + 契丹小字 + 西夏補充
+    if codepoint >= 0x16FE0 and codepoint <= 0x18D7F:
         return True
-    # CJK Unified Ideographs Extension B-J (SMP: U+20000–U+323AF).
-    if cp >= 0x20000 and cp <= 0x323AF:
+    # 假名補充 + 假名擴展 + 小型假名擴展
+    if codepoint >= 0x1B000 and codepoint <= 0x1B16F:
         return True
-    # Fullwidth Forms (fullwidth ASCII, fullwidth punctuation).
-    if cp >= 0xFF01 and cp <= 0xFF60:
+    # CJK 兼容表意文字補充
+    if codepoint >= 0x2F800 and codepoint <= 0x2FA1F:
         return True
-    # Fullwidth special: fullwidth won sign, fullwidth cent sign, etc.
-    if cp >= 0xFFE0 and cp <= 0xFFE6:
+    # 帶圈表意文字補充
+    if codepoint >= 0x1F200 and codepoint <= 0x1F2FF:
         return True
-    # Hangul Syllables.
-    if cp >= 0xAC00 and cp <= 0xD7AF:
-        return True
-    # Hangul Jamo (initial consonants — rendered wide on most terminals).
-    if cp >= 0x1100 and cp <= 0x115F:
-        return True
-    # Hangul Jamo Extended-A.
-    if cp >= 0xA960 and cp <= 0xA97C:
-        return True
-    # Hangul Jamo Extended-B.
-    if cp >= 0xD7B0 and cp <= 0xD7FF:
-        return True
-    # CJK Symbols and Punctuation.
-    if cp >= 0x3000 and cp <= 0x303F:
-        return True
-    # Hiragana.
-    if cp >= 0x3040 and cp <= 0x309F:
-        return True
-    # Katakana.
-    if cp >= 0x30A0 and cp <= 0x30FF:
-        return True
-    # Katakana Phonetic Extensions.
-    if cp >= 0x31F0 and cp <= 0x31FF:
-        return True
-    # Bopomofo.
-    if cp >= 0x3100 and cp <= 0x312F:
-        return True
-    # Bopomofo Extended.
-    if cp >= 0x31A0 and cp <= 0x31BF:
-        return True
-    # Enclosed CJK Letters and Months.
-    if cp >= 0x3200 and cp <= 0x32FF:
-        return True
-    # CJK Compatibility.
-    if cp >= 0x3300 and cp <= 0x33FF:
-        return True
-    # Enclosed Ideographic Supplement.
-    if cp >= 0x1F200 and cp <= 0x1F2FF:
+    # 太玄經卦爻
+    if codepoint >= 0x1D300 and codepoint <= 0x1D35F:
         return True
     return False
 
@@ -122,10 +179,10 @@ fn _display_width(s: String) -> Int:
                     break
             continue
         # Decode UTF-8 codepoint.
-        var cp: Int
+        var codepoint: Int
         var seq_len: Int
         if b0 < 0x80:
-            cp = b0
+            codepoint = b0
             seq_len = 1
         elif b0 < 0xC0:
             # Continuation byte (shouldn't start a sequence); skip.
@@ -133,19 +190,19 @@ fn _display_width(s: String) -> Int:
             continue
         elif b0 < 0xE0:
             seq_len = 2
-            cp = b0 & 0x1F
+            codepoint = b0 & 0x1F
         elif b0 < 0xF0:
             seq_len = 3
-            cp = b0 & 0x0F
+            codepoint = b0 & 0x0F
         else:
             seq_len = 4
-            cp = b0 & 0x07
+            codepoint = b0 & 0x07
         for j in range(1, seq_len):
             if i + j < n:
-                cp = (cp << 6) | (Int(s.as_bytes()[i + j]) & 0x3F)
+                codepoint = (codepoint << 6) | (Int(s.as_bytes()[i + j]) & 0x3F)
         i += seq_len
         # Determine display width of this codepoint.
-        if _is_wide_codepoint(cp):
+        if _is_wide_codepoint(codepoint):
             width += 2
         else:
             width += 1

@@ -1,13 +1,25 @@
-"""Example: 宇浩輸入法單字編碼查詢 — Yuhao input method character code lookup.
+"""Example: Yuhao Input Method character code lookup.
+
+例：宇浩輸入法單字編碼查詢
 
 A CJK-heavy demo that showcases ArgMojo's CJK-aware help alignment.
+The purpose of the app is to lookup the encoding of Chinese characters in the 
+Yuhao Input Method (宇浩輸入法).
+
+In Yuhao Input Method, each Chinese character is represented by a 4-letter code 
+based on its components and radicals. For example, the character "字" is encoded 
+as "kfjo" in the Lingming variant.
+
+Yuhao Input Method has several variants: The app supports looking up either 
+variant individually or both side by side.
+
 For full character tables, see https://shurufa.app
 
-Supports two Yuhao variants:
+This demo app supports two Yuhao IME variants:
   - 宇浩靈明 (--ling) — default
   - 宇浩卿雲 (--joy)
 
-Try these (build first with: pixi run package && mojo build -I src -o yu examples/yu.mojo):
+Try these (build first with: `pixi run build`):
 
   ./yu --help
   ./yu 字
@@ -134,11 +146,9 @@ fn main() raises:
         "宇浩輸入法單字編碼查詢。完整碼表請見 https://shurufa.app",
         version="0.1.0",
     )
-    app.header_color("CYAN")
-    app.arg_color("YELLOW")
 
     app.add_argument(
-        Argument("漢字", help="要查詢的漢字（如「宇浩靈明」）").positional().required()
+        Argument("漢字", help="要查詢的漢字（可以輸入多個漢字）").positional().required()
     )
     app.add_argument(
         Argument("joy", help="使用卿雲編碼（預設為靈明）").long("joy").short("j").flag()
