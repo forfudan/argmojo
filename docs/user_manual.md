@@ -2380,7 +2380,7 @@ ArgMojo automatically handles CJK (Chinese, Japanese, Korean) characters in help
 
 ArgMojo's help formatter uses **display width** (East Asian Width) to compute padding, so help descriptions stay aligned even when option names, positional names, subcommand names, or help text contain CJK characters.
 
-See [Unicode v17.0](https://www.unicode.org/charts/PDF/Unicode-17.0/) for details on CJK character ranges and properties.
+See the [Unicode East Asian Width specification](https://www.unicode.org/reports/tr11/) for details on CJK character ranges and properties.
 
 **Example — mixed ASCII and CJK options:**
 

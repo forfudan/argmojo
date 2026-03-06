@@ -16,7 +16,7 @@ individually or all three side by side.
 For full character tables, see https://shurufa.app
 
 This demo app supports three Yuhao IME variants:
-  - 宇浩靈明 (--ling) — default
+  - 宇浩靈明 — default (used when no variant flag is given)
   - 宇浩卿雲 (--joy)
   - 宇浩星陳 (--star)
 

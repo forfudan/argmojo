@@ -165,14 +165,15 @@ fn _display_width(s: String) -> Int:
     """
     var width = 0
     var i = 0
-    var n = len(s)
+    var bytes = s.as_bytes()
+    var n = len(bytes)
     while i < n:
-        var b0 = Int(s.as_bytes()[i])
+        var b0 = Int(bytes[i])
         # Skip ANSI escape sequences: ESC [ ... final_byte.
-        if b0 == 0x1B and i + 1 < n and Int(s.as_bytes()[i + 1]) == 0x5B:
+        if b0 == 0x1B and i + 1 < n and Int(bytes[i + 1]) == 0x5B:
             i += 2  # skip ESC [
             while i < n:
-                var c = Int(s.as_bytes()[i])
+                var c = Int(bytes[i])
                 i += 1
                 # Final byte of CSI sequence is in 0x40–0x7E range.
                 if c >= 0x40 and c <= 0x7E:
@@ -199,7 +200,7 @@ fn _display_width(s: String) -> Int:
             codepoint = b0 & 0x07
         for j in range(1, seq_len):
             if i + j < n:
-                codepoint = (codepoint << 6) | (Int(s.as_bytes()[i + j]) & 0x3F)
+                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
         i += seq_len
         # Determine display width of this codepoint.
         if _is_wide_codepoint(codepoint):

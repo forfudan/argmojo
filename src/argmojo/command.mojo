@@ -2987,8 +2987,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         var pos_max: Int = 0
         for k in range(len(pos_plains)):
-            if _display_width(pos_plains[k]) > pos_max:
-                pos_max = _display_width(pos_plains[k])
+            var w = _display_width(pos_plains[k])
+            if w > pos_max:
+                pos_max = w
         var pos_pad = pos_max + 4
 
         var s = header_color + "Arguments:" + reset_code + "\n"
@@ -3227,12 +3228,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var local_max: Int = 0
         var global_max: Int = 0
         for k in range(len(opt_plains)):
+            var w = _display_width(opt_plains[k])
             if opt_persistent[k]:
-                if _display_width(opt_plains[k]) > global_max:
-                    global_max = _display_width(opt_plains[k])
+                if w > global_max:
+                    global_max = w
             else:
-                if _display_width(opt_plains[k]) > local_max:
-                    local_max = _display_width(opt_plains[k])
+                if w > local_max:
+                    local_max = w
         var local_pad = local_max + 4
         var global_pad = global_max + 4
 
@@ -3325,8 +3327,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Compute padding.
         var cmd_max: Int = 0
         for k in range(len(cmd_plains)):
-            if _display_width(cmd_plains[k]) > cmd_max:
-                cmd_max = _display_width(cmd_plains[k])
+            var w = _display_width(cmd_plains[k])
+            if w > cmd_max:
+                cmd_max = w
         var cmd_pad = cmd_max + 4
         var s = "\n" + header_color + "Commands:" + reset_code + "\n"
         for k in range(len(cmd_plains)):

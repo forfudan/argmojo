@@ -78,7 +78,7 @@ These features appear across multiple libraries and depend only on string operat
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
-| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | ✅ Done        |
+| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
@@ -611,8 +611,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 - [x] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing each code point:
   - CJK Unified Ideographs, CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms → width 2
-  - Other visible characters → width 1
-  - Zero-width joiners, combining marks → width 0
+  - Other visible characters → width 1 (zero-width joiners and combining marks are rare in CLI help text and are not special-cased)
 - [x] Replace `len()` with `_display_width()` in all help formatting padding calculations (`_help_positionals_section`, `_help_options_section`, `_help_commands_section`)
 - [x] Add tests with mixed CJK/ASCII help text verifying column alignment
 
