@@ -40,7 +40,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Short flag merging**: `-abc` expands to `-a -b -c`
 - **Attached short values**: `-ofile.txt` means `-o file.txt`
 - **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
-- **Metavar**: custom display name for values in help text
+- **Value name**: custom display name for values in help text
 - **Hidden arguments**: exclude internal args from `--help` output
 - **Count flags**: `-vvv` → `get_count("verbose") == 3`
 - **Positional arg count validation**: reject extra positional args
@@ -145,10 +145,10 @@ For detailed explanations and more examples of every feature, see the **[User Ma
 
 ArgMojo ships with two complete example CLIs:
 
-| Example                  | File                  | Features                                                                                                                                                                                                                                                                                                                       |
-| ------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `mgrep` — simulated grep | `examples/mgrep.mojo` | Positional args, flags, count flags, negatable flags, choices, metavar, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
-| `mgit` — simulated git   | `examples/mgit.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                 |
+| Example                  | File                  | Features                                                                                                                                                                                                                                                                                                                          |
+| ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mgrep` — simulated grep | `examples/mgrep.mojo` | Positional args, flags, count flags, negatable flags, choices, value_name, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
+| `mgit` — simulated git   | `examples/mgit.mojo`  | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                    |
 
 Build both example binaries:
 

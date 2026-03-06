@@ -54,7 +54,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
     _ = Argument("output", help="...").long("output").require_equals()
     # Display helpers
-    _ = Argument("file", help="...").long("file").metavar("PATH")  # help: --file PATH
+    _ = Argument("file", help="...").long("file").value_name("PATH")  # help: --file PATH
     _ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
     ```
     """
@@ -82,7 +82,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Whether a default value has been set."""
     var _choice_values: List[String]
     """Allowed values for this argument. Empty means any value is accepted."""
-    var _metavar: String
+    var _value_name: String
     """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
     var _is_hidden: Bool
     """If True, this argument is not shown in help output."""
@@ -127,6 +127,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     var _require_equals: Bool
     """If True, this option requires ``--key=value`` syntax;
     ``--key value`` (space-separated) is not allowed."""
+    var _is_remainder: Bool
+    """If True, this positional argument consumes all remaining tokens
+    (including those starting with ``-``).  Implies ``.positional()`` and
+    ``.append()``.  Must be the last positional argument."""
+    var _allow_hyphen_values: Bool
+    """If True, the literal token ``-`` is accepted as a valid value for
+    this argument (conventionally meaning stdin/stdout)."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -149,7 +156,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_value = ""
         self._has_default = False
         self._choice_values = List[String]()
-        self._metavar = ""
+        self._value_name = ""
         self._is_hidden = False
         self._is_count = False
         self._is_negatable = False
@@ -169,6 +176,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_if_no_value = ""
         self._has_default_if_no_value = False
         self._require_equals = False
+        self._is_remainder = False
+        self._allow_hyphen_values = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -188,7 +197,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values = List[String]()
         for i in range(len(copy._choice_values)):
             self._choice_values.append(copy._choice_values[i])
-        self._metavar = copy._metavar
+        self._value_name = copy._value_name
         self._is_hidden = copy._is_hidden
         self._is_count = copy._is_count
         self._is_negatable = copy._is_negatable
@@ -210,6 +219,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_if_no_value = copy._default_if_no_value
         self._has_default_if_no_value = copy._has_default_if_no_value
         self._require_equals = copy._require_equals
+        self._is_remainder = copy._is_remainder
+        self._allow_hyphen_values = copy._allow_hyphen_values
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -227,7 +238,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_value = move._default_value^
         self._has_default = move._has_default
         self._choice_values = move._choice_values^
-        self._metavar = move._metavar^
+        self._value_name = move._value_name^
         self._is_hidden = move._is_hidden
         self._is_count = move._is_count
         self._is_negatable = move._is_negatable
@@ -247,6 +258,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._default_if_no_value = move._default_if_no_value^
         self._has_default_if_no_value = move._has_default_if_no_value
         self._require_equals = move._require_equals
+        self._is_remainder = move._is_remainder
+        self._allow_hyphen_values = move._allow_hyphen_values
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -348,19 +361,19 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values = values^
         return self^
 
-    fn metavar(var self, name: String) -> Self:
+    fn value_name(var self, name: String) -> Self:
         """Sets the display name for the value in help text.
 
-        For example, ``.metavar("FILE")`` causes help to show ``--output FILE``
+        For example, ``.value_name("FILE")`` causes help to show ``--output FILE``
         instead of ``--output OUTPUT``.
 
         Args:
             name: The display name.
 
         Returns:
-            Self with the metavar set.
+            Self with the value_name set.
         """
-        self._metavar = name
+        self._value_name = name
         return self^
 
     fn hidden(var self) -> Self:
@@ -667,6 +680,64 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             Self with require-equals enabled.
         """
         self._require_equals = True
+        return self^
+
+    fn remainder(var self) -> Self:
+        """Marks this positional argument as a remainder collector.
+
+        A remainder argument consumes **all** remaining tokens on the
+        command line — including those starting with ``-``.  It is
+        equivalent to Python's ``nargs=argparse.REMAINDER``.
+
+        Implies ``.positional()`` and ``.append()`` — values are retrieved
+        via ``ParseResult.get_list()``.
+
+        A ``Command`` may have at most one remainder argument, and it
+        must be the last positional argument.  Tokens collected by a
+        remainder argument are **not** parsed as options; they are stored
+        verbatim.
+
+        Examples::
+
+            # myapp build -- -Wall -O2 src/main.c
+            # With .remainder(), everything after 'build' goes into rest:
+            _ = Argument("rest", help="...").remainder()
+
+            # Or without '--':
+            # myapp run script.py --script-flag
+            # rest = ["script.py", "--script-flag"]
+
+        Returns:
+            Self marked as a remainder positional.
+        """
+        self._is_remainder = True
+        self._is_positional = True
+        self._is_append = True
+        return self^
+
+    fn allow_hyphen_values(var self) -> Self:
+        """Allows tokens starting with ``-`` as valid values.
+
+        By default, tokens that start with ``-`` are interpreted as option
+        flags.  Call this method to accept such tokens as regular values
+        instead, without requiring ``--`` first.  This covers the common
+        Unix convention where a bare ``-`` means stdin/stdout, as well as
+        any other dash-prefixed literal value.
+
+        Can be used on positional arguments and value-taking options.
+
+        Examples::
+
+            # Positional: myapp -  → positional value is "-"
+            _ = Argument("input", help="...").positional().allow_hyphen_values()
+
+            # Option: myapp --file -  → file value is "-"
+            _ = Argument("file", help="...").long("file").allow_hyphen_values()
+
+        Returns:
+            Self with hyphen-value support enabled.
+        """
+        self._allow_hyphen_values = True
         return self^
 
     # ===------------------------------------------------------------------=== #

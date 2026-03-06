@@ -5,7 +5,7 @@ no actual version-control operations are implemented.
 
 Showcases: subcommands, persistent (global) flags, per-command positional
 args, boolean flags, count flags, negatable flags, choices, default values,
-required arguments, metavar, hidden arguments, append/collect, value
+required arguments, value_name, hidden arguments, append/collect, value
 delimiter, mutually exclusive groups, required-together groups, conditional
 requirements, numeric range validation, aliases, deprecated arguments,
 Commands section in help, Global Options heading, full command path in
@@ -51,13 +51,13 @@ fn main() raises:
     app.add_argument(
         Argument("git-dir", help="Set the path to the repository (.git)")
         .long("git-dir")
-        .metavar("PATH")
+        .value_name("PATH")
         .persistent()
     )
     app.add_argument(
         Argument("work-tree", help="Set the path to the working tree")
         .long("work-tree")
-        .metavar("PATH")
+        .value_name("PATH")
         .persistent()
     )
 
@@ -77,7 +77,7 @@ fn main() raises:
     clone.add_argument(
         Argument("depth", help="Create a shallow clone with N commits")
         .long("depth")
-        .metavar("N")
+        .value_name("N")
         .range[1, 999999]()
     )
     clone.add_argument(
@@ -178,7 +178,7 @@ fn main() raises:
     commit.add_argument(
         Argument("author", help="Override the commit author")
         .long("author")
-        .metavar("NAME")
+        .value_name("NAME")
     )
     # Deprecated flag
     commit.add_argument(
@@ -267,23 +267,23 @@ fn main() raises:
         Argument("number", help="Limit number of commits shown")
         .long("number")
         .short("n")
-        .metavar("N")
+        .value_name("N")
         .range[1, 999999]()
     )
     log.add_argument(
         Argument("author", help="Filter by author")
         .long("author")
-        .metavar("PATTERN")
+        .value_name("PATTERN")
     )
     log.add_argument(
         Argument("since", help="Show commits after date")
         .long("since")
-        .metavar("DATE")
+        .value_name("DATE")
     )
     log.add_argument(
         Argument("until", help="Show commits before date")
         .long("until")
-        .metavar("DATE")
+        .value_name("DATE")
     )
     # Append: multiple --grep patterns
     log.add_argument(
@@ -417,7 +417,7 @@ fn main() raises:
         Argument("unified", help="Generate diffs with N lines of context")
         .long("unified")
         .short("U")
-        .metavar("N")
+        .value_name("N")
     )
     app.add_subcommand(diff^)
 

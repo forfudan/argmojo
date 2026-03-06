@@ -14,6 +14,13 @@ Comment out unreleased changes here. This file will be edited just before each r
 2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.default_if_no_value()` (the value is optional; omitting it uses default-if-no-value) (PR #12).
 3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for default_if_no_value (PR #12).
 4. ~~Add `response_file_prefix()` builder method on `Command` for response-file support. When enabled, tokens starting with the prefix (default `@`) are expanded by reading the referenced file — each non-empty, non-comment line becomes a separate argument. Supports comments (`#`), escape (`@@literal`), recursive nesting (configurable depth), and custom prefix characters (PR #12).~~ *(Temporarily disabled — triggers a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved as module-level functions and will be re-enabled when the Mojo compiler bug is fixed.)*
+5. Add `.remainder()` builder method on `Argument`. A remainder positional consumes **all** remaining tokens (including ones starting with `-`), similar to argparse `nargs=REMAINDER` or clap `trailing_var_arg`. At most one remainder positional is allowed per command and it must be the last positional (PR #13).
+6. Add `parse_known_arguments()` method on `Command`. Like `parse_arguments()`, but unrecognised options are collected into the result instead of raising an error. Access them via `result.get_unknown_args()`. Useful for forwarding unknown flags to another program (PR #13).
+7. Add `.allow_hyphen_values()` builder method on `Argument`. When set on a positional, values starting with `-` are accepted without requiring `--` (e.g., `-` for stdin). Remainder positionals have this enabled automatically (PR #13).
+
+### 🔧 Fixes and API changes
+
+- **Rename `.metavar()` to `.value_name()`** across the entire API and documentation. The internal field is now `_value_name`. This follows clap's naming convention and better describes the purpose. There is no backward-compatible alias — all call sites must use `.value_name()` (PR #13).
 
 ### 🔧 Fixes
 
@@ -25,6 +32,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 
 - Add `tests/test_const_require_equals.mojo` with 30 tests covering default_if_no_value, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
 - Add `tests/test_response_file.mojo` with 17 tests covering basic expansion, comments, whitespace stripping, escape, recursive nesting, depth limit, custom prefix, disabled-by-default, and error handling (PR #12).
+- Add `tests/test_remainder_known.mojo` with 18 tests covering remainder positionals, `parse_known_arguments()`, `allow_hyphen_values()`, and the `value_name` rename (PR #13).
 
 ---
 
