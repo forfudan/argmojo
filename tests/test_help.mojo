@@ -48,27 +48,27 @@ fn test_hidden_still_works() raises:
 # ── Metavar ──────────────────────────────────────────────────────────────────────
 
 
-fn test_metavar_in_help() raises:
-    """Tests that metavar appears in help output."""
+fn test_value_name_in_help() raises:
+    """Tests that value_name appears in help output."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
         .long("output")
         .short("o")
-        .metavar("FILE")
+        .value_name("FILE")
     )
 
     var help = command._generate_help()
-    assert_true("FILE" in help, msg="metavar 'FILE' should appear in help")
+    assert_true("FILE" in help, msg="value_name 'FILE' should appear in help")
     # Should NOT show the default "<output>" form.
     assert_false(
         "<output>" in help,
-        msg="default placeholder should not appear when metavar is set",
+        msg="default placeholder should not appear when value_name is set",
     )
 
 
 fn test_choices_in_help() raises:
-    """Tests that choices are displayed in help when no metavar."""
+    """Tests that choices are displayed in help when no value_name."""
     var command = Command("test", "Test app")
     var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
@@ -114,17 +114,20 @@ fn test_append_in_help() raises:
         Argument("tag", help="Add a tag").long("tag").short("t").append()
     )
     command.add_argument(
-        Argument("env", help="Target env").long("env").metavar("ENV").append()
+        Argument("env", help="Target env")
+        .long("env")
+        .value_name("ENV")
+        .append()
     )
 
     var help = command._generate_help()
     assert_true(
         "<tag>..." in help,
-        msg="append arg without metavar should show <tag>... in help",
+        msg="append arg without value_name should show <tag>... in help",
     )
     assert_true(
         "ENV..." in help,
-        msg="append arg with metavar should show ENV... in help",
+        msg="append arg with value_name should show ENV... in help",
     )
 
 
@@ -484,7 +487,7 @@ fn test_nargs_in_help() raises:
         Argument("rgb", help="RGB colour")
         .long("rgb")
         .number_of_values[3]()
-        .metavar("N")
+        .value_name("N")
     )
 
     var help = command._generate_help(color=False)
@@ -496,7 +499,7 @@ fn test_nargs_in_help() raises:
     # --rgb should show N N N
     assert_true(
         "N N N" in help,
-        msg="number_of_values(3) with metavar should show 'N N N'",
+        msg="number_of_values(3) with value_name should show 'N N N'",
     )
     # Neither should have "..." since they are nargs, not plain append.
     assert_false(
@@ -505,20 +508,20 @@ fn test_nargs_in_help() raises:
     )
 
 
-fn test_nargs_with_metavar() raises:
-    """Tests nargs with a custom metavar in help."""
+fn test_nargs_with_value_name() raises:
+    """Tests nargs with a custom value_name in help."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("size", help="Width and height")
         .long("size")
         .number_of_values[2]()
-        .metavar("PX")
+        .value_name("PX")
     )
 
     var help = command._generate_help(color=False)
     assert_true(
         "PX PX" in help,
-        msg="number_of_values(2) with metavar PX should show 'PX PX'",
+        msg="number_of_values(2) with value_name PX should show 'PX PX'",
     )
 
 

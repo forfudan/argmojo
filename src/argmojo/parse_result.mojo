@@ -31,6 +31,9 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
     Use ``has_subcommand_result()`` to check presence and
     ``get_subcommand_result()`` to retrieve the value.
     """
+    var _unknown_args: List[String]
+    """Unrecognised arguments collected by ``parse_known_arguments()``.
+    Empty when using the standard ``parse_arguments()`` method."""
 
     fn __init__(out self):
         """Creates an empty ParseResult."""
@@ -43,6 +46,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         self._positional_names = List[String]()
         self.subcommand = ""
         self._subcommand_results = List[ParseResult]()
+        self._unknown_args = List[String]()
 
     fn __copyinit__(out self, copy: Self):
         """Creates a deep copy of a ParseResult.
@@ -63,6 +67,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         self._positional_names = copy._positional_names.copy()
         self.subcommand = copy.subcommand
         self._subcommand_results = copy._subcommand_results.copy()
+        self._unknown_args = copy._unknown_args.copy()
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves a ParseResult, transferring all field ownership.
@@ -79,6 +84,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         self._positional_names = move._positional_names^
         self.subcommand = move.subcommand^
         self._subcommand_results = move._subcommand_results^
+        self._unknown_args = move._unknown_args^
 
     fn get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
@@ -245,6 +251,18 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
             )
         var r: ParseResult = self._subcommand_results[0].copy()
         return r^
+
+    fn get_unknown_args(self) -> List[String]:
+        """Returns the list of unrecognised arguments.
+
+        Only populated when the result comes from
+        ``Command.parse_known_arguments()``.  Returns an empty list
+        when using the standard ``parse_arguments()`` method.
+
+        Returns:
+            A copy of the unknown-arguments list.
+        """
+        return self._unknown_args.copy()
 
     fn __str__(self) -> String:
         """Return a string representation of the parse result."""

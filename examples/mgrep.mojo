@@ -4,7 +4,7 @@ Simulates the interface of GNU grep.  Only argument parsing is performed;
 no actual file searching is implemented.
 
 Showcases: positional args, long/short options, boolean flags, count flags,
-negatable flags, choices, default values, required arguments, metavar,
+negatable flags, choices, default values, required arguments, value_name,
 hidden arguments, short flag merging, attached short values, append/collect,
 value delimiter, multi-value options (nargs), mutually exclusive groups,
 one-required groups, required-together groups, conditional requirements,
@@ -139,7 +139,7 @@ fn main() raises:
         Argument("max-depth", help="Maximum directory depth")
         .long("max-depth")
         .short("d")
-        .metavar("N")
+        .value_name("N")
         .range[0, 999]()
     )
 
@@ -149,7 +149,7 @@ fn main() raises:
         .long("context")
         .short("C")
         .number_of_values[2]()
-        .metavar("N")
+        .value_name("N")
     )
 
     # ── Output format (choices) ──────────────────────────────────────────
@@ -198,7 +198,7 @@ fn main() raises:
         Argument("output", help="Output file path (required with --save)")
         .long("output")
         .short("o")
-        .metavar("FILE")
+        .value_name("FILE")
     )
     app.required_if("output", "save")
 

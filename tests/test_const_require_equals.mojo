@@ -468,15 +468,15 @@ fn test_help_const_format() raises:
     )
 
 
-fn test_help_const_with_metavar() raises:
-    """Help shows --compress[=ALGO] when default_if_no_value and metavar are both set.
+fn test_help_const_with_value_name() raises:
+    """Help shows --compress[=ALGO] when default_if_no_value and value_name are both set.
     """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long("compress")
         .default_if_no_value("gzip")
-        .metavar("ALGO")
+        .value_name("ALGO")
     )
 
     var help = command._generate_help(color=False)
@@ -486,14 +486,14 @@ fn test_help_const_with_metavar() raises:
     )
 
 
-fn test_help_require_equals_with_metavar() raises:
-    """Help shows --output=FILE when require_equals and metavar are set."""
+fn test_help_require_equals_with_value_name() raises:
+    """Help shows --output=FILE when require_equals and value_name are set."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
         .long("output")
         .require_equals()
-        .metavar("FILE")
+        .value_name("FILE")
     )
 
     var help = command._generate_help(color=False)

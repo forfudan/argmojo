@@ -56,7 +56,7 @@ from argmojo import Argument, Command
   - [Hidden Subcommands](#hidden-subcommands)
   - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
 - [Help \& Display](#help--display)
-  - [Metavar](#metavar)
+  - [Value Name](#value-name)
   - [Hidden Arguments](#hidden-arguments)
   - [Deprecated Arguments](#deprecated-arguments)
   - [Default-if-no-value](#default-if-no-value)
@@ -68,6 +68,21 @@ from argmojo import Argument, Command
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
   - [The `--` Stop Marker](#the----stop-marker)
+  - [Remainder Positional (`.remainder()`)](#remainder-positional-remainder)
+  - [Allow Hyphen Values (`.allow_hyphen_values()`)](#allow-hyphen-values-allow_hyphen_values)
+  - [Partial Parsing (`parse_known_arguments()`)](#partial-parsing-parse_known_arguments)
+- [Shell Completion](#shell-completion)
+  - [Built-in `--completions` Flag](#built-in---completions-flag)
+  - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
+  - [Customising the Trigger Name](#customising-the-trigger-name)
+  - [Using a Subcommand Instead of an Option](#using-a-subcommand-instead-of-an-option)
+  - [Generating a Script Programmatically](#generating-a-script-programmatically)
+  - [Installing Completions](#installing-completions)
+  - [What Gets Completed](#what-gets-completed)
+- [Cross-Library Method Name Reference](#cross-library-method-name-reference)
+  - [Argument-Level Builder Methods](#argument-level-builder-methods)
+  - [Command-Level Constraint Methods](#command-level-constraint-methods)
+  - [Notes](#notes)
 <!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
 - [Response Files](#response-files)
   - [Enabling Response Files](#enabling-response-files)
@@ -558,11 +573,11 @@ Append options show a `...` suffix to indicate they are repeatable:
   -t, --tag <tag>...            Add a tag (repeatable)
 ```
 
-If a metavar is set, it replaces the default placeholder:
+If a value name is set, it replaces the default placeholder:
 
 ```mojo
 command.add_argument(
-    Argument("include", help="Include path").long("include").short("I").metavar("DIR").append()
+    Argument("include", help="Include path").long("include").short("I").value_name("DIR").append()
 )
 ```
 
@@ -784,10 +799,10 @@ myapp --route north up      # ✗ 'up' is not a valid choice
 
 nargs options show the placeholder repeated N times:
 
-```
+```txt
 Options:
   --point <point> <point>    X Y coordinates
-  --rgb N N N                RGB colour        (with .metavar("N"))
+  --rgb N N N                RGB colour        (with .value_name("N"))
 ```
 
 Regular append options show `...` to indicate repeatability, while nargs
@@ -1074,7 +1089,7 @@ Argument("name", help="...")
 ║   └── .choices(["a","b","c"])
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .metavar("FILE")             display name in help      (value / positional)
+║   .value_name("FILE")          display name in help      (value / positional)
 ║   .hidden()                    hide from --help          (any)
 ║   .aliases(["alt"])            alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
@@ -1127,7 +1142,7 @@ flowchart LR
     POS --> cho2[".choices()"]
 
     ARG -.-> DEC["Decorators"]
-    DEC --> meta[".metavar()"]
+    DEC --> meta[".value_name()"]
     DEC --> hid[".hidden()"]
     DEC --> ali[".aliases()"]
     DEC --> dep[".deprecated()"]
@@ -1171,7 +1186,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.metavar("FILE")`               |      ✓      |     —     |     —      |        ✓        |
+| `.value_name("FILE")`            |      ✓      |     —     |     —      |        ✓        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
@@ -1606,7 +1621,7 @@ app.add_argument(Argument("verbose", help="Verbose output").long("verbose").shor
 
 var search = Command("search", "Search for patterns")
 search.add_argument(Argument("pattern", help="Search pattern").positional().required())
-search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").metavar("N"))
+search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").value_name("N"))
 
 var init = Command("init", "Initialise a new project")
 init.add_argument(Argument("name", help="Project name").positional().required())
@@ -1966,18 +1981,20 @@ This makes it immediately clear which subcommand triggered the error, especially
 
 ## Help & Display
 
-### Metavar
+### Value Name
 
-**Metavar** overrides the placeholder text shown for a value in help output. Without it, the argument's internal name is shown in angle brackets (e.g., `<output>`).
+**Value name** overrides the placeholder text shown for a value in help output. Without it, the argument's internal name is shown in angle brackets (e.g., `<output>`).
+
+> Libraries with similar support: **argparse** (`metavar`), **clap** (`value_name`), **cobra** (`metavar`), **Click** (`metavar`).
 
 ```mojo
 command.add_argument(
     Argument("output", help="Output file path")
-    .long("output").short("o").metavar("FILE")
+    .long("output").short("o").value_name("FILE")
 )
 command.add_argument(
     Argument("max-depth", help="Maximum directory depth")
-    .long("max-depth").short("d").metavar("N")
+    .long("max-depth").short("d").value_name("N")
 )
 ```
 
@@ -1988,14 +2005,14 @@ command.add_argument(
   -d, --max-depth <max-depth> Maximum directory depth
 ```
 
-**Help output (after `.metavar()`):**
+**Help output (after `.value_name()`):**
 
 ```bash
   -o, --output FILE           Output file path
   -d, --max-depth N           Maximum directory depth
 ```
 
-Metavar is purely cosmetic — it has no effect on parsing.
+Value name is purely cosmetic — it has no effect on parsing.
 
 ### Hidden Arguments
 
@@ -2112,7 +2129,7 @@ Options:
       --compress[=<compress>]    Compression algorithm
 ```
 
-With `.metavar("ALGO")`:
+With `.value_name("ALGO")`:
 
 ```bash
 Options:
@@ -2245,13 +2262,13 @@ colour is enabled.
 
 **What controls the output:**
 
-| Builder method  | Effect on help                                        |
-| --------------- | ----------------------------------------------------- |
-| `.help("...")`  | Sets the description text for the option.             |
-| `.metavar("X")` | Replaces the default placeholder (e.g., `N`, `FILE`). |
-| `.choices()`    | Shows `{a,b,c}` in the placeholder.                   |
-| `.hidden()`     | Completely excludes the option from help.             |
-| `.required()`   | Positional args show as `<name>` instead of `[name]`. |
+| Builder method     | Effect on help                                        |
+| ------------------ | ----------------------------------------------------- |
+| `.help("...")`     | Sets the description text for the option.             |
+| `.value_name("X")` | Replaces the default placeholder (e.g., `N`, `FILE`). |
+| `.choices()`       | Shows `{a,b,c}` in the placeholder.                   |
+| `.hidden()`        | Completely excludes the option from help.             |
+| `.required()`      | Positional args show as `<name>` instead of `[name]`. |
 
 After printing help, the program exits cleanly with exit code 0.
 
@@ -2553,10 +2570,99 @@ myapp -- -10.18
 
 > **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).
 
+### Remainder Positional (`.remainder()`)
+
+A **remainder** positional consumes **all** remaining command-line tokens once it starts matching, including tokens that look like options (e.g., `--foo`, `-x`, `--some-flag`). This is useful for wrapper CLIs that forward arguments to another program.
+
+> Libraries with similar support: **argparse** (`nargs=argparse.REMAINDER`), **clap** (`trailing_var_arg`), **cobra** (`TraverseChildren` + `ArbitraryArgs`).
+
+```mojo
+var command = Command("runner", "Run a program with arguments")
+command.add_argument(
+    Argument("program", help="Program to run").positional().required()
+)
+command.add_argument(
+    Argument("args", help="Arguments to pass through").remainder()
+)
+```
+
+```bash
+runner myapp --verbose -x --output=foo.txt
+# program = "myapp"
+# args    = ["--verbose", "-x", "--output=foo.txt"]
+```
+
+The remainder positional automatically implies `.positional()` and `.append()`. In help output, it is displayed as `args...` (with trailing ellipsis).
+
+**Rules:**
+
+- `.remainder()` must not have `.long()` or `.short()` — it is positional-only.
+- At most **one** remainder positional is allowed per command.
+- The remainder positional must be the **last** positional argument.
+- When no trailing tokens are present, the remainder list is empty (not an error).
+
+### Allow Hyphen Values (`.allow_hyphen_values()`)
+
+By default, tokens starting with `-` are interpreted as options. The `.allow_hyphen_values()` builder method tells the parser that a specific positional argument may accept values starting with `-` without requiring `--` beforehand.
+
+A common use case is accepting `-` as a conventional shorthand for **stdin/stdout**:
+
+```mojo
+var command = Command("cat", "Concatenate files")
+command.add_argument(
+    Argument("file", help="Input file (use - for stdin)")
+    .positional()
+    .required()
+    .allow_hyphen_values()
+)
+```
+
+```bash
+cat -        # file = "-"  (stdin convention)
+cat input.txt  # file = "input.txt"
+```
+
+> **Note:** `.remainder()` automatically enables `.allow_hyphen_values()` — no need to set it separately on remainder positionals.
+
+### Partial Parsing (`parse_known_arguments()`)
+
+`parse_known_arguments()` works like `parse_arguments()` but **does not raise an error** for unrecognised options. Instead, unknown tokens are collected and can be retrieved from the result.
+
+> Libraries with similar support: **argparse** (`parse_known_args()`), **clap** (not built-in; use `allow_external_subcommands`), **cobra** (`FParseErrWhitelist`).
+
+```mojo
+var command = Command("wrapper", "Wrapper that forwards unknown flags")
+command.add_argument(
+    Argument("verbose", help="Verbose output").long("verbose").flag()
+)
+command.add_argument(
+    Argument("file", help="Input file").positional().required()
+)
+
+var result = command.parse_known_arguments()
+
+# Known arguments are accessed normally:
+var verbose = result.get_bool("verbose")
+var file = result.get("file")
+
+# Unknown arguments are collected separately:
+var unknown = result.get_unknown_args()
+# e.g., ["--color", "-x", "--threads=4"]
+```
+
+```bash
+wrapper input.txt --verbose --color -x --threads=4
+# verbose = True
+# file    = "input.txt"
+# unknown = ["--color", "-x", "--threads=4"]
+```
+
+All other validation (required arguments, choices, range) still applies. Only the "Unknown option" error is suppressed.
+
 <!-- Response Files section temporarily disabled — Mojo compiler deadlock with -D ASSERT=all.
      The implementation is preserved as module-level functions and will be re-enabled
      when the Mojo compiler bug is fixed.
-
+     
 ## Response Files
 
 A **response file** (also called an **args file**) lets users store arguments in a text file and reference it on the command line with a prefix character (default `@`). This is useful when the argument list is very long or when the same set of arguments is reused frequently.
@@ -2667,7 +2773,7 @@ Every `Command` automatically responds to `--completions <shell>` — just like 
 ```mojo
 var app = Command("myapp", "My application", version="1.0.0")
 app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
-app.add_argument(Argument("output", help="Output file").long("output").short("o").metavar("FILE"))
+app.add_argument(Argument("output", help="Output file").long("output").short("o").value_name("FILE"))
 var formats: List[String] = ["json", "csv", "table"]
 app.add_argument(Argument("format", help="Output format").long("format").choices(formats^))
 
@@ -2825,7 +2931,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.takes_value()`              | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
 | `.default("val")`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
 | `.choices(["a","b"])`         | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
-| `.metavar("FILE")`            | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
+| `.value_name("FILE")`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
 | `.hidden()`                   | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
 | `.count()`                    | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
 | `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
@@ -2841,6 +2947,8 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.persistent()`               | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
 | `.default_if_no_value("val")` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |
 | `.require_equals()`           | —                                 | —                                        | `.require_equals(true)`         | —                              |
+| `.remainder()`                | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
+| `.allow_hyphen_values()`      | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
 
 ### Command-Level Constraint Methods
 
@@ -2851,6 +2959,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
+| `parse_known_arguments()`   | `parse_known_args()`             | —                               | — ¹¹                           | `FParseErrWhitelist` ¹²         |
 | `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
 
 ### Notes
@@ -2865,3 +2974,5 @@ The table below maps every ArgMojo builder method / command-level method to its 
 8. click's closest equivalent is `is_eager` combined with a custom callback; there is no direct `const` equivalent for options.
 9. click has no built-in `MutuallyExclusiveOption`; it is typically implemented via a custom `cls` or callback.
 10. clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
+11. clap uses `.trailing_var_arg(true)` on the command (not the argument) for remainder-like behaviour. For `parse_known_arguments`, clap has no direct equivalent; use `allow_external_subcommands`.
+12. Cobra uses `TraverseChildren` for remainder-like behaviour. For partial parsing, Cobra's `FParseErrWhitelist{UnknownFlags: true}` ignores unknown flags.

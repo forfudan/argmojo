@@ -408,6 +408,28 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 + "': .require_equals() / .default_if_no_value() cannot be"
                 " combined with .number_of_values[N]() (multi-value options)"
             )
+        # Guard: remainder must not be combined with long/short (it is positional-only).
+        if argument._is_remainder and (
+            argument._long_name or argument._short_name
+        ):
+            self._error(
+                "Argument '"
+                + argument.name
+                + "': .remainder() is for positional arguments only; remove"
+                " .long() / .short()"
+            )
+        # Guard: at most one remainder positional is allowed.
+        if argument._is_remainder:
+            for _ri in range(len(self.args)):
+                if self.args[_ri]._is_remainder:
+                    self._error(
+                        "Argument '"
+                        + argument.name
+                        + "': only one .remainder() positional is allowed"
+                        " (already set on '"
+                        + self.args[_ri].name
+                        + "')"
+                    )
         self.args.append(argument^)
 
     fn add_subcommand(mut self, var sub: Command) raises:
@@ -1166,10 +1188,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var s = String("Usage: ") + self.name
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                var display = self.args[i].name
+                if self.args[i]._is_remainder:
+                    display += "..."
                 if self.args[i]._is_required:
-                    s += " <" + self.args[i].name + ">"
+                    s += " <" + display + ">"
                 else:
-                    s += " [" + self.args[i].name + "]"
+                    s += " [" + display + "]"
         var has_subcommands = False
         for i in range(len(self.subcommands)):
             if (
@@ -1303,6 +1328,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # === PARSING PHASE === #
 
+        # Check if there is a remainder positional and which slot it is.
+        var remainder_pos_idx: Int = -1
+        for _ri in range(len(self.args)):
+            if self.args[_ri]._is_remainder:
+                # Find its positional slot index.
+                var slot: Int = 0
+                for _rj in range(len(self.args)):
+                    if self.args[_rj]._is_positional:
+                        if self.args[_rj].name == self.args[_ri].name:
+                            remainder_pos_idx = slot
+                            break
+                        slot += 1
+                break
+
         while i < len(args_to_parse):
             var arg = args_to_parse[i]
 
@@ -1313,6 +1352,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 continue
 
             if stop_parsing_options:
+                result._positionals.append(arg)
+                i += 1
+                continue
+
+            # ── Remainder mode: if the current positional slot is a
+            # remainder argument, consume ALL remaining tokens verbatim. ──
+            if (
+                remainder_pos_idx >= 0
+                and len(result._positionals) >= remainder_pos_idx
+            ):
+                # We've reached or passed the remainder slot — consume everything.
                 result._positionals.append(arg)
                 i += 1
                 continue
@@ -1415,6 +1465,191 @@ struct Command(Copyable, Movable, Stringable, Writable):
             i += 1
 
         # Apply defaults, propagate implications, then validate constraints.
+        self._apply_defaults(result)
+        self._apply_implications(result)
+        self._validate(result)
+
+        return result^
+
+    fn parse_known_arguments(
+        self, raw_args: List[String]
+    ) raises -> ParseResult:
+        """Parses known arguments, collecting unrecognised ones.
+
+        Behaves like ``parse_arguments()`` but does **not** error on
+        unknown options.  Instead, unrecognised tokens are stored in the
+        result and can be retrieved via ``result.get_unknown_args()``.
+
+        This is useful for wrapper CLIs that forward unknown flags to
+        another tool, or for incremental/phased parsing.
+
+        Args:
+            raw_args: The raw argument strings (including program name at
+                index 0).
+
+        Returns:
+            A ParseResult whose ``get_unknown_args()`` contains any
+            tokens that did not match a registered argument.
+
+        Raises:
+            Error on validation failures (required args, groups, etc.)
+            — only *unknown-option* errors are suppressed.
+        """
+        var result = ParseResult()
+
+        var args_to_parse = raw_args.copy()
+
+        # Register positional argument names in order.
+        for i in range(len(self.args)):
+            if self.args[i]._is_positional:
+                result._positional_names.append(self.args[i].name)
+
+        var i: Int = 1
+        var stop_parsing_options = False
+
+        if self._help_on_no_arguments and len(args_to_parse) <= 1:
+            print(self._generate_help())
+            exit(0)
+
+        # Remainder positional detection (same as parse_arguments).
+        var remainder_pos_idx: Int = -1
+        for _ri in range(len(self.args)):
+            if self.args[_ri]._is_remainder:
+                var slot: Int = 0
+                for _rj in range(len(self.args)):
+                    if self.args[_rj]._is_positional:
+                        if self.args[_rj].name == self.args[_ri].name:
+                            remainder_pos_idx = slot
+                            break
+                        slot += 1
+                break
+
+        while i < len(args_to_parse):
+            var arg = args_to_parse[i]
+
+            if arg == "--" and not stop_parsing_options:
+                stop_parsing_options = True
+                i += 1
+                continue
+
+            if stop_parsing_options:
+                result._positionals.append(arg)
+                i += 1
+                continue
+
+            # Remainder mode.
+            if (
+                remainder_pos_idx >= 0
+                and len(result._positionals) >= remainder_pos_idx
+            ):
+                result._positionals.append(arg)
+                i += 1
+                continue
+
+            # --help / -h / -?
+            if arg == "--help" or arg == "-h" or arg == "-?":
+                print(self._generate_help())
+                exit(0)
+
+            # --version / -V
+            if arg == "--version" or arg == "-V":
+                print(self.name + " " + self.version)
+                exit(0)
+
+            # Completions (long-option form).
+            if (
+                self._completions_enabled
+                and not self._completions_is_subcommand
+                and arg == "--" + self._completions_name
+            ):
+                if i + 1 < len(args_to_parse):
+                    i += 1
+                    var shell_arg = args_to_parse[i]
+                    try:
+                        print(self.generate_completion(shell_arg))
+                    except e:
+                        self._error(String(e))
+                        exit(2)
+                    exit(0)
+                else:
+                    self._error(
+                        "--"
+                        + self._completions_name
+                        + " requires a shell name: bash, zsh, or fish"
+                    )
+                    exit(2)
+
+            # Long option — try to parse; collect as unknown if it fails.
+            if arg.startswith("--"):
+                try:
+                    i = self._parse_long_option(args_to_parse, i, result)
+                except:
+                    result._unknown_args.append(arg)
+                    i += 1
+                continue
+
+            # Short option — try to parse; collect as unknown if it fails.
+            if arg.startswith("-") and len(arg) > 1:
+                if _looks_like_number(arg):
+                    var has_digit_short = False
+                    for _ni in range(len(self.args)):
+                        var sn = self.args[_ni]._short_name
+                        if sn >= "0" and sn <= "9":
+                            has_digit_short = True
+                            break
+                    if self._allow_negative_numbers or not has_digit_short:
+                        result._positionals.append(arg)
+                        i += 1
+                        continue
+                try:
+                    var key = String(arg[1:])
+                    if len(key) == 1:
+                        i = self._parse_short_single(
+                            key, args_to_parse, i, result
+                        )
+                    else:
+                        i = self._parse_short_merged(
+                            key, args_to_parse, i, result
+                        )
+                except:
+                    result._unknown_args.append(arg)
+                    i += 1
+                continue
+
+            # Completions subcommand.
+            if (
+                self._completions_enabled
+                and self._completions_is_subcommand
+                and arg == self._completions_name
+            ):
+                if i + 1 < len(args_to_parse):
+                    i += 1
+                    var shell_arg = args_to_parse[i]
+                    try:
+                        print(self.generate_completion(shell_arg))
+                    except e:
+                        self._error(String(e))
+                        exit(2)
+                    exit(0)
+                else:
+                    self._error(
+                        self._completions_name
+                        + " requires a shell name: bash, zsh, or fish"
+                    )
+                    exit(2)
+
+            # Subcommand dispatch.
+            if len(self.subcommands) > 0:
+                var new_i = self._dispatch_subcommand(
+                    arg, args_to_parse, i, result
+                )
+                if new_i >= 0:
+                    i = new_i
+                    continue
+
+            result._positionals.append(arg)
+            i += 1
+
         self._apply_defaults(result)
         self._apply_implications(result)
         self._validate(result)
@@ -1949,6 +2184,21 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     result._values[a.name] = a._default_value
 
+        # Populate remainder-positional lists from collected positionals.
+        # A remainder arg at positional slot N collects positionals[N:].
+        var pos_slot: Int = 0
+        for j in range(len(self.args)):
+            if self.args[j]._is_positional:
+                if self.args[j]._is_remainder:
+                    # Collect all positionals from this slot onward into _lists.
+                    var lst = List[String]()
+                    for k in range(pos_slot, len(result._positionals)):
+                        lst.append(result._positionals[k])
+                    if len(lst) > 0:
+                        result._lists[self.args[j].name] = lst^
+                    break
+                pos_slot += 1
+
     fn _apply_implications(self, mut result: ParseResult):
         """Propagates implication rules on the parse result.
 
@@ -2009,8 +2259,19 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
 
         # Validate positional argument count — too many args is an error.
+        # Skip this check when a remainder positional is registered (it
+        # deliberately collects an unbounded number of tokens).
+        var has_remainder = False
+        for _ri in range(len(self.args)):
+            if self.args[_ri]._is_remainder:
+                has_remainder = True
+                break
         var expected_count: Int = len(result._positional_names)
-        if expected_count > 0 and len(result._positionals) > expected_count:
+        if (
+            expected_count > 0
+            and len(result._positionals) > expected_count
+            and not has_remainder
+        ):
             self._error_with_usage(
                 "Too many positional arguments: expected "
                 + String(expected_count)
@@ -2551,24 +2812,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Show positional args in usage line.
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                var display = self.args[i].name
+                if self.args[i]._is_remainder:
+                    display += "..."
                 if self.args[i]._is_required:
-                    s += (
-                        " "
-                        + arg_color
-                        + "<"
-                        + self.args[i].name
-                        + ">"
-                        + reset_code
-                    )
+                    s += " " + arg_color + "<" + display + ">" + reset_code
                 else:
-                    s += (
-                        " "
-                        + arg_color
-                        + "["
-                        + self.args[i].name
-                        + "]"
-                        + reset_code
-                    )
+                    s += " " + arg_color + "[" + display + "]" + reset_code
 
         # Show <COMMAND> placeholder when subcommands are registered.
         var has_subcommands = False
@@ -2619,9 +2869,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var pos_helps = List[String]()
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
-                var plain = String("  ") + self.args[i].name
+                var name_display = self.args[i].name
+                if self.args[i]._is_remainder:
+                    name_display += "..."
+                var plain = String("  ") + name_display
                 var colored = (
-                    String("  ") + arg_color + self.args[i].name + reset_code
+                    String("  ") + arg_color + name_display + reset_code
                 )
                 pos_plains.append(plain)
                 pos_colors.append(colored)
@@ -2716,7 +2969,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             + reset_code
                         )
 
-                # Show metavar or choices for value-taking options.
+                # Show value_name or choices for value-taking options.
                 if not self.args[i]._is_flag and not self.args[i]._is_count:
                     var ncount = self.args[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
@@ -2731,8 +2984,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     var close_bracket = String("]") if self.args[
                         i
                     ]._has_default_if_no_value else String("")
-                    if self.args[i]._metavar:
-                        var mv = self.args[i]._metavar
+                    if self.args[i]._value_name:
+                        var mv = self.args[i]._value_name
                         var mv_plain = String("")
                         var mv_colored = String("")
                         for _r in range(repeat - 1):
@@ -3590,7 +3843,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         choices += arg._choice_values[k]
                     spec += ":value:(" + choices + ")"
                 else:
-                    var mv = arg._metavar if arg._metavar else arg.name
+                    var mv = arg._value_name if arg._value_name else arg.name
                     spec += ":" + mv + ":"
             spec += "'"
         else:
@@ -3603,7 +3856,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         choices += arg._choice_values[k]
                     spec += "[" + desc + "]:value:(" + choices + ")'"
                 else:
-                    var mv = arg._metavar if arg._metavar else arg.name
+                    var mv = arg._value_name if arg._value_name else arg.name
                     spec += "[" + desc + "]:" + mv + ":'"
             else:
                 spec += "[" + desc + "]'"

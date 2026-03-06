@@ -10,7 +10,8 @@ conditional requirements, negatable flags, color customisation
 (header_color, arg_color), numeric range validation, append with range
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
-help_on_no_arguments, default_if_no_value, require_equals, and response files.
+help_on_no_arguments, default_if_no_value, require_equals, response files,
+remainder positionals, allow_hyphen_values, and parse_known_arguments.
 
 Note: This demo looks very strange, but useful :D
 
@@ -90,6 +91,11 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   ./demo analyze --help
   ./demo analyze data.csv --workers 4 --threshold 95
   ./demo analyze data.csv --workers 999       # clamped to 32
+
+  # ── Subcommand: run (remainder + allow_hyphen_values) ────────────────
+  ./demo run myapp --verbose -x --output=foo.txt
+  ./demo run -                                # stdin convention via allow_hyphen_values
+  ./demo run myapp                            # no extra args → empty remainder
 """
 
 from argmojo import Argument, Command
@@ -153,7 +159,7 @@ fn main() raises:
         Argument("host", help="Server hostname")
         .long("host")
         .short("H")
-        .metavar("ADDR")
+        .value_name("ADDR")
     )
     app.add_argument(
         Argument(
@@ -180,7 +186,7 @@ fn main() raises:
         Argument("output", help="Output file path (required with --save)")
         .long("output")
         .short("o")
-        .metavar("FILE")
+        .value_name("FILE")
     )
     app.required_if("output", "save")
 
@@ -189,7 +195,7 @@ fn main() raises:
         Argument("point", help="A 3D point (X Y Z)")
         .long("point")
         .number_of_values[3]()
-        .metavar("COORD")
+        .value_name("COORD")
     )
 
     # ── Value delimiter ──────────────────────────────────────────────────
@@ -234,7 +240,7 @@ fn main() raises:
         .long("compress")
         .short("c")
         .default_if_no_value("gzip")
-        .metavar("ALGO")
+        .value_name("ALGO")
     )
 
     # ── Require equals (standalone) ──────────────────────────────────────
@@ -243,7 +249,7 @@ fn main() raises:
         Argument("separator", help="Field separator (must use = syntax)")
         .long("separator")
         .require_equals()
-        .metavar("CHAR")
+        .value_name("CHAR")
         .default(",")
     )
 
@@ -307,7 +313,7 @@ fn main() raises:
     analyze.add_argument(
         Argument("threshold", help="Confidence threshold [0-100]")
         .long("threshold")
-        .metavar("PCT")
+        .value_name("PCT")
         .range[0, 100]()
         .clamp()
     )
@@ -315,6 +321,22 @@ fn main() raises:
     var analyze_aliases: List[String] = ["an"]
     analyze.command_aliases(analyze_aliases^)
     app.add_subcommand(analyze^)
+
+    # ── Subcommand: run (remainder + allow_hyphen_values) ────────────────
+    # Demonstrates .remainder() for forwarding args and .allow_hyphen_values()
+    # for accepting stdin convention "-".
+    var run = Command("run", "Run a program and forward extra arguments")
+    run.add_argument(
+        Argument("program", help="Program to run (use - for stdin)")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+    run.add_argument(
+        Argument("args", help="Arguments forwarded to the program").remainder()
+    )
+    run.help_on_no_arguments()
+    app.add_subcommand(run^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
     app.help_on_no_arguments()
