@@ -19,6 +19,114 @@ from .utils import (
 )
 
 
+# ---------- module-level file reader (workaround for Mojo compiler issue) ----
+# Placing `open()` inside a method of a struct that contains `List[Self]` causes
+# the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
+# Moving the I/O into a free function avoids the trigger.
+fn _read_file_content(filepath: String) raises -> String:
+    """Reads and returns the entire contents of *filepath*."""
+    with open(filepath, "r") as f:
+        return f.read()
+
+
+fn _expand_response_files(
+    raw_args: List[String],
+    prefix: String,
+    max_depth: Int,
+    cmd_name: String,
+) raises -> List[String]:
+    """Expands response-file tokens in the argument list.
+
+    Free function (not a Command method) to work around a Mojo compiler
+    deadlock when ``open()`` or complex I/O appears inside a method of a
+    struct that contains ``List[Self]`` and is compiled with
+    ``-D ASSERT=all``.
+    """
+    var expanded = List[String]()
+    var plen = len(prefix)
+
+    for idx in range(len(raw_args)):
+        var token = raw_args[idx]
+
+        # Preserve argv[0] (program name) verbatim — never expand it.
+        if idx == 0:
+            expanded.append(token)
+            continue
+
+        # Check for escape: doubled prefix → literal.
+        if (
+            len(token) > plen * 2 - 1
+            and String(token[: plen * 2]) == prefix + prefix
+        ):
+            expanded.append(String(token[plen:]))
+            continue
+
+        if len(token) > plen and String(token[:plen]) == prefix:
+            var filepath = String(token[plen:])
+            _read_response_file(
+                filepath, expanded, 0, prefix, max_depth, cmd_name
+            )
+        else:
+            expanded.append(token)
+    return expanded^
+
+
+fn _read_response_file(
+    filepath: String,
+    mut out_args: List[String],
+    depth: Int,
+    prefix: String,
+    max_depth: Int,
+    cmd_name: String,
+) raises:
+    """Reads a single response file and appends its arguments.
+
+    Free function (not a Command method) — see ``_expand_response_files``
+    docstring for rationale.
+    """
+    if depth >= max_depth:
+        var msg = (
+            "Response file nesting too deep (max "
+            + String(max_depth)
+            + "): "
+            + filepath
+        )
+        print("error: " + cmd_name + ": " + msg, file=stderr)
+        raise Error(msg)
+
+    if not _path_exists(filepath):
+        var msg = "Response file not found: " + filepath
+        print("error: " + cmd_name + ": " + msg, file=stderr)
+        raise Error(msg)
+
+    var plen = len(prefix)
+    var content = _read_file_content(filepath)
+
+    var lines = content.split("\n")
+    for li in range(len(lines)):
+        var line = String(String(lines[li]).strip())
+
+        if len(line) == 0 or line.startswith("#"):
+            continue
+
+        # Escape: doubled prefix → literal.
+        if (
+            len(line) > plen * 2 - 1
+            and String(line[: plen * 2]) == prefix + prefix
+        ):
+            out_args.append(String(line[plen:]))
+            continue
+
+        # Recursive response file.
+        if len(line) > plen and String(line[:plen]) == prefix:
+            var nested_path = String(line[plen:])
+            _read_response_file(
+                nested_path, out_args, depth + 1, prefix, max_depth, cmd_name
+            )
+        else:
+            out_args.append(line)
+
+
 struct Command(Copyable, Movable, Stringable, Writable):
     """Defines a CLI command prototype with its arguments and handles parsing.
 
@@ -624,6 +732,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
     fn response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 
+        Warning: **Temporarily disabled** — the underlying expansion
+        logic is compiled out to work around a Mojo compiler deadlock
+        triggered by ``-D ASSERT=all``.  Calling this method still
+        stores the prefix, but ``parse_arguments()`` will **not**
+        expand response-file tokens until the compiler bug is fixed.
+
         When enabled, any token that starts with the given ``prefix``
         is treated as a response-file reference.  The remainder of
         the token is the file path; each non-empty, non-comment line
@@ -656,6 +770,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
     fn response_file_max_depth(mut self, depth: Int):
         """Sets the maximum nesting depth for response-file expansion.
+
+        Warning: **Temporarily disabled** — see
+        ``response_file_prefix()`` docstring for details.
 
         Args:
             depth: Maximum recursion depth (default 10).
@@ -1015,120 +1132,6 @@ struct Command(Copyable, Movable, Stringable, Writable):
             )
         raise Error(msg)
 
-    fn _expand_response_files(
-        self, raw_args: List[String]
-    ) raises -> List[String]:
-        """Expands response-file tokens in the argument list.
-
-        A token that starts with ``_response_file_prefix`` (e.g. ``@``)
-        triggers expansion: the remainder of the token is treated as a
-        file path, and each non-empty, non-comment line of that file
-        replaces the token.
-
-        - Blank lines and lines starting with ``#`` are ignored.
-        - Leading / trailing whitespace per line is stripped.
-        - Recursive expansion is supported up to ``_response_file_max_depth``.
-        - Doubling the prefix (``@@foo``) is an escape: it inserts the
-          literal ``@foo``.
-
-        Args:
-            raw_args: The original argument list.
-
-        Returns:
-            A new argument list with response-file tokens expanded.
-
-        Raises:
-            Error if a referenced file does not exist or nesting is too deep.
-        """
-        var expanded = List[String]()
-        var prefix = self._response_file_prefix
-        var plen = len(prefix)
-
-        for idx in range(len(raw_args)):
-            var token = raw_args[idx]
-
-            # Preserve argv[0] (program name) verbatim — never expand it.
-            if idx == 0:
-                expanded.append(token)
-                continue
-
-            # Check for escape: doubled prefix → literal.
-            if (
-                len(token) > plen * 2 - 1
-                and String(token[: plen * 2]) == prefix + prefix
-            ):
-                expanded.append(String(token[plen:]))
-                continue
-
-            if len(token) > plen and String(token[:plen]) == prefix:
-                var filepath = String(token[plen:])
-                self._read_response_file(filepath, expanded, depth=0)
-            else:
-                expanded.append(token)
-        return expanded^
-
-    fn _read_response_file(
-        self,
-        filepath: String,
-        mut out_args: List[String],
-        depth: Int,
-    ) raises:
-        """Reads a single response file and appends its arguments.
-
-        Each non-empty, non-comment line becomes one argument.
-        Lines that start with the response-file prefix trigger recursive
-        expansion.
-
-        Args:
-            filepath: Path to the response file.
-            out_args: The output list to append arguments to.
-            depth: Current recursion depth.
-
-        Raises:
-            Error if the file does not exist or nesting exceeds max depth.
-        """
-        if depth >= self._response_file_max_depth:
-            self._error(
-                "Response file nesting too deep (max "
-                + String(self._response_file_max_depth)
-                + "): "
-                + filepath
-            )
-
-        if not _path_exists(filepath):
-            self._error("Response file not found: " + filepath)
-
-        var prefix = self._response_file_prefix
-        var plen = len(prefix)
-
-        var content: String
-        with open(filepath, "r") as f:
-            content = f.read()
-
-        # Split content into lines.
-        var lines = content.split("\n")
-        for li in range(len(lines)):
-            var line = String(String(lines[li]).strip())
-
-            # Skip empty lines and comments.
-            if len(line) == 0 or line.startswith("#"):
-                continue
-
-            # Escape: doubled prefix → literal.
-            if (
-                len(line) > plen * 2 - 1
-                and String(line[: plen * 2]) == prefix + prefix
-            ):
-                out_args.append(String(line[plen:]))
-                continue
-
-            # Recursive response file.
-            if len(line) > plen and String(line[:plen]) == prefix:
-                var nested_path = String(line[plen:])
-                self._read_response_file(nested_path, out_args, depth + 1)
-            else:
-                out_args.append(line)
-
     fn _error_with_usage(self, msg: String) raises:
         """Prints a coloured error with a usage hint and help tip, then raises.
 
@@ -1271,8 +1274,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Expand response files if enabled.
         var args_to_parse = raw_args.copy()
-        if len(self._response_file_prefix) > 0:
-            args_to_parse = self._expand_response_files(raw_args)
+        # NOTE: Response file expansion temporarily disabled to work around
+        # Mojo compiler deadlock with -D ASSERT=all.  The module-level
+        # _expand_response_files / _read_response_file functions are still
+        # available and tested; only the automatic call from parse_arguments
+        # is commented out.
+        # if len(self._response_file_prefix) > 0:
+        #     args_to_parse = _expand_response_files(
+        #         raw_args,
+        #         self._response_file_prefix,
+        #         self._response_file_max_depth,
+        #         self.name,
+        #     )
 
         # Register positional argument names in order.
         for i in range(len(self.args)):

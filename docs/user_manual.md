@@ -68,12 +68,14 @@ from argmojo import Argument, Command
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
   - [The `--` Stop Marker](#the----stop-marker)
+<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
 - [Response Files](#response-files)
   - [Enabling Response Files](#enabling-response-files)
   - [File Format](#file-format)
   - [Escaping the Prefix](#escaping-the-prefix)
   - [Recursive Response Files](#recursive-response-files)
   - [Custom Prefix](#custom-prefix)
+-->
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -2551,6 +2553,10 @@ myapp -- -10.18
 
 > **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).
 
+<!-- Response Files section temporarily disabled — Mojo compiler deadlock with -D ASSERT=all.
+     The implementation is preserved as module-level functions and will be re-enabled
+     when the Mojo compiler bug is fixed.
+
 ## Response Files
 
 A **response file** (also called an **args file**) lets users store arguments in a text file and reference it on the command line with a prefix character (default `@`). This is useful when the argument list is very long or when the same set of arguments is reused frequently.
@@ -2645,6 +2651,8 @@ Use a different prefix character if `@` conflicts with your argument values:
 command.response_file_prefix("+")
 # Now: mytool +args.txt
 ```
+
+end of Response Files section -->
 
 ## Shell Completion
 
