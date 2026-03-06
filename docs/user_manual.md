@@ -64,6 +64,7 @@ from argmojo import Argument, Command
   - [Auto-generated Help](#auto-generated-help)
   - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
+  - [CJK-Aware Help Alignment](#cjk-aware-help-alignment)
 - [Parsing Behaviour](#parsing-behaviour)
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
@@ -2207,9 +2208,7 @@ Options:
   -V, --version                     Show version
 ```
 
-Help text columns are **dynamically aligned**: the padding between the option
-names and the description text adjusts automatically based on the longest
-option line, so everything stays neatly aligned regardless of option length.
+Help text columns are **dynamically aligned**: the padding between the option names and the description text adjusts automatically based on the longest option line, so everything stays neatly aligned regardless of option length.
 
 ---
 
@@ -2236,9 +2235,7 @@ var help_plain   = command._generate_help(color=False)   # no ANSI codes
 
 **Custom Colours**
 
-The **header colour**, **argument-name colour**, **deprecation warning
-colour**, and **parse error colour** are all customisable.  Section headers
-always keep the **bold + underline** style; only the colour changes.
+The **header colour**, **argument-name colour**, **deprecation warning colour**, and **parse error colour** are all customisable.  Section headers always keep the **bold + underline** style; only the colour changes.
 
 ```mojo
 var command = Command("myapp", "My app")
@@ -2264,9 +2261,7 @@ Available colour names (case-insensitive):
 
 An unrecognised colour name raises an `Error` at runtime.
 
-Padding calculation is always based on the **plain-text width** (without
-escape codes), so columns remain correctly aligned regardless of whether
-colour is enabled.
+Padding calculation is always based on the **plain-text width** (without escape codes), so columns remain correctly aligned regardless of whether colour is enabled.
 
 **What controls the output:**
 
@@ -2302,8 +2297,7 @@ This takes priority over the `color=True` default but does **not** override an e
 
 **Show Help When No Arguments Provided**
 
-Use `help_on_no_arguments()` to automatically display help when the user invokes
-the command with no arguments (like `git`, `docker`, or `cargo`):
+Use `help_on_no_arguments()` to automatically display help when the user invokes the command with no arguments (like `git`, `docker`, or `cargo`):
 
 ```mojo
 var command = Command("myapp", "My application")
@@ -2317,14 +2311,11 @@ myapp          # prints help and exits
 myapp --file x # normal parsing
 ```
 
-This is particularly useful for commands that require arguments — instead of
-showing an obscure "missing required argument" error, the user sees the
-full help text.
+This is particularly useful for commands that require arguments — instead of showing an obscure "missing required argument" error, the user sees the full help text.
 
 ### Custom Tips
 
-Add custom **tip lines** to the bottom of your help output with `add_tip()`.
-This is useful for documenting common patterns, gotchas, or examples.
+Add custom **tip lines** to the bottom of your help output with `add_tip()`. This is useful for documenting common patterns, gotchas, or examples.
 
 ```mojo
 var command = Command("calc", "A calculator")
@@ -2352,10 +2343,7 @@ Tip: Use quotes if you use spaces in expressions.
 
 ---
 
-**Smart default tip** — when positional arguments are defined, ArgMojo automatically adds a
-built-in tip explaining the `--` separator. The example in this default tip adapts
-based on whether negative numbers are auto-detected: if they are, it uses
-`-my-value`; otherwise, it uses `-10.18`.
+**Smart default tip** — when positional arguments are defined, ArgMojo automatically adds a built-in tip explaining the `--` separator. The example in this default tip adapts based on whether negative numbers are auto-detected: if they are, it uses `-my-value`; otherwise, it uses `-10.18`.
 
 User-defined tips appear **below** the built-in tip.
 
@@ -2385,6 +2373,50 @@ var command = Command("myapp", "Description", version="1.0.0")
 ```
 
 After printing the version, the program exits cleanly with exit code 0.
+
+### CJK-Aware Help Alignment
+
+ArgMojo automatically handles CJK (Chinese, Japanese, Korean) characters in help output. CJK ideographs and fullwidth characters occupy **two terminal columns** instead of one, so naïve byte- or codepoint-based padding would cause misaligned help columns.
+
+ArgMojo's help formatter uses **display width** (East Asian Width) to compute padding, so help descriptions stay aligned even when option names, positional names, subcommand names, or help text contain CJK characters.
+
+See [Unicode v17.0](https://www.unicode.org/charts/PDF/Unicode-17.0/) for details on CJK character ranges and properties.
+
+**Example — mixed ASCII and CJK options:**
+
+```mojo
+var command = Command("工具", "一個命令行工具")
+command.add_argument(
+    Argument("output", help="Output path").long("output").short("o")
+)
+command.add_argument(
+    Argument("編碼", help="設定編碼").long("編碼")
+)
+```
+
+```txt
+Options:
+  -o, --output <output>    Output path
+      --編碼 <編碼>        設定編碼
+```
+
+**Example — CJK subcommands:**
+
+```mojo
+var app = Command("工具", "一個命令行工具")
+var init_cmd = Command("初始化", "建立新項目")
+app.add_subcommand(init_cmd^)
+var build_cmd = Command("構建", "編譯項目")
+app.add_subcommand(build_cmd^)
+```
+
+```txt
+Commands:
+  初始化    建立新項目
+  構建      編譯項目
+```
+
+No configuration is needed — CJK-aware alignment is always active.
 
 ## Parsing Behaviour
 

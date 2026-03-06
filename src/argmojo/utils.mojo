@@ -24,6 +24,134 @@ comptime _DEFAULT_ERROR_COLOR = _RED
 # ── Utility functions ────────────────────────────────────────────────────────
 
 
+fn _is_wide_codepoint(cp: Int) -> Bool:
+    """Returns True if the Unicode codepoint occupies two terminal columns.
+
+    Covers CJK Unified Ideographs, CJK Compatibility Ideographs,
+    CJK Extension blocks (A-J), Fullwidth Forms, and a selection of
+    other commonly wide ranges (Hangul Syllables, CJK Symbols, etc.).
+    """
+    # CJK Unified Ideographs.
+    if cp >= 0x4E00 and cp <= 0x9FFF:
+        return True
+    # CJK Unified Ideographs Extension A.
+    if cp >= 0x3400 and cp <= 0x4DBF:
+        return True
+    # CJK Compatibility Ideographs.
+    if cp >= 0xF900 and cp <= 0xFAFF:
+        return True
+    # CJK Unified Ideographs Extension B-J (SMP: U+20000–U+323AF).
+    if cp >= 0x20000 and cp <= 0x323AF:
+        return True
+    # Fullwidth Forms (fullwidth ASCII, fullwidth punctuation).
+    if cp >= 0xFF01 and cp <= 0xFF60:
+        return True
+    # Fullwidth special: fullwidth won sign, fullwidth cent sign, etc.
+    if cp >= 0xFFE0 and cp <= 0xFFE6:
+        return True
+    # Hangul Syllables.
+    if cp >= 0xAC00 and cp <= 0xD7AF:
+        return True
+    # Hangul Jamo (initial consonants — rendered wide on most terminals).
+    if cp >= 0x1100 and cp <= 0x115F:
+        return True
+    # Hangul Jamo Extended-A.
+    if cp >= 0xA960 and cp <= 0xA97C:
+        return True
+    # Hangul Jamo Extended-B.
+    if cp >= 0xD7B0 and cp <= 0xD7FF:
+        return True
+    # CJK Symbols and Punctuation.
+    if cp >= 0x3000 and cp <= 0x303F:
+        return True
+    # Hiragana.
+    if cp >= 0x3040 and cp <= 0x309F:
+        return True
+    # Katakana.
+    if cp >= 0x30A0 and cp <= 0x30FF:
+        return True
+    # Katakana Phonetic Extensions.
+    if cp >= 0x31F0 and cp <= 0x31FF:
+        return True
+    # Bopomofo.
+    if cp >= 0x3100 and cp <= 0x312F:
+        return True
+    # Bopomofo Extended.
+    if cp >= 0x31A0 and cp <= 0x31BF:
+        return True
+    # Enclosed CJK Letters and Months.
+    if cp >= 0x3200 and cp <= 0x32FF:
+        return True
+    # CJK Compatibility.
+    if cp >= 0x3300 and cp <= 0x33FF:
+        return True
+    # Enclosed Ideographic Supplement.
+    if cp >= 0x1F200 and cp <= 0x1F2FF:
+        return True
+    return False
+
+
+fn _display_width(s: String) -> Int:
+    """Returns the terminal display width of a string.
+
+    CJK characters and fullwidth forms count as 2 columns each.  ANSI
+    escape sequences (e.g. colour codes) are skipped and contribute 0.
+    All other visible characters count as 1.  This function is used by
+    the help formatter to align columns correctly with mixed CJK/ASCII
+    text.
+
+    Args:
+        s: The string to measure.
+
+    Returns:
+        The number of terminal columns the string would occupy.
+    """
+    var width = 0
+    var i = 0
+    var n = len(s)
+    while i < n:
+        var b0 = Int(s.as_bytes()[i])
+        # Skip ANSI escape sequences: ESC [ ... final_byte.
+        if b0 == 0x1B and i + 1 < n and Int(s.as_bytes()[i + 1]) == 0x5B:
+            i += 2  # skip ESC [
+            while i < n:
+                var c = Int(s.as_bytes()[i])
+                i += 1
+                # Final byte of CSI sequence is in 0x40–0x7E range.
+                if c >= 0x40 and c <= 0x7E:
+                    break
+            continue
+        # Decode UTF-8 codepoint.
+        var cp: Int
+        var seq_len: Int
+        if b0 < 0x80:
+            cp = b0
+            seq_len = 1
+        elif b0 < 0xC0:
+            # Continuation byte (shouldn't start a sequence); skip.
+            i += 1
+            continue
+        elif b0 < 0xE0:
+            seq_len = 2
+            cp = b0 & 0x1F
+        elif b0 < 0xF0:
+            seq_len = 3
+            cp = b0 & 0x0F
+        else:
+            seq_len = 4
+            cp = b0 & 0x07
+        for j in range(1, seq_len):
+            if i + j < n:
+                cp = (cp << 6) | (Int(s.as_bytes()[i + j]) & 0x3F)
+        i += seq_len
+        # Determine display width of this codepoint.
+        if _is_wide_codepoint(cp):
+            width += 2
+        else:
+            width += 1
+    return width
+
+
 fn _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
