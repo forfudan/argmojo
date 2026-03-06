@@ -35,8 +35,9 @@ fn test_const_long_with_equals_value() raises:
     assert_equal(result.get_string("compress"), "bzip2")
 
 
-fn test_const_long_space_separated_rejected() raises:
-    """--compress bzip2 (space-separated) is rejected because default_if_no_value implies require_equals.
+fn test_const_long_space_separated_not_consumed() raises:
+    """--compress followed by a token does not consume it as a value;
+    --compress uses default-if-no-value and the next token becomes a positional.
     """
     var command = Command("test", "Test app")
     command.add_argument(
@@ -97,7 +98,7 @@ fn test_const_long_with_default() raises:
 
 
 fn test_const_long_with_choices() raises:
-    """default_if_no_value must pass choices validation."""
+    """Tests default_if_no_value must pass choices validation."""
     var command = Command("test", "Test app")
     var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
@@ -506,7 +507,8 @@ fn test_help_require_equals_with_metavar() raises:
 
 
 fn test_const_with_append() raises:
-    """default_if_no_value works with append: --tag collects default-if-no-value, --tag=x collects x.
+    """Tests default_if_no_value works with append:
+    --tag collects default-if-no-value, --tag=x collects x.
     """
     var command = Command("test", "Test app")
     command.add_argument(
@@ -525,7 +527,7 @@ fn test_const_with_append() raises:
 
 
 fn test_const_with_persistent() raises:
-    """default_if_no_value works on persistent flags with subcommands."""
+    """Tests default_if_no_value works on persistent flags with subcommands."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression")

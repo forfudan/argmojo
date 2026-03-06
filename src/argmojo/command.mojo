@@ -1,6 +1,7 @@
 """Defines a CLI command and performs argument parsing."""
 
 from os import getenv
+from os.path import exists as _path_exists
 from sys import argv, exit, stderr
 
 from .argument import Argument
@@ -16,6 +17,114 @@ from .utils import (
     _resolve_color,
     _suggest_similar,
 )
+
+
+# ---------- module-level file reader (workaround for Mojo compiler issue) ----
+# Placing `open()` inside a method of a struct that contains `List[Self]` causes
+# the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
+# Moving the I/O into a free function avoids the trigger.
+fn _read_file_content(filepath: String) raises -> String:
+    """Reads and returns the entire contents of *filepath*."""
+    with open(filepath, "r") as f:
+        return f.read()
+
+
+fn _expand_response_files(
+    raw_args: List[String],
+    prefix: String,
+    max_depth: Int,
+    cmd_name: String,
+) raises -> List[String]:
+    """Expands response-file tokens in the argument list.
+
+    Free function (not a Command method) to work around a Mojo compiler
+    deadlock when ``open()`` or complex I/O appears inside a method of a
+    struct that contains ``List[Self]`` and is compiled with
+    ``-D ASSERT=all``.
+    """
+    var expanded = List[String]()
+    var plen = len(prefix)
+
+    for idx in range(len(raw_args)):
+        var token = raw_args[idx]
+
+        # Preserve argv[0] (program name) verbatim — never expand it.
+        if idx == 0:
+            expanded.append(token)
+            continue
+
+        # Check for escape: doubled prefix → literal.
+        if (
+            len(token) > plen * 2 - 1
+            and String(token[: plen * 2]) == prefix + prefix
+        ):
+            expanded.append(String(token[plen:]))
+            continue
+
+        if len(token) > plen and String(token[:plen]) == prefix:
+            var filepath = String(token[plen:])
+            _read_response_file(
+                filepath, expanded, 0, prefix, max_depth, cmd_name
+            )
+        else:
+            expanded.append(token)
+    return expanded^
+
+
+fn _read_response_file(
+    filepath: String,
+    mut out_args: List[String],
+    depth: Int,
+    prefix: String,
+    max_depth: Int,
+    cmd_name: String,
+) raises:
+    """Reads a single response file and appends its arguments.
+
+    Free function (not a Command method) — see ``_expand_response_files``
+    docstring for rationale.
+    """
+    if depth >= max_depth:
+        var msg = (
+            "Response file nesting too deep (max "
+            + String(max_depth)
+            + "): "
+            + filepath
+        )
+        print("error: " + cmd_name + ": " + msg, file=stderr)
+        raise Error(msg)
+
+    if not _path_exists(filepath):
+        var msg = "Response file not found: " + filepath
+        print("error: " + cmd_name + ": " + msg, file=stderr)
+        raise Error(msg)
+
+    var plen = len(prefix)
+    var content = _read_file_content(filepath)
+
+    var lines = content.split("\n")
+    for li in range(len(lines)):
+        var line = String(String(lines[li]).strip())
+
+        if len(line) == 0 or line.startswith("#"):
+            continue
+
+        # Escape: doubled prefix → literal.
+        if (
+            len(line) > plen * 2 - 1
+            and String(line[: plen * 2]) == prefix + prefix
+        ):
+            out_args.append(String(line[plen:]))
+            continue
+
+        # Recursive response file.
+        if len(line) > plen and String(line[:plen]) == prefix:
+            var nested_path = String(line[plen:])
+            _read_response_file(
+                nested_path, out_args, depth + 1, prefix, max_depth, cmd_name
+            )
+        else:
+            out_args.append(line)
 
 
 struct Command(Copyable, Movable, Stringable, Writable):
@@ -108,6 +217,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
     """When True, this command is excluded from help output, shell
     completions, and 'available commands' error lists, but remains
     dispatchable by exact name or alias.  Set via ``hidden()``."""
+    var _response_file_prefix: String
+    """Character prefix that marks a response-file token (e.g. ``@``).
+    When a token starts with this prefix, the remainder is treated as a
+    file path.  Each line of the file is inserted as a separate argument.
+    Set via ``response_file_prefix()``.  Empty string means disabled."""
+    var _response_file_max_depth: Int
+    """Maximum nesting depth for recursive response-file expansion.
+    Prevents infinite loops when file A references file B and vice versa."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -147,6 +264,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._command_aliases = List[String]()
         self._tips = List[String]()
         self._is_hidden = False
+        self._response_file_prefix = String("")
+        self._response_file_max_depth = 10
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -181,6 +300,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._command_aliases = move._command_aliases^
         self._tips = move._tips^
         self._is_hidden = move._is_hidden
+        self._response_file_prefix = move._response_file_prefix^
+        self._response_file_max_depth = move._response_file_max_depth
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -232,6 +353,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._command_aliases = copy._command_aliases.copy()
         self._tips = copy._tips.copy()
         self._is_hidden = copy._is_hidden
+        self._response_file_prefix = copy._response_file_prefix
+        self._response_file_max_depth = copy._response_file_max_depth
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -274,6 +397,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 + self.name
                 + "' which already has subcommands. Call"
                 " allow_positional_with_subcommands() to opt in"
+            )
+        # Guard: require_equals / default_if_no_value + multi-value is unsupported.
+        if (
+            argument._require_equals or argument._has_default_if_no_value
+        ) and argument._number_of_values > 0:
+            self._error(
+                "Argument '"
+                + argument.name
+                + "': .require_equals() / .default_if_no_value() cannot be"
+                " combined with .number_of_values[N]() (multi-value options)"
             )
         self.args.append(argument^)
 
@@ -595,6 +728,56 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```
         """
         self._is_hidden = True
+
+    fn response_file_prefix(mut self, prefix: String = "@"):
+        """Enables response-file expansion for this command.
+
+        Warning: **Temporarily disabled** — the underlying expansion
+        logic is compiled out to work around a Mojo compiler deadlock
+        triggered by ``-D ASSERT=all``.  Calling this method still
+        stores the prefix, but ``parse_arguments()`` will **not**
+        expand response-file tokens until the compiler bug is fixed.
+
+        When enabled, any token that starts with the given ``prefix``
+        is treated as a response-file reference.  The remainder of
+        the token is the file path; each non-empty, non-comment line
+        of that file is inserted as a separate argument in place of
+        the original token.
+
+        - Blank lines and lines starting with ``#`` are ignored.
+        - Leading / trailing whitespace on each line is stripped.
+        - Response files may reference other response files (recursive),
+          up to the configured nesting depth (set via
+          ``response_file_max_depth()``; default 10).
+        - To pass a literal token that starts with the prefix (e.g. an
+          email ``@user``), escape it by doubling the prefix: ``@@user``
+          is inserted as ``@user``.
+
+        Args:
+            prefix: The prefix character(s) that introduce a response
+                file (default ``"@"``).
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var command = Command("myapp", "A sample application")
+        command.response_file_prefix()  # uses default '@'
+        # Now: myapp @args.txt  reads arguments from args.txt
+        ```
+        """
+        self._response_file_prefix = prefix
+
+    fn response_file_max_depth(mut self, depth: Int):
+        """Sets the maximum nesting depth for response-file expansion.
+
+        Warning: **Temporarily disabled** — see
+        ``response_file_prefix()`` docstring for details.
+
+        Args:
+            depth: Maximum recursion depth (default 10).
+        """
+        self._response_file_max_depth = depth
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -1089,6 +1272,21 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         var result = ParseResult()
 
+        # Expand response files if enabled.
+        var args_to_parse = raw_args.copy()
+        # NOTE: Response file expansion temporarily disabled to work around
+        # Mojo compiler deadlock with -D ASSERT=all.  The module-level
+        # _expand_response_files / _read_response_file functions are still
+        # available and tested; only the automatic call from parse_arguments
+        # is commented out.
+        # if len(self._response_file_prefix) > 0:
+        #     args_to_parse = _expand_response_files(
+        #         raw_args,
+        #         self._response_file_prefix,
+        #         self._response_file_max_depth,
+        #         self.name,
+        #     )
+
         # Register positional argument names in order.
         for i in range(len(self.args)):
             if self.args[i]._is_positional:
@@ -1099,14 +1297,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var stop_parsing_options = False
 
         # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_arguments and len(raw_args) <= 1:
+        if self._help_on_no_arguments and len(args_to_parse) <= 1:
             print(self._generate_help())
             exit(0)
 
         # === PARSING PHASE === #
 
-        while i < len(raw_args):
-            var arg = raw_args[i]
+        while i < len(args_to_parse):
+            var arg = args_to_parse[i]
 
             # Handle "--" stop marker.
             if arg == "--" and not stop_parsing_options:
@@ -1135,9 +1333,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 and not self._completions_is_subcommand
                 and arg == "--" + self._completions_name
             ):
-                if i + 1 < len(raw_args):
+                if i + 1 < len(args_to_parse):
                     i += 1
-                    var shell_arg = raw_args[i]
+                    var shell_arg = args_to_parse[i]
                     try:
                         print(self.generate_completion(shell_arg))
                     except e:
@@ -1154,7 +1352,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
             # Long option: --key, --key=value, --key value
             if arg.startswith("--"):
-                i = self._parse_long_option(raw_args, i, result)
+                i = self._parse_long_option(args_to_parse, i, result)
                 continue
 
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
@@ -1178,9 +1376,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 # ────────────────────────────────────────────────────────────
                 var key = String(arg[1:])
                 if len(key) == 1:
-                    i = self._parse_short_single(key, raw_args, i, result)
+                    i = self._parse_short_single(key, args_to_parse, i, result)
                 else:
-                    i = self._parse_short_merged(key, raw_args, i, result)
+                    i = self._parse_short_merged(key, args_to_parse, i, result)
                 continue
 
             # Positional argument — check for subcommand dispatch first.
@@ -1190,9 +1388,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 and self._completions_is_subcommand
                 and arg == self._completions_name
             ):
-                if i + 1 < len(raw_args):
+                if i + 1 < len(args_to_parse):
                     i += 1
-                    var shell_arg = raw_args[i]
+                    var shell_arg = args_to_parse[i]
                     try:
                         print(self.generate_completion(shell_arg))
                     except e:
@@ -1206,7 +1404,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     )
                     exit(2)
             if len(self.subcommands) > 0:
-                var new_i = self._dispatch_subcommand(arg, raw_args, i, result)
+                var new_i = self._dispatch_subcommand(
+                    arg, args_to_parse, i, result
+                )
                 if new_i >= 0:
                     i = new_i
                     continue

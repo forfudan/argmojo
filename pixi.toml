@@ -27,18 +27,21 @@ package = "mojo package src/argmojo -o argmojo.mojopkg"
 test = """\
     pixi run format \
     && pixi run package \
-    && mojo run -I src tests/test_parse.mojo \
-    && mojo run -I src tests/test_groups.mojo \
-    && mojo run -I src tests/test_collect.mojo \
-    && mojo run -I src tests/test_help.mojo \
-    && mojo run -I src tests/test_extras.mojo \
-    && mojo run -I src tests/test_subcommands.mojo \
-    && mojo run -I src tests/test_negative_numbers.mojo \
-    && mojo run -I src tests/test_persistent.mojo \
-    && mojo run -I src tests/test_typo_suggestions.mojo \
-    && mojo run -I src tests/test_completion.mojo \
-    && mojo run -I src tests/test_implies.mojo \
-    && mojo run -I src tests/test_const_require_equals.mojo"""
+    && mojo run -I src -D ASSERT=all tests/test_parse.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_groups.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_collect.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_help.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_extras.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_negative_numbers.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_persistent.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_typo_suggestions.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_implies.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_const_require_equals.mojo"""
+    # NOTE: test_response_file.mojo is excluded — response file expansion
+    # is temporarily disabled to work around a Mojo compiler deadlock
+    # with -D ASSERT=all.  Re-enable when the compiler bug is fixed.
 
 # build example binaries
 build = """pixi run package \

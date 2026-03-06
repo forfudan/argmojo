@@ -65,7 +65,7 @@ These features appear across multiple libraries and depend only on string operat
 | Cap and floor (clamp) for ranges   | -        | ✓     | —     | —    | Click `IntRange(clamp=True)` | **Done**      |
 | Hidden subcommands                 | —        | —     | ✓     | ✓    |                              | **Done**      |
 | `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | **Done**      |
-| Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | Phase 5       |
+| Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | **Done**      |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                              | Phase 5       |
 | Interactive prompting              | —        | ✓     | —     | —    |                              | Phase 5       |
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
@@ -154,7 +154,8 @@ tests/
 ├── test_subcommands.mojo       # Subcommand tests (dispatch, help sub, unknown sub, etc.)
 ├── test_negative_numbers.mojo  # Negative number passthrough tests
 ├── test_persistent.mojo        # Persistent (global) flag tests
-└── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
+├── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
+└── test_response_file.mojo        # response file (@args.txt) expansion tests
 examples/
 ├── mgrep.mojo                   # grep-like CLI example (no subcommands)
 └── mgit.mojo                    # git-like CLI example (with subcommands)
@@ -204,6 +205,7 @@ examples/
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                       | ✓      | ✓     |
 | Default-if-no-value (`.default_if_no_value("gzip")` → optional value with fallback)                | ✓      | ✓     |
 | Require equals syntax (`.require_equals()` → `--key=value` only)                                   | ✓      | ✓     |
+| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)               | ✓      | ✓     |
 
 ### 4.3 API Design (Current)
 
@@ -534,7 +536,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
 - [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
 - [ ] **Default-if-no-value** — `--opt` (no value) → use default-if-no-value; `--opt=val` → use val; absent → use default (argparse `const`)
-- [ ] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
+- [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
 - [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)

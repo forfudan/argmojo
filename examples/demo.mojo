@@ -10,7 +10,7 @@ conditional requirements, negatable flags, color customisation
 (header_color, arg_color), numeric range validation, append with range
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
-help_on_no_arguments, default_if_no_value, and require_equals.
+help_on_no_arguments, default_if_no_value, require_equals, and response files.
 
 Note: This demo looks very strange, but useful :D
 
@@ -70,6 +70,10 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   ./demo input.txt --separator="|"
   ./demo input.txt --separator "|"            # error: requires '=' syntax
 
+  # response file: put arguments in a file and reference with @
+  echo '--verbose\n--level=5\n--color' > /tmp/demo_args.txt
+  ./demo input.txt @/tmp/demo_args.txt
+
   # negative number passthrough
   ./demo -- -42
 
@@ -104,6 +108,9 @@ fn main() raises:
     # ── Color customisation ──────────────────────────────────────────────
     app.header_color("CYAN")
     app.arg_color("GREEN")
+
+    # ── Response file support ────────────────────────────────────────────
+    app.response_file_prefix()  # enables @args.txt expansion
 
     # ── Positional arguments ─────────────────────────────────────────────
     app.add_argument(

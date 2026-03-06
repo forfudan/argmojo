@@ -68,6 +68,14 @@ from argmojo import Argument, Command
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
   - [The `--` Stop Marker](#the----stop-marker)
+<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
+- [Response Files](#response-files)
+  - [Enabling Response Files](#enabling-response-files)
+  - [File Format](#file-format)
+  - [Escaping the Prefix](#escaping-the-prefix)
+  - [Recursive Response Files](#recursive-response-files)
+  - [Custom Prefix](#custom-prefix)
+-->
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -2062,7 +2070,7 @@ Options:
 
 Use `.default_if_no_value("value")` to make an option's value **optional**. When the option is present without an explicit value, the default-if-no-value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
 
-`.default_if_no_value()` automatically implies `.require_equals()` for long options, so `--key value` (space-separated) is rejected — the user must write `--key=value` to supply an explicit value.
+`.default_if_no_value()` automatically implies `.require_equals()` for long options in the sense that `=` is required to attach an *explicit* value. A bare `--key` is still accepted and uses the default-if-no-value; `--key value` (space-separated) does *not* treat `value` as the argument to `--key` but leaves it to be parsed as a positional argument or another option. To supply an explicit value to the option itself, the user must write `--key=value`.
 
 ```mojo
 command.add_argument(
@@ -2545,6 +2553,107 @@ myapp -- -10.18
 
 > **Tip:** ArgMojo's [Auto-detect](#negative-number-passthrough) can handle most negative-number cases without `--`. Use `--` only when auto-detect is insufficient (e.g., a digit short option is registered without `allow_negative_numbers()`).
 
+<!-- Response Files section temporarily disabled — Mojo compiler deadlock with -D ASSERT=all.
+     The implementation is preserved as module-level functions and will be re-enabled
+     when the Mojo compiler bug is fixed.
+
+## Response Files
+
+A **response file** (also called an **args file**) lets users store arguments in a text file and reference it on the command line with a prefix character (default `@`). This is useful when the argument list is very long or when the same set of arguments is reused frequently.
+
+> Libraries with similar support: **argparse** (`fromfile_prefix_chars`), **javac** (`@argfile`), **MSBuild** (`@file`), **gcc** (`@file`).
+
+### Enabling Response Files
+
+Call `response_file_prefix()` on your command to enable the feature:
+
+```mojo
+var command = Command("mytool", "My CLI tool")
+command.response_file_prefix()  # default '@'
+```
+
+Now `mytool @args.txt` reads arguments from `args.txt`, with each line becoming a separate argument.
+
+### File Format
+
+Each non-empty line in the response file becomes one argument. Lines starting with `#` are comments and are ignored. Leading and trailing whitespace per line is stripped.
+
+```text
+# args.txt — common flags for the build
+--verbose
+--output=build/release
+--jobs=4
+
+# source files
+src/main.mojo
+src/utils.mojo
+```
+
+```bash
+mytool @args.txt
+# equivalent to: mytool --verbose --output=build/release --jobs=4 src/main.mojo src/utils.mojo
+```
+
+Response file arguments can be mixed freely with direct CLI arguments:
+
+```bash
+mytool --debug @args.txt --extra-flag
+```
+
+### Escaping the Prefix
+
+To pass a literal token that starts with `@` (e.g., an email address), double the prefix:
+
+```bash
+mytool @@user@example.com
+# parsed as: @user@example.com
+```
+
+The same escape works inside response files:
+
+```text
+# users.txt
+@@admin
+@@guest
+```
+
+### Recursive Response Files
+
+Response files may reference other response files:
+
+```text
+# base-args.txt
+--verbose
+
+# build-args.txt
+@base-args.txt
+--output=build/release
+```
+
+```bash
+mytool @build-args.txt
+# expands to: mytool --verbose --output=build/release
+```
+
+Recursion depth is limited to 10 by default. Adjust with `response_file_max_depth()`:
+
+```mojo
+command.response_file_max_depth(5)
+```
+
+A self-referencing or circular response file triggers an error once the depth limit is reached.
+
+### Custom Prefix
+
+Use a different prefix character if `@` conflicts with your argument values:
+
+```mojo
+command.response_file_prefix("+")
+# Now: mytool +args.txt
+```
+
+end of Response Files section -->
+
 ## Shell Completion
 
 ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These scripts enable tab-completion for your CLI's options, flags, subcommands, and choice values — with zero runtime overhead.
@@ -2701,7 +2810,7 @@ The generated scripts cover the full command tree:
 
 The table below maps every ArgMojo builder method / command-level method to its equivalent in four popular CLI libraries. **An empty cell means the name is identical (or near-identical) to ArgMojo's.** A filled cell shows the other library's name or approach. **—** means the library has no built-in equivalent.
 
-> Libraries compared: **argparse** (Python stdlib), **click** (Python, built on top of argparse), **clap** (Rust, derive & builder API), **cobra / pflag** (Go).
+> Libraries compared: **argparse** (Python stdlib), **click** (Python CLI framework), **clap** (Rust, derive & builder API), **cobra / pflag** (Go).
 
 ### Argument-Level Builder Methods
 
@@ -2742,6 +2851,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
+| `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
 
 ### Notes
 
