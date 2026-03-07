@@ -127,8 +127,8 @@ fn test_append_in_help() raises:
         msg="append arg without value_name should show <tag>... in help",
     )
     assert_true(
-        "ENV..." in help,
-        msg="append arg with value_name should show ENV... in help",
+        "<ENV>..." in help,
+        msg="append arg with value_name should show <ENV>... in help",
     )
 
 
@@ -497,10 +497,10 @@ fn test_nargs_in_help() raises:
         "<point> <point>" in help,
         msg="number_of_values(2) should show '<point> <point>' in help",
     )
-    # --rgb should show N N N
+    # --rgb should show <N> <N> <N>
     assert_true(
-        "N N N" in help,
-        msg="number_of_values(3) with value_name should show 'N N N'",
+        "<N> <N> <N>" in help,
+        msg="number_of_values(3) with value_name should show '<N> <N> <N>'",
     )
     # Neither should have "..." since they are nargs, not plain append.
     assert_false(
@@ -521,8 +521,8 @@ fn test_nargs_with_value_name() raises:
 
     var help = command._generate_help(color=False)
     assert_true(
-        "PX PX" in help,
-        msg="number_of_values(2) with value_name PX should show 'PX PX'",
+        "<PX> <PX>" in help,
+        msg="number_of_values(2) with value_name PX should show '<PX> <PX>'",
     )
 
 

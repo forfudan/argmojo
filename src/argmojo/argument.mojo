@@ -134,6 +134,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     var _allow_hyphen_values: Bool
     """If True, the literal token ``-`` is accepted as a valid value for
     this argument (conventionally meaning stdin/stdout)."""
+    var _value_name_wrapped: Bool
+    """If True, the value_name is displayed wrapped in angle brackets
+    (e.g. ``<FILE>`` instead of ``FILE``).  Defaults to True."""
+    var _group: String
+    """Help-output group name for this argument.  Arguments with the same
+    group name are displayed together under a shared heading.  Empty
+    string means ungrouped (shown under the default 'Options:' heading)."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -178,6 +185,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._require_equals = False
         self._is_remainder = False
         self._allow_hyphen_values = False
+        self._value_name_wrapped = True
+        self._group = ""
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -221,6 +230,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._require_equals = copy._require_equals
         self._is_remainder = copy._is_remainder
         self._allow_hyphen_values = copy._allow_hyphen_values
+        self._value_name_wrapped = copy._value_name_wrapped
+        self._group = copy._group
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -260,6 +271,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._require_equals = move._require_equals
         self._is_remainder = move._is_remainder
         self._allow_hyphen_values = move._allow_hyphen_values
+        self._value_name_wrapped = move._value_name_wrapped
+        self._group = move._group^
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -361,11 +374,15 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values = values^
         return self^
 
-    fn value_name(var self, name: String) -> Self:
+    fn value_name[wrapped: Bool = True](var self, name: String) -> Self:
         """Sets the display name for the value in help text.
 
-        For example, ``.value_name("FILE")`` causes help to show ``--output FILE``
-        instead of ``--output OUTPUT``.
+        When *wrapped* is True (default), the name is displayed inside angle
+        brackets: ``--output <FILE>``.  When False, it is displayed bare:
+        ``--output FILE``.
+
+        Parameters:
+            wrapped: Wrap the display name in ``<>`` (default True).
 
         Args:
             name: The display name.
@@ -374,6 +391,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             Self with the value_name set.
         """
         self._value_name = name
+        self._value_name_wrapped = wrapped
         return self^
 
     fn hidden(var self) -> Self:
@@ -738,6 +756,23 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             Self with hyphen-value support enabled.
         """
         self._allow_hyphen_values = True
+        return self^
+
+    fn group(var self, name: String) -> Self:
+        """Assigns this argument to a named help-output group.
+
+        Arguments sharing the same group name are displayed together
+        under a dedicated heading in ``--help`` output (e.g.,
+        ``Network:`` or ``Authentication:``).  Ungrouped arguments
+        remain under the default ``Options:`` heading.
+
+        Args:
+            name: The group name (used as the section heading).
+
+        Returns:
+            Self with the group set.
+        """
+        self._group = name
         return self^
 
     # ===------------------------------------------------------------------=== #
