@@ -338,7 +338,7 @@ command.add_argument(
 
 ## Builder Method Compatibility
 
-The `Argument` builder has ~20 chainable methods, but not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
+The `Argument` builder has 27 chainable methods, and the `Command` struct has additional configuration methods and constraint methods. Not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
 
 ### ASCII Tree
 
@@ -356,7 +356,8 @@ Argument("name", help="...")
 ║   │   ├── .append()
 ║   │   │   ├── .delimiter(",")
 ║   │   │   └── .number_of_values[2]()
-║   │   └── .map_option()
+║   │   ├── .map_option()
+║   │   └── .allow_hyphen_values()               accept -x as a value, not option
 ║   │
 ║   ├── .flag()                            ← boolean, no value
 ║   │   └── .negatable()                     adds --no-X form
@@ -375,6 +376,8 @@ Argument("name", help="...")
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
 ║   .value_name("FILE")          display name in help      (value / positional)
+║   └── [wrapped=True]           wrap in <> (default); [False] = bare
+║   .group("Network")            section heading in help   (any)
 ║   .hidden()                    hide from --help          (any)
 ║   .aliases(["alt"])            alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
@@ -388,13 +391,38 @@ Argument("name", help="...")
 ║   command.required_together(["a","b"])   all or none from the group
 ║   command.required_if("target","cond")   target required when cond is set
 ║   command.implies("trigger","implied")   auto-set implied when trigger is set
+║
+╠══ Command-level configuration (called on Command) ════════════════════════════
+║   command.help_on_no_arguments()              show help when invoked with no args
+║   command.allow_negative_numbers()            negative tokens treated as positionals
+║   command.allow_positional_with_subcommands() allow positionals + subcommands
+║   command.add_tip("...")                      custom tip shown in help footer
+║   command.command_aliases(["co"])             alternate names for this subcommand
+║   command.hidden()                            hide subcommand from help/completions
+║   command.disable_help_subcommand()           opt out of auto-added help subcommand
+║   ├── Colour customisation
+║   │   command.header_color("CYAN")            section header colour
+║   │   command.arg_color("GREEN")              argument name colour
+║   │   command.warn_color("YELLOW")            deprecation warning colour
+║   │   command.error_color("RED")              error message colour
+║   ├── Shell completion
+║   │   command.disable_default_completions()   disable built-in --completions
+║   │   command.completions_name("name")        custom trigger name
+║   │   command.completions_as_subcommand()     expose as subcommand instead
+║   ├── Response files
+║   │   command.response_file_prefix("@")       enable @args.txt expansion ⁵
+║   │   command.response_file_max_depth(10)     max recursive nesting depth ⁵
+║   └── CJK / i18n
+║       command.disable_fullwidth_correction()  disable fullwidth→halfwidth auto-fix
+║       command.disable_punctuation_correction()  disable CJK punctuation correction
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
 
 > **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
 > indented under `.range[min,max]()` because it requires range.  The three main
 > paths (value / flag / count) under *Named option* are **mutually
-> exclusive** — pick exactly one mode per argument.
+> exclusive** — pick exactly one mode per argument.  Command-level methods
+> are called on `Command`, not chained on `Argument`.
 
 ### Compatibility Table
 
@@ -415,7 +443,8 @@ The table below shows which builder methods can be used with each argument mode.
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name("FILE")`            |      ✓      |     —     |     —      |        ✓        |
+| `.value_name("FILE")` ⁴          |      ✓      |     —     |     —      |        ✓        |
+| `.group("name")`                 |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
@@ -430,7 +459,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
 | `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
 
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
 
 ## Short Option Details
 
