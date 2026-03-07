@@ -13,9 +13,12 @@ from .utils import (
     _DEFAULT_ARG_COLOR,
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
+    _correct_cjk_punctuation,
     _display_width,
+    _has_fullwidth_chars,
     _looks_like_number,
     _resolve_color,
+    _split_on_fullwidth_spaces,
     _suggest_similar,
 )
 
@@ -226,6 +229,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
     var _response_file_max_depth: Int
     """Maximum nesting depth for recursive response-file expansion.
     Prevents infinite loops when file A references file B and vice versa."""
+    var _disable_fullwidth_correction: Bool
+    """When True, disable automatic full-width → half-width character
+    correction on option tokens.  By default (False), tokens starting
+    with ``-`` that contain fullwidth ASCII characters (``U+FF01``–
+    ``U+FF5E``) or fullwidth spaces (``U+3000``) are auto-corrected
+    with a warning.  Call ``disable_fullwidth_correction()`` to opt out."""
+    var _disable_punctuation_correction: Bool
+    """When True, disable CJK punctuation detection in error recovery.
+    By default (False), when an unknown option is encountered, common
+    CJK punctuation (e.g. em-dash ``U+2014``) is substituted before
+    running Levenshtein typo suggestion.  Call
+    ``disable_punctuation_correction()`` to opt out."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -267,6 +282,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = False
         self._response_file_prefix = String("")
         self._response_file_max_depth = 10
+        self._disable_fullwidth_correction = False
+        self._disable_punctuation_correction = False
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -303,6 +320,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = move._is_hidden
         self._response_file_prefix = move._response_file_prefix^
         self._response_file_max_depth = move._response_file_max_depth
+        self._disable_fullwidth_correction = move._disable_fullwidth_correction
+        self._disable_punctuation_correction = (
+            move._disable_punctuation_correction
+        )
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -356,6 +377,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = copy._is_hidden
         self._response_file_prefix = copy._response_file_prefix
         self._response_file_max_depth = copy._response_file_max_depth
+        self._disable_fullwidth_correction = copy._disable_fullwidth_correction
+        self._disable_punctuation_correction = (
+            copy._disable_punctuation_correction
+        )
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -814,6 +839,51 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._response_file_max_depth = depth
 
+    fn disable_fullwidth_correction(mut self):
+        """Disables automatic full-width → half-width character correction.
+
+        By default, ArgMojo detects fullwidth ASCII characters
+        (``U+FF01``–``U+FF5E``) and fullwidth spaces (``U+3000``) in
+        option tokens (those starting with ``-``) and auto-corrects them
+        to their halfwidth equivalents with a warning.  This helps CJK
+        users who forget to switch input methods.
+
+        Call this method to disable that correction entirely — useful
+        when strict parsing is preferred.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_fullwidth_correction()
+        # Now: －－ｖｅｒｂｏｓｅ is NOT corrected → unknown option error
+        ```
+        """
+        self._disable_fullwidth_correction = True
+
+    fn disable_punctuation_correction(mut self):
+        """Disables CJK punctuation detection in error recovery.
+
+        By default, when an unknown option is encountered, ArgMojo tries
+        substituting common CJK punctuation (e.g. em-dash ``——`` →
+        ``--``) before running Levenshtein typo suggestion.  This helps
+        CJK users who accidentally type Chinese punctuation.
+
+        Call this method to disable that behaviour — useful when strict
+        error messages are preferred.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_punctuation_correction()
+        # Now: ——verbose will NOT attempt em-dash → hyphen correction
+        ```
+        """
+        self._disable_punctuation_correction = True
+
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
 
@@ -1146,6 +1216,59 @@ struct Command(Copyable, Movable, Stringable, Writable):
         else:
             print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
 
+    fn _preprocess_cjk_args(self, mut args: List[String]):
+        """Applies fullwidth and CJK punctuation auto-correction to *args*.
+
+        Two passes:
+        1. Fullwidth → halfwidth (``U+FF01``–``U+FF5E``, ``U+3000``).
+        2. CJK punctuation substitution (e.g. em-dash ``U+2014`` → ``-``).
+
+        Each pass is skipped when the corresponding disable flag is set.
+        Warnings are emitted for every corrected option token.
+        """
+        # Pass 1: fullwidth → halfwidth.
+        if not self._disable_fullwidth_correction:
+            var corrected_args = List[String]()
+            corrected_args.append(args[0])  # preserve argv[0]
+            for _fw_i in range(1, len(args)):
+                var token = args[_fw_i]
+                if _has_fullwidth_chars(token):
+                    var parts = _split_on_fullwidth_spaces(token)
+                    for _fw_j in range(len(parts)):
+                        var corrected = parts[_fw_j]
+                        if corrected.startswith("-"):
+                            self._warn(
+                                "detected full-width characters in '"
+                                + token
+                                + "', auto-corrected to '"
+                                + corrected
+                                + "'"
+                            )
+                        corrected_args.append(corrected)
+                else:
+                    corrected_args.append(token)
+            args = corrected_args^
+
+        # Pass 2: CJK punctuation (e.g. em-dash → hyphen-minus).
+        if not self._disable_punctuation_correction:
+            var punc_args = List[String]()
+            punc_args.append(args[0])
+            for _pi in range(1, len(args)):
+                var token = args[_pi]
+                var corrected = _correct_cjk_punctuation(token)
+                if corrected != token and corrected.startswith("-"):
+                    self._warn(
+                        "detected CJK punctuation in '"
+                        + token
+                        + "', auto-corrected to '"
+                        + corrected
+                        + "'"
+                    )
+                    punc_args.append(corrected)
+                else:
+                    punc_args.append(token)
+            args = punc_args^
+
     fn _error(self, msg: String) raises:
         """Prints a coloured error message to stderr then raises.
 
@@ -1324,6 +1447,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         #         self._response_file_max_depth,
         #         self.name,
         #     )
+
+        # ── CJK auto-correction (fullwidth + punctuation) ───────────
+        self._preprocess_cjk_args(args_to_parse)
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
@@ -1544,6 +1670,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var result = ParseResult()
 
         var args_to_parse = raw_args.copy()
+
+        # ── CJK auto-correction (fullwidth + punctuation) ───────────
+        self._preprocess_cjk_args(args_to_parse)
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
@@ -2671,6 +2800,32 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 all_longs.append(self.args[i]._long_name)
             for j in range(len(self.args[i]._alias_names)):
                 all_longs.append(self.args[i]._alias_names[j])
+
+        # CJK punctuation error recovery: try substituting common CJK
+        # punctuation (e.g. em-dash → hyphen) before Levenshtein.
+        if not self._disable_punctuation_correction:
+            var corrected = _correct_cjk_punctuation(name)
+            if corrected != name:
+                # Check if the corrected name matches a known option.
+                for i in range(len(self.args)):
+                    if self.args[i]._long_name == corrected:
+                        self._error(
+                            "Unknown option '--"
+                            + name
+                            + "'. Did you mean '--"
+                            + corrected
+                            + "'? (detected CJK punctuation)"
+                        )
+                    for j in range(len(self.args[i]._alias_names)):
+                        if self.args[i]._alias_names[j] == corrected:
+                            self._error(
+                                "Unknown option '--"
+                                + name
+                                + "'. Did you mean '--"
+                                + corrected
+                                + "'? (detected CJK punctuation)"
+                            )
+
         var suggestion = _suggest_similar(name, all_longs)
         if suggestion != "":
             self._error(

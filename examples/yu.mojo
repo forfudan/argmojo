@@ -2,7 +2,9 @@
 
 例：宇浩輸入法單字編碼查詢
 
-A CJK-heavy demo that showcases ArgMojo's CJK-aware help alignment.
+A CJK-heavy demo that showcases ArgMojo's CJK-aware help alignment
+and full-width → half-width auto-correction.
+
 The purpose of the app is to lookup the encoding of Chinese characters in the
 Yuhao Input Method (宇浩輸入法).
 
@@ -29,6 +31,11 @@ Try these (build first with: `pixi run build`):
   ./yu --star 你好
   ./yu --all 宇浩
   ./yu --version
+
+Full-width auto-correction examples (CJK users may type these accidentally):
+
+  ./yu －－ａｌｌ 宇浩      # auto-corrected to: ./yu --all 宇浩
+  ./yu －ｊ 字根           # auto-corrected to: ./yu -j 字根
 """
 
 from argmojo import Argument, Command

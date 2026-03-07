@@ -164,46 +164,24 @@ fn _display_width(s: String) -> Int:
         The number of terminal columns the string would occupy.
     """
     var width = 0
-    var i = 0
-    var bytes = s.as_bytes()
-    var n = len(bytes)
-    while i < n:
-        var b0 = Int(bytes[i])
-        # Skip ANSI escape sequences: ESC [ ... final_byte.
-        if b0 == 0x1B and i + 1 < n and Int(bytes[i + 1]) == 0x5B:
-            i += 2  # skip ESC [
-            while i < n:
-                var c = Int(bytes[i])
-                i += 1
-                # Final byte of CSI sequence is in 0x40–0x7E range.
-                if c >= 0x40 and c <= 0x7E:
-                    break
+    var in_ansi = False
+    var saw_esc = False
+    for cp in s.codepoints():
+        var val = Int(cp)
+        if saw_esc:
+            saw_esc = False
+            if val == 0x5B:  # '[' — start of CSI sequence
+                in_ansi = True
+                continue
+            # Not a CSI introducer: treat this codepoint normally.
+        if in_ansi:
+            if val >= 0x40 and val <= 0x7E:  # CSI final byte
+                in_ansi = False
             continue
-        # Decode UTF-8 codepoint.
-        var codepoint: Int
-        var seq_len: Int
-        if b0 < 0x80:
-            codepoint = b0
-            seq_len = 1
-        elif b0 < 0xC0:
-            # Continuation byte (shouldn't start a sequence); skip.
-            i += 1
+        if val == 0x1B:  # ESC
+            saw_esc = True
             continue
-        elif b0 < 0xE0:
-            seq_len = 2
-            codepoint = b0 & 0x1F
-        elif b0 < 0xF0:
-            seq_len = 3
-            codepoint = b0 & 0x0F
-        else:
-            seq_len = 4
-            codepoint = b0 & 0x07
-        for j in range(1, seq_len):
-            if i + j < n:
-                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
-        i += seq_len
-        # Determine display width of this codepoint.
-        if _is_wide_codepoint(codepoint):
+        if _is_wide_codepoint(val):
             width += 2
         else:
             width += 1
@@ -374,3 +352,92 @@ fn _suggest_similar(input: String, candidates: List[String]) -> String:
     if best_dist <= threshold:
         return best_name
     return ""
+
+
+fn _has_fullwidth_chars(token: String) -> Bool:
+    """Returns True if *token* contains any fullwidth ASCII character.
+
+    Checks for fullwidth ASCII ``U+FF01``–``U+FF5E`` and fullwidth space
+    ``U+3000``.  Used to decide whether to attempt auto-correction.
+    """
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if (val >= 0xFF01 and val <= 0xFF5E) or val == 0x3000:
+            return True
+    return False
+
+
+fn _fullwidth_to_halfwidth(token: String) -> String:
+    """Converts fullwidth ASCII characters to their halfwidth equivalents.
+
+    Fullwidth ASCII range ``U+FF01``–``U+FF5E`` is mapped to
+    ``U+0021``–``U+007E`` by subtracting ``0xFEE0``.
+
+    Fullwidth spaces (``U+3000``) are converted to regular spaces
+    (``U+0020``).
+
+    Characters outside these ranges are left unchanged.
+    """
+    var result = String("")
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if val >= 0xFF01 and val <= 0xFF5E:
+            result += chr(val - 0xFEE0)
+        elif val == 0x3000:
+            result += " "
+        else:
+            result += chr(val)
+    return result
+
+
+fn _split_on_fullwidth_spaces(token: String) -> List[String]:
+    """Splits a token on fullwidth spaces (``U+3000``) after fullwidth correction.
+
+    After converting fullwidth ASCII to halfwidth, embedded fullwidth
+    spaces become regular spaces.  This function splits the corrected
+    token on space boundaries and returns the non-empty parts.
+
+    Args:
+        token: The token to split.
+
+    Returns:
+        A list of non-empty, fullwidth-corrected substrings. If no
+        fullwidth spaces are present, the list contains the corrected
+        token as a single element.
+    """
+    var converted = _fullwidth_to_halfwidth(token)
+    var parts = converted.split(" ")
+    var result = List[String]()
+    for k in range(len(parts)):
+        var part = String(String(parts[k]).strip())
+        if len(part) > 0:
+            result.append(part)
+    return result^
+
+
+fn _correct_cjk_punctuation(token: String) -> String:
+    """Replaces common CJK punctuation with ASCII equivalents.
+
+    This handles characters outside the fullwidth ASCII range
+    (``U+FF01``–``U+FF5E``) that CJK users may accidentally type:
+
+    - ``U+2014`` EM DASH (——) → ``U+002D`` HYPHEN-MINUS (-)
+
+    Used as a pre-Levenshtein error recovery step: when an unknown
+    option is encountered, try this substitution before computing
+    edit distance.
+
+    Args:
+        token: The token to correct.
+
+    Returns:
+        The token with CJK punctuation replaced by ASCII equivalents.
+    """
+    var result = String("")
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if val == 0x2014:  # EM DASH → hyphen-minus
+            result += "-"
+        else:
+            result += chr(val)
+    return result
