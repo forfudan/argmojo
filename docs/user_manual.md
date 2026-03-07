@@ -377,7 +377,7 @@ Argument("name", help="...")
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
 ║   .value_name("FILE")          display name in help      (value / positional)
 ║   └── [wrapped=True]           wrap in <> (default); [False] = bare
-║   .group("Network")            section heading in help   (any)
+║   .group("Network")            section heading in help   (named only)
 ║   .hidden()                    hide from --help          (any)
 ║   .aliases(["alt"])            alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
@@ -444,7 +444,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
 | `.value_name("FILE")` ⁴          |      ✓      |     —     |     —      |        ✓        |
-| `.group("name")`                 |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.group("name")`                 |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
@@ -2189,7 +2189,7 @@ command.add_argument(
 
 ```bash
 Options:
-  -v, --verbose <verbose>    Increase verbosity
+  -v, --verbose              Increase verbosity
   -h, --help                 Show this help message
 
 Network:
