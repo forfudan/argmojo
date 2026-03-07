@@ -11,7 +11,9 @@ conditional requirements, negatable flags, color customisation
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
 help_on_no_arguments, default_if_no_value, require_equals, response files,
-remainder positionals, allow_hyphen_values, and parse_known_arguments.
+remainder positionals, allow_hyphen_values, parse_known_arguments,
+argument groups in help (.group()), and value_name wrapping control
+(.value_name[wrapped: Bool]()).
 
 Note: This demo looks very strange, but useful :D
 
@@ -160,6 +162,7 @@ fn main() raises:
         .long("host")
         .short("H")
         .value_name("ADDR")
+        .group("Network")
     )
     app.add_argument(
         Argument(
@@ -170,6 +173,7 @@ fn main() raises:
         .append()
         .range[1, 65535]()
         .clamp()
+        .group("Network")
     )
     var net_group: List[String] = ["host", "port"]
     app.required_together(net_group^)
@@ -181,12 +185,14 @@ fn main() raises:
         .long("save")
         .short("S")
         .flag()
+        .group("Output")
     )
     app.add_argument(
         Argument("output", help="Output file path (required with --save)")
         .long("output")
         .short("o")
         .value_name("FILE")
+        .group("Output")
     )
     app.required_if("output", "save")
 
@@ -195,7 +201,8 @@ fn main() raises:
         Argument("point", help="A 3D point (X Y Z)")
         .long("point")
         .number_of_values[3]()
-        .value_name("COORD")
+        .value_name[False]("COORD")
+        .group("Data")
     )
 
     # ── Value delimiter ──────────────────────────────────────────────────
@@ -204,6 +211,7 @@ fn main() raises:
         .long("tags")
         .short("t")
         .delimiter(",")
+        .group("Data")
     )
 
     # ── Key-value map ────────────────────────────────────────────────────
@@ -212,6 +220,7 @@ fn main() raises:
         .long("define")
         .short("D")
         .map_option()
+        .group("Data")
     )
 
     # ── Aliases ──────────────────────────────────────────────────────────
@@ -241,6 +250,7 @@ fn main() raises:
         .short("c")
         .default_if_no_value("gzip")
         .value_name("ALGO")
+        .group("Output")
     )
 
     # ── Require equals (standalone) ──────────────────────────────────────
@@ -251,6 +261,7 @@ fn main() raises:
         .require_equals()
         .value_name("CHAR")
         .default(",")
+        .group("Output")
     )
 
     # ── Hidden argument ──────────────────────────────────────────────────
