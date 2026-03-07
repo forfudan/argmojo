@@ -338,7 +338,7 @@ fn test_custom_header_color() raises:
     """Setting header_color changes the header ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input file").long("file"))
-    command.header_color("RED")
+    command.header_color["RED"]()
 
     var help = command._generate_help(color=True)
     # RED = \x1b[91m ; bold+underline = \x1b[1;4m
@@ -359,7 +359,7 @@ fn test_custom_arg_color() raises:
     command.add_argument(
         Argument("verbose", help="Be verbose").long("verbose").flag()
     )
-    command.arg_color("GREEN")
+    command.arg_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     # GREEN = \x1b[92m
@@ -378,8 +378,8 @@ fn test_custom_both_colors() raises:
     """Setting both header_color and arg_color at the same time."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input").long("file"))
-    command.header_color("BLUE")
-    command.arg_color("GREEN")
+    command.header_color["BLUE"]()
+    command.arg_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     assert_true("\x1b[94m" in help, msg="Header should be blue (94)")
@@ -401,32 +401,20 @@ fn test_default_colors_unchanged() raises:
     assert_true("\x1b[95m" in help, msg="Default arg should be magenta (95)")
 
 
-fn test_color_case_insensitive() raises:
-    """Colour names are case-insensitive: 'green', 'Green', 'GREEN' all work."""
-    var command1 = Command("a", "A")
-    command1.add_argument(Argument("x", help="x").long("x"))
-    command1.header_color("green")
-    var h1 = command1._generate_help(color=True)
-    assert_true("\x1b[92m" in h1, msg="'green' lowercase should resolve")
-
-    var command2 = Command("a", "A")
-    command2.add_argument(Argument("x", help="x").long("x"))
-    command2.header_color("Green")
-    var h2 = command2._generate_help(color=True)
-    assert_true("\x1b[92m" in h2, msg="'Green' mixed case should resolve")
-
-    var command3 = Command("a", "A")
-    command3.add_argument(Argument("x", help="x").long("x"))
-    command3.header_color("GREEN")
-    var h3 = command3._generate_help(color=True)
-    assert_true("\x1b[92m" in h3, msg="'GREEN' uppercase should resolve")
+fn test_color_uppercase_only() raises:
+    """Colour names must be uppercase: 'GREEN' works."""
+    var command = Command("a", "A")
+    command.add_argument(Argument("x", help="x").long("x"))
+    command.header_color["GREEN"]()
+    var h = command._generate_help(color=True)
+    assert_true("\x1b[92m" in h, msg="'GREEN' uppercase should resolve")
 
 
 fn test_pink_alias_for_magenta() raises:
     """'PINK' is an alias for MAGENTA (\\x1b[95m)."""
     var command = Command("app", "My app")
     command.add_argument(Argument("f", help="File").long("file"))
-    command.arg_color("PINK")
+    command.arg_color["PINK"]()
 
     var help = command._generate_help(color=True)
     assert_true(
@@ -435,38 +423,25 @@ fn test_pink_alias_for_magenta() raises:
     )
 
 
-fn test_invalid_color_raises() raises:
-    """An unrecognised colour name should raise an Error."""
-    var command = Command("app", "My app")
-    var raised = False
-    try:
-        command.header_color("PURPLE")
-    except e:
-        raised = True
-        assert_true(
-            "Unknown colour" in String(e),
-            msg="Error message should mention 'Unknown colour'",
-        )
-    assert_true(raised, msg="header_color('PURPLE') should raise an error")
+fn test_invalid_color_caught_at_compile_time() raises:
+    """Invalid colour names are caught at compile time via constrained[].
 
-    raised = False
-    try:
-        command.arg_color("LIME")
-    except e:
-        raised = True
-        assert_true(
-            "Unknown colour" in String(e),
-            msg="Error message should mention 'Unknown colour'",
-        )
-    assert_true(raised, msg="arg_color('LIME') should raise an error")
+    This test simply verifies the valid path works.  An invalid name
+    like ``command.header_color["PURPLE"]()`` would fail to compile.
+    """
+    var command = Command("app", "My app")
+    command.header_color["RED"]()
+    command.arg_color["GREEN"]()
+    command.warn_color["YELLOW"]()
+    command.error_color["MAGENTA"]()
 
 
 fn test_custom_color_plain_mode_unaffected() raises:
     """Custom colours should not leak into plain (color=False) output."""
     var command = Command("app", "My app")
     command.add_argument(Argument("x", help="X option").long("x"))
-    command.header_color("RED")
-    command.arg_color("BLUE")
+    command.header_color["RED"]()
+    command.arg_color["BLUE"]()
 
     var help = command._generate_help(color=False)
     assert_false("\x1b" in help, msg="Plain mode should have no ANSI codes")

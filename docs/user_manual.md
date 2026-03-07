@@ -401,10 +401,10 @@ Argument("name", help="...")
 ║   command.hidden()                            hide subcommand from help/completions
 ║   command.disable_help_subcommand()           opt out of auto-added help subcommand
 ║   ├── Colour customisation
-║   │   command.header_color("CYAN")            section header colour
-║   │   command.arg_color("GREEN")              argument name colour
-║   │   command.warn_color("YELLOW")            deprecation warning colour
-║   │   command.error_color("RED")              error message colour
+║   │   command.header_color["CYAN"]()          section header colour
+║   │   command.arg_color["GREEN"]()            argument name colour
+║   │   command.warn_color["YELLOW"]()          deprecation warning colour
+║   │   command.error_color["RED"]()            error message colour
 ║   ├── Shell completion
 ║   │   command.disable_default_completions()   disable built-in --completions
 ║   │   command.completions_name("name")        custom trigger name
@@ -2272,13 +2272,13 @@ The **header colour**, **argument-name colour**, **deprecation warning colour**,
 
 ```mojo
 var command = Command("myapp", "My app")
-command.header_color("BLUE")     # section headers in bright blue
-command.arg_color("GREEN")       # option/argument names in bright green
-command.warn_color("YELLOW")     # deprecation warnings (default: orange)
-command.error_color("MAGENTA")   # parse errors (default: red)
+command.header_color["BLUE"]()     # section headers in bright blue
+command.arg_color["GREEN"]()       # option/argument names in bright green
+command.warn_color["YELLOW"]()     # deprecation warnings (default: orange)
+command.error_color["MAGENTA"]()   # parse errors (default: red)
 ```
 
-Available colour names (case-insensitive):
+Available colour names (uppercase only):
 
 | Name      | ANSI code | Preview            |
 | --------- | --------- | ------------------ |
@@ -2292,7 +2292,7 @@ Available colour names (case-insensitive):
 | `WHITE`   | 97        | bright white       |
 | `ORANGE`  | 33        | orange/dark yellow |
 
-An unrecognised colour name raises an `Error` at runtime.
+An unrecognised colour name is caught at **compile time** — the program will not compile if you pass an invalid name.
 
 Padding calculation is always based on the **plain-text width** (without escape codes), so columns remain correctly aligned regardless of whether colour is enabled.
 

@@ -114,8 +114,8 @@ fn main() raises:
     )
 
     # ── Color customisation ──────────────────────────────────────────────
-    app.header_color("CYAN")
-    app.arg_color("GREEN")
+    app.header_color["CYAN"]()
+    app.arg_color["GREEN"]()
 
     # ── Response file support ────────────────────────────────────────────
     app.response_file_prefix()  # enables @args.txt expansion

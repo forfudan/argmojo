@@ -407,7 +407,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help` (common in Windows CLI tools, Java, MySQL, curl)
 - [x] **Help on no args** — `command.help_on_no_arguments()` shows help when invoked with no arguments (like git/docker/cargo)
 - [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
-- [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color()` / `arg_color()`
+- [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color["NAME"]()` / `arg_color["NAME"]()` (compile-time validated)
 - [x] **number of values (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
 - [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)

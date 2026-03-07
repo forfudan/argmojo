@@ -242,41 +242,51 @@ fn _is_ascii_digit(ch: String) -> Bool:
     return ch >= "0" and ch <= "9"
 
 
-fn _resolve_color(name: String) raises -> String:
-    """Maps a user-facing colour name to its ANSI code.
+fn _resolve_color[name: StringLiteral]() -> String:
+    """Maps a user-facing colour name to its ANSI code at compile time.
 
-    Accepted names (case-insensitive): RED, GREEN, YELLOW, BLUE,
+    Accepted names (uppercase only): RED, GREEN, YELLOW, BLUE,
     MAGENTA, PINK (alias for MAGENTA), CYAN, WHITE, ORANGE.
+
+    Parameters:
+        name: The colour name (must be one of the accepted names).
 
     Returns:
         The ANSI escape code for the colour.
-
-    Raises:
-        Error if the name is not recognised.
     """
-    var upper = name.upper()
-    if upper == "RED":
-        return _RED
-    if upper == "GREEN":
-        return _GREEN
-    if upper == "YELLOW":
-        return _YELLOW
-    if upper == "BLUE":
-        return _BLUE
-    if upper == "MAGENTA" or upper == "PINK":
-        return _MAGENTA
-    if upper == "CYAN":
-        return _CYAN
-    if upper == "WHITE":
-        return _WHITE
-    if upper == "ORANGE":
-        return _ORANGE
-    raise Error(
+    constrained[
+        name == "RED"
+        or name == "GREEN"
+        or name == "YELLOW"
+        or name == "BLUE"
+        or name == "MAGENTA"
+        or name == "PINK"
+        or name == "CYAN"
+        or name == "WHITE"
+        or name == "ORANGE",
         "Unknown colour '"
         + name
-        + "'. Choose from: RED, GREEN, YELLOW, BLUE, MAGENTA, PINK, CYAN,"
-        " WHITE, ORANGE"
-    )
+        + "'. Choose from: RED, GREEN, YELLOW, BLUE, MAGENTA, PINK,"
+        " CYAN, WHITE, ORANGE",
+    ]()
+
+    @parameter
+    if name == "RED":
+        return _RED
+    elif name == "GREEN":
+        return _GREEN
+    elif name == "YELLOW":
+        return _YELLOW
+    elif name == "BLUE":
+        return _BLUE
+    elif name == "MAGENTA" or name == "PINK":
+        return _MAGENTA
+    elif name == "CYAN":
+        return _CYAN
+    elif name == "WHITE":
+        return _WHITE
+    else:  # ORANGE
+        return _ORANGE
 
 
 fn _levenshtein(a: String, b: String) -> Int:
