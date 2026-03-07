@@ -2437,7 +2437,7 @@ warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-c
 
 - Fullwidth ASCII characters (`U+FF01`–`U+FF5E`) are converted to their halfwidth equivalents (`U+0021`–`U+007E`) by subtracting `0xFEE0`.
 - Fullwidth spaces (`U+3000`) are converted to regular spaces (`U+0020`). When a single token contains embedded fullwidth spaces (e.g., `--name\u3000yuhao\u3000--verbose` as one argv token), it is split into multiple arguments.
-- Only tokens that start with `-` after correction are treated as options and trigger a warning. Positional values are left unchanged, since users may intentionally input fullwidth content.
+- All tokens containing fullwidth ASCII are normalized (converted to halfwidth). Only tokens that start with `-` after correction are treated as options and trigger a warning. Positional values are also converted but no warning is emitted.
 
 **Example — fullwidth flag:**
 
@@ -2468,14 +2468,9 @@ app.disable_fullwidth_correction()
 # Now: fullwidth characters are NOT corrected
 ```
 
-**Custom whitespace characters:**
+**Whitespace handling:**
 
-By default, only fullwidth space (`U+3000`) triggers token splitting. To also treat other Unicode spaces (e.g., EM SPACE `U+2003`) as split points:
-
-```mojo
-var app = Command("myapp", "My CLI")
-app.whitespace_characters(["\u2003"])
-```
+By default, only fullwidth space (`U+3000`) triggers token splitting. Other Unicode whitespace characters (for example, EM SPACE `U+2003`) are treated as regular characters and do **not** cause tokens to be split.
 
 This feature is enabled by default and works with both `parse_arguments()` and `parse_known_arguments()`.
 

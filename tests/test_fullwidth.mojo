@@ -279,24 +279,23 @@ fn test_fullwidth_embedded_space() raises:
     )
 
 
-fn test_positional_not_corrected() raises:
-    """Tests that positional values with fullwidth chars are NOT corrected."""
+fn test_positional_fullwidth_converted() raises:
+    """Tests that fullwidth positional values are converted but stay positional.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("query", help="Search query").positional().required()
     )
 
-    # Fullwidth text as a positional should NOT be corrected since it does
-    # not start with `-` after conversion.
+    # Fullwidth text as a positional is still converted to halfwidth,
+    # but since it doesn't start with `-` after conversion, no warning
+    # is shown and it goes through as a positional.
     var args: List[String] = ["test", "ｈｅｌｌｏ"]
     var result = command.parse_arguments(args)
-    # The fullwidth text gets converted to halfwidth because it contains
-    # fullwidth ASCII, but since it doesn't start with -, no warning is shown
-    # and it goes through as a positional.
     assert_equal(
         result.get_string("query"),
         "hello",
-        msg="fullwidth positional should be converted too",
+        msg="fullwidth positional should be converted to halfwidth",
     )
 
 

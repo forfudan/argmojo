@@ -172,7 +172,8 @@ fn _display_width(s: String) -> Int:
             saw_esc = False
             if val == 0x5B:  # '[' — start of CSI sequence
                 in_ansi = True
-            continue
+                continue
+            # Not a CSI introducer: treat this codepoint normally.
         if in_ansi:
             if val >= 0x40 and val <= 0x7E:  # CSI final byte
                 in_ansi = False
@@ -400,8 +401,9 @@ fn _split_on_fullwidth_spaces(token: String) -> List[String]:
         token: The token to split.
 
     Returns:
-        A list of non-empty substrings.  If no fullwidth spaces are
-        present, the list contains the original token as a single element.
+        A list of non-empty, fullwidth-corrected substrings. If no
+        fullwidth spaces are present, the list contains the corrected
+        token as a single element.
     """
     var converted = _fullwidth_to_halfwidth(token)
     var parts = converted.split(" ")

@@ -71,8 +71,8 @@ These features appear across multiple libraries and depend only on string operat
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | Phase 5       |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
-| REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | Phase 5       |
-| Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | Phase 5       |
+| REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | **Done**      |
+| Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Require equals syntax              | —        | —     | —     | ✓    |                              | **Done**      |
 | Default-if-no-value                | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
@@ -82,7 +82,7 @@ These features appear across multiple libraries and depend only on string operat
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase 7       |
+| `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase unknown |
 | Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros         | Phase unknown |
 | Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection          | Phase unknown |
 | Subcommand variant dispatch        | —        | —     | —     | ✓    | Requires sum types           | Phase unknown |

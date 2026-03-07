@@ -3,12 +3,6 @@
 from os import getenv
 from os.path import exists as _path_exists
 from sys import argv, exit, stderr
-from reflection import (
-    struct_field_count,
-    struct_field_names,
-    get_type_name,
-    struct_field_types,
-)
 
 from .argument import Argument
 from .parse_result import ParseResult
@@ -21,7 +15,6 @@ from .utils import (
     _DEFAULT_ERROR_COLOR,
     _correct_cjk_punctuation,
     _display_width,
-    _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _looks_like_number,
     _resolve_color,
@@ -347,18 +340,6 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Args:
             copy: The Command to copy from.
         """
-        # TODO: Use reflection to automate this instead of manually copying
-        # each field. This needs Mojo v0.26.2.
-
-        # comptime field_count = struct_field_count[Self]()
-        # comptime field_types = struct_field_types[Self]()
-
-        # comptime for i in range(field_count):
-        #     comptime field_type = struct_field_types[i]
-
-        #     ref field_value_from_copy = __struct_field_ref(i, copy)
-        #     __struct_field_ref(i, self) = field_value_from_copy
-
         self.name = copy.name
         self.description = copy.description
         self.version = copy.version
@@ -1235,6 +1216,59 @@ struct Command(Copyable, Movable, Stringable, Writable):
         else:
             print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
 
+    fn _preprocess_cjk_args(self, mut args: List[String]):
+        """Applies fullwidth and CJK punctuation auto-correction to *args*.
+
+        Two passes:
+        1. Fullwidth → halfwidth (``U+FF01``–``U+FF5E``, ``U+3000``).
+        2. CJK punctuation substitution (e.g. em-dash ``U+2014`` → ``-``).
+
+        Each pass is skipped when the corresponding disable flag is set.
+        Warnings are emitted for every corrected option token.
+        """
+        # Pass 1: fullwidth → halfwidth.
+        if not self._disable_fullwidth_correction:
+            var corrected_args = List[String]()
+            corrected_args.append(args[0])  # preserve argv[0]
+            for _fw_i in range(1, len(args)):
+                var token = args[_fw_i]
+                if _has_fullwidth_chars(token):
+                    var parts = _split_on_fullwidth_spaces(token)
+                    for _fw_j in range(len(parts)):
+                        var corrected = parts[_fw_j]
+                        if corrected.startswith("-"):
+                            self._warn(
+                                "detected full-width characters in '"
+                                + token
+                                + "', auto-corrected to '"
+                                + corrected
+                                + "'"
+                            )
+                        corrected_args.append(corrected)
+                else:
+                    corrected_args.append(token)
+            args = corrected_args^
+
+        # Pass 2: CJK punctuation (e.g. em-dash → hyphen-minus).
+        if not self._disable_punctuation_correction:
+            var punc_args = List[String]()
+            punc_args.append(args[0])
+            for _pi in range(1, len(args)):
+                var token = args[_pi]
+                var corrected = _correct_cjk_punctuation(token)
+                if corrected != token and corrected.startswith("-"):
+                    self._warn(
+                        "detected CJK punctuation in '"
+                        + token
+                        + "', auto-corrected to '"
+                        + corrected
+                        + "'"
+                    )
+                    punc_args.append(corrected)
+                else:
+                    punc_args.append(token)
+            args = punc_args^
+
     fn _error(self, msg: String) raises:
         """Prints a coloured error message to stderr then raises.
 
@@ -1414,59 +1448,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         #         self.name,
         #     )
 
-        # ── Fullwidth → halfwidth auto-correction ───────────────────
-        # Scan each token (skip argv[0]) for fullwidth ASCII characters.
-        # If a token, after correction, looks like an option (starts with
-        # `-`), auto-correct and emit a warning.  Fullwidth spaces inside
-        # a single token cause it to be split into multiple arguments.
-        # Positional values are left unchanged (user may intentionally
-        # input fullwidth content).
-        if not self._disable_fullwidth_correction:
-            var corrected_args = List[String]()
-            corrected_args.append(args_to_parse[0])  # preserve argv[0]
-            for _fw_i in range(1, len(args_to_parse)):
-                var token = args_to_parse[_fw_i]
-                if _has_fullwidth_chars(token):
-                    # Split on fullwidth spaces first.
-                    var parts = _split_on_fullwidth_spaces(token)
-                    for _fw_j in range(len(parts)):
-                        var corrected = parts[_fw_j]
-                        if corrected.startswith("-"):
-                            self._warn(
-                                "detected full-width characters in '"
-                                + token
-                                + "', auto-corrected to '"
-                                + corrected
-                                + "'"
-                            )
-                        corrected_args.append(corrected)
-                else:
-                    corrected_args.append(token)
-            args_to_parse = corrected_args^
-
-        # ── CJK punctuation auto-correction ─────────────────────────
-        # Correct common CJK punctuation that falls outside the fullwidth
-        # ASCII range (e.g. em-dash U+2014 → hyphen U+002D).
-        # Only applied to tokens that look like option attempts after
-        # correction (i.e. start with "-").
-        if not self._disable_punctuation_correction:
-            var punc_args = List[String]()
-            punc_args.append(args_to_parse[0])
-            for _pi in range(1, len(args_to_parse)):
-                var token = args_to_parse[_pi]
-                var corrected = _correct_cjk_punctuation(token)
-                if corrected != token and corrected.startswith("-"):
-                    self._warn(
-                        "detected CJK punctuation in '"
-                        + token
-                        + "', auto-corrected to '"
-                        + corrected
-                        + "'"
-                    )
-                    punc_args.append(corrected)
-                else:
-                    punc_args.append(token)
-            args_to_parse = punc_args^
+        # ── CJK auto-correction (fullwidth + punctuation) ───────────
+        self._preprocess_cjk_args(args_to_parse)
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
@@ -1688,48 +1671,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         var args_to_parse = raw_args.copy()
 
-        # ── Fullwidth → halfwidth auto-correction (same as parse_arguments) ──
-        if not self._disable_fullwidth_correction:
-            var corrected_args = List[String]()
-            corrected_args.append(args_to_parse[0])
-            for _fw_i in range(1, len(args_to_parse)):
-                var token = args_to_parse[_fw_i]
-                if _has_fullwidth_chars(token):
-                    var parts = _split_on_fullwidth_spaces(token)
-                    for _fw_j in range(len(parts)):
-                        var corrected = parts[_fw_j]
-                        if corrected.startswith("-"):
-                            self._warn(
-                                "detected full-width characters in '"
-                                + token
-                                + "', auto-corrected to '"
-                                + corrected
-                                + "'"
-                            )
-                        corrected_args.append(corrected)
-                else:
-                    corrected_args.append(token)
-            args_to_parse = corrected_args^
-
-        # ── CJK punctuation auto-correction (same as parse_arguments) ──
-        if not self._disable_punctuation_correction:
-            var punc_args = List[String]()
-            punc_args.append(args_to_parse[0])
-            for _pi in range(1, len(args_to_parse)):
-                var token = args_to_parse[_pi]
-                var corrected = _correct_cjk_punctuation(token)
-                if corrected != token and corrected.startswith("-"):
-                    self._warn(
-                        "detected CJK punctuation in '"
-                        + token
-                        + "', auto-corrected to '"
-                        + corrected
-                        + "'"
-                    )
-                    punc_args.append(corrected)
-                else:
-                    punc_args.append(token)
-            args_to_parse = punc_args^
+        # ── CJK auto-correction (fullwidth + punctuation) ───────────
+        self._preprocess_cjk_args(args_to_parse)
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
