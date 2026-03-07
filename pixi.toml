@@ -39,7 +39,8 @@ test = """\
     && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
     && mojo run -I src -D ASSERT=all tests/test_implies.mojo \
     && mojo run -I src -D ASSERT=all tests/test_const_require_equals.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_remainder_known.mojo"""
+    && mojo run -I src -D ASSERT=all tests/test_remainder_known.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_fullwidth.mojo"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
 # is temporarily disabled to work around a Mojo compiler deadlock
 # with -D ASSERT=all.  Re-enable when the compiler bug is fixed.

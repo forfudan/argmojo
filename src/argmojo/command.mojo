@@ -20,8 +20,11 @@ from .utils import (
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
     _display_width,
+    _fullwidth_to_halfwidth,
+    _has_fullwidth_chars,
     _looks_like_number,
     _resolve_color,
+    _split_on_fullwidth_spaces,
     _suggest_similar,
 )
 
@@ -232,6 +235,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
     var _response_file_max_depth: Int
     """Maximum nesting depth for recursive response-file expansion.
     Prevents infinite loops when file A references file B and vice versa."""
+    var _disable_fullwidth_correction: Bool
+    """When True, disable automatic full-width → half-width character
+    correction on option tokens.  By default (False), tokens starting
+    with ``-`` that contain fullwidth ASCII characters (``U+FF01``–
+    ``U+FF5E``) or fullwidth spaces (``U+3000``) are auto-corrected
+    with a warning.  Call ``disable_fullwidth_correction()`` to opt out."""
+    var _extra_whitespace_chars: List[String]
+    """Additional Unicode codepoints to treat as whitespace when
+    splitting fullwidth-corrected tokens.  Populated via
+    ``whitespace_characters()``.  Default is empty (only ``U+3000``
+    fullwidth space is handled automatically)."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -273,6 +287,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = False
         self._response_file_prefix = String("")
         self._response_file_max_depth = 10
+        self._disable_fullwidth_correction = False
+        self._extra_whitespace_chars = List[String]()
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -309,6 +325,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = move._is_hidden
         self._response_file_prefix = move._response_file_prefix^
         self._response_file_max_depth = move._response_file_max_depth
+        self._disable_fullwidth_correction = move._disable_fullwidth_correction
+        self._extra_whitespace_chars = move._extra_whitespace_chars^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -374,6 +392,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._is_hidden = copy._is_hidden
         self._response_file_prefix = copy._response_file_prefix
         self._response_file_max_depth = copy._response_file_max_depth
+        self._disable_fullwidth_correction = copy._disable_fullwidth_correction
+        self._extra_whitespace_chars = copy._extra_whitespace_chars.copy()
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -831,6 +851,51 @@ struct Command(Copyable, Movable, Stringable, Writable):
             depth: Maximum recursion depth (default 10).
         """
         self._response_file_max_depth = depth
+
+    fn disable_fullwidth_correction(mut self):
+        """Disables automatic full-width → half-width character correction.
+
+        By default, ArgMojo detects fullwidth ASCII characters
+        (``U+FF01``–``U+FF5E``) and fullwidth spaces (``U+3000``) in
+        option tokens (those starting with ``-``) and auto-corrects them
+        to their halfwidth equivalents with a warning.  This helps CJK
+        users who forget to switch input methods.
+
+        Call this method to disable that correction entirely — useful
+        when strict parsing is preferred.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_fullwidth_correction()
+        # Now: －－ｖｅｒｂｏｓｅ is NOT corrected → unknown option error
+        ```
+        """
+        self._disable_fullwidth_correction = True
+
+    fn whitespace_characters(mut self, chars: List[String]):
+        """Registers additional Unicode codepoints as whitespace for fullwidth correction.
+
+        When fullwidth correction is active, embedded fullwidth spaces
+        (``U+3000``) in a single token cause it to be split into multiple
+        arguments.  Call this method to also treat other Unicode space
+        characters (e.g., EM SPACE ``U+2003``) as split points.
+
+        Args:
+            chars: A list of single-character strings, each a Unicode
+                whitespace codepoint to recognise.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.whitespace_characters(["\\u2003"])  # EM SPACE
+        ```
+        """
+        self._extra_whitespace_chars = chars.copy()
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -1343,6 +1408,38 @@ struct Command(Copyable, Movable, Stringable, Writable):
         #         self.name,
         #     )
 
+        # ── Fullwidth → halfwidth auto-correction ───────────────────
+        # Scan each token (skip argv[0]) for fullwidth ASCII characters.
+        # If a token, after correction, looks like an option (starts with
+        # `-`), auto-correct and emit a warning.  Fullwidth spaces inside
+        # a single token cause it to be split into multiple arguments.
+        # Positional values are left unchanged (user may intentionally
+        # input fullwidth content).
+        if not self._disable_fullwidth_correction:
+            var corrected_args = List[String]()
+            corrected_args.append(args_to_parse[0])  # preserve argv[0]
+            for _fw_i in range(1, len(args_to_parse)):
+                var token = args_to_parse[_fw_i]
+                if _has_fullwidth_chars(token):
+                    # Split on fullwidth spaces first.
+                    var parts = _split_on_fullwidth_spaces(
+                        token, self._extra_whitespace_chars
+                    )
+                    for _fw_j in range(len(parts)):
+                        var corrected = parts[_fw_j]
+                        if corrected.startswith("-"):
+                            self._warn(
+                                "detected full-width characters in '"
+                                + token
+                                + "', auto-corrected to '"
+                                + corrected
+                                + "'"
+                            )
+                        corrected_args.append(corrected)
+                else:
+                    corrected_args.append(token)
+            args_to_parse = corrected_args^
+
         # Register positional argument names in order.
         for i in range(len(self.args)):
             if self.args[i]._is_positional:
@@ -1562,6 +1659,31 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var result = ParseResult()
 
         var args_to_parse = raw_args.copy()
+
+        # ── Fullwidth → halfwidth auto-correction (same as parse_arguments) ──
+        if not self._disable_fullwidth_correction:
+            var corrected_args = List[String]()
+            corrected_args.append(args_to_parse[0])
+            for _fw_i in range(1, len(args_to_parse)):
+                var token = args_to_parse[_fw_i]
+                if _has_fullwidth_chars(token):
+                    var parts = _split_on_fullwidth_spaces(
+                        token, self._extra_whitespace_chars
+                    )
+                    for _fw_j in range(len(parts)):
+                        var corrected = parts[_fw_j]
+                        if corrected.startswith("-"):
+                            self._warn(
+                                "detected full-width characters in '"
+                                + token
+                                + "', auto-corrected to '"
+                                + corrected
+                                + "'"
+                            )
+                        corrected_args.append(corrected)
+                else:
+                    corrected_args.append(token)
+            args_to_parse = corrected_args^
 
         # Register positional argument names in order.
         for i in range(len(self.args)):

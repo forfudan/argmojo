@@ -65,6 +65,7 @@ from argmojo import Argument, Command
   - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
   - [CJK-Aware Help Alignment](#cjk-aware-help-alignment)
+  - [Full-Width → Half-Width Auto-Correction](#full-width--half-width-auto-correction)
 - [Parsing Behaviour](#parsing-behaviour)
   - [Negative Number Passthrough](#negative-number-passthrough)
   - [Long Option Prefix Matching](#long-option-prefix-matching)
@@ -2417,6 +2418,66 @@ Commands:
 ```
 
 No configuration is needed — CJK-aware alignment is always active.
+
+### Full-Width → Half-Width Auto-Correction
+
+CJK users frequently forget to switch input methods, accidentally typing **fullwidth ASCII** characters instead of their normal halfwidth equivalents:
+
+- `－－ｖｅｒｂｏｓｅ` instead of `--verbose`
+- `＝` instead of `=`
+- `－ｖ` instead of `-v`
+
+ArgMojo automatically detects and corrects these characters **before parsing**, printing a coloured warning to stderr:
+
+```bash
+warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
+```
+
+**What gets corrected:**
+
+- Fullwidth ASCII characters (`U+FF01`–`U+FF5E`) are converted to their halfwidth equivalents (`U+0021`–`U+007E`) by subtracting `0xFEE0`.
+- Fullwidth spaces (`U+3000`) are converted to regular spaces (`U+0020`). When a single token contains embedded fullwidth spaces (e.g., `--name\u3000yuhao\u3000--verbose` as one argv token), it is split into multiple arguments.
+- Only tokens that start with `-` after correction are treated as options and trigger a warning. Positional values are left unchanged, since users may intentionally input fullwidth content.
+
+**Example — fullwidth flag:**
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.add_argument(Argument("verbose", help="Verbose").long("verbose").short("v").flag())
+var result = app.parse_arguments(["myapp", "－－ｖｅｒｂｏｓｅ"])
+# result.get_flag("verbose") == True
+# stderr: warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
+```
+
+**Example — fullwidth equals syntax:**
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.add_argument(Argument("output", help="Output").long("output").takes_value())
+var result = app.parse_arguments(["myapp", "－－ｏｕｔｐｕｔ＝ｆｉｌｅ．ｔｘｔ"])
+# result.get_string("output") == "file.txt"
+```
+
+**Disabling auto-correction:**
+
+Call `disable_fullwidth_correction()` if you prefer strict parsing:
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.disable_fullwidth_correction()
+# Now: fullwidth characters are NOT corrected
+```
+
+**Custom whitespace characters:**
+
+By default, only fullwidth space (`U+3000`) triggers token splitting. To also treat other Unicode spaces (e.g., EM SPACE `U+2003`) as split points:
+
+```mojo
+var app = Command("myapp", "My CLI")
+app.whitespace_characters(["\u2003"])
+```
+
+This feature is enabled by default and works with both `parse_arguments()` and `parse_known_arguments()`.
 
 ## Parsing Behaviour
 

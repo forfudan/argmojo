@@ -374,3 +374,139 @@ fn _suggest_similar(input: String, candidates: List[String]) -> String:
     if best_dist <= threshold:
         return best_name
     return ""
+
+
+fn _has_fullwidth_chars(token: String) -> Bool:
+    """Returns True if *token* contains any fullwidth ASCII character.
+
+    Checks for fullwidth ASCII ``U+FF01``–``U+FF5E`` and fullwidth space
+    ``U+3000``.  Used to decide whether to attempt auto-correction.
+    """
+    var bytes = token.as_bytes()
+    var i = 0
+    var n = len(bytes)
+    while i < n:
+        var b0 = Int(bytes[i])
+        if b0 == 0:
+            break  # Stop at null terminator.
+        if b0 < 0x80:
+            i += 1
+            continue
+        # Decode UTF-8 codepoint.
+        var codepoint: Int
+        var seq_len: Int
+        if b0 < 0xC0:
+            i += 1
+            continue
+        elif b0 < 0xE0:
+            seq_len = 2
+            codepoint = b0 & 0x1F
+        elif b0 < 0xF0:
+            seq_len = 3
+            codepoint = b0 & 0x0F
+        else:
+            seq_len = 4
+            codepoint = b0 & 0x07
+        for j in range(1, seq_len):
+            if i + j < n:
+                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
+        i += seq_len
+        # Fullwidth ASCII: U+FF01–U+FF5E.
+        if codepoint >= 0xFF01 and codepoint <= 0xFF5E:
+            return True
+        # Fullwidth space: U+3000.
+        if codepoint == 0x3000:
+            return True
+    return False
+
+
+fn _fullwidth_to_halfwidth(token: String) -> String:
+    """Converts fullwidth ASCII characters to their halfwidth equivalents.
+
+    Fullwidth ASCII range ``U+FF01``–``U+FF5E`` is mapped to
+    ``U+0021``–``U+007E`` by subtracting ``0xFEE0``.
+
+    Fullwidth spaces (``U+3000``) are converted to regular spaces
+    (``U+0020``).
+
+    Characters outside these ranges are left unchanged.
+    """
+    var out = List[UInt8]()
+    var bytes = token.as_bytes()
+    var i = 0
+    var n = len(bytes)
+    while i < n:
+        var b0 = Int(bytes[i])
+        if b0 == 0:
+            break  # Stop at null terminator.
+        if b0 < 0x80:
+            out.append(UInt8(b0))
+            i += 1
+            continue
+        # Decode UTF-8 codepoint.
+        var codepoint: Int
+        var seq_len: Int
+        if b0 < 0xC0:
+            out.append(UInt8(b0))
+            i += 1
+            continue
+        elif b0 < 0xE0:
+            seq_len = 2
+            codepoint = b0 & 0x1F
+        elif b0 < 0xF0:
+            seq_len = 3
+            codepoint = b0 & 0x0F
+        else:
+            seq_len = 4
+            codepoint = b0 & 0x07
+        for j in range(1, seq_len):
+            if i + j < n:
+                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
+        # Fullwidth ASCII: U+FF01–U+FF5E → subtract 0xFEE0.
+        if codepoint >= 0xFF01 and codepoint <= 0xFF5E:
+            var half = codepoint - 0xFEE0
+            out.append(UInt8(half))
+        elif codepoint == 0x3000:
+            # Fullwidth space → regular space.
+            out.append(UInt8(0x20))
+        else:
+            # Copy original UTF-8 bytes unchanged.
+            for j in range(seq_len):
+                if i + j < n:
+                    out.append(bytes[i + j])
+        i += seq_len
+    return String(unsafe_from_utf8=out^)
+
+
+fn _split_on_fullwidth_spaces(
+    token: String, extra_ws: List[String] = List[String]()
+) -> List[String]:
+    """Splits a token on fullwidth spaces (``U+3000``) and optional extra whitespace characters.
+
+    After converting fullwidth ASCII to halfwidth, embedded fullwidth
+    spaces become regular spaces.  This function splits the *original*
+    token on ``U+3000`` boundaries (and any caller-specified extra
+    whitespace codepoints) and returns the non-empty parts.
+
+    Args:
+        token: The token to split.
+        extra_ws: Additional Unicode whitespace characters to split on
+            (e.g., ``[\"\\u2003\"]`` for EM SPACE).
+
+    Returns:
+        A list of non-empty substrings.  If no fullwidth spaces are
+        present, the list contains the original token as a single element.
+    """
+    # First convert fullwidth to halfwidth (this also converts U+3000 → space).
+    var converted = _fullwidth_to_halfwidth(token)
+    # Also apply extra whitespace conversions.
+    for k in range(len(extra_ws)):
+        converted = converted.replace(extra_ws[k], " ")
+    # Split on regular spaces.
+    var parts = converted.split(" ")
+    var result = List[String]()
+    for k in range(len(parts)):
+        var part = String(String(parts[k]).strip())
+        if len(part) > 0:
+            result.append(part)
+    return result^

@@ -79,7 +79,7 @@ These features appear across multiple libraries and depend only on string operat
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
 | CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
-| CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | Phase 6       |
+| CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase 7       |
@@ -146,7 +146,7 @@ src/argmojo/
 ├── command.mojo                    # Command struct — command definition & parsing
 ├── parse_result.mojo               # ParseResult struct — parsed values
 └── utils.mojo                      # Internal utilities — ANSI colours, display helpers
-tests/                              # 424 tests across 14 files
+tests/                              # 424 tests across 15 files
 ├── test_parse.mojo                 # Core parsing tests (flags, values, shorts, etc.)
 ├── test_groups.mojo                # Group constraint tests (exclusive, conditional, etc.)
 ├── test_collect.mojo               # Collection feature tests (append, delimiter, number_of_values)
@@ -160,7 +160,8 @@ tests/                              # 424 tests across 14 files
 ├── test_implies.mojo               # Mutual implication and cycle detection tests
 ├── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
 ├── test_response_file.mojo         # response file (@args.txt) expansion tests
-└── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
+├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
+└── test_fullwidth.mojo             # full-width → half-width auto-correction tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -223,6 +224,8 @@ examples/
 | Partial parsing (`parse_known_arguments()` → collect unknown options)                              | ✓      | ✓     |
 | Allow hyphen values (`.allow_hyphen_values()` → accept `-x` as positional value)                   | ✓      | ✓     |
 | Value name rename (`.metavar()` → `.value_name()`)                                                 | ✓      | ✓     |
+| CJK-aware help formatting (`_display_width` for column alignment)                                  | ✓      | ✓     |
+| Full-width → half-width auto-correction (fullwidth ASCII + `U+3000` space)                         | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -617,7 +620,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 **References:** POSIX `wcwidth(3)`, Python `unicodedata.east_asian_width()`, Rust `unicode-width` crate.
 
-#### 6.2 Full-width → half-width auto-correction
+#### 6.2 Full-width → half-width auto-correction ✓
 
 **Problem:** CJK users frequently forget to switch input methods, typing full-width ASCII:
 
@@ -626,19 +629,19 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 **Implementation:**
 
-- [ ] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
+- [x] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
   - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get half-width
-  - Full-width space `U+3000` → half-width space `U+0020`. `--name\u3000yuhao\u3000--verbose` is originally scanned by `sys.argv` as a single token with embedded full-width spaces, so we need to handle this case too by replacing the original list of arguments with the corrected split. There are also other spaces in the Unicode standard, we can also support them by adding a method like `whitespace_characters(chars: List[Char])` that allows users to specify additional code points to treat as whitespace (e.g. `U+2003 EM SPACE`).
-- [ ] In `parse_arguments()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
+  - Full-width space `U+3000` → half-width space `U+0020`. `--name\u3000yuhao\u3000--verbose` is originally scanned by `sys.argv` as a single token with embedded full-width spaces, so we need to handle this case too by replacing the original list of arguments with the corrected split. There are also other spaces in the Unicode standard, we can also support them by adding a method like `whitespace_characters(chars: List[String])` that allows users to specify additional code points to treat as whitespace (e.g. `U+2003 EM SPACE`).
+- [x] In `parse_arguments()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
 
   ```bash
   warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
   ```
 
-- [ ] Only correct option names (tokens starting with `-`), **not** positional values (user may intentionally input full-width content)
-- [ ] Add `.disable_fullwidth_correction()` opt-out API on `Command`
-- [ ] Add tests for full-width flag, full-width `=` in `--key＝value`, and opt-out
-- [ ] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
+- [x] Only correct option names (tokens starting with `-`), **not** positional values (user may intentionally input full-width content)
+- [x] Add `.disable_fullwidth_correction()` opt-out API on `Command`
+- [x] Add tests for full-width flag, full-width `=` in `--key＝value`, and opt-out
+- [x] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
 
 #### 6.3 CJK punctuation detection
 
@@ -650,7 +653,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 **Implementation:**
 
 - [ ] Integrate with typo suggestion system — when a token fails to match any known option, check for common CJK punctuation patterns before running Levenshtein:
-  - `——` (`U+2014 U+2014`) → `--`
+  - `——` (`U+2014 U+2014`, 破折號) → `--`
   - `：` (`U+FF1A`) → `=` or `:`
   - `，` (`U+FF0C`) → `,` (affects value delimiters)
 - [ ] Produce specific error messages:
