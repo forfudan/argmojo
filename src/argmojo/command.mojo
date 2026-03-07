@@ -13,6 +13,7 @@ from .utils import (
     _DEFAULT_ARG_COLOR,
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
+    _display_width,
     _looks_like_number,
     _resolve_color,
     _suggest_similar,
@@ -2986,8 +2987,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         var pos_max: Int = 0
         for k in range(len(pos_plains)):
-            if len(pos_plains[k]) > pos_max:
-                pos_max = len(pos_plains[k])
+            var w = _display_width(pos_plains[k])
+            if w > pos_max:
+                pos_max = w
         var pos_pad = pos_max + 4
 
         var s = header_color + "Arguments:" + reset_code + "\n"
@@ -2995,7 +2997,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             var line = pos_colors[k]
             if pos_helps[k]:
                 # Pad based on plain-text width.
-                var padding = pos_pad - len(pos_plains[k])
+                var padding = pos_pad - _display_width(pos_plains[k])
                 for _p in range(padding):
                     line += " "
                 line += pos_helps[k]
@@ -3226,12 +3228,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var local_max: Int = 0
         var global_max: Int = 0
         for k in range(len(opt_plains)):
+            var w = _display_width(opt_plains[k])
             if opt_persistent[k]:
-                if len(opt_plains[k]) > global_max:
-                    global_max = len(opt_plains[k])
+                if w > global_max:
+                    global_max = w
             else:
-                if len(opt_plains[k]) > local_max:
-                    local_max = len(opt_plains[k])
+                if w > local_max:
+                    local_max = w
         var local_pad = local_max + 4
         var global_pad = global_max + 4
 
@@ -3242,7 +3245,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             if not opt_persistent[k]:
                 var line = opt_colors[k]
                 if opt_helps[k]:
-                    var padding = local_pad - len(opt_plains[k])
+                    var padding = local_pad - _display_width(opt_plains[k])
                     for _p in range(padding):
                         line += " "
                     line += opt_helps[k]
@@ -3255,7 +3258,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 if opt_persistent[k]:
                     var line = opt_colors[k]
                     if opt_helps[k]:
-                        var padding = global_pad - len(opt_plains[k])
+                        var padding = global_pad - _display_width(opt_plains[k])
                         for _p in range(padding):
                             line += " "
                         line += opt_helps[k]
@@ -3324,14 +3327,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
         # Compute padding.
         var cmd_max: Int = 0
         for k in range(len(cmd_plains)):
-            if len(cmd_plains[k]) > cmd_max:
-                cmd_max = len(cmd_plains[k])
+            var w = _display_width(cmd_plains[k])
+            if w > cmd_max:
+                cmd_max = w
         var cmd_pad = cmd_max + 4
         var s = "\n" + header_color + "Commands:" + reset_code + "\n"
         for k in range(len(cmd_plains)):
             var line = cmd_colors[k]
             if cmd_helps[k]:
-                var padding = cmd_pad - len(cmd_plains[k])
+                var padding = cmd_pad - _display_width(cmd_plains[k])
                 for _p in range(padding):
                     line += " "
                 line += cmd_helps[k]

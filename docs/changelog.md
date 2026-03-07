@@ -17,6 +17,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 5. Add `.remainder()` builder method on `Argument`. A remainder positional consumes **all** remaining tokens (including ones starting with `-`), similar to argparse `nargs=REMAINDER` or clap `trailing_var_arg`. At most one remainder positional is allowed per command and it must be the last positional (PR #13).
 6. Add `parse_known_arguments()` method on `Command`. Like `parse_arguments()`, but unrecognised options are collected into the result instead of raising an error. Access them via `result.get_unknown_args()`. Useful for forwarding unknown flags to another program (PR #13).
 7. Add `.allow_hyphen_values()` builder method on `Argument`. When set on a positional, values starting with `-` are accepted without requiring `--` (e.g., `-` for stdin). Remainder positionals have this enabled automatically (PR #13).
+8. **CJK-aware help alignment.** Help output now computes column padding using terminal display width instead of byte length. CJK ideographs and fullwidth characters are correctly treated as 2-column-wide, so help descriptions stay aligned when option names, positional names, or subcommand names contain Chinese, Japanese, or Korean characters. ANSI escape sequences are skipped during width calculation. No API changes — this is automatic (PR #14).
 
 ### 🔧 Fixes and API changes
 

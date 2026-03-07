@@ -3,6 +3,7 @@
 from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
+from argmojo.utils import _display_width
 
 # ── Hidden arguments ──────────────────────────────────────────────────────────────
 
@@ -857,6 +858,122 @@ fn test_no_color_env_static_method() raises:
         print("  ✓ test_no_color_env_static_method (NO_COLOR is set)")
     else:
         print("  ✓ test_no_color_env_static_method (NO_COLOR is not set)")
+
+
+# ── CJK-aware help alignment ────────────────────────────────────────────────
+
+
+fn test_cjk_options_aligned() raises:
+    """Tests that CJK help text doesn't break column alignment."""
+    var command = Command("test", "測試應用")
+    command.add_argument(
+        Argument("verbose", help="顯示詳細資訊").long("verbose").short("v").flag()
+    )
+    command.add_argument(
+        Argument("output", help="輸出路徑").long("output").short("o")
+    )
+
+    var help = command._generate_help(color=False)
+    # Both help descriptions should start at the same display column.
+    var col_verbose: Int = -1
+    var col_output: Int = -1
+    var lines = help.splitlines()
+    for idx in range(len(lines)):
+        if "--verbose" in lines[idx]:
+            var bp = lines[idx].find("顯示詳細資訊")
+            col_verbose = _display_width(String(lines[idx][0:bp]))
+        if "--output" in lines[idx]:
+            var bp = lines[idx].find("輸出路徑")
+            col_output = _display_width(String(lines[idx][0:bp]))
+    assert_true(col_verbose > 0, msg="verbose help should appear")
+    assert_true(col_output > 0, msg="output help should appear")
+    assert_equal(
+        col_verbose,
+        col_output,
+        msg="CJK help descriptions should be aligned at the same column",
+    )
+
+
+fn test_cjk_subcommands_aligned() raises:
+    """Tests that CJK subcommand descriptions align correctly."""
+    var app = Command("工具", "一個命令行工具")
+    var init = Command("初始化", "建立新項目")
+    app.add_subcommand(init^)
+    var build = Command("構建", "編譯項目")
+    app.add_subcommand(build^)
+
+    var help = app._generate_help(color=False)
+    var col_init: Int = -1
+    var col_build: Int = -1
+    var lines = help.splitlines()
+    for idx in range(len(lines)):
+        if "初始化" in lines[idx] and "建立新項目" in lines[idx]:
+            var bp = lines[idx].find("建立新項目")
+            col_init = _display_width(String(lines[idx][0:bp]))
+        if "構建" in lines[idx] and "編譯項目" in lines[idx]:
+            var bp = lines[idx].find("編譯項目")
+            col_build = _display_width(String(lines[idx][0:bp]))
+    assert_true(col_init > 0, msg="init description should appear")
+    assert_true(col_build > 0, msg="build description should appear")
+    assert_equal(
+        col_init,
+        col_build,
+        msg="CJK subcommand descriptions should be aligned",
+    )
+
+
+fn test_cjk_positionals_aligned() raises:
+    """Tests that CJK positional argument help aligns correctly."""
+    var command = Command("test", "測試")
+    command.add_argument(Argument("檔案", help="輸入檔案路徑"))
+    command.add_argument(Argument("目標", help="輸出目標位置"))
+
+    var help = command._generate_help(color=False)
+    var col_file: Int = -1
+    var col_target: Int = -1
+    var lines = help.splitlines()
+    for idx in range(len(lines)):
+        if "檔案" in lines[idx] and "輸入檔案路徑" in lines[idx]:
+            var bp = lines[idx].find("輸入檔案路徑")
+            col_file = _display_width(String(lines[idx][0:bp]))
+        if "目標" in lines[idx] and "輸出目標位置" in lines[idx]:
+            var bp = lines[idx].find("輸出目標位置")
+            col_target = _display_width(String(lines[idx][0:bp]))
+    assert_true(col_file > 0, msg="file help should appear")
+    assert_true(col_target > 0, msg="target help should appear")
+    assert_equal(
+        col_file,
+        col_target,
+        msg="CJK positional descriptions should be aligned",
+    )
+
+
+fn test_mixed_ascii_cjk_aligned() raises:
+    """Tests alignment when mixing ASCII and CJK option names."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output path").long("output").short("o")
+    )
+    command.add_argument(Argument("編碼", help="設定編碼").long("編碼"))
+
+    var help = command._generate_help(color=False)
+    var col_output: Int = -1
+    var col_enc: Int = -1
+    var lines = help.splitlines()
+    for idx in range(len(lines)):
+        if "--output" in lines[idx]:
+            var bp = lines[idx].find("Output path")
+            col_output = _display_width(String(lines[idx][0:bp]))
+        if "--編碼" in lines[idx]:
+            var bp = lines[idx].find("設定編碼")
+            col_enc = _display_width(String(lines[idx][0:bp]))
+    assert_true(col_output > 0, msg="output help should appear")
+    assert_true(col_enc > 0, msg="encoding help should appear")
+    assert_equal(
+        col_output,
+        col_enc,
+        msg="Mixed ASCII/CJK option help should be aligned",
+    )
 
 
 fn main() raises:

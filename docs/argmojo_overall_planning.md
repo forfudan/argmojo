@@ -78,7 +78,7 @@ These features appear across multiple libraries and depend only on string operat
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
-| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | Phase 6       |
+| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | Phase 6       |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
@@ -141,24 +141,30 @@ This gives us the raw list of argument strings, and the remaining task is to imp
 
 ```txt
 src/argmojo/
-├── __init__.mojo               # Package exports (Argument, Command, ParseResult)
-├── argument.mojo               # Argument struct — argument definition with builder pattern
-├── command.mojo                # Command struct — command definition & parsing
-└── parse_result.mojo           # ParseResult struct — parsed values
-tests/
-├── test_parse.mojo             # Core parsing tests (flags, values, shorts, etc.)
-├── test_groups.mojo            # Group constraint tests (exclusive, conditional, etc.)
-├── test_collect.mojo           # Collection feature tests (append, delimiter, number_of_values)
-├── test_help.mojo              # Help output tests (formatting, colours, alignment)
-├── test_extras.mojo            # Range, map, alias, deprecated tests
-├── test_subcommands.mojo       # Subcommand tests (dispatch, help sub, unknown sub, etc.)
-├── test_negative_numbers.mojo  # Negative number passthrough tests
-├── test_persistent.mojo        # Persistent (global) flag tests
+├── __init__.mojo                   # Package exports (Argument, Command, ParseResult)
+├── argument.mojo                   # Argument struct — argument definition with builder pattern
+├── command.mojo                    # Command struct — command definition & parsing
+├── parse_result.mojo               # ParseResult struct — parsed values
+└── utils.mojo                      # Internal utilities — ANSI colours, display helpers
+tests/                              # 424 tests across 14 files
+├── test_parse.mojo                 # Core parsing tests (flags, values, shorts, etc.)
+├── test_groups.mojo                # Group constraint tests (exclusive, conditional, etc.)
+├── test_collect.mojo               # Collection feature tests (append, delimiter, number_of_values)
+├── test_help.mojo                  # Help output tests (formatting, colours, alignment)
+├── test_extras.mojo                # Range, map, alias, deprecated tests
+├── test_subcommands.mojo           # Subcommand tests (dispatch, help sub, unknown sub, etc.)
+├── test_negative_numbers.mojo      # Negative number passthrough tests
+├── test_persistent.mojo            # Persistent (global) flag tests
+├── test_typo_suggestions.mojo      # Levenshtein typo suggestion tests
+├── test_completion.mojo            # Shell completion script generation tests
+├── test_implies.mojo               # Mutual implication and cycle detection tests
 ├── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
-└── test_response_file.mojo        # response file (@args.txt) expansion tests
+├── test_response_file.mojo         # response file (@args.txt) expansion tests
+└── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
 examples/
-├── mgrep.mojo                   # grep-like CLI example (no subcommands)
-└── mgit.mojo                    # git-like CLI example (with subcommands)
+├── demo.mojo                       # comprehensive showcase of all ArgMojo features
+├── mgrep.mojo                      # grep-like CLI example (no subcommands)
+└── mgit.mojo                       # git-like CLI example (with subcommands)
 ```
 
 ### 4.2 What's Already Done ✓
@@ -205,7 +211,20 @@ examples/
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                       | ✓      | ✓     |
 | Default-if-no-value (`.default_if_no_value("gzip")` → optional value with fallback)                | ✓      | ✓     |
 | Require equals syntax (`.require_equals()` → `--key=value` only)                                   | ✓      | ✓     |
-| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)               | ✓      | ✓     |
+| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)               | ✓ ⚠    | ✓     |
+| Typo suggestions (Levenshtein "did you mean ...?" for long options and subcommands)                | ✓      | ✓     |
+| Flag counter ceiling (`.count().max[3]()` → cap with warning)                                      | ✓      | ✓     |
+| Shell completion script generation (`generate_completion("bash"\|"zsh"\|"fish")`)                  | ✓      | ✓     |
+| Subcommand aliases (`command_aliases(["co"])`)                                                     | ✓      | ✓     |
+| Hidden subcommands (`sub.hidden()` → excluded from help, completions, errors)                      | ✓      | ✓     |
+| `NO_COLOR` env variable (suppress ANSI output when set)                                            | ✓      | ✓     |
+| Mutual implication (`command.implies("debug", "verbose")` with chained + cycle detection)          | ✓      | ✓     |
+| Remainder positional (`.remainder()` → consume all remaining tokens)                               | ✓      | ✓     |
+| Partial parsing (`parse_known_arguments()` → collect unknown options)                              | ✓      | ✓     |
+| Allow hyphen values (`.allow_hyphen_values()` → accept `-x` as positional value)                   | ✓      | ✓     |
+| Value name rename (`.metavar()` → `.value_name()`)                                                 | ✓      | ✓     |
+
+> ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
 ### 4.3 API Design (Current)
 
@@ -238,6 +257,9 @@ fn main() raises:
 --flag              # Boolean flag
 --key value         # Key-value (space separated)
 --key=value         # Key-value (equals separated)
+--key=value         # Require-equals syntax (when .require_equals())
+--key               # Default-if-no-value (when .default_if_no_value())
+--no-flag           # Negation (when .negatable())
 --verb              # Prefix match → --verbose (if unambiguous)
 
 # Short options
@@ -253,8 +275,15 @@ pattern             # By order of add_argument() calls
 
 # Special
 --                  # Stop parsing options; rest becomes positional
---help / -h         # Show auto-generated help
+--help / -h / -?    # Show auto-generated help
 --version / -V      # Show version
+@args.txt           # Response file expansion (when enabled)
+cmd rest...         # Remainder positional (consume all remaining tokens)
+
+# Subcommands
+app search pattern  # Dispatch to subcommand
+app help search     # Show subcommand help
+app --verbose search  # Persistent flags before subcommand
 ```
 
 ### 4.5 Validation & Help Behavior Matrix
@@ -384,8 +413,8 @@ Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo
 
 #### Architecture: composition inside `Command`
 
-- **No file split.** Core logic stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain at ~2250 lines. ANSI colour constants and small utility functions live in `utils.mojo` (internal-only, all symbols `_`-prefixed).
-- **No tokenizer.** The single-pass cursor walk (`startswith` checks) is sufficient. Token types are trivially identified inline. The parsing logic in `parse_arguments()` delegates to four sub-methods (`_parse_long_option`, `_parse_short_single`, `_parse_short_merged`, `_dispatch_subcommand`) for readability, but the overall flow is still a simple cursor walk.
+- **No file split.** Core logic stays in `command.mojo`. Mojo has no partial structs, so splitting would force free functions + parameter threading for little gain. ANSI colour constants and small utility functions live in `utils.mojo` (internal-only, all symbols `_`-prefixed).
+- **No tokenizer.** Mojo standard library provides `sys.argv()` which already gives us a pre-split list of argument strings. We can work with this directly in `parse_arguments()` without a separate tokenization step.
 - **Composition-based.** `Command` gains a child command list. When `parse_arguments()` hits a non-option token matching a registered subcommand, it delegates the remaining argv slice to the child's own `parse_arguments()`. 100% logic reuse, zero duplication.
 
 #### Pre-requisite refactor (Step 0)
@@ -504,7 +533,9 @@ if result.subcommand == "search":
 - [x] Update user manual with subcommand usage patterns
 - [x] Document persistent flag behavior and conflict rules
 
-### Phase 5: Polish (nice-to-have features, most of which will be in v0.3, some may be deferred to v0.4+)
+### Phase 5: Polish (v0.3 shipped; remaining features for v0.4+)
+
+Some features shipped in v0.3.0, others completed in the unreleased update branch. Remaining items may be deferred to v0.4+.
 
 #### Pre-requisite refactor
 
@@ -533,22 +564,23 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Shell completion script generation** — `generate_completion("bash"|"zsh"|"fish")` returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
 - [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
-- [ ] **Partial parsing** — parse known args only, return unknown args as-is (argparse `parse_known_args`)
-- [ ] **Require equals syntax** — force `--key=value`, disallow `--key value` (clap `require_equals`)
-- [ ] **Default-if-no-value** — `--opt` (no value) → use default-if-no-value; `--opt=val` → use val; absent → use default (argparse `const`)
-- [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild)
+- [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised options instead of erroring; access via `result.get_unknown_args()` (argparse `parse_known_args`) (PR #13)
+- [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
+- [x] **Default-if-no-value** — `.default_if_no_value("val")`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
+- [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Temporarily disabled — Mojo compiler deadlock under `-D ASSERT=all`*
 - [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
-- [ ] **REMAINDER number_of_values** — capture all remaining args including `-` prefixed ones (argparse `nargs=REMAINDER`)
+- [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens (including `-` prefixed); at most one per command, must be last positional (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
+- [x] **Allow hyphen values** — `.allow_hyphen_values()` on positional accepts dash-prefixed tokens as values without `--`; remainder enables this automatically (clap `allow_hyphen_values`) (PR #13)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
 - [x] **Mutual implication** — `command.implies("debug", "verbose")` — after parsing, if the trigger flag is set, automatically set the implied flag; support chained implication (`debug → verbose → log`); detect circular cycles at registration time (no major library has this built-in)
 - [ ] **Stdin value** — `.stdin_value()` on `Argument` — when parsed value is `"-"`, read from stdin; Unix convention (`cat file.txt | mytool --input -`) (cobra supports; depends on Mojo stdin API)
 - [x] **Subcommand aliases** — `sub.command_aliases(["co"])` registers shorthand names; typo suggestions and completions search aliases too (cobra `Command.Aliases`, clap `Command::alias`)
-- [ ] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, still dispatchable by exact name (clap `Command::hide`, cobra `Hidden`)
-- [ ] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set, suppress all ANSI colour output; lower priority than explicit `.color(False)` API call
+- [x] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, completions, and error messages; dispatchable by exact name or alias (clap `Command::hide`, cobra `Hidden`) (PR #9)
+- [x] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set (any value, including empty), suppress all ANSI colour output; lower priority than explicit `.color(False)` API call (PR #9)
 
 #### Explicitly Out of Scope in This Phase
 
@@ -566,7 +598,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 這部分主要是為了讓 ArgMojo 在 CJK 環境下的使用體驗更好，解決一些常見的問題，比如幫助信息對齊、全角字符自動轉半角、CJK 標點檢測等。畢竟我總是忘了切換輸入法，打出中文的全角標點，然後被 CLI 報錯。
 
-#### 6.1 CJK-aware help formatting
+#### 6.1 CJK-aware help formatting ✓
 
 **Problem:** All Western CLI libraries (argparse, cobra, clap) assume 1 char = 1 column. CJK characters occupy 2 terminal columns (full-width), causing misaligned `--help` output when descriptions mix CJK and ASCII:
 
@@ -577,12 +609,11 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 **Implementation:**
 
-- [ ] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing each code point:
-  - CJK Unified Ideographs (`U+4E00`–`U+9FFF`), CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms (`U+FF01`–`U+FF60`) → width 2
-  - Other visible characters → width 1
-  - Zero-width joiners, combining marks → width 0
-- [ ] Replace `len()` with `_display_width()` in all help formatting padding calculations (`_help_positionals_section`, `_help_options_section`, `_help_commands_section`)
-- [ ] Add tests with mixed CJK/ASCII help text verifying column alignment
+- [x] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing each code point:
+  - CJK Unified Ideographs, CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms → width 2
+  - Other visible characters → width 1 (zero-width joiners and combining marks are rare in CLI help text and are not special-cased)
+- [x] Replace `len()` with `_display_width()` in all help formatting padding calculations (`_help_positionals_section`, `_help_options_section`, `_help_commands_section`)
+- [x] Add tests with mixed CJK/ASCII help text verifying column alignment
 
 **References:** POSIX `wcwidth(3)`, Python `unicodedata.east_asian_width()`, Rust `unicode-width` crate.
 
