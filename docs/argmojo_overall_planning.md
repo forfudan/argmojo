@@ -78,6 +78,8 @@ These features appear across multiple libraries and depend only on string operat
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
 | Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
+| Argument groups in help            | ✓        | —     | ✓     | ✓    |                              | **Done**      |
+| Value-name wrapping control        | —        | —     | —     | ✓    | clap, cargo, pixi, git       | **Done**      |
 | CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | **Done**      |
@@ -146,7 +148,7 @@ src/argmojo/
 ├── command.mojo                    # Command struct — command definition & parsing
 ├── parse_result.mojo               # ParseResult struct — parsed values
 └── utils.mojo                      # Internal utilities — ANSI colours, display helpers
-tests/                              # 424 tests across 15 files
+tests/
 ├── test_parse.mojo                 # Core parsing tests (flags, values, shorts, etc.)
 ├── test_groups.mojo                # Group constraint tests (exclusive, conditional, etc.)
 ├── test_collect.mojo               # Collection feature tests (append, delimiter, number_of_values)
@@ -161,11 +163,13 @@ tests/                              # 424 tests across 15 files
 ├── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
 ├── test_response_file.mojo         # response file (@args.txt) expansion tests
 ├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
-└── test_fullwidth.mojo             # full-width → half-width auto-correction tests
+├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
+└── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
-└── mgit.mojo                       # git-like CLI example (with subcommands)
+├── mgit.mojo                       # git-like CLI example (with subcommands)
+└── yu.mojo                         # Chinese-language CLI example (CJK-aware help)
 ```
 
 ### 4.2 What's Already Done ✓
@@ -566,7 +570,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Range clamping** — `.range[min, max]().clamp()` adjusts out-of-range values to the nearest boundary with a warning instead of erroring (Click has `IntRange(clamp=True)`)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [x] **Shell completion script generation** — `generate_completion("bash"|"zsh"|"fish")` returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
-- [ ] **Argument groups in help** — group related options under headings (argparse add_argument_group)
+- [x] **Argument groups in help** — `.group("name")` groups related options under headings; independent per-section padding; persistent args stay in "Global Options:" (argparse `add_argument_group`) (PR #17)
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised options instead of erroring; access via `result.get_unknown_args()` (argparse `parse_known_args`) (PR #13)
 - [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
@@ -585,6 +589,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Subcommand aliases** — `sub.command_aliases(["co"])` registers shorthand names; typo suggestions and completions search aliases too (cobra `Command.Aliases`, clap `Command::alias`)
 - [x] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, completions, and error messages; dispatchable by exact name or alias (clap `Command::hide`, cobra `Hidden`) (PR #9)
 - [x] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set (any value, including empty), suppress all ANSI colour output; lower priority than explicit `.color(False)` API call (PR #9)
+- [x] **Value-name wrapping control** — `.value_name[wrapped: Bool = True]("NAME")` displays custom value names in `<NAME>` by default (matching clap/cargo/pixi/git convention); pass `False` for bare display (PR #17)
 
 #### Explicitly Out of Scope in This Phase
 

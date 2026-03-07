@@ -481,8 +481,8 @@ fn test_help_const_with_value_name() raises:
 
     var help = command._generate_help(color=False)
     assert_true(
-        "--compress[=ALGO]" in help,
-        msg="help should show '--compress[=ALGO]': " + help,
+        "--compress[=<ALGO>]" in help,
+        msg="help should show '--compress[=<ALGO>]': " + help,
     )
 
 
@@ -498,8 +498,8 @@ fn test_help_require_equals_with_value_name() raises:
 
     var help = command._generate_help(color=False)
     assert_true(
-        "--output=FILE" in help,
-        msg="help should show '--output=FILE': " + help,
+        "--output=<FILE>" in help,
+        msg="help should show '--output=<FILE>': " + help,
     )
 
 

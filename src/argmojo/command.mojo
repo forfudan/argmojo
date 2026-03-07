@@ -3166,11 +3166,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         header_color: String,
         reset_code: String,
     ) -> String:
-        """Generates the 'Options:' and 'Global Options:' sections.
+        """Generates the 'Options:', group, and 'Global Options:' sections.
 
         Separates local options from persistent (global) options and
-        displays them under distinct headings.  Built-in ``--help`` and
-        ``--version`` are always appended to the local section.
+        displays them under distinct headings.  Options with a ``.group()``
+        are shown under their group heading.  Built-in ``--help`` and
+        ``--version`` are always appended to the ungrouped local section.
 
         Args:
             arg_color: ANSI colour code for argument names.
@@ -3184,6 +3185,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var opt_colors = List[String]()
         var opt_helps = List[String]()
         var opt_persistent = List[Bool]()
+        var opt_groups = List[String]()
 
         for i in range(len(self.args)):
             if not self.args[i]._is_positional and not self.args[i]._is_hidden:
@@ -3246,7 +3248,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         i
                     ]._has_default_if_no_value else String("")
                     if self.args[i]._value_name:
-                        var mv = self.args[i]._value_name
+                        var raw_mv = self.args[i]._value_name
+                        var mv: String
+                        if self.args[i]._value_name_wrapped:
+                            mv = "<" + raw_mv + ">"
+                        else:
+                            mv = raw_mv
                         var mv_plain = String("")
                         var mv_colored = String("")
                         for _r in range(repeat - 1):
@@ -3313,6 +3320,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 opt_plains.append(plain)
                 opt_colors.append(colored)
                 opt_persistent.append(self.args[i]._is_persistent)
+                opt_groups.append(self.args[i]._group)
                 # Append deprecation notice to help text if applicable.
                 var help = self.args[i].help_text
                 if self.args[i]._deprecated_msg:
@@ -3321,7 +3329,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     help += "[deprecated: " + self.args[i]._deprecated_msg + "]"
                 opt_helps.append(help)
 
-        # Built-in options (always shown under local "Options:" section).
+        # Built-in options (always shown under local ungrouped "Options:" section).
         var help_plain = String("  -h, --help")
         var help_colored = (
             "  "
@@ -3347,10 +3355,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         opt_plains.append(help_plain)
         opt_colors.append(help_colored)
         opt_persistent.append(False)
+        opt_groups.append(String(""))
         opt_helps.append(String("Show this help message"))
         opt_plains.append(version_plain)
         opt_colors.append(version_colored)
         opt_persistent.append(False)
+        opt_groups.append(String(""))
         opt_helps.append(String("Show version"))
         if self._completions_enabled and not self._completions_is_subcommand:
             var comp_plain = String(
@@ -3370,6 +3380,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             opt_plains.append(comp_plain)
             opt_colors.append(comp_colored)
             opt_persistent.append(False)
+            opt_groups.append(String(""))
             opt_helps.append(String("Generate shell completion script"))
 
         # Check if there are any persistent (global) options.
@@ -3379,35 +3390,78 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 has_global = True
                 break
 
-        # Compute padding width for local and global options separately.
-        var local_max: Int = 0
-        var global_max: Int = 0
-        for k in range(len(opt_plains)):
-            var w = _display_width(opt_plains[k])
-            if opt_persistent[k]:
-                if w > global_max:
-                    global_max = w
-            else:
-                if w > local_max:
-                    local_max = w
-        var local_pad = local_max + 4
-        var global_pad = global_max + 4
+        # Collect distinct group names in order of first appearance.
+        var group_names = List[String]()
+        for k in range(len(opt_groups)):
+            if opt_groups[k] and not opt_persistent[k]:
+                var found = False
+                for g in range(len(group_names)):
+                    if group_names[g] == opt_groups[k]:
+                        found = True
+                        break
+                if not found:
+                    group_names.append(opt_groups[k])
 
-        # Pass 2: assemble padded lines using coloured text.
-        # Local options.
+        # --- Helper: compute max display width for a subset of options ---
+        fn _section_pad(
+            plains: List[String],
+            persistent: List[Bool],
+            groups: List[String],
+            want_persistent: Bool,
+            want_group: String,
+        ) -> Int:
+            var mx: Int = 0
+            for idx in range(len(plains)):
+                if persistent[idx] != want_persistent:
+                    continue
+                if groups[idx] != want_group:
+                    continue
+                var w = _display_width(plains[idx])
+                if w > mx:
+                    mx = w
+            return mx + 4
+
+        # --- Ungrouped local options (Options:) ---
+        var ungrouped_pad = _section_pad(
+            opt_plains, opt_persistent, opt_groups, False, String("")
+        )
         var s = header_color + "Options:" + reset_code + "\n"
         for k in range(len(opt_plains)):
-            if not opt_persistent[k]:
+            if not opt_persistent[k] and not opt_groups[k]:
                 var line = opt_colors[k]
                 if opt_helps[k]:
-                    var padding = local_pad - _display_width(opt_plains[k])
+                    var padding = ungrouped_pad - _display_width(opt_plains[k])
                     for _p in range(padding):
                         line += " "
                     line += opt_helps[k]
                 s += line + "\n"
 
+        # --- Grouped local options (one section per group) ---
+        for g in range(len(group_names)):
+            var gname = group_names[g]
+            var gpad = _section_pad(
+                opt_plains, opt_persistent, opt_groups, False, gname
+            )
+            s += "\n" + header_color + gname + ":" + reset_code + "\n"
+            for k in range(len(opt_plains)):
+                if not opt_persistent[k] and opt_groups[k] == gname:
+                    var line = opt_colors[k]
+                    if opt_helps[k]:
+                        var padding = gpad - _display_width(opt_plains[k])
+                        for _p in range(padding):
+                            line += " "
+                        line += opt_helps[k]
+                    s += line + "\n"
+
         # Global (persistent) options — shown under a separate heading.
         if has_global:
+            var global_max: Int = 0
+            for k in range(len(opt_plains)):
+                if opt_persistent[k]:
+                    var w = _display_width(opt_plains[k])
+                    if w > global_max:
+                        global_max = w
+            var global_pad = global_max + 4
             s += "\n" + header_color + "Global Options:" + reset_code + "\n"
             for k in range(len(opt_plains)):
                 if opt_persistent[k]:

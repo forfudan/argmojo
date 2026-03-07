@@ -19,6 +19,9 @@ from argmojo import Argument, Command
   - [Default Values](#default-values)
   - [Required Arguments](#required-arguments)
   - [Aliases](#aliases)
+- [Builder Method Compatibility](#builder-method-compatibility)
+  - [ASCII Tree](#ascii-tree)
+  - [Compatibility Table](#compatibility-table)
 - [Short Option Details](#short-option-details)
   - [Short Flag Merging](#short-flag-merging)
   - [Attached Short Values](#attached-short-values)
@@ -36,10 +39,6 @@ from argmojo import Argument, Command
   - [Positional Argument Count Validation](#positional-argument-count-validation)
   - [Numeric Range Validation](#numeric-range-validation)
   - [Range Clamping (`.clamp()`)](#range-clamping-clamp)
-- [Builder Method Compatibility](#builder-method-compatibility)
-  - [ASCII Tree](#ascii-tree)
-  - [Mermaid Diagram](#mermaid-diagram)
-  - [Compatibility Table](#compatibility-table)
 - [Group Constraints](#group-constraints)
   - [Mutually Exclusive Groups](#mutually-exclusive-groups)
   - [One-Required Groups](#one-required-groups)
@@ -61,6 +60,7 @@ from argmojo import Argument, Command
   - [Deprecated Arguments](#deprecated-arguments)
   - [Default-if-no-value](#default-if-no-value)
   - [Require Equals Syntax](#require-equals-syntax)
+  - [Argument Groups](#argument-groups)
   - [Auto-generated Help](#auto-generated-help)
   - [Custom Tips](#custom-tips)
   - [Version Display](#version-display)
@@ -335,6 +335,102 @@ command.add_argument(
         .aliases(alias_list^)
 )
 ```
+
+## Builder Method Compatibility
+
+The `Argument` builder has ~20 chainable methods, but not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
+
+### ASCII Tree
+
+```txt
+Argument("name", help="...")
+║
+╠══ Named option ═══════════════════════════════════════════════════════════════
+║   .long("x") ─── .short("x")             ← pick one or both
+║   │
+║   ├── [value mode] (default)             ← takes a string value
+║   │   ├── .required()
+║   │   ├── .default("val")
+║   │   ├── .choices(["a","b","c"])
+║   │   ├── .range[1, 100]() ─── .clamp()
+║   │   ├── .append()
+║   │   │   ├── .delimiter(",")
+║   │   │   └── .number_of_values[2]()
+║   │   └── .map_option()
+║   │
+║   ├── .flag()                            ← boolean, no value
+║   │   └── .negatable()                     adds --no-X form
+║   │
+║   └── .count()                           ← counter: -vvv → 3
+║       └── .max[3]()                        cap the counter
+║
+╠══ Positional ═════════════════════════════════════════════════════════════════
+║   .positional()                          ← matched by position
+║   ├── .required()
+║   ├── .default("val")
+║   ├── .choices(["a","b","c"])
+║   ├── .allow_hyphen_values()               accept -x as a value, not option
+║   └── .remainder()                         consume ALL remaining tokens
+║       └── (implies .allow_hyphen_values())
+║
+╠══ Decorators (combine with any path above) ═══════════════════════════════════
+║   .value_name("FILE")          display name in help      (value / positional)
+║   .hidden()                    hide from --help          (any)
+║   .aliases(["alt"])            alternative --names       (named only)
+║   .deprecated("msg")           deprecation warning       (any)
+║   .persistent()                inherit to subcommands    (named only)
+║   .default_if_no_value("val")  default-if-no-value       (value only)
+║   .require_equals()            force --key=value syntax  (named value only)
+║
+╠══ Command-level constraints (called on Command, not Argument) ════════════════
+║   command.mutually_exclusive(["a","b"])  at most one from the group
+║   command.one_required(["a","b"])        at least one from the group
+║   command.required_together(["a","b"])   all or none from the group
+║   command.required_if("target","cond")   target required when cond is set
+║   command.implies("trigger","implied")   auto-set implied when trigger is set
+╚═══════════════════════════════════════════════════════════════════════════════
+```
+
+> **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
+> indented under `.range[min,max]()` because it requires range.  The three main
+> paths (value / flag / count) under *Named option* are **mutually
+> exclusive** — pick exactly one mode per argument.
+
+### Compatibility Table
+
+The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
+
+| Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
+| -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long("x")`                     |      ✓      |     ✓     |     ✓      |        —        |
+| `.short("x")`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
+| `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
+| `.append()`                      |      ✓      |     —     |     —      |        —        |
+| `.delimiter(",")`                |     ✓ ²     |     —     |     —      |        —        |
+| `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
+| `.map_option()`                  |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                   |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
+| `.value_name("FILE")`            |      ✓      |     —     |     —      |        ✓        |
+| `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                   |      —      |     —     |     —      |        ✓        |
+| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
+| `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
+
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
 
 ## Short Option Details
 
@@ -1055,161 +1151,6 @@ myapp --port 50 --port 200 --port 0
 myapp --port 200
 # Error: Value 200 for '--port' is out of range [1, 100]
 ```
-
-## Builder Method Compatibility
-
-The `Argument` builder has ~20 chainable methods, but not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
-
-### ASCII Tree
-
-```txt
-Argument("name", help="...")
-║
-╠══ Named option ═══════════════════════════════════════════════════════════════
-║   .long("x") ─── .short("x")             ← pick one or both
-║   │
-║   ├── [value mode] (default)             ← takes a string value
-║   │   ├── .required()
-║   │   ├── .default("val")
-║   │   ├── .choices(["a","b","c"])
-║   │   ├── .range[1, 100]() ─── .clamp()
-║   │   ├── .append()
-║   │   │   ├── .delimiter(",")
-║   │   │   └── .number_of_values[2]()
-║   │   └── .map_option()
-║   │
-║   ├── .flag()                            ← boolean, no value
-║   │   └── .negatable()                     adds --no-X form
-║   │
-║   └── .count()                           ← counter: -vvv → 3
-║       └── .max[3]()                        cap the counter
-║
-╠══ Positional ═════════════════════════════════════════════════════════════════
-║   .positional()                          ← matched by position
-║   ├── .required()
-║   ├── .default("val")
-║   ├── .choices(["a","b","c"])
-║   ├── .allow_hyphen_values()               accept -x as a value, not option
-║   └── .remainder()                         consume ALL remaining tokens
-║       └── (implies .allow_hyphen_values())
-║
-╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name("FILE")          display name in help      (value / positional)
-║   .hidden()                    hide from --help          (any)
-║   .aliases(["alt"])            alternative --names       (named only)
-║   .deprecated("msg")           deprecation warning       (any)
-║   .persistent()                inherit to subcommands    (named only)
-║   .default_if_no_value("val")  default-if-no-value       (value only)
-║   .require_equals()            force --key=value syntax  (named value only)
-║
-╠══ Command-level constraints (called on Command, not Argument) ════════════════
-║   command.mutually_exclusive(["a","b"])  at most one from the group
-║   command.one_required(["a","b"])        at least one from the group
-║   command.required_together(["a","b"])   all or none from the group
-║   command.required_if("target","cond")   target required when cond is set
-║   command.implies("trigger","implied")   auto-set implied when trigger is set
-╚═══════════════════════════════════════════════════════════════════════════════
-```
-
-> **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
-> indented under `.range[min,max]()` because it requires range.  The three main
-> paths (value / flag / count) under *Named option* are **mutually
-> exclusive** — pick exactly one mode per argument.
-
-### Mermaid Diagram
-
-```mermaid
-flowchart LR
-    ARG["Argument(name, help)"]
-
-    ARG --> NAMED[".long() / .short()"]
-    ARG --> POS[".positional()"]
-
-    NAMED --> VAL["Value mode\n(default)"]
-    NAMED --> FLAG[".flag()"]
-    NAMED --> COUNT[".count()"]
-
-    VAL --> req1[".required()"]
-    VAL --> def1[".default()"]
-    VAL --> cho1[".choices()"]
-    VAL --> rng[".range[min,max]()"]
-    rng --> clp[".clamp()"]
-    VAL --> app[".append()"]
-    app --> delim[".delimiter()"]
-    app --> nvals[".number_of_values[N]()"]
-    VAL --> mapopt[".map_option()"]
-
-    FLAG --> neg[".negatable()"]
-    COUNT --> maxn[".max[N]()"]
-
-    POS --> req2[".required()"]
-    POS --> def2[".default()"]
-    POS --> cho2[".choices()"]
-    POS --> ahv[".allow_hyphen_values()"]
-    POS --> rem[".remainder()"]
-    rem -.-> ahv
-
-    ARG -.-> DEC["Decorators"]
-    DEC --> meta[".value_name()"]
-    DEC --> hid[".hidden()"]
-    DEC --> ali[".aliases()"]
-    DEC --> dep[".deprecated()"]
-    DEC --> per[".persistent()"]
-    DEC --> dinv[".default_if_no_value()"]
-    DEC --> reqeq[".require_equals()"]
-
-    ARG -.-> CMDCON["Command-level\nConstraints"]
-    CMDCON --> mutex["command.mutually_exclusive()"]
-    CMDCON --> onereq["command.one_required()"]
-    CMDCON --> reqtog["command.required_together()"]
-    CMDCON --> reqif["command.required_if()"]
-    CMDCON --> imp["command.implies()"]
-
-    style ARG fill:#e8f4fd,stroke:#333
-    style NAMED fill:#d4edda,stroke:#333
-    style POS fill:#d4edda,stroke:#333
-    style FLAG fill:#fff3cd,stroke:#333
-    style COUNT fill:#fff3cd,stroke:#333
-    style VAL fill:#fff3cd,stroke:#333
-    style DEC fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
-    style CMDCON fill:#fce4ec,stroke:#999,stroke-dasharray: 5 5
-```
-
-### Compatibility Table
-
-The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
-
-| Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
-| -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long("x")`                     |      ✓      |     ✓     |     ✓      |        —        |
-| `.short("x")`                    |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
-| `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
-| `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`                      |      ✓      |     —     |     —      |        —        |
-| `.delimiter(",")`                |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`                  |      ✓      |     —     |     —      |        —        |
-| `.negatable()`                   |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name("FILE")`            |      ✓      |     —     |     —      |        ✓        |
-| `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
-| `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
-| `.remainder()`                   |      —      |     —     |     —      |        ✓        |
-| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
-| `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
-| `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
-| `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
-
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.
 
 ## Group Constraints
 
@@ -1995,6 +1936,8 @@ This makes it immediately clear which subcommand triggered the error, especially
 
 **Value name** overrides the placeholder text shown for a value in help output. Without it, the argument's internal name is shown in angle brackets (e.g., `<output>`).
 
+By default, custom value names are also wrapped in angle brackets, matching the convention used by clap, cargo, pixi, and git. To display a bare value name without brackets, pass `wrapped=False` as a compile-time parameter.
+
 > Libraries with similar support: **argparse** (`metavar`), **clap** (`value_name`), **cobra** (`metavar`), **Click** (`metavar`).
 
 ```mojo
@@ -2015,11 +1958,24 @@ command.add_argument(
   -d, --max-depth <max-depth> Maximum directory depth
 ```
 
-**Help output (after `.value_name()`):**
+**Help output (after `.value_name()` — wrapped by default):**
 
 ```bash
-  -o, --output FILE           Output file path
-  -d, --max-depth N           Maximum directory depth
+  -o, --output <FILE>         Output file path
+  -d, --max-depth <N>         Maximum directory depth
+```
+
+**Unwrapped value name** — pass `False` to suppress the angle brackets:
+
+```mojo
+command.add_argument(
+    Argument("point", help="A 3D coordinate")
+    .long("point").number_of_values[3]().value_name[False]("COORD")
+)
+```
+
+```bash
+      --point COORD COORD COORD    A 3D coordinate
 ```
 
 Value name is purely cosmetic — it has no effect on parsing.
@@ -2176,6 +2132,53 @@ Options:
 ```
 
 **Combined with `.default_if_no_value()`** — see [Default-if-no-value](#default-if-no-value) above. When both are set, `--key` uses the default-if-no-value while `--key=val` uses the explicit value.
+
+### Argument Groups
+
+By default, all options appear under a single "Options:" heading in `--help`. Use `.group("name")` to organise related arguments under their own section heading.
+
+```mojo
+command.add_argument(
+    Argument("host", help="Server hostname")
+    .long("host").value_name("ADDR").group("Network")
+)
+command.add_argument(
+    Argument("port", help="Server port")
+    .long("port").short("P").group("Network")
+)
+command.add_argument(
+    Argument("output", help="Output file path")
+    .long("output").short("o").value_name("FILE").group("Output")
+)
+command.add_argument(
+    Argument("verbose", help="Increase verbosity")
+    .long("verbose").short("v").count()
+)
+```
+
+**Help output:**
+
+```bash
+Options:
+  -v, --verbose <verbose>    Increase verbosity
+  -h, --help                 Show this help message
+
+Network:
+      --host <ADDR>    Server hostname
+  -P, --port <port>    Server port
+
+Output:
+  -o, --output <FILE>    Output file path
+```
+
+**Key behaviours:**
+
+- **Ungrouped arguments** remain under "Options:".
+- **Group headings** appear in first-appearance order after "Options:".
+- **Persistent arguments** are collected under "Global Options:" regardless of their group.
+- **Hidden arguments** are excluded from all sections.
+- **Column padding** is computed independently per section, so each group aligns neatly.
+- Groups are purely cosmetic — they do not affect parsing or validation.
 
 ### Auto-generated Help
 

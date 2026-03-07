@@ -20,6 +20,12 @@ Comment out unreleased changes here. This file will be edited just before each r
 8. **CJK-aware help alignment.** Help output now computes column padding using terminal display width instead of byte length. CJK ideographs and fullwidth characters are correctly treated as 2-column-wide, so help descriptions stay aligned when option names, positional names, or subcommand names contain Chinese, Japanese, or Korean characters. ANSI escape sequences are skipped during width calculation. No API changes — this is automatic (PR #14).
 9. **Full-width → half-width auto-correction.** When CJK users forget to switch input methods and type fullwidth ASCII (e.g., `－－ｖｅｒｂｏｓｅ` instead of `--verbose`, or `＝` instead of `=`), ArgMojo auto-detects and corrects these characters with a coloured warning. Fullwidth spaces (`U+3000`) embedded in a token cause it to be split into multiple arguments. All tokens containing fullwidth ASCII are normalized; only option tokens (starting with `-` after correction) trigger a warning. Disabled via `disable_fullwidth_correction()` (PR #15).
 10. **CJK punctuation auto-correction.** Common CJK punctuation outside the fullwidth ASCII range is also corrected — for example, em-dash (`——verbose`) is converted to `--verbose`. This runs as a separate pass after fullwidth correction. Disabled via `disable_punctuation_correction()` (PR #16).
+11. **Argument groups in help.** Add `.group("name")` builder method on `Argument`. Arguments assigned to the same group are displayed under a dedicated heading in `--help` output, in first-appearance order. Ungrouped arguments remain under the default "Options:" heading. Persistent arguments are collected under "Global Options:" as before (PR #17).
+12. **Value-name wrapping control.** Change `.value_name()` to accept a compile-time `wrapped` parameter: `.value_name[wrapped: Bool = True]("NAME")`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
+
+### ⚠️ Breaking changes
+
+- **Value-name display now uses angle brackets by default.** Custom value names set via `.value_name("FOO")` are now rendered as `<FOO>` in help output. To preserve the old behaviour (bare `FOO`), use `.value_name[False]("FOO")`. This only affects custom value names — the auto-generated placeholder was already wrapped in `<>` (PR #17).
 
 ### 🔧 Fixes and API changes
 
@@ -37,6 +43,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 - Add `tests/test_response_file.mojo` with 17 tests covering basic expansion, comments, whitespace stripping, escape, recursive nesting, depth limit, custom prefix, disabled-by-default, and error handling (PR #12).
 - Add `tests/test_remainder_known.mojo` with 18 tests covering remainder positionals, `parse_known_arguments()`, `allow_hyphen_values()`, and the `value_name` rename (PR #13).
 - Add `tests/test_fullwidth.mojo` with 30 tests covering full-width → half-width auto-correction and CJK punctuation correction, including utility functions, fullwidth flags, equals syntax, embedded fullwidth spaces, opt-out, choices validation, merged short flags, subcommand dispatch, parse_known_arguments, and CJK punctuation em-dash correction (PR #15, #16).
+- Add `tests/test_groups_help.mojo` with 25 tests covering argument groups in help output and value-name wrapping control, including basic grouping, multiple groups, independent padding, hidden arguments in groups, groups with subcommands, wrapped/unwrapped value names with append/nargs/require_equals/default_if_no_value, and coloured output (PR #17).
 
 ---
 
