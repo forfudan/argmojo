@@ -80,7 +80,7 @@ These features appear across multiple libraries and depend only on string operat
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
 | CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
-| CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | Phase 6       |
+| CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase 7       |
 | Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros         | Phase unknown |
@@ -226,6 +226,7 @@ examples/
 | Value name rename (`.metavar()` → `.value_name()`)                                                 | ✓      | ✓     |
 | CJK-aware help formatting (`_display_width` for column alignment)                                  | ✓      | ✓     |
 | Full-width → half-width auto-correction (fullwidth ASCII + `U+3000` space)                         | ✓      | ✓     |
+| CJK punctuation auto-correction (em-dash `U+2014` → hyphen-minus)                                  | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -643,6 +644,12 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 - [x] Add tests for full-width flag, full-width `=` in `--key＝value`, and opt-out
 - [x] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
 
+Note that the following punctuation characters are already handled by the full-width correction step, since they fall within the `U+FF01`–`U+FF5E` range:
+
+- `U+FF0D` FULLWIDTH HYPHEN-MINUS (－) → `U+002D` HYPHEN-MINUS (-)
+- `U+FF1A` FULLWIDTH COLON (：) → `U+003A` COLON (:)
+- `U+FF0C` FULLWIDTH COMMA (，) → `U+002C` COMMA (,)
+
 #### 6.3 CJK punctuation detection
 
 **Problem:** Users accidentally type Chinese punctuation:
@@ -652,19 +659,22 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 **Implementation:**
 
-- [ ] Integrate with typo suggestion system — when a token fails to match any known option, check for common CJK punctuation patterns before running Levenshtein:
-  - `——` (`U+2014 U+2014`, 破折號) → `--`
-  - `：` (`U+FF1A`) → `=` or `:`
-  - `，` (`U+FF0C`) → `,` (affects value delimiters)
-- [ ] Produce specific error messages:
+- [x] Integrate with typo suggestion system — when a token fails to match any known option, check for common CJK punctuation patterns before running Levenshtein:
+  - `——` (`U+2014 U+2014`, 破折號) → `--` (note that `U+FF0D` full-width hyphen-minus is already handled by the full-width correction step)
+- [ ] Add a mapping table of remaining common CJK punctuation to their ASCII equivalents (e.g. `：` → `:`, `，` → `,`) and check for these patterns as well.
+- [x] Produce specific error messages:
 
   ```bash
   error: unknown option '——verbose'. Did you mean '--verbose'? (detected Chinese em-dash ——)
   ```
 
-- [ ] Add `.disable_punctuation_correction()` opt-out API on `Command`.
-- [ ] Add tests for each punctuation substitution.
-- [ ] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
+- [x] Add `.disable_punctuation_correction()` opt-out API on `Command`.
+- [x] Add tests for each punctuation substitution.
+- [x] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
+- [x] Add pre-parse CJK punctuation correction pass (converts em-dash to hyphen-minus before parsing, same as full-width correction).
+- [x] Add error-recovery path in `_find_by_long()` (backup for when pre-parse is disabled).
+- [x] Rewrite `_display_width()`, `_has_fullwidth_chars()`, `_fullwidth_to_halfwidth()` using `codepoints()` API.
+- [x] Remove `_extra_whitespace_chars` field and `whitespace_characters()` API (unnecessary complexity).
 
 ### Phase 7: Type-Safe API (aspirational — blocked on Mojo language features)
 

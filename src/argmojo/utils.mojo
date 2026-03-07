@@ -164,46 +164,23 @@ fn _display_width(s: String) -> Int:
         The number of terminal columns the string would occupy.
     """
     var width = 0
-    var i = 0
-    var bytes = s.as_bytes()
-    var n = len(bytes)
-    while i < n:
-        var b0 = Int(bytes[i])
-        # Skip ANSI escape sequences: ESC [ ... final_byte.
-        if b0 == 0x1B and i + 1 < n and Int(bytes[i + 1]) == 0x5B:
-            i += 2  # skip ESC [
-            while i < n:
-                var c = Int(bytes[i])
-                i += 1
-                # Final byte of CSI sequence is in 0x40–0x7E range.
-                if c >= 0x40 and c <= 0x7E:
-                    break
+    var in_ansi = False
+    var saw_esc = False
+    for cp in s.codepoints():
+        var val = Int(cp)
+        if saw_esc:
+            saw_esc = False
+            if val == 0x5B:  # '[' — start of CSI sequence
+                in_ansi = True
             continue
-        # Decode UTF-8 codepoint.
-        var codepoint: Int
-        var seq_len: Int
-        if b0 < 0x80:
-            codepoint = b0
-            seq_len = 1
-        elif b0 < 0xC0:
-            # Continuation byte (shouldn't start a sequence); skip.
-            i += 1
+        if in_ansi:
+            if val >= 0x40 and val <= 0x7E:  # CSI final byte
+                in_ansi = False
             continue
-        elif b0 < 0xE0:
-            seq_len = 2
-            codepoint = b0 & 0x1F
-        elif b0 < 0xF0:
-            seq_len = 3
-            codepoint = b0 & 0x0F
-        else:
-            seq_len = 4
-            codepoint = b0 & 0x07
-        for j in range(1, seq_len):
-            if i + j < n:
-                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
-        i += seq_len
-        # Determine display width of this codepoint.
-        if _is_wide_codepoint(codepoint):
+        if val == 0x1B:  # ESC
+            saw_esc = True
+            continue
+        if _is_wide_codepoint(val):
             width += 2
         else:
             width += 1
@@ -382,40 +359,9 @@ fn _has_fullwidth_chars(token: String) -> Bool:
     Checks for fullwidth ASCII ``U+FF01``–``U+FF5E`` and fullwidth space
     ``U+3000``.  Used to decide whether to attempt auto-correction.
     """
-    var bytes = token.as_bytes()
-    var i = 0
-    var n = len(bytes)
-    while i < n:
-        var b0 = Int(bytes[i])
-        if b0 == 0:
-            break  # Stop at null terminator.
-        if b0 < 0x80:
-            i += 1
-            continue
-        # Decode UTF-8 codepoint.
-        var codepoint: Int
-        var seq_len: Int
-        if b0 < 0xC0:
-            i += 1
-            continue
-        elif b0 < 0xE0:
-            seq_len = 2
-            codepoint = b0 & 0x1F
-        elif b0 < 0xF0:
-            seq_len = 3
-            codepoint = b0 & 0x0F
-        else:
-            seq_len = 4
-            codepoint = b0 & 0x07
-        for j in range(1, seq_len):
-            if i + j < n:
-                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
-        i += seq_len
-        # Fullwidth ASCII: U+FF01–U+FF5E.
-        if codepoint >= 0xFF01 and codepoint <= 0xFF5E:
-            return True
-        # Fullwidth space: U+3000.
-        if codepoint == 0x3000:
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if (val >= 0xFF01 and val <= 0xFF5E) or val == 0x3000:
             return True
     return False
 
@@ -431,78 +377,33 @@ fn _fullwidth_to_halfwidth(token: String) -> String:
 
     Characters outside these ranges are left unchanged.
     """
-    var out = List[UInt8]()
-    var bytes = token.as_bytes()
-    var i = 0
-    var n = len(bytes)
-    while i < n:
-        var b0 = Int(bytes[i])
-        if b0 == 0:
-            break  # Stop at null terminator.
-        if b0 < 0x80:
-            out.append(UInt8(b0))
-            i += 1
-            continue
-        # Decode UTF-8 codepoint.
-        var codepoint: Int
-        var seq_len: Int
-        if b0 < 0xC0:
-            out.append(UInt8(b0))
-            i += 1
-            continue
-        elif b0 < 0xE0:
-            seq_len = 2
-            codepoint = b0 & 0x1F
-        elif b0 < 0xF0:
-            seq_len = 3
-            codepoint = b0 & 0x0F
+    var result = String("")
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if val >= 0xFF01 and val <= 0xFF5E:
+            result += chr(val - 0xFEE0)
+        elif val == 0x3000:
+            result += " "
         else:
-            seq_len = 4
-            codepoint = b0 & 0x07
-        for j in range(1, seq_len):
-            if i + j < n:
-                codepoint = (codepoint << 6) | (Int(bytes[i + j]) & 0x3F)
-        # Fullwidth ASCII: U+FF01–U+FF5E → subtract 0xFEE0.
-        if codepoint >= 0xFF01 and codepoint <= 0xFF5E:
-            var half = codepoint - 0xFEE0
-            out.append(UInt8(half))
-        elif codepoint == 0x3000:
-            # Fullwidth space → regular space.
-            out.append(UInt8(0x20))
-        else:
-            # Copy original UTF-8 bytes unchanged.
-            for j in range(seq_len):
-                if i + j < n:
-                    out.append(bytes[i + j])
-        i += seq_len
-    return String(unsafe_from_utf8=out^)
+            result += chr(val)
+    return result
 
 
-fn _split_on_fullwidth_spaces(
-    token: String, extra_ws: List[String] = List[String]()
-) -> List[String]:
-    """Splits a token on fullwidth spaces (``U+3000``) and optional extra whitespace characters.
+fn _split_on_fullwidth_spaces(token: String) -> List[String]:
+    """Splits a token on fullwidth spaces (``U+3000``) after fullwidth correction.
 
     After converting fullwidth ASCII to halfwidth, embedded fullwidth
-    spaces become regular spaces.  This function splits the *original*
-    token on ``U+3000`` boundaries (and any caller-specified extra
-    whitespace codepoints) and returns the non-empty parts.
+    spaces become regular spaces.  This function splits the corrected
+    token on space boundaries and returns the non-empty parts.
 
     Args:
         token: The token to split.
-        extra_ws: Additional Unicode whitespace characters to split on
-            (e.g., ``[\"\\u2003\"]`` for EM SPACE).
 
     Returns:
         A list of non-empty substrings.  If no fullwidth spaces are
         present, the list contains the original token as a single element.
     """
-    # First convert fullwidth to halfwidth (this also converts U+3000 → space).
     var converted = _fullwidth_to_halfwidth(token)
-    # Also apply extra whitespace conversions.
-    for k in range(len(extra_ws)):
-        converted = converted.replace(extra_ws[k], " ")
-    # Split on regular spaces.
     var parts = converted.split(" ")
     var result = List[String]()
     for k in range(len(parts)):
@@ -510,3 +411,31 @@ fn _split_on_fullwidth_spaces(
         if len(part) > 0:
             result.append(part)
     return result^
+
+
+fn _correct_cjk_punctuation(token: String) -> String:
+    """Replaces common CJK punctuation with ASCII equivalents.
+
+    This handles characters outside the fullwidth ASCII range
+    (``U+FF01``–``U+FF5E``) that CJK users may accidentally type:
+
+    - ``U+2014`` EM DASH (——) → ``U+002D`` HYPHEN-MINUS (-)
+
+    Used as a pre-Levenshtein error recovery step: when an unknown
+    option is encountered, try this substitution before computing
+    edit distance.
+
+    Args:
+        token: The token to correct.
+
+    Returns:
+        The token with CJK punctuation replaced by ASCII equivalents.
+    """
+    var result = String("")
+    for cp in token.codepoints():
+        var val = Int(cp)
+        if val == 0x2014:  # EM DASH → hyphen-minus
+            result += "-"
+        else:
+            result += chr(val)
+    return result

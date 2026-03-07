@@ -19,6 +19,7 @@ from .utils import (
     _DEFAULT_ARG_COLOR,
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
+    _correct_cjk_punctuation,
     _display_width,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
@@ -241,11 +242,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
     with ``-`` that contain fullwidth ASCII characters (``U+FF01``–
     ``U+FF5E``) or fullwidth spaces (``U+3000``) are auto-corrected
     with a warning.  Call ``disable_fullwidth_correction()`` to opt out."""
-    var _extra_whitespace_chars: List[String]
-    """Additional Unicode codepoints to treat as whitespace when
-    splitting fullwidth-corrected tokens.  Populated via
-    ``whitespace_characters()``.  Default is empty (only ``U+3000``
-    fullwidth space is handled automatically)."""
+    var _disable_punctuation_correction: Bool
+    """When True, disable CJK punctuation detection in error recovery.
+    By default (False), when an unknown option is encountered, common
+    CJK punctuation (e.g. em-dash ``U+2014``) is substituted before
+    running Levenshtein typo suggestion.  Call
+    ``disable_punctuation_correction()`` to opt out."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -288,7 +290,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._response_file_prefix = String("")
         self._response_file_max_depth = 10
         self._disable_fullwidth_correction = False
-        self._extra_whitespace_chars = List[String]()
+        self._disable_punctuation_correction = False
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -326,7 +328,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._response_file_prefix = move._response_file_prefix^
         self._response_file_max_depth = move._response_file_max_depth
         self._disable_fullwidth_correction = move._disable_fullwidth_correction
-        self._extra_whitespace_chars = move._extra_whitespace_chars^
+        self._disable_punctuation_correction = (
+            move._disable_punctuation_correction
+        )
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -393,7 +397,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._response_file_prefix = copy._response_file_prefix
         self._response_file_max_depth = copy._response_file_max_depth
         self._disable_fullwidth_correction = copy._disable_fullwidth_correction
-        self._extra_whitespace_chars = copy._extra_whitespace_chars.copy()
+        self._disable_punctuation_correction = (
+            copy._disable_punctuation_correction
+        )
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -875,27 +881,27 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._disable_fullwidth_correction = True
 
-    fn whitespace_characters(mut self, chars: List[String]):
-        """Registers additional Unicode codepoints as whitespace for fullwidth correction.
+    fn disable_punctuation_correction(mut self):
+        """Disables CJK punctuation detection in error recovery.
 
-        When fullwidth correction is active, embedded fullwidth spaces
-        (``U+3000``) in a single token cause it to be split into multiple
-        arguments.  Call this method to also treat other Unicode space
-        characters (e.g., EM SPACE ``U+2003``) as split points.
+        By default, when an unknown option is encountered, ArgMojo tries
+        substituting common CJK punctuation (e.g. em-dash ``——`` →
+        ``--``) before running Levenshtein typo suggestion.  This helps
+        CJK users who accidentally type Chinese punctuation.
 
-        Args:
-            chars: A list of single-character strings, each a Unicode
-                whitespace codepoint to recognise.
+        Call this method to disable that behaviour — useful when strict
+        error messages are preferred.
 
         Example:
 
         ```mojo
         from argmojo import Command
         var app = Command("myapp", "My CLI")
-        app.whitespace_characters(["\\u2003"])  # EM SPACE
+        app.disable_punctuation_correction()
+        # Now: ——verbose will NOT attempt em-dash → hyphen correction
         ```
         """
-        self._extra_whitespace_chars = chars.copy()
+        self._disable_punctuation_correction = True
 
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
@@ -1422,9 +1428,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var token = args_to_parse[_fw_i]
                 if _has_fullwidth_chars(token):
                     # Split on fullwidth spaces first.
-                    var parts = _split_on_fullwidth_spaces(
-                        token, self._extra_whitespace_chars
-                    )
+                    var parts = _split_on_fullwidth_spaces(token)
                     for _fw_j in range(len(parts)):
                         var corrected = parts[_fw_j]
                         if corrected.startswith("-"):
@@ -1439,6 +1443,30 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     corrected_args.append(token)
             args_to_parse = corrected_args^
+
+        # ── CJK punctuation auto-correction ─────────────────────────
+        # Correct common CJK punctuation that falls outside the fullwidth
+        # ASCII range (e.g. em-dash U+2014 → hyphen U+002D).
+        # Only applied to tokens that look like option attempts after
+        # correction (i.e. start with "-").
+        if not self._disable_punctuation_correction:
+            var punc_args = List[String]()
+            punc_args.append(args_to_parse[0])
+            for _pi in range(1, len(args_to_parse)):
+                var token = args_to_parse[_pi]
+                var corrected = _correct_cjk_punctuation(token)
+                if corrected != token and corrected.startswith("-"):
+                    self._warn(
+                        "detected CJK punctuation in '"
+                        + token
+                        + "', auto-corrected to '"
+                        + corrected
+                        + "'"
+                    )
+                    punc_args.append(corrected)
+                else:
+                    punc_args.append(token)
+            args_to_parse = punc_args^
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
@@ -1667,9 +1695,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             for _fw_i in range(1, len(args_to_parse)):
                 var token = args_to_parse[_fw_i]
                 if _has_fullwidth_chars(token):
-                    var parts = _split_on_fullwidth_spaces(
-                        token, self._extra_whitespace_chars
-                    )
+                    var parts = _split_on_fullwidth_spaces(token)
                     for _fw_j in range(len(parts)):
                         var corrected = parts[_fw_j]
                         if corrected.startswith("-"):
@@ -1684,6 +1710,26 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     corrected_args.append(token)
             args_to_parse = corrected_args^
+
+        # ── CJK punctuation auto-correction (same as parse_arguments) ──
+        if not self._disable_punctuation_correction:
+            var punc_args = List[String]()
+            punc_args.append(args_to_parse[0])
+            for _pi in range(1, len(args_to_parse)):
+                var token = args_to_parse[_pi]
+                var corrected = _correct_cjk_punctuation(token)
+                if corrected != token and corrected.startswith("-"):
+                    self._warn(
+                        "detected CJK punctuation in '"
+                        + token
+                        + "', auto-corrected to '"
+                        + corrected
+                        + "'"
+                    )
+                    punc_args.append(corrected)
+                else:
+                    punc_args.append(token)
+            args_to_parse = punc_args^
 
         # Register positional argument names in order.
         for i in range(len(self.args)):
@@ -2811,6 +2857,32 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 all_longs.append(self.args[i]._long_name)
             for j in range(len(self.args[i]._alias_names)):
                 all_longs.append(self.args[i]._alias_names[j])
+
+        # CJK punctuation error recovery: try substituting common CJK
+        # punctuation (e.g. em-dash → hyphen) before Levenshtein.
+        if not self._disable_punctuation_correction:
+            var corrected = _correct_cjk_punctuation(name)
+            if corrected != name:
+                # Check if the corrected name matches a known option.
+                for i in range(len(self.args)):
+                    if self.args[i]._long_name == corrected:
+                        self._error(
+                            "Unknown option '--"
+                            + name
+                            + "'. Did you mean '--"
+                            + corrected
+                            + "'? (detected CJK punctuation)"
+                        )
+                    for j in range(len(self.args[i]._alias_names)):
+                        if self.args[i]._alias_names[j] == corrected:
+                            self._error(
+                                "Unknown option '--"
+                                + name
+                                + "'. Did you mean '--"
+                                + corrected
+                                + "'? (detected CJK punctuation)"
+                            )
+
         var suggestion = _suggest_similar(name, all_longs)
         if suggestion != "":
             self._error(

@@ -4,6 +4,7 @@ from testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 from argmojo.utils import (
+    _correct_cjk_punctuation,
     _has_fullwidth_chars,
     _fullwidth_to_halfwidth,
     _split_on_fullwidth_spaces,
@@ -149,15 +150,28 @@ fn test_split_on_fullwidth_spaces_with_spaces() raises:
     assert_equal(parts[2], "--verbose")
 
 
-fn test_split_on_fullwidth_spaces_extra_ws() raises:
-    """Tests splitting with additional whitespace characters."""
-    var em_space = chr(0x2003)
-    var extra = List[String]()
-    extra.append(em_space)
-    var parts = _split_on_fullwidth_spaces("hello" + em_space + "world", extra)
-    assert_equal(len(parts), 2)
-    assert_equal(parts[0], "hello")
-    assert_equal(parts[1], "world")
+# ── Unit tests for CJK punctuation correction ──────────────────────────────────
+
+
+fn test_correct_cjk_punctuation_no_change() raises:
+    """Tests that strings without CJK punctuation are unchanged."""
+    assert_equal(_correct_cjk_punctuation("--verbose"), "--verbose")
+    assert_equal(_correct_cjk_punctuation("hello"), "hello")
+
+
+fn test_correct_cjk_punctuation_em_dash() raises:
+    """Tests em-dash (U+2014) → hyphen-minus conversion."""
+    # Two em-dashes + "verbose" should become "--verbose".
+    var em_dash = chr(0x2014)
+    assert_equal(
+        _correct_cjk_punctuation(em_dash + em_dash + "verbose"),
+        "--verbose",
+    )
+
+
+fn test_correct_cjk_punctuation_preserves_cjk() raises:
+    """Tests that CJK ideographs are preserved."""
+    assert_equal(_correct_cjk_punctuation("宇浩"), "宇浩")
 
 
 # ── Integration tests: parsing with fullwidth correction ─────────────────────
@@ -410,8 +424,8 @@ fn test_fullwidth_cjk_positional_preserved() raises:
     )
 
 
-fn test_fullwidth_whitespace_characters() raises:
-    """Tests custom whitespace character splitting."""
+fn test_fullwidth_punctuation_em_dash_correction() raises:
+    """Tests that em-dash is auto-corrected to hyphen-minus in pre-parse."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
@@ -419,19 +433,31 @@ fn test_fullwidth_whitespace_characters() raises:
         .short("v")
         .flag()
     )
-    command.add_argument(
-        Argument("name", help="Name").long("name").short("n").takes_value()
-    )
-    var em_space = chr(0x2003)
-    command.whitespace_characters([em_space])
-
-    var token = "－－ｎａｍｅ" + em_space + "ｙｕｈａｏ"
-    var args: List[String] = ["test", token]
+    var em_dash = chr(0x2014)
+    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
     var result = command.parse_arguments(args)
-    assert_equal(
-        result.get_string("name"),
-        "yuhao",
-        msg="EM SPACE should also split when registered",
+    assert_true(
+        result.get_flag("verbose"),
+        msg="em-dash '——verbose' should be corrected to '--verbose'",
+    )
+
+
+fn test_fullwidth_punctuation_disabled() raises:
+    """Tests that disable_punctuation_correction() prevents correction."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long("verbose")
+        .short("v")
+        .flag()
+    )
+    command.disable_punctuation_correction()
+    var em_dash = chr(0x2014)
+    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
+    var result = command.parse_arguments(args)
+    assert_false(
+        result.get_flag("verbose"),
+        msg="With correction disabled, em-dash should NOT be corrected",
     )
 
 
