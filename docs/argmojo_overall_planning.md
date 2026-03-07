@@ -628,7 +628,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 
 - [ ] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
   - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get half-width
-  - Full-width space `U+3000` → half-width space `U+0020`
+  - Full-width space `U+3000` → half-width space `U+0020`. `--name\u3000yuhao\u3000--verbose` is originally scanned by `sys.argv` as a single token with embedded full-width spaces, so we need to handle this case too by replacing the original list of arguments with the corrected split. There are also other spaces in the Unicode standard, we can also support them by adding a method like `whitespace_characters(chars: List[Char])` that allows users to specify additional code points to treat as whitespace (e.g. `U+2003 EM SPACE`).
 - [ ] In `parse_arguments()`, scan each token before parsing; if full-width characters are detected in option tokens (`--` or `-` prefixed), auto-correct and print a coloured warning:
 
   ```bash
@@ -638,6 +638,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 - [ ] Only correct option names (tokens starting with `-`), **not** positional values (user may intentionally input full-width content)
 - [ ] Add `.disable_fullwidth_correction()` opt-out API on `Command`
 - [ ] Add tests for full-width flag, full-width `=` in `--key＝value`, and opt-out
+- [ ] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
 
 #### 6.3 CJK punctuation detection
 
@@ -658,7 +659,9 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
   error: unknown option '——verbose'. Did you mean '--verbose'? (detected Chinese em-dash ——)
   ```
 
-- [ ] Add tests for each punctuation substitution
+- [ ] Add `.disable_punctuation_correction()` opt-out API on `Command`.
+- [ ] Add tests for each punctuation substitution.
+- [ ] Let users know that this feature is by default on and can be disabled if they prefer strict parsing.
 
 ### Phase 7: Type-Safe API (aspirational — blocked on Mojo language features)
 

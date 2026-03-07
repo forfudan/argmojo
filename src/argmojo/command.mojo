@@ -3,6 +3,12 @@
 from os import getenv
 from os.path import exists as _path_exists
 from sys import argv, exit, stderr
+from reflection import (
+    struct_field_count,
+    struct_field_names,
+    get_type_name,
+    struct_field_types,
+)
 
 from .argument import Argument
 from .parse_result import ParseResult
@@ -319,6 +325,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
         Args:
             copy: The Command to copy from.
         """
+        # TODO: Use reflection to automate this instead of manually copying
+        # each field. This needs Mojo v0.26.2.
+
+        # comptime field_count = struct_field_count[Self]()
+        # comptime field_types = struct_field_types[Self]()
+
+        # comptime for i in range(field_count):
+        #     comptime field_type = struct_field_types[i]
+
+        #     ref field_value_from_copy = __struct_field_ref(i, copy)
+        #     __struct_field_ref(i, self) = field_value_from_copy
+
         self.name = copy.name
         self.description = copy.description
         self.version = copy.version
