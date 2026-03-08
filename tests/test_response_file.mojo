@@ -219,7 +219,7 @@ fn test_response_file_max_depth() raises:
     _write_file(path, "@" + path + "\n")
 
     var command = _make_command()
-    command.response_file_max_depth(3)
+    command.response_file_max_depth[3]()
 
     var args: List[String] = ["test", "@" + path]
     var caught = False

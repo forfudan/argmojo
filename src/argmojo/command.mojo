@@ -828,14 +828,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._response_file_prefix = prefix
 
-    fn response_file_max_depth(mut self, depth: Int):
+    fn response_file_max_depth[depth: Int](mut self) where depth > 0:
         """Sets the maximum nesting depth for response-file expansion.
 
         Warning: **Temporarily disabled** — see
         ``response_file_prefix()`` docstring for details.
 
-        Args:
+        Parameters:
             depth: Maximum recursion depth (default 10).
+                Constraints: must be positive.
         """
         self._response_file_max_depth = depth
 

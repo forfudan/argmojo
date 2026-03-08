@@ -561,7 +561,7 @@ fn test_positional_excluded() raises:
         Argument("verbose", help="Verbose").long("verbose").flag()
     )
     var fish = command.generate_completion["fish"]()
-    var zsh = command.generate_completion["zsh"]()
+    var _zsh = command.generate_completion["zsh"]()
     var bash = command.generate_completion["bash"]()
     # Positional should not appear as -l or -- option.
     assert_false(
