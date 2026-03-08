@@ -244,15 +244,7 @@ argmojo/
 │       ├── command.mojo               # Command struct (parsing logic)
 │       ├── parse_result.mojo          # ParseResult struct (parsed values)
 │       └── utils.mojo                 # ANSI colour constants and utility functions
-├── tests/                             # Test suites (241 tests)
-│   ├── test_parse.mojo
-│   ├── test_groups.mojo
-│   ├── test_collect.mojo
-│   ├── test_help.mojo
-│   ├── test_extras.mojo
-│   ├── test_subcommands.mojo
-│   ├── test_negative_numbers.mojo
-│   └── test_persistent.mojo
+├── tests/                             # Test suites
 ├── pixi.toml                          # pixi configuration
 ├── LICENSE
 └── README.md

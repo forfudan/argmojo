@@ -665,7 +665,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var app = Command("myapp", "My CLI")
         app.disable_default_completions()
         # --completions is now an unknown option
-        # but app.generate_completion("bash") still works
+        # but app.generate_completion["bash"]() still works
         ```
         """
         self._completions_enabled = False
@@ -1090,12 +1090,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_on_no_arguments = True
 
     # [Mojo Miji]
-    # We set `name` as a parameter, instead of an argument, because we
-    # want to check at compile time that it is a valid colour name.
-    # If we made it an argument, the check would be deferred to runtime,
-    # which means that the users, rather than developers, may encounter
-    # errors about a wrong colour name in the terminal when they use
-    # the programme, no matter what colour name they type in.
+    # `name` is a type parameter (StringLiteral) rather than a runtime
+    # argument so that the colour name is validated at compile time.
+    # This ensures developers get a compiler error for invalid colour
+    # names during development, instead of end users seeing runtime
+    # failures caused by a misspelled or unsupported colour.
     fn header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
@@ -3718,18 +3717,48 @@ struct Command(Copyable, Movable, Stringable, Writable):
     # Shell completion generation
     # ===------------------------------------------------------------------=== #
 
-    fn generate_completion(self, shell: String) raises -> String:
-        """Generates a shell completion script for this command tree.
+    fn generate_completion[shell: StringLiteral](self) -> String:
+        """Generates a shell completion script (compile-time validated).
 
-        Supports ``bash``, ``zsh``, and ``fish`` shells.  The returned
-        string is a complete script that the user can source or redirect
-        to a file:
+        The shell name is validated at compile time via ``constrained[]``.
+        Use this overload when the shell is known at development time.
 
-        ```bash
-        myapp --completions bash > ~/.bash_completion.d/myapp
-        myapp --completions zsh  > ~/.zsh/completions/_myapp
-        myapp --completions fish > ~/.config/fish/completions/myapp.fish
+        Parameters:
+            shell: One of ``"bash"``, ``"zsh"``, or ``"fish"``
+                   (case-sensitive). Invalid names are caught at compile
+                   time.
+
+        Returns:
+            The completion script as a string.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My application")
+        var script = app.generate_completion["bash"]()
         ```
+        """
+        constrained[
+            cond = (shell == "fish" or shell == "zsh" or shell == "bash"),
+            msg = (
+                "Unknown shell '" + shell + "'. Choose from: bash, zsh, fish"
+            ),
+        ]()
+
+        @parameter
+        if shell == "fish":
+            return self._completion_fish()
+        elif shell == "zsh":
+            return self._completion_zsh()
+        else:  # shell == "bash"
+            return self._completion_bash()
+
+    fn generate_completion(self, shell: String) raises -> String:
+        """Generates a shell completion script (runtime dispatch).
+
+        The shell name is validated at runtime.  Use this overload when
+        the shell name comes from user input (e.g. ``--completions``).
 
         Args:
             shell: One of ``"bash"``, ``"zsh"``, or ``"fish"``
@@ -3748,13 +3777,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
             return self._completion_zsh()
         if lower == "bash":
             return self._completion_bash()
-        raise Error("Unknown shell '" + shell + "'. Supported: bash, zsh, fish")
+        raise Error(
+            "Unknown shell '" + shell + "'. Choose from: bash, zsh, fish"
+        )
 
     fn _completion_fish(self) -> String:
         """Generates a Fish shell completion script.
 
         Each option/subcommand becomes a single ``complete`` line.
-        Subcommand-specific completions use ``-n '__fish_seen_subcommand_from <sub>'``
+        Subcommand-specific completions use
+        ``-n '__fish_seen_subcommand_from <sub>'``
         to scope them.
 
         Returns:

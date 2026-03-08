@@ -377,7 +377,8 @@ Argument("name", help="...")
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
 ║   .value_name("FILE")          display name in help      (value / positional)
 ║   └── [wrapped=True]           wrap in <> (default); [False] = bare
-║   .group("Network")            section heading in help   (named only)
+║   .group("Network")            section heading in help
+║                                  (named options only; ignored for positionals)
 ║   .hidden()                    hide from --help          (any)
 ║   .aliases(["alt"])            alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
@@ -2292,7 +2293,7 @@ Available colour names (uppercase only):
 | `WHITE`   | 97        | bright white       |
 | `ORANGE`  | 33        | orange/dark yellow |
 
-An unrecognised colour name is caught at **compile time** — the program will not compile if you pass an invalid name.
+An unrecognised colour name is caught at **compile time** — the program will not compile if you pass an invalid name. Note that the colour name is a `StringLiteral` parameter and must be provided as a compile-time string literal (bracket-parameter form); dynamic runtime selection of colours is not supported by this API.
 
 Padding calculation is always based on the **plain-text width** (without escape codes), so columns remain correctly aligned regardless of whether colour is enabled.
 
@@ -2974,15 +2975,22 @@ app.completions_as_subcommand()     # → myapp comp bash
 
 ### Generating a Script Programmatically
 
-You can also call `generate_completion(shell)` directly to get a completion script as a `String`:
+You can also call `generate_completion` directly to get a completion script as a `String`:
 
 ```mojo
-# Generate for any supported shell
-var script = app.generate_completion("bash")   # or "zsh" or "fish"
+# Compile-time validated (bracket syntax) — invalid shell names fail to compile
+var script = app.generate_completion["bash"]()
 print(script)
 ```
 
-The `shell` argument is **case-insensitive** (`"Bash"`, `"BASH"`, `"bash"` all work). An error is raised for unrecognised shell names.
+A runtime overload is also available for when the shell name comes from user input:
+
+```mojo
+# Runtime dispatch (case-insensitive) — raises on unknown shell
+var script = app.generate_completion(shell_name)   # "bash", "zsh", or "fish"
+```
+
+The runtime overload is **case-insensitive** (`"Bash"`, `"BASH"`, `"bash"` all work). An error is raised for unrecognised shell names.
 
 ### Installing Completions
 
