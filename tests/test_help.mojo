@@ -435,6 +435,28 @@ fn test_invalid_color_caught_at_compile_time() raises:
     command.warn_color["YELLOW"]()
     command.error_color["MAGENTA"]()
 
+    # Verify that the valid names actually configure the expected ANSI codes.
+    assert_equal(
+        command._header_color,
+        "\x1b[91m",
+        msg="Header color 'RED' should map to bright red (ANSI 91)",
+    )
+    assert_equal(
+        command._arg_color,
+        "\x1b[92m",
+        msg="Arg color 'GREEN' should map to bright green (ANSI 92)",
+    )
+    assert_equal(
+        command._warn_color,
+        "\x1b[93m",
+        msg="Warn color 'YELLOW' should map to bright yellow (ANSI 93)",
+    )
+    assert_equal(
+        command._error_color,
+        "\x1b[95m",
+        msg="Error color 'MAGENTA' should map to bright magenta (ANSI 95)",
+    )
+
 
 fn test_custom_color_plain_mode_unaffected() raises:
     """Custom colours should not leak into plain (color=False) output."""

@@ -1090,12 +1090,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._help_on_no_arguments = True
 
     # [Mojo Miji]
-    # We set `name` as a parameter, instead of an argument, because we
-    # want to check at compile time that it is a valid colour name.
-    # If we made it an argument, the check would be deferred to runtime,
-    # which means that the users, rather than developers, may encounter
-    # errors about a wrong colour name in the terminal when they use
-    # the programme, no matter what colour name they type in.
+    # `name` is a type parameter (StringLiteral) rather than a runtime
+    # argument so that the colour name is validated at compile time.
+    # This ensures developers get a compiler error for invalid colour
+    # names during development, instead of end users seeing runtime
+    # failures caused by a misspelled or unsupported colour.
     fn header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
