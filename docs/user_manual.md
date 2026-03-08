@@ -377,7 +377,8 @@ Argument("name", help="...")
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
 ║   .value_name("FILE")          display name in help      (value / positional)
 ║   └── [wrapped=True]           wrap in <> (default); [False] = bare
-║   .group("Network")            section heading in help   (named options only; ignored for positionals)
+║   .group("Network")            section heading in help
+║                                  (named options only; ignored for positionals)
 ║   .hidden()                    hide from --help          (any)
 ║   .aliases(["alt"])            alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
