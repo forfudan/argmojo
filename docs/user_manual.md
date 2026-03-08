@@ -2974,15 +2974,22 @@ app.completions_as_subcommand()     # → myapp comp bash
 
 ### Generating a Script Programmatically
 
-You can also call `generate_completion(shell)` directly to get a completion script as a `String`:
+You can also call `generate_completion` directly to get a completion script as a `String`:
 
 ```mojo
-# Generate for any supported shell
-var script = app.generate_completion("bash")   # or "zsh" or "fish"
+# Compile-time validated (bracket syntax) — invalid shell names fail to compile
+var script = app.generate_completion["bash"]()
 print(script)
 ```
 
-The `shell` argument is **case-insensitive** (`"Bash"`, `"BASH"`, `"bash"` all work). An error is raised for unrecognised shell names.
+A runtime overload is also available for when the shell name comes from user input:
+
+```mojo
+# Runtime dispatch (case-insensitive) — raises on unknown shell
+var script = app.generate_completion(shell_name)   # "bash", "zsh", or "fish"
+```
+
+The runtime overload is **case-insensitive** (`"Bash"`, `"BASH"`, `"bash"` all work). An error is raised for unrecognised shell names.
 
 ### Installing Completions
 

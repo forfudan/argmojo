@@ -5,11 +5,11 @@ import argmojo
 from argmojo import Argument, Command
 
 
-# ── generate_completion() dispatch ───────────────────────────────────────────
+# ── generate_completion[] dispatch (compile-time) ────────────────────────────
 
 
 fn test_fish_dispatch() raises:
-    """Tests that generate_completion('fish') returns Fish syntax."""
+    """Tests that generate_completion["fish"]() returns Fish syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
@@ -17,7 +17,7 @@ fn test_fish_dispatch() raises:
         .short("v")
         .flag()
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "complete -c myapp" in script,
         msg="Fish script should contain 'complete -c myapp'",
@@ -25,7 +25,7 @@ fn test_fish_dispatch() raises:
 
 
 fn test_zsh_dispatch() raises:
-    """Tests that generate_completion('zsh') returns Zsh syntax."""
+    """Tests that generate_completion["zsh"]() returns Zsh syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
@@ -33,7 +33,7 @@ fn test_zsh_dispatch() raises:
         .short("v")
         .flag()
     )
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "#compdef myapp" in script,
         msg="Zsh script should start with '#compdef myapp'",
@@ -45,7 +45,7 @@ fn test_zsh_dispatch() raises:
 
 
 fn test_bash_dispatch() raises:
-    """Tests that generate_completion('bash') returns Bash syntax."""
+    """Tests that generate_completion["bash"]() returns Bash syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
@@ -53,15 +53,15 @@ fn test_bash_dispatch() raises:
         .short("v")
         .flag()
     )
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_true(
         "complete -F _myapp_completion myapp" in script,
         msg="Bash script should register with 'complete -F'",
     )
 
 
-fn test_case_insensitive_shell() raises:
-    """Tests that shell name is case-insensitive."""
+fn test_case_insensitive_shell_runtime() raises:
+    """Runtime overload accepts case-insensitive shell names."""
     var command = Command("myapp", "A test app")
     var fish_upper = command.generate_completion("FISH")
     assert_true(
@@ -80,8 +80,8 @@ fn test_case_insensitive_shell() raises:
     )
 
 
-fn test_unknown_shell_raises() raises:
-    """Tests that an unknown shell name raises an error."""
+fn test_unknown_shell_raises_runtime() raises:
+    """Runtime overload raises for unknown shell names."""
     var command = Command("myapp", "A test app")
     var raised = False
     try:
@@ -89,6 +89,23 @@ fn test_unknown_shell_raises() raises:
     except:
         raised = True
     assert_true(raised, msg="Unknown shell should raise an error")
+
+
+fn test_invalid_shell_caught_at_compile_time() raises:
+    """Invalid shell names are caught at compile time via constrained[].
+
+    This test verifies the valid paths work.  An invalid name
+    like ``command.generate_completion["powershell"]()`` would fail to compile.
+    """
+    var command = Command("myapp", "A test app")
+    var fish = command.generate_completion["fish"]()
+    assert_true(
+        "complete -c myapp" in fish, msg="fish should produce Fish script"
+    )
+    var zsh = command.generate_completion["zsh"]()
+    assert_true("#compdef myapp" in zsh, msg="zsh should produce Zsh script")
+    var bash = command.generate_completion["bash"]()
+    assert_true("complete -F" in bash, msg="bash should produce Bash script")
 
 
 # ── Fish completion details ──────────────────────────────────────────────────
@@ -100,7 +117,7 @@ fn test_fish_long_option() raises:
     command.add_argument(
         Argument("output", help="Output file").long("output").short("o")
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "-l output" in script,
         msg="Fish script should contain '-l output'",
@@ -117,7 +134,7 @@ fn test_fish_flag_no_require_value() raises:
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").flag()
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     # Find the line with --verbose
     var lines = script.split("\n")
     for i in range(len(lines)):
@@ -135,7 +152,7 @@ fn test_fish_value_option_has_require() raises:
     """Tests that Fish value-taking options have -r (require value)."""
     var command = Command("myapp", "A test app")
     command.add_argument(Argument("output", help="Output file").long("output"))
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     var lines = script.split("\n")
     for i in range(len(lines)):
         if "-l output" in lines[i]:
@@ -157,7 +174,7 @@ fn test_fish_choices() raises:
         .long("format")
         .choices(choices^)
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "-a 'json csv table'" in script,
         msg="Fish script should list choices with -a",
@@ -168,7 +185,7 @@ fn test_fish_help_text() raises:
     """Tests that Fish script includes description with -d."""
     var command = Command("myapp", "A test app")
     command.add_argument(Argument("output", help="Output file").long("output"))
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "-d 'Output file'" in script,
         msg="Fish script should include help text with -d",
@@ -187,7 +204,7 @@ fn test_fish_hidden_excluded() raises:
     command.add_argument(
         Argument("visible", help="Visible flag").long("visible").flag()
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_false(
         "-l internal" in script,
         msg="Hidden args should not appear in Fish completion",
@@ -201,7 +218,7 @@ fn test_fish_hidden_excluded() raises:
 fn test_fish_builtin_help_version() raises:
     """Tests that Fish script includes built-in --help and --version."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "-l help" in script,
         msg="Fish script should include --help",
@@ -223,7 +240,7 @@ fn test_fish_subcommands() raises:
         Argument("max-depth", help="Maximum depth").long("max-depth")
     )
     app.add_subcommand(sub^)
-    var script = app.generate_completion("fish")
+    var script = app.generate_completion["fish"]()
     # Subcommand should be listed.
     assert_true(
         "-a 'search'" in script,
@@ -246,7 +263,7 @@ fn test_fish_escape_single_quote() raises:
     command.add_argument(
         Argument("test", help="It's a test").long("test").flag()
     )
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "It\\'s a test" in script,
         msg="Fish script should escape single quotes",
@@ -265,7 +282,7 @@ fn test_zsh_simple_flag() raises:
         .short("v")
         .flag()
     )
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "--verbose" in script,
         msg="Zsh script should contain --verbose",
@@ -285,7 +302,7 @@ fn test_zsh_choices() raises:
         .long("format")
         .choices(choices^)
     )
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "json csv" in script,
         msg="Zsh script should include choice values",
@@ -300,7 +317,7 @@ fn test_zsh_subcommands() raises:
         Argument("release", help="Release mode").long("release").flag()
     )
     app.add_subcommand(sub^)
-    var script = app.generate_completion("zsh")
+    var script = app.generate_completion["zsh"]()
     assert_true(
         "'build:" in script,
         msg="Zsh script should list subcommand 'build'",
@@ -321,7 +338,7 @@ fn test_zsh_escape_brackets() raises:
     command.add_argument(
         Argument("test", help="Test [option]").long("test").flag()
     )
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "Test \\[option\\]" in script,
         msg="Zsh script should escape brackets",
@@ -334,7 +351,7 @@ fn test_zsh_escape_colon() raises:
     command.add_argument(
         Argument("test", help="Key: value").long("test").flag()
     )
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "Key\\: value" in script,
         msg="Zsh script should escape colons",
@@ -344,7 +361,7 @@ fn test_zsh_escape_colon() raises:
 fn test_zsh_builtin_help() raises:
     """Tests that Zsh script includes built-in help/version."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "--help" in script,
         msg="Zsh script should include --help",
@@ -367,7 +384,7 @@ fn test_bash_simple_options() raises:
     command.add_argument(
         Argument("output", help="Output file").long("output").short("o")
     )
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_true(
         "--verbose" in script,
         msg="Bash script should contain --verbose",
@@ -392,7 +409,7 @@ fn test_bash_subcommands() raises:
     var sub = Command("deploy", "Deploy the app")
     sub.add_argument(Argument("target", help="Deploy target").long("target"))
     app.add_subcommand(sub^)
-    var script = app.generate_completion("bash")
+    var script = app.generate_completion["bash"]()
     assert_true(
         "deploy" in script,
         msg="Bash script should reference 'deploy' subcommand",
@@ -414,7 +431,7 @@ fn test_bash_choices_prev() raises:
     command.add_argument(
         Argument("level", help="Log level").long("level").choices(choices^)
     )
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_true(
         "case $prev in" in script,
         msg="Bash script should have case $prev block",
@@ -434,7 +451,7 @@ fn test_bash_hidden_excluded() raises:
     command.add_argument(
         Argument("public", help="Public").long("public").flag()
     )
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_false(
         "--secret" in script,
         msg="Hidden args should not appear in Bash completion",
@@ -448,7 +465,7 @@ fn test_bash_hidden_excluded() raises:
 fn test_bash_builtin_help_version() raises:
     """Tests that Bash script includes --help and --version."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_true(
         "--help" in script,
         msg="Bash script should include --help",
@@ -476,9 +493,9 @@ fn test_all_shells_include_same_options() raises:
         Argument("format", help="Format").long("format").choices(choices^)
     )
 
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
 
     # Fish uses -l/--long form syntax, not --verbose directly.
     assert_true("-l verbose" in fish, msg="fish should include -l verbose")
@@ -504,7 +521,7 @@ fn test_count_option_no_value() raises:
         .count()
     )
     # Fish: should NOT have -r
-    var fish = command.generate_completion("fish")
+    var fish = command.generate_completion["fish"]()
     var lines = fish.split("\n")
     var found = False
     for i in range(len(lines)):
@@ -527,7 +544,7 @@ fn test_persistent_flags_in_root() raises:
     var sub = Command("run", "Run something")
     app.add_subcommand(sub^)
 
-    var fish = app.generate_completion("fish")
+    var fish = app.generate_completion["fish"]()
     assert_true(
         "-l debug" in fish,
         msg="Persistent flag should appear in Fish root completions",
@@ -543,9 +560,9 @@ fn test_positional_excluded() raises:
     command.add_argument(
         Argument("verbose", help="Verbose").long("verbose").flag()
     )
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
     # Positional should not appear as -l or -- option.
     assert_false(
         "-l pattern" in fish,
@@ -560,9 +577,9 @@ fn test_positional_excluded() raises:
 fn test_generated_by_comment() raises:
     """Tests that all scripts have 'Generated by ArgMojo' comment."""
     var command = Command("myapp", "A test app")
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
     assert_true(
         "Generated by ArgMojo" in fish,
         msg="Fish script should have ArgMojo attribution",
@@ -583,7 +600,7 @@ fn test_generated_by_comment() raises:
 fn test_fish_builtin_completions() raises:
     """Tests that Fish script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("fish")
+    var script = command.generate_completion["fish"]()
     assert_true(
         "-l completions" in script,
         msg="Fish script should include -l completions",
@@ -597,7 +614,7 @@ fn test_fish_builtin_completions() raises:
 fn test_zsh_builtin_completions() raises:
     """Tests that Zsh script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("zsh")
+    var script = command.generate_completion["zsh"]()
     assert_true(
         "--completions" in script,
         msg="Zsh script should include --completions",
@@ -611,7 +628,7 @@ fn test_zsh_builtin_completions() raises:
 fn test_bash_builtin_completions() raises:
     """Tests that Bash script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
-    var script = command.generate_completion("bash")
+    var script = command.generate_completion["bash"]()
     assert_true(
         "--completions" in script,
         msg="Bash script should include --completions",
@@ -627,9 +644,9 @@ fn test_disable_default_completions_not_in_script() raises:
     """
     var command = Command("myapp", "A test app")
     command.disable_default_completions()
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
     assert_false(
         "-l completions" in fish,
         msg=(
@@ -690,9 +707,9 @@ fn test_completions_custom_name_in_scripts() raises:
     """Tests that completions_name() changes the trigger in all scripts."""
     var command = Command("myapp", "A test app")
     command.completions_name("autocomp")
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
     assert_true(
         "-l autocomp" in fish,
         msg="Fish script should use '-l autocomp' after completions_name()",
@@ -734,7 +751,7 @@ fn test_completions_custom_name_in_bash_prev() raises:
     """Tests that completions_name() updates bash prev-case pattern."""
     var command = Command("myapp", "A test app")
     command.completions_name("gen-comp")
-    var bash = command.generate_completion("bash")
+    var bash = command.generate_completion["bash"]()
     assert_true(
         "--gen-comp)" in bash,
         msg="Bash prev-case should use '--gen-comp)' after rename",
@@ -780,7 +797,7 @@ fn test_completions_as_subcommand_in_fish() raises:
     var sub = Command("serve", "Start the server")
     command.add_subcommand(sub^)
     command.completions_as_subcommand()
-    var fish = command.generate_completion("fish")
+    var fish = command.generate_completion["fish"]()
     # Should NOT appear as an option.
     assert_false(
         "-l completions" in fish,
@@ -805,7 +822,7 @@ fn test_completions_as_subcommand_in_zsh() raises:
     var sub = Command("serve", "Start the server")
     command.add_subcommand(sub^)
     command.completions_as_subcommand()
-    var zsh = command.generate_completion("zsh")
+    var zsh = command.generate_completion["zsh"]()
     # Should appear in commands array.
     assert_true(
         "'completions:" in zsh,
@@ -829,7 +846,7 @@ fn test_completions_as_subcommand_in_bash() raises:
     var sub = Command("serve", "Start the server")
     command.add_subcommand(sub^)
     command.completions_as_subcommand()
-    var bash = command.generate_completion("bash")
+    var bash = command.generate_completion["bash"]()
     # Should NOT appear as --completions option.
     assert_false(
         " --completions" in bash,
@@ -856,9 +873,9 @@ fn test_completions_custom_name_with_subcommand() raises:
     command.completions_name("comp")
     command.completions_as_subcommand()
     var help_text = command._generate_help(color=False)
-    var fish = command.generate_completion("fish")
-    var zsh = command.generate_completion("zsh")
-    var bash = command.generate_completion("bash")
+    var fish = command.generate_completion["fish"]()
+    var zsh = command.generate_completion["zsh"]()
+    var bash = command.generate_completion["bash"]()
     # Help: 'comp' in Commands, not '--comp' in Options.
     assert_true(
         "comp" in help_text,
@@ -895,7 +912,7 @@ fn test_fish_completion_includes_alias() raises:
     var aliases: List[String] = ["cl"]
     clone.command_aliases(aliases^)
     app.add_subcommand(clone^)
-    var script = app.generate_completion("fish")
+    var script = app.generate_completion["fish"]()
     assert_true(
         "-a 'cl'" in script,
         msg="Fish script should list alias 'cl' as completable",
@@ -918,7 +935,7 @@ fn test_zsh_completion_includes_alias() raises:
     var aliases: List[String] = ["cl"]
     clone.command_aliases(aliases^)
     app.add_subcommand(clone^)
-    var script = app.generate_completion("zsh")
+    var script = app.generate_completion["zsh"]()
     assert_true(
         "'cl:" in script,
         msg="Zsh script should list alias 'cl' in commands array",
@@ -936,7 +953,7 @@ fn test_bash_completion_includes_alias() raises:
     var aliases: List[String] = ["cl"]
     clone.command_aliases(aliases^)
     app.add_subcommand(clone^)
-    var script = app.generate_completion("bash")
+    var script = app.generate_completion["bash"]()
     assert_true(
         "clone|cl)" in script,
         msg="Bash script should have clone|cl) case pattern",
@@ -967,7 +984,7 @@ fn _make_app_with_hidden_sub() raises -> Command:
 fn test_fish_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Fish completion."""
     var app = _make_app_with_hidden_sub()
-    var script = app.generate_completion("fish")
+    var script = app.generate_completion["fish"]()
     assert_true(
         "clone" in script,
         msg="Fish script should include visible sub 'clone'",
@@ -981,7 +998,7 @@ fn test_fish_hidden_sub_excluded() raises:
 fn test_zsh_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Zsh completion."""
     var app = _make_app_with_hidden_sub()
-    var script = app.generate_completion("zsh")
+    var script = app.generate_completion["zsh"]()
     assert_true(
         "'clone:" in script,
         msg="Zsh script should include visible sub 'clone'",
@@ -995,7 +1012,7 @@ fn test_zsh_hidden_sub_excluded() raises:
 fn test_bash_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Bash completion."""
     var app = _make_app_with_hidden_sub()
-    var script = app.generate_completion("bash")
+    var script = app.generate_completion["bash"]()
     assert_true(
         "clone" in script,
         msg="Bash script should include visible sub 'clone'",
@@ -1015,14 +1032,14 @@ fn test_all_hidden_no_subcommand_completion() raises:
     app.add_subcommand(debug^)
 
     # Fish: should NOT contain subcommand-related directives.
-    var fish = app.generate_completion("fish")
+    var fish = app.generate_completion["fish"]()
     assert_false(
         "__fish_seen_subcommand_from" in fish,
         msg="Fish should not have subcommand dispatching when all subs hidden",
     )
 
     # Bash: should not have case/subcmd detection.
-    var bash = app.generate_completion("bash")
+    var bash = app.generate_completion["bash"]()
     assert_false(
         "subcmd" in bash,
         msg="Bash should not have subcmd logic when all subs hidden",
