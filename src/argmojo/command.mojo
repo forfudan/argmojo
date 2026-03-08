@@ -1089,100 +1089,95 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._help_on_no_arguments = True
 
-    fn header_color(mut self, name: String) raises:
+    # [Mojo Miji]
+    # We set `name` as a parameter, instead of an argument, because we
+    # want to check at compile time that it is a valid colour name.
+    # If we made it an argument, the check would be deferred to runtime,
+    # which means that the users, rather than developers, may encounter
+    # errors about a wrong colour name in the terminal when they use
+    # the programme, no matter what colour name they type in.
+    fn header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
         Headers are always rendered in **bold + underline**; this method
         controls only the foreground colour.
 
-        Accepted colour names (case-insensitive): ``RED``, ``GREEN``,
-        ``YELLOW``, ``BLUE``, ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``,
-        ``ORANGE``.
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
 
-        Args:
+        Parameters:
             name: The colour name.
-
-        Raises:
-            Error if the name is not recognised.
 
         Example:
 
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.header_color("YELLOW")
+        command.header_color["YELLOW"]()
         ```
         """
-        self._header_color = _resolve_color(name)
+        self._header_color = _resolve_color[name]()
 
-    fn arg_color(mut self, name: String) raises:
+    fn arg_color[name: StringLiteral](mut self):
         """Sets the colour for option and argument names in help output.
 
-        Accepted colour names (case-insensitive): ``RED``, ``GREEN``,
-        ``YELLOW``, ``BLUE``, ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``,
-        ``ORANGE``.
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
 
-        Args:
+        Parameters:
             name: The colour name.
-
-        Raises:
-            Error if the name is not recognised.
 
         Example:
 
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.arg_color("GREEN")
+        command.arg_color["GREEN"]()
         ```
         """
-        self._arg_color = _resolve_color(name)
+        self._arg_color = _resolve_color[name]()
 
-    fn warn_color(mut self, name: String) raises:
+    fn warn_color[name: StringLiteral](mut self):
         """Sets the colour for deprecation warning messages.
 
-        Accepted colour names (case-insensitive): ``RED``, ``GREEN``,
-        ``YELLOW``, ``BLUE``, ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``,
-        ``ORANGE``.
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
 
-        Args:
+        Parameters:
             name: The colour name.
-
-        Raises:
-            Error if the name is not recognised.
 
         Example:
 
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.warn_color("YELLOW")  # change from default orange
+        command.warn_color["YELLOW"]()
         ```
         """
-        self._warn_color = _resolve_color(name)
+        self._warn_color = _resolve_color[name]()
 
-    fn error_color(mut self, name: String) raises:
+    fn error_color[name: StringLiteral](mut self):
         """Sets the colour for parse error messages.
 
-        Accepted colour names (case-insensitive): ``RED``, ``GREEN``,
-        ``YELLOW``, ``BLUE``, ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``,
-        ``ORANGE``.
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
 
-        Args:
+        Parameters:
             name: The colour name.
-
-        Raises:
-            Error if the name is not recognised.
 
         Example:
 
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.error_color("MAGENTA")  # change from default red
+        command.error_color["MAGENTA"]()
         ```
         """
-        self._error_color = _resolve_color(name)
+        self._error_color = _resolve_color[name]()
 
     # ===------------------------------------------------------------------=== #
     # Private output helpers

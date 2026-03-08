@@ -13,7 +13,7 @@ negative number passthrough, allow_positional_with_subcommands, custom tips,
 help_on_no_arguments, default_if_no_value, require_equals, response files,
 remainder positionals, allow_hyphen_values, parse_known_arguments,
 argument groups in help (.group()), and value_name wrapping control
-(.value_name[wrapped: Bool]()).
+(.value_name("NAME") or .value_name[False]("NAME")).
 
 Note: This demo looks very strange, but useful :D
 
@@ -114,8 +114,8 @@ fn main() raises:
     )
 
     # ── Color customisation ──────────────────────────────────────────────
-    app.header_color("CYAN")
-    app.arg_color("GREEN")
+    app.header_color["CYAN"]()
+    app.arg_color["GREEN"]()
 
     # ── Response file support ────────────────────────────────────────────
     app.response_file_prefix()  # enables @args.txt expansion
