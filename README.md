@@ -105,30 +105,30 @@ fn main() raises:
     # Boolean flags
     app.add_argument(
         Argument("ignore-case", help="Ignore case distinctions")
-        .long("ignore-case").short("i").flag()
+        .long["ignore-case"]().short["i"]().flag()
     )
     app.add_argument(
         Argument("recursive", help="Search directories recursively")
-        .long("recursive").short("r").flag()
+        .long["recursive"]().short["r"]().flag()
     )
 
     # Count flag (verbosity)
     app.add_argument(
         Argument("verbose", help="Increase verbosity (-v, -vv, -vvv)")
-        .long("verbose").short("v").count()
+        .long["verbose"]().short["v"]().count()
     )
 
     # Key-value option with choices
     var formats: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
-        .long("format").short("f").choices(formats^).default("text")
+        .long["format"]().short["f"]().choices(formats^).default("text")
     )
 
     # Negatable flag — --color enables, --no-color disables
     app.add_argument(
         Argument("color", help="Highlight matching text")
-        .long("color").flag().negatable()
+        .long["color"]().flag().negatable()
     )
 
     # Parse and use

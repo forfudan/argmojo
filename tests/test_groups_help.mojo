@@ -15,20 +15,20 @@ fn test_group_basic() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
         Argument("host", help="Server host")
-        .long("host")
-        .short("H")
+        .long["host"]()
+        .short["H"]()
         .group("Network")
     )
     command.add_argument(
         Argument("port", help="Server port")
-        .long("port")
-        .short("p")
+        .long["port"]()
+        .short["p"]()
         .group("Network")
     )
 
@@ -49,12 +49,12 @@ fn test_group_ungrouped_separate_from_grouped() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
 
     var help = command._generate_help(color=False)
@@ -79,16 +79,16 @@ fn test_group_multiple_groups() raises:
     """Multiple groups each get their own heading, in first-appearance order."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("user", help="Username").long("user").group("Authentication")
+        Argument("user", help="Username").long["user"]().group("Authentication")
     )
     command.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
     command.add_argument(
-        Argument("pass", help="Password").long("pass").group("Authentication")
+        Argument("pass", help="Password").long["pass"]().group("Authentication")
     )
     command.add_argument(
-        Argument("port", help="Server port").long("port").group("Network")
+        Argument("port", help="Server port").long["port"]().group("Network")
     )
 
     var help = command._generate_help(color=False)
@@ -126,12 +126,12 @@ fn test_group_no_groups_unchanged() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var help = command._generate_help(color=False)
@@ -149,7 +149,7 @@ fn test_group_builtin_options_ungrouped() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
 
     var help = command._generate_help(color=False)
@@ -173,13 +173,13 @@ fn test_group_with_persistent() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
     command.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
 
     var sub = Command("sub", "A subcommand")
@@ -205,12 +205,12 @@ fn test_group_independent_padding() raises:
     var command = Command("test", "Test app")
     # Group A: short names → small padding.
     command.add_argument(
-        Argument("a", help="Alpha").long("a").flag().group("Short")
+        Argument("a", help="Alpha").long["a"]().flag().group("Short")
     )
     # Group B: long name → wider padding.
     command.add_argument(
         Argument("very-long-option-name", help="Beta")
-        .long("very-long-option-name")
+        .long["very-long-option-name"]()
         .flag()
         .group("Long")
     )
@@ -228,7 +228,7 @@ fn test_group_with_colored_output() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
 
     var help = command._generate_help(color=True)
@@ -244,13 +244,13 @@ fn test_group_hidden_arg_not_shown() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("secret", help="Secret option")
-        .long("secret")
+        .long["secret"]()
         .group("Internal")
         .hidden()
     )
     command.add_argument(
         Argument("public", help="Public option")
-        .long("public")
+        .long["public"]()
         .group("Internal")
     )
 
@@ -266,18 +266,18 @@ fn test_group_all_hidden_no_heading() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("debug1", help="Debug 1")
-        .long("debug1")
+        .long["debug1"]()
         .group("Debug")
         .hidden()
     )
     command.add_argument(
         Argument("debug2", help="Debug 2")
-        .long("debug2")
+        .long["debug2"]()
         .group("Debug")
         .hidden()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var help = command._generate_help(color=False)
@@ -291,10 +291,10 @@ fn test_group_does_not_affect_parsing() raises:
     """Groups are purely cosmetic — they don't change parsing behavior."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Host").long("host").group("Network")
+        Argument("host", help="Host").long["host"]().group("Network")
     )
     command.add_argument(
-        Argument("port", help="Port").long("port").group("Network")
+        Argument("port", help="Port").long["port"]().group("Network")
     )
 
     var args: List[String] = ["test", "--host", "localhost", "--port", "8080"]
@@ -308,12 +308,12 @@ fn test_group_with_subcommand_help() raises:
     var app = Command("app", "App")
     var sub = Command("serve", "Start server")
     sub.add_argument(
-        Argument("host", help="Server host").long("host").group("Network")
+        Argument("host", help="Server host").long["host"]().group("Network")
     )
     sub.add_argument(
-        Argument("port", help="Server port").long("port").group("Network")
+        Argument("port", help="Server port").long["port"]().group("Network")
     )
-    sub.add_argument(Argument("workers", help="Worker count").long("workers"))
+    sub.add_argument(Argument("workers", help="Worker count").long["workers"]())
     app.add_subcommand(sub^)
 
     # Get the subcommand help directly (index 1; index 0 is auto-added 'help').
@@ -336,8 +336,8 @@ fn test_value_name_wrapped_by_default() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
     )
 
@@ -353,8 +353,8 @@ fn test_value_name_unwrapped() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name[False]("FILE")
     )
 
@@ -373,7 +373,7 @@ fn test_value_name_wrapped_explicit() raises:
     """The value_name[True] explicitly wraps in angle brackets."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("path", help="Path").long("path").value_name[True]("DIR")
+        Argument("path", help="Path").long["path"]().value_name[True]("DIR")
     )
 
     var help = command._generate_help(color=False)
@@ -387,7 +387,7 @@ fn test_value_name_wrapped_with_append() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("env", help="Target env")
-        .long("env")
+        .long["env"]()
         .value_name("ENV")
         .append()
     )
@@ -404,7 +404,7 @@ fn test_value_name_unwrapped_with_append() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("env", help="Target env")
-        .long("env")
+        .long["env"]()
         .value_name[False]("ENV")
         .append()
     )
@@ -425,7 +425,7 @@ fn test_value_name_wrapped_with_nargs() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("point", help="X Y")
-        .long("point")
+        .long["point"]()
         .number_of_values[2]()
         .value_name("N")
     )
@@ -442,7 +442,7 @@ fn test_value_name_unwrapped_with_nargs() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("point", help="X Y")
-        .long("point")
+        .long["point"]()
         .number_of_values[2]()
         .value_name[False]("N")
     )
@@ -463,7 +463,7 @@ fn test_value_name_wrapped_require_equals() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
+        .long["output"]()
         .require_equals()
         .value_name("FILE")
     )
@@ -480,7 +480,7 @@ fn test_value_name_wrapped_default_if_no_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .value_name("ALGO")
     )
@@ -497,7 +497,9 @@ fn test_value_name_no_wrapping_does_not_affect_default_placeholder() raises:
     """When no value_name is set, the default placeholder <name> is always used.
     """
     var command = Command("test", "Test app")
-    command.add_argument(Argument("output", help="Output file").long("output"))
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
 
     var help = command._generate_help(color=False)
     assert_true(
@@ -510,7 +512,9 @@ fn test_value_name_colored_output_wrapped() raises:
     """Wrapped value_name works correctly in coloured output."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").value_name("PATH")
+        Argument("output", help="Output file")
+        .long["output"]()
+        .value_name("PATH")
     )
 
     var help = command._generate_help(color=True)
@@ -530,7 +534,7 @@ fn test_group_with_value_name_wrapped() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("host", help="Server host")
-        .long("host")
+        .long["host"]()
         .value_name("ADDR")
         .group("Network")
     )
@@ -548,7 +552,7 @@ fn test_group_with_value_name_unwrapped() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("host", help="Server host")
-        .long("host")
+        .long["host"]()
         .value_name[False]("ADDR")
         .group("Network")
     )

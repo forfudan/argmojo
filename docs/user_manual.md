@@ -207,7 +207,7 @@ Long options start with `--` and can receive a value in two ways:
 | `--key=value` | `--output=result.txt` | Equals-separated value. |
 
 ```mojo
-command.add_argument(Argument("output", help="Output file").long("output"))
+command.add_argument(Argument("output", help="Output file").long["output"]())
 ```
 
 ```bash
@@ -227,7 +227,7 @@ Short options use a **single dash** followed by a **single character**.
 
 ```mojo
 command.add_argument(
-    Argument("output", help="Output file").long("output").short("o")
+    Argument("output", help="Output file").long["output"]().short["o"]()
 )
 ```
 
@@ -238,6 +238,12 @@ myapp -oresult.txt           # attached value (see §9)
 
 A short name is typically defined alongside a long name, but can also be used alone.
 
+> **Compile-time validation.** Both `.long["x"]()` and `.short["x"]()` accept
+> a `StringLiteral` parameter.  `.short` enforces that the name is exactly one
+> character; `.long` enforces that the name is non-empty and does not start
+> with `-`.  Invalid names are caught at compile time — the program will not
+> compile.
+
 ### Boolean Flags
 
 A **flag** is a boolean option that takes no value. It is `False` by default and becomes `True` when present.
@@ -245,7 +251,7 @@ A **flag** is a boolean option that takes no value. It is `False` by default and
 ```mojo
 command.add_argument(
     Argument("verbose", help="Enable verbose output")
-    .long("verbose").short("v").flag()
+    .long["verbose"]().short["v"]().flag()
 )
 ```
 
@@ -268,7 +274,7 @@ When an argument is not provided on the command line, its default value (if any)
 ```mojo
 command.add_argument(
     Argument("format", help="Output format")
-    .long("format").short("f").default("table")
+    .long["format"]().short["f"]().default("table")
 )
 command.add_argument(
     Argument("path", help="Search path").positional().default(".")
@@ -309,7 +315,7 @@ Any alias resolves to the same argument during parsing.
 var alias_list: List[String] = ["color"]
 command.add_argument(
     Argument("colour", help="Colour theme")
-        .long("colour")
+        .long["colour"]()
         .aliases(alias_list^)
 )
 ```
@@ -331,7 +337,7 @@ Multiple aliases are supported:
 var alias_list: List[String] = ["out", "fmt"]
 command.add_argument(
     Argument("output", help="Output format")
-        .long("output")
+        .long["output"]()
         .aliases(alias_list^)
 )
 ```
@@ -346,7 +352,7 @@ The `Argument` builder has 27 chainable methods, and the `Command` struct has ad
 Argument("name", help="...")
 ║
 ╠══ Named option ═══════════════════════════════════════════════════════════════
-║   .long("x") ─── .short("x")             ← pick one or both
+║   .long["x"]() ─── .short["x"]()             ← pick one or both
 ║   │
 ║   ├── [value mode] (default)             ← takes a string value
 ║   │   ├── .required()
@@ -431,8 +437,8 @@ The table below shows which builder methods can be used with each argument mode.
 
 | Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
 | -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long("x")`                     |      ✓      |     ✓     |     ✓      |        —        |
-| `.short("x")`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.long["x"]()`                     |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
 | `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
 | `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
@@ -469,9 +475,9 @@ The table below shows which builder methods can be used with each argument mode.
 When multiple short options are **boolean flags**, they can be combined into a single `-` token.
 
 ```mojo
-command.add_argument(Argument("all",       help="Show all").long("all").short("a").flag())
-command.add_argument(Argument("brief",     help="Brief mode").long("brief").short("b").flag())
-command.add_argument(Argument("colorize",  help="Colorize").long("colorize").short("c").flag())
+command.add_argument(Argument("all",       help="Show all").long["all"]().short["a"]().flag())
+command.add_argument(Argument("brief",     help="Brief mode").long["brief"]().short["b"]().flag())
+command.add_argument(Argument("colorize",  help="Colorize").long["colorize"]().short["c"]().flag())
 ```
 
 ```bash
@@ -483,7 +489,7 @@ myapp -abc
 **Mixing flags with a value-taking option:** The last character in a merged group can take a value (the rest of the token or the next argument):
 
 ```mojo
-command.add_argument(Argument("output", help="Output file").long("output").short("o"))
+command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
 ```
 
 ```bash
@@ -497,7 +503,7 @@ myapp -abofile.txt
 A short option that takes a value can have its value **attached directly** — no space needed.
 
 ```mojo
-command.add_argument(Argument("output", help="Output file").long("output").short("o"))
+command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
 ```
 
 ```bash
@@ -516,7 +522,7 @@ A **count** flag increments a counter every time it appears. This is a common pa
 ```mojo
 command.add_argument(
     Argument("verbose", help="Increase verbosity (-v, -vv, -vvv)")
-    .long("verbose").short("v").count()
+    .long["verbose"]().short["v"]().count()
 )
 ```
 
@@ -548,7 +554,7 @@ You can cap a count flag at a maximum value with `.max[n]()`. The ceiling value 
 ```mojo
 command.add_argument(
     Argument("verbose", help="Increase verbosity (capped at 3)")
-    .long("verbose").short("v").count().max[3]()
+    .long["verbose"]().short["v"]().count().max[3]()
 )
 ```
 
@@ -580,7 +586,7 @@ This replaces the manual pattern of defining two separate flags (`--color` and `
 ```mojo
 command.add_argument(
     Argument("color", help="Enable colored output")
-    .long("color").flag().negatable()
+    .long["color"]().flag().negatable()
 )
 ```
 
@@ -611,8 +617,8 @@ Negatable flags are displayed as a paired form:
 **Before (two flags + mutually exclusive):**
 
 ```mojo
-command.add_argument(Argument("color", help="Force colored output").long("color").flag())
-command.add_argument(Argument("no-color", help="Disable colored output").long("no-color").flag())
+command.add_argument(Argument("color", help="Force colored output").long["color"]().flag())
+command.add_argument(Argument("no-color", help="Disable colored output").long["no-color"]().flag())
 var group: List[String] = ["color", "no-color"]
 command.mutually_exclusive(group^)
 ```
@@ -622,7 +628,7 @@ command.mutually_exclusive(group^)
 ```mojo
 command.add_argument(
     Argument("color", help="Enable colored output")
-    .long("color").flag().negatable()
+    .long["color"]().flag().negatable()
 )
 ```
 
@@ -654,7 +660,7 @@ This is a common pattern for options like `--include`, `--tag`, or `--define` wh
 ```mojo
 command.add_argument(
     Argument("tag", help="Add a tag (repeatable)")
-    .long("tag").short("t").append()
+    .long["tag"]().short["t"]().append()
 )
 ```
 
@@ -705,7 +711,7 @@ If a value name is set, it replaces the default placeholder:
 
 ```mojo
 command.add_argument(
-    Argument("include", help="Include path").long("include").short("I").value_name("DIR").append()
+    Argument("include", help="Include path").long["include"]().short["I"]().value_name("DIR").append()
 )
 ```
 
@@ -723,7 +729,7 @@ Choices validation is applied to each individual value:
 var envs: List[String] = ["dev", "staging", "prod"]
 command.add_argument(
     Argument("env", help="Target environment")
-    .long("env").choices(envs^).append()
+    .long["env"]().choices(envs^).append()
 )
 ```
 
@@ -745,7 +751,7 @@ This is similar to Go cobra's `StringSliceVar` and Rust clap's `value_delimiter`
 ```mojo
 command.add_argument(
     Argument("env", help="Target environments")
-    .long("env").short("e").delimiter(",")
+    .long["env"]().short["e"]().delimiter(",")
 )
 ```
 
@@ -795,7 +801,7 @@ Choices are validated per piece after splitting:
 var envs: List[String] = ["dev", "staging", "prod"]
 command.add_argument(
     Argument("env", help="Target environments")
-    .long("env").choices(envs^).delimiter(",")
+    .long["env"]().choices(envs^).delimiter(",")
 )
 ```
 
@@ -813,7 +819,7 @@ Any string can be used as the delimiter:
 ```mojo
 command.add_argument(
     Argument("path", help="Search paths")
-    .long("path").delimiter(";")
+    .long["path"]().delimiter(";")
 )
 ```
 
@@ -830,7 +836,7 @@ When a delimiter option is used multiple times, all split values accumulate:
 
 ```mojo
 command.add_argument(
-    Argument("tag", help="Tags").long("tag").short("t").append().delimiter(",")
+    Argument("tag", help="Tags").long["tag"]().short["t"]().append().delimiter(",")
 )
 ```
 
@@ -854,8 +860,8 @@ This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 Use `.number_of_values[N]()` to specify how many values the option consumes:
 
 ```mojo
-command.add_argument(Argument("point", help="X Y coordinates").long("point").number_of_values[2]())
-command.add_argument(Argument("rgb", help="RGB colour").long("rgb").short("c").number_of_values[3]())
+command.add_argument(Argument("point", help="X Y coordinates").long["point"]().number_of_values[2]())
+command.add_argument(Argument("rgb", help="RGB colour").long["rgb"]().short["c"]().number_of_values[3]())
 ```
 
 `.number_of_values[N]()` automatically implies `.append()` — values are
@@ -912,7 +918,7 @@ Choices are validated for **each** value individually:
 ```mojo
 var dirs: List[String] = ["north", "south", "east", "west"]
 command.add_argument(
-    Argument("route", help="Start and end").long("route").number_of_values[2]().choices(dirs^)
+    Argument("route", help="Start and end").long["route"]().number_of_values[2]().choices(dirs^)
 )
 ```
 
@@ -954,8 +960,8 @@ value is stored in both a `Dict[String, String]` map and the list.
 ```mojo
 command.add_argument(
     Argument("define", help="Define a variable")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
 )
 ```
@@ -990,7 +996,7 @@ key-value pairs in a single token:
 ```mojo
 command.add_argument(
     Argument("define", help="Define vars")
-        .long("define")
+        .long["define"]()
         .map_option()
         .delimiter(",")
 )
@@ -1034,7 +1040,7 @@ Restrict an option's value to a fixed set of allowed strings. If the user provid
 var levels: List[String] = ["debug", "info", "warn", "error"]
 command.add_argument(
     Argument("log-level", help="Log level")
-    .long("log-level").choices(levels^).default("info")
+    .long["log-level"]().choices(levels^).default("info")
 )
 ```
 
@@ -1095,7 +1101,7 @@ to convert and compare.
 ```mojo
 command.add_argument(
     Argument("port", help="Listening port")
-        .long("port")
+        .long["port"]()
         .range[1, 65535]()
 )
 ```
@@ -1122,7 +1128,7 @@ myapp --port 65535   # OK
 
 ```mojo
 command.add_argument(
-    Argument("port", help="Ports").long("port").append().range[1, 100]()
+    Argument("port", help="Ports").long["port"]().append().range[1, 100]()
 )
 ```
 
@@ -1138,7 +1144,7 @@ By default, an out-of-range value causes a hard error. If you prefer a gentler a
 ```mojo
 command.add_argument(
     Argument("level", help="Compression level (0–9)")
-        .long("level")
+        .long["level"]()
         .range[0, 9]()
         .clamp()
 )
@@ -1162,7 +1168,7 @@ warning: '--level' value 20 is out of range [0, 9], clamped to 9
 
 ```mojo
 command.add_argument(
-    Argument("port", help="Ports").long("port").append().range[1, 100]().clamp()
+    Argument("port", help="Ports").long["port"]().append().range[1, 100]().clamp()
 )
 ```
 
@@ -1195,9 +1201,9 @@ This is useful when two options are logically contradictory, such as `--json` vs
 **Defining a group**
 
 ```mojo
-command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
-command.add_argument(Argument("csv",  help="Output as CSV").long("csv").flag())
+command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
+command.add_argument(Argument("csv",  help="Output as CSV").long["csv"]().flag())
 
 var group: List[String] = ["json", "yaml", "csv"]
 command.mutually_exclusive(group^)
@@ -1220,8 +1226,8 @@ myapp --json --csv     # Error: Arguments are mutually exclusive: '--json', '--c
 The group members don't have to be flags — they can be any kind of argument:
 
 ```mojo
-command.add_argument(Argument("input", help="Read from file").long("input"))
-command.add_argument(Argument("stdin", help="Read from stdin").long("stdin").flag())
+command.add_argument(Argument("input", help="Read from file").long["input"]())
+command.add_argument(Argument("stdin", help="Read from stdin").long["stdin"]().flag())
 
 var io_group: List[String] = ["input", "stdin"]
 command.mutually_exclusive(io_group^)
@@ -1271,8 +1277,8 @@ This mirrors Go cobra's `MarkFlagsOneRequired` and Rust clap's `ArgGroup::requir
 **Defining a one-required group**
 
 ```mojo
-command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
 var format_group: List[String] = ["json", "yaml"]
 command.one_required(format_group^)
 ```
@@ -1293,8 +1299,8 @@ Note that `one_required` only checks that **at least one** is present. It does n
 **Exactly-one pattern (one-required + mutually exclusive)**
 
 ```mojo
-command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
 
 var excl: List[String] = ["json", "yaml"]
 var req: List[String] = ["json", "yaml"]
@@ -1314,8 +1320,8 @@ myapp --json --yaml        # Error: Arguments are mutually exclusive: '--json', 
 **Works with value-taking options**
 
 ```mojo
-command.add_argument(Argument("input", help="Input file").long("input").short("i"))
-command.add_argument(Argument("stdin", help="Read from stdin").long("stdin").flag())
+command.add_argument(Argument("input", help="Input file").long["input"]().short["i"]())
+command.add_argument(Argument("stdin", help="Read from stdin").long["stdin"]().flag())
 var source: List[String] = ["input", "stdin"]
 command.one_required(source^)
 ```
@@ -1364,8 +1370,8 @@ This is useful for sets of arguments that only make sense as a group — for exa
 **Defining a group**
 
 ```mojo
-command.add_argument(Argument("username", help="Auth username").long("username").short("u"))
-command.add_argument(Argument("password", help="Auth password").long("password").short("p"))
+command.add_argument(Argument("username", help="Auth username").long["username"]().short["u"]())
+command.add_argument(Argument("password", help="Auth password").long["password"]().short["p"]())
 
 var group: List[String] = ["username", "password"]
 command.required_together(group^)
@@ -1389,9 +1395,9 @@ myapp --password secret                    # Error: Arguments required together:
 Groups can contain any number of arguments:
 
 ```mojo
-command.add_argument(Argument("host",  help="Host").long("host"))
-command.add_argument(Argument("port",  help="Port").long("port"))
-command.add_argument(Argument("proto", help="Protocol").long("proto"))
+command.add_argument(Argument("host",  help="Host").long["host"]())
+command.add_argument(Argument("port",  help="Port").long["port"]())
+command.add_argument(Argument("proto", help="Protocol").long["proto"]())
 
 var net_group: List[String] = ["host", "port", "proto"]
 command.required_together(net_group^)
@@ -1436,8 +1442,8 @@ Sometimes an argument should only be required when another argument is present. 
 ---
 
 ```mojo
-command.add_argument(Argument("save", help="Save results").long("save").flag())
-command.add_argument(Argument("output", help="Output file").long("output").short("o"))
+command.add_argument(Argument("save", help="Save results").long["save"]().flag())
+command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
 command.required_if("output", "save")
 ```
 
@@ -1493,8 +1499,8 @@ Use `implies()` to declare that setting one argument automatically sets another.
 ---
 
 ```mojo
-command.add_argument(Argument("debug", help="Debug mode").long("debug").flag())
-command.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+command.add_argument(Argument("debug", help="Debug mode").long["debug"]().flag())
+command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
 command.implies("debug", "verbose")
 ```
 
@@ -1538,7 +1544,7 @@ command.implies("debug", "log")
 When the implied argument is a count (`.count()`), it is set to 1 if not already present. Explicit counts are preserved:
 
 ```mojo
-command.add_argument(Argument("verbose", help="Verbosity").long("verbose").short("v").count())
+command.add_argument(Argument("verbose", help="Verbosity").long["verbose"]().short["v"]().count())
 command.implies("debug", "verbose")
 # --debug        → verbose count = 1
 # --debug -vvv   → verbose count = 3 (explicit value kept)
@@ -1598,11 +1604,11 @@ Register subcommands with `add_subcommand()`. Each subcommand has its own set of
 
 ```mojo
 var app = Command("app", "My CLI tool", version="1.0.0")
-app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
 
 var search = Command("search", "Search for patterns")
 search.add_argument(Argument("pattern", help="Search pattern").positional().required())
-search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").value_name("N"))
+search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().value_name("N"))
 
 var init = Command("init", "Initialise a new project")
 init.add_argument(Argument("name", help="Project name").positional().required())
@@ -1720,11 +1726,11 @@ var app = Command("app", "My app")
 # These are available everywhere
 app.add_argument(
     Argument("verbose", help="Verbose output")
-    .long("verbose").short("v").flag().persistent()
+    .long["verbose"]().short["v"]().flag().persistent()
 )
 app.add_argument(
     Argument("output", help="Output format")
-    .long("output").short("o")
+    .long["output"]().short["o"]()
     .choices(["json", "text", "yaml"])
     .default("text")
     .persistent()
@@ -1788,10 +1794,10 @@ Global Options:
 
 ```mojo
 var app = Command("app", "My app")
-app.add_argument(Argument("verbose", help="Verbose").long("verbose").short("v").flag().persistent())
+app.add_argument(Argument("verbose", help="Verbose").long["verbose"]().short["v"]().flag().persistent())
 
 var sub = Command("sub", "A child")
-sub.add_argument(Argument("verbose", help="Also verbose").long("verbose").flag())  # conflict!
+sub.add_argument(Argument("verbose", help="Also verbose").long["verbose"]().flag())  # conflict!
 
 app.add_subcommand(sub^)  # raises: Persistent flag '--verbose' on 'app'
                            #         conflicts with '--verbose' on subcommand 'sub'
@@ -1806,7 +1812,7 @@ Non-persistent root flags with the same name as child flags do **not** conflict 
 ```mojo
 app.add_argument(
     Argument("log-level", help="Log level")
-    .long("log-level").choices(["debug", "info", "warn", "error"])
+    .long["log-level"]().choices(["debug", "info", "warn", "error"])
     .default("info").persistent()
 )
 ```
@@ -1973,11 +1979,11 @@ By default, custom value names are also wrapped in angle brackets, matching the 
 ```mojo
 command.add_argument(
     Argument("output", help="Output file path")
-    .long("output").short("o").value_name("FILE")
+    .long["output"]().short["o"]().value_name("FILE")
 )
 command.add_argument(
     Argument("max-depth", help="Maximum directory depth")
-    .long("max-depth").short("d").value_name("N")
+    .long["max-depth"]().short["d"]().value_name("N")
 )
 ```
 
@@ -2000,7 +2006,7 @@ command.add_argument(
 ```mojo
 command.add_argument(
     Argument("point", help="A 3D coordinate")
-    .long("point").number_of_values[3]().value_name[False]("COORD")
+    .long["point"]().number_of_values[3]().value_name[False]("COORD")
 )
 ```
 
@@ -2017,7 +2023,7 @@ A **hidden** argument is fully functional but excluded from the `--help` output.
 ```mojo
 command.add_argument(
     Argument("debug-index", help="Dump internal search index")
-    .long("debug-index").flag().hidden()
+    .long["debug-index"]().flag().hidden()
 )
 ```
 
@@ -2041,7 +2047,7 @@ The argument still works normally, but a warning is printed to
 ```mojo
 command.add_argument(
     Argument("format_old", help="Legacy output format")
-        .long("format-old")
+        .long["format-old"]()
         .deprecated("Use --format instead")
 )
 ```
@@ -2059,7 +2065,7 @@ myapp --format-old csv
 ```mojo
 command.add_argument(
     Argument("compat", help="Compat mode")
-        .long("compat").short("C").flag()
+        .long["compat"]().short["C"]().flag()
         .deprecated("Will be removed in 2.0")
 )
 ```
@@ -2088,8 +2094,8 @@ Use `.default_if_no_value("value")` to make an option's value **optional**. When
 ```mojo
 command.add_argument(
     Argument("compress", help="Compression algorithm")
-    .long("compress")
-    .short("c")
+    .long["compress"]()
+    .short["c"]()
     .default_if_no_value("gzip")
 )
 ```
@@ -2109,7 +2115,7 @@ command.add_argument(
 ```mojo
 command.add_argument(
     Argument("compress", help="Compression algorithm")
-    .long("compress")
+    .long["compress"]()
     .default_if_no_value("gzip")
     .default("none")
 )
@@ -2139,8 +2145,8 @@ Use `.require_equals()` to force `--key=value` syntax. Space-separated `--key va
 ```mojo
 command.add_argument(
     Argument("output", help="Output file")
-    .long("output")
-    .short("o")
+    .long["output"]()
+    .short["o"]()
     .require_equals()
 )
 ```
@@ -2170,19 +2176,19 @@ By default, all options appear under a single "Options:" heading in `--help`. Us
 ```mojo
 command.add_argument(
     Argument("host", help="Server hostname")
-    .long("host").value_name("ADDR").group("Network")
+    .long["host"]().value_name("ADDR").group("Network")
 )
 command.add_argument(
     Argument("port", help="Server port")
-    .long("port").short("P").group("Network")
+    .long["port"]().short["P"]().group("Network")
 )
 command.add_argument(
     Argument("output", help="Output file path")
-    .long("output").short("o").value_name("FILE").group("Output")
+    .long["output"]().short["o"]().value_name("FILE").group("Output")
 )
 command.add_argument(
     Argument("verbose", help="Increase verbosity")
-    .long("verbose").short("v").count()
+    .long["verbose"]().short["v"]().count()
 )
 ```
 
@@ -2335,7 +2341,7 @@ Use `help_on_no_arguments()` to automatically display help when the user invokes
 
 ```mojo
 var command = Command("myapp", "My application")
-command.add_argument(Argument("file", help="Input file").long("file").required())
+command.add_argument(Argument("file", help="Input file").long["file"]().required())
 command.help_on_no_arguments()
 var result = command.parse()
 ```
@@ -2421,10 +2427,10 @@ See the [Unicode East Asian Width specification](https://www.unicode.org/reports
 ```mojo
 var command = Command("工具", "一個命令行工具")
 command.add_argument(
-    Argument("output", help="Output path").long("output").short("o")
+    Argument("output", help="Output path").long["output"]().short["o"]()
 )
 command.add_argument(
-    Argument("編碼", help="設定編碼").long("編碼")
+    Argument("編碼", help="設定編碼").long["編碼"]()
 )
 ```
 
@@ -2476,7 +2482,7 @@ warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-c
 
 ```mojo
 var app = Command("myapp", "My CLI")
-app.add_argument(Argument("verbose", help="Verbose").long("verbose").short("v").flag())
+app.add_argument(Argument("verbose", help="Verbose").long["verbose"]().short["v"]().flag())
 var result = app.parse_arguments(["myapp", "－－ｖｅｒｂｏｓｅ"])
 # result.get_flag("verbose") == True
 # stderr: warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
@@ -2486,7 +2492,7 @@ var result = app.parse_arguments(["myapp", "－－ｖｅｒｂｏｓｅ"])
 
 ```mojo
 var app = Command("myapp", "My CLI")
-app.add_argument(Argument("output", help="Output").long("output").takes_value())
+app.add_argument(Argument("output", help="Output").long["output"]().takes_value())
 var result = app.parse_arguments(["myapp", "－－ｏｕｔｐｕｔ＝ｆｉｌｅ．ｔｘｔ"])
 # result.get_string("output") == "file.txt"
 ```
@@ -2565,7 +2571,7 @@ If you have a registered short option that uses a digit character (e.g., `-3` fo
 var command = Command("calc", "Calculator")
 command.allow_negative_numbers()   # Explicit opt-in
 command.add_argument(
-    Argument("triple", help="Triple mode").long("triple").short("3").flag()
+    Argument("triple", help="Triple mode").long["triple"]().short["3"]().flag()
 )
 command.add_argument(Argument("operand", help="A number").positional().required())
 ```
@@ -2603,8 +2609,8 @@ This mirrors Python argparse's `allow_abbrev` behaviour.
 ---
 
 ```mojo
-command.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
-command.add_argument(Argument("output",  help="Output file").long("output").short("o"))
+command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
+command.add_argument(Argument("output",  help="Output file").long["output"]().short["o"]())
 ```
 
 ```bash
@@ -2620,8 +2626,8 @@ myapp --out=file.txt       # resolves to --output=file.txt
 If the prefix matches more than one option, an error is raised:
 
 ```mojo
-command.add_argument(Argument("verbose",      help="Verbose").long("verbose").flag())
-command.add_argument(Argument("version-info", help="Version info").long("version-info").flag())
+command.add_argument(Argument("verbose",      help="Verbose").long["verbose"]().flag())
+command.add_argument(Argument("version-info", help="Version info").long["version-info"]().flag())
 ```
 
 ```bash
@@ -2636,8 +2642,8 @@ myapp --ver
 If the user's input is an **exact match** for one option, it is chosen even if it is also a prefix of another option:
 
 ```mojo
-command.add_argument(Argument("color",    help="Color mode").long("color").flag())
-command.add_argument(Argument("colorize", help="Colorize output").long("colorize").flag())
+command.add_argument(Argument("color",    help="Color mode").long["color"]().flag())
+command.add_argument(Argument("colorize", help="Colorize output").long["colorize"]().flag())
 ```
 
 ```bash
@@ -2671,7 +2677,7 @@ myapp --ig          # instead of --ignore-case
 A bare `--` tells the parser to **stop interpreting options**. Everything after `--` is treated as a positional argument, even if it looks like an option.
 
 ```mojo
-command.add_argument(Argument("ling", help="Use Lingming encoding").long("ling").flag())
+command.add_argument(Argument("ling", help="Use Lingming encoding").long["ling"]().flag())
 command.add_argument(Argument("pattern", help="Search pattern").positional().required())
 ```
 
@@ -2762,7 +2768,7 @@ cat input.txt  # file = "input.txt"
 ```mojo
 var command = Command("wrapper", "Wrapper that forwards unknown flags")
 command.add_argument(
-    Argument("verbose", help="Verbose output").long("verbose").flag()
+    Argument("verbose", help="Verbose output").long["verbose"]().flag()
 )
 command.add_argument(
     Argument("file", help="Input file").positional().required()
@@ -2904,13 +2910,13 @@ Every `Command` automatically responds to `--completions <shell>` — just like 
 
 ```mojo
 var app = Command("myapp", "My application", version="1.0.0")
-app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
-app.add_argument(Argument("output", help="Output file").long("output").short("o").value_name("FILE"))
+app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
+app.add_argument(Argument("output", help="Output file").long["output"]().short["o"]().value_name("FILE"))
 var formats: List[String] = ["json", "csv", "table"]
-app.add_argument(Argument("format", help="Output format").long("format").choices(formats^))
+app.add_argument(Argument("format", help="Output format").long["format"]().choices(formats^))
 
 var sub = Command("serve", "Start a server")
-sub.add_argument(Argument("port", help="Port number").long("port").short("p"))
+sub.add_argument(Argument("port", help="Port number").long["port"]().short["p"]())
 app.add_subcommand(sub^)
 
 # parse() handles --completions automatically — no extra code needed
@@ -3062,8 +3068,8 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | ArgMojo method                | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
 | ----------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
 | `Argument("name", help="…")`  | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
-| `.long("x")`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                    | implicit from flag name        |
-| `.short("x")`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
+| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long["x"]()`                    | implicit from flag name        |
+| `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
 | `.flag()`                     | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
 | `.required()`                 | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
 | `.positional()`               | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |

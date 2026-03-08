@@ -13,8 +13,8 @@ fn test_fish_dispatch() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var script = command.generate_completion["fish"]()
@@ -29,8 +29,8 @@ fn test_zsh_dispatch() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var script = command.generate_completion["zsh"]()
@@ -49,8 +49,8 @@ fn test_bash_dispatch() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var script = command.generate_completion["bash"]()
@@ -115,7 +115,7 @@ fn test_fish_long_option() raises:
     """Tests that Fish script includes long options."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
     var script = command.generate_completion["fish"]()
     assert_true(
@@ -132,7 +132,7 @@ fn test_fish_flag_no_require_value() raises:
     """Tests that Fish flags do NOT have -r (require value)."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
     var script = command.generate_completion["fish"]()
     # Find the line with --verbose
@@ -151,7 +151,9 @@ fn test_fish_flag_no_require_value() raises:
 fn test_fish_value_option_has_require() raises:
     """Tests that Fish value-taking options have -r (require value)."""
     var command = Command("myapp", "A test app")
-    command.add_argument(Argument("output", help="Output file").long("output"))
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
     var script = command.generate_completion["fish"]()
     var lines = script.split("\n")
     for i in range(len(lines)):
@@ -171,7 +173,7 @@ fn test_fish_choices() raises:
     var choices: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
+        .long["format"]()
         .choices(choices^)
     )
     var script = command.generate_completion["fish"]()
@@ -184,7 +186,9 @@ fn test_fish_choices() raises:
 fn test_fish_help_text() raises:
     """Tests that Fish script includes description with -d."""
     var command = Command("myapp", "A test app")
-    command.add_argument(Argument("output", help="Output file").long("output"))
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
     var script = command.generate_completion["fish"]()
     assert_true(
         "-d 'Output file'" in script,
@@ -197,12 +201,12 @@ fn test_fish_hidden_excluded() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("internal", help="Internal flag")
-        .long("internal")
+        .long["internal"]()
         .flag()
         .hidden()
     )
     command.add_argument(
-        Argument("visible", help="Visible flag").long("visible").flag()
+        Argument("visible", help="Visible flag").long["visible"]().flag()
     )
     var script = command.generate_completion["fish"]()
     assert_false(
@@ -237,7 +241,7 @@ fn test_fish_subcommands() raises:
         Argument("query", help="Search query").positional().required()
     )
     sub.add_argument(
-        Argument("max-depth", help="Maximum depth").long("max-depth")
+        Argument("max-depth", help="Maximum depth").long["max-depth"]()
     )
     app.add_subcommand(sub^)
     var script = app.generate_completion["fish"]()
@@ -261,7 +265,7 @@ fn test_fish_escape_single_quote() raises:
     """Tests that single quotes in help text are escaped for Fish."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("test", help="It's a test").long("test").flag()
+        Argument("test", help="It's a test").long["test"]().flag()
     )
     var script = command.generate_completion["fish"]()
     assert_true(
@@ -278,8 +282,8 @@ fn test_zsh_simple_flag() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Enable verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var script = command.generate_completion["zsh"]()
@@ -299,7 +303,7 @@ fn test_zsh_choices() raises:
     var choices: List[String] = ["json", "csv"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
+        .long["format"]()
         .choices(choices^)
     )
     var script = command.generate_completion["zsh"]()
@@ -314,7 +318,7 @@ fn test_zsh_subcommands() raises:
     var app = Command("myapp", "A test app")
     var sub = Command("build", "Build the project")
     sub.add_argument(
-        Argument("release", help="Release mode").long("release").flag()
+        Argument("release", help="Release mode").long["release"]().flag()
     )
     app.add_subcommand(sub^)
     var script = app.generate_completion["zsh"]()
@@ -336,7 +340,7 @@ fn test_zsh_escape_brackets() raises:
     """Tests that brackets in help text are escaped for Zsh specs."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("test", help="Test [option]").long("test").flag()
+        Argument("test", help="Test [option]").long["test"]().flag()
     )
     var script = command.generate_completion["zsh"]()
     assert_true(
@@ -349,7 +353,7 @@ fn test_zsh_escape_colon() raises:
     """Tests that colons in help text are escaped for Zsh specs."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("test", help="Key: value").long("test").flag()
+        Argument("test", help="Key: value").long["test"]().flag()
     )
     var script = command.generate_completion["zsh"]()
     assert_true(
@@ -379,10 +383,13 @@ fn test_bash_simple_options() raises:
     """Tests that Bash script includes all options in COMPREPLY."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
     var script = command.generate_completion["bash"]()
     assert_true(
@@ -407,7 +414,7 @@ fn test_bash_subcommands() raises:
     """Tests that Bash script handles subcommand detection."""
     var app = Command("myapp", "A test app")
     var sub = Command("deploy", "Deploy the app")
-    sub.add_argument(Argument("target", help="Deploy target").long("target"))
+    sub.add_argument(Argument("target", help="Deploy target").long["target"]())
     app.add_subcommand(sub^)
     var script = app.generate_completion["bash"]()
     assert_true(
@@ -429,7 +436,7 @@ fn test_bash_choices_prev() raises:
     var command = Command("myapp", "A test app")
     var choices: List[String] = ["debug", "info", "warn"]
     command.add_argument(
-        Argument("level", help="Log level").long("level").choices(choices^)
+        Argument("level", help="Log level").long["level"]().choices(choices^)
     )
     var script = command.generate_completion["bash"]()
     assert_true(
@@ -446,10 +453,10 @@ fn test_bash_hidden_excluded() raises:
     """Tests that hidden args are excluded from Bash completion."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("secret", help="Secret").long("secret").flag().hidden()
+        Argument("secret", help="Secret").long["secret"]().flag().hidden()
     )
     command.add_argument(
-        Argument("public", help="Public").long("public").flag()
+        Argument("public", help="Public").long["public"]().flag()
     )
     var script = command.generate_completion["bash"]()
     assert_false(
@@ -483,14 +490,17 @@ fn test_all_shells_include_same_options() raises:
     """Tests that all three shells list the same user-defined options."""
     var command = Command("myapp", "A test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
     var choices: List[String] = ["json", "csv"]
     command.add_argument(
-        Argument("format", help="Format").long("format").choices(choices^)
+        Argument("format", help="Format").long["format"]().choices(choices^)
     )
 
     var fish = command.generate_completion["fish"]()
@@ -516,8 +526,8 @@ fn test_count_option_no_value() raises:
     var command = Command("myapp", "A test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
     # Fish: should NOT have -r
@@ -539,7 +549,7 @@ fn test_persistent_flags_in_root() raises:
     """Tests that persistent flags appear in root-level completion."""
     var app = Command("myapp", "A test app")
     app.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag().persistent()
+        Argument("debug", help="Debug mode").long["debug"]().flag().persistent()
     )
     var sub = Command("run", "Run something")
     app.add_subcommand(sub^)
@@ -558,7 +568,7 @@ fn test_positional_excluded() raises:
         Argument("pattern", help="Search pattern").positional().required()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
     var fish = command.generate_completion["fish"]()
     var _zsh = command.generate_completion["zsh"]()
@@ -972,11 +982,11 @@ fn _make_app_with_hidden_sub() raises -> Command:
     """Helper: app with 'clone' visible and 'debug' hidden."""
     var app = Command("myapp", "A test app")
     var clone = Command("clone", "Clone a repository")
-    clone.add_argument(Argument("url", help="Repo URL").long("url"))
+    clone.add_argument(Argument("url", help="Repo URL").long["url"]())
     app.add_subcommand(clone^)
     var debug = Command("debug", "Internal debug")
     debug.hidden()
-    debug.add_argument(Argument("level", help="Level").long("level"))
+    debug.add_argument(Argument("level", help="Level").long["level"]())
     app.add_subcommand(debug^)
     return app^
 
@@ -1026,7 +1036,9 @@ fn test_bash_hidden_sub_excluded() raises:
 fn test_all_hidden_no_subcommand_completion() raises:
     """Tests that when all subs are hidden, completion is simple (no subs)."""
     var app = Command("myapp", "A test app")
-    app.add_argument(Argument("verbose", help="Verbose").long("verbose").flag())
+    app.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
     var debug = Command("debug", "Internal debug")
     debug.hidden()
     app.add_subcommand(debug^)

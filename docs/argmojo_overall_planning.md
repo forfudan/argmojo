@@ -247,9 +247,9 @@ fn main() raises:
     command.add_argument(Argument("path", help="Search path").positional().default("."))
 
     # Optional arguments
-    command.add_argument(Argument("ling", help="Use Yuhao Lingming encoding").long("ling").short("l").flag())
-    command.add_argument(Argument("ignore-case", help="Case insensitive search").long("ignore-case").short("i").flag())
-    command.add_argument(Argument("max-depth", help="Maximum directory depth").long("max-depth").short("d").takes_value())
+    command.add_argument(Argument("ling", help="Use Yuhao Lingming encoding").long["ling"]().short["l"]().flag())
+    command.add_argument(Argument("ignore-case", help="Case insensitive search").long["ignore-case"]().short["i"]().flag())
+    command.add_argument(Argument("max-depth", help="Maximum directory depth").long["max-depth"]().short["d"]().takes_value())
 
     var result = command.parse()
 
@@ -444,11 +444,11 @@ Target API:
 
 ```mojo
 var app = Command("app", "My CLI tool", version="0.3.0")
-app.add_argument(Argument("verbose", help="Verbose output").long("verbose").short("v").flag())
+app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
 
 var search = Command("search", "Search for patterns")
 search.add_argument(Argument("pattern", help="Search pattern").required().positional())
-search.add_argument(Argument("max-depth", help="Max depth").long("max-depth").short("d").takes_value())
+search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().takes_value())
 
 var init = Command("init", "Initialize a new project")
 init.add_argument(Argument("name", help="Project name").required().positional())

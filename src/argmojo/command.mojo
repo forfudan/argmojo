@@ -139,7 +139,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     ```mojo
     from argmojo import Command, Argument
     var command = Command("myapp", "A sample application")
-    command.add_argument(Argument("verbose", help="Enable verbose output").long("verbose").short("v").flag())
+    command.add_argument(Argument("verbose", help="Enable verbose output").long["verbose"]().short["v"]().flag())
     var result = command.parse()
     ```
     """
@@ -899,8 +899,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+        command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
         var format_excl: List[String] = ["json", "yaml"]
         command.mutually_exclusive(format_excl^)
         ```
@@ -921,8 +921,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("username", help="Auth username").long("username").short("u"))
-        command.add_argument(Argument("password", help="Auth password").long("password").short("p"))
+        command.add_argument(Argument("username", help="Auth username").long["username"]().short["u"]())
+        command.add_argument(Argument("password", help="Auth password").long["password"]().short["p"]())
         var auth_group: List[String] = ["username", "password"]
         command.required_together(auth_group^)
         ```
@@ -943,8 +943,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+        command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
         var format_group: List[String] = ["json", "yaml"]
         command.one_required(format_group^)
         ```
@@ -966,8 +966,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("save", help="Save results").long("save").flag())
-        command.add_argument(Argument("output", help="Output path").long("output").short("o"))
+        command.add_argument(Argument("save", help="Save results").long["save"]().flag())
+        command.add_argument(Argument("output", help="Output path").long["output"]().short["o"]())
         command.required_if("output", "save")
         ```
         """
@@ -1002,8 +1002,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("debug", help="Debug mode").long("debug").flag())
-        command.add_argument(Argument("verbose", help="Verbose output").long("verbose").flag())
+        command.add_argument(Argument("debug", help="Debug mode").long["debug"]().flag())
+        command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().flag())
         command.implies("debug", "verbose")
         # --debug now automatically sets --verbose as well
         ```
@@ -1084,7 +1084,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("file", help="Input file").long("file").required())
+        command.add_argument(Argument("file", help="Input file").long["file"]().required())
         command.help_on_no_arguments()
         ```
         """

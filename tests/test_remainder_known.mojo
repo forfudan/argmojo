@@ -15,8 +15,8 @@ fn test_value_name_basic() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
     )
     # Parse succeeds normally — value_name is purely cosmetic.
@@ -30,8 +30,8 @@ fn test_value_name_in_help() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
     )
     # The help text should contain "FILE" instead of "<output>".
@@ -102,7 +102,10 @@ fn test_remainder_with_options_before() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
         Argument("cmd", help="Command").positional().required()
@@ -140,7 +143,7 @@ fn test_remainder_guard_no_long_short() raises:
     var failed = False
     try:
         command.add_argument(
-            Argument("rest", help="Rest").long("rest").remainder()
+            Argument("rest", help="Rest").long["rest"]().remainder()
         )
     except:
         failed = True
@@ -192,7 +195,10 @@ fn test_parse_known_basic() raises:
     """Tests that unknown options are collected instead of erroring."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
 
     var args: List[String] = ["test", "--verbose", "--unknown", "-x"]
@@ -208,10 +214,10 @@ fn test_parse_known_no_unknowns() raises:
     """Tests parse_known_arguments with all args recognized."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output").long("output").short("o")
+        Argument("output", help="Output").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--verbose", "--output", "file.txt"]
@@ -229,7 +235,7 @@ fn test_parse_known_mixed_with_positionals() raises:
         Argument("file", help="Input file").positional().required()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
 
     var args: List[String] = [
@@ -250,7 +256,7 @@ fn test_parse_known_unknown_with_value() raises:
     """Tests that unknown long options with = syntax are collected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
 
     var args: List[String] = ["test", "--verbose", "--color=auto"]
@@ -265,7 +271,7 @@ fn test_parse_known_preserves_validation() raises:
     """Tests that parse_known_arguments still validates required args."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output").long("output").required()
+        Argument("output", help="Output").long["output"]().required()
     )
 
     var args: List[String] = ["test", "--unknown"]
@@ -337,7 +343,10 @@ fn test_hyphen_value_known_option_still_parsed() raises:
     current positional has allow_hyphen_values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
         Argument("pattern", help="Pattern")
@@ -393,8 +402,8 @@ fn test_hyphen_value_with_option() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("file", help="File (- for stdin)")
-        .long("file")
-        .short("f")
+        .long["file"]()
+        .short["f"]()
         .allow_hyphen_values()
     )
 
@@ -409,7 +418,7 @@ fn test_hyphen_value_in_parse_known() raises:
     dash tokens go to positional instead of unknown_args."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
     command.add_argument(
         Argument("expr", help="Expression")

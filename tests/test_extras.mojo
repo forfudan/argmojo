@@ -11,7 +11,7 @@ fn test_range_valid_value() raises:
     """Tests that a value within range is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "8080"]
@@ -23,7 +23,7 @@ fn test_range_boundary_min() raises:
     """Tests that the exact minimum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "1"]
@@ -35,7 +35,7 @@ fn test_range_boundary_max() raises:
     """Tests that the exact maximum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "65535"]
@@ -47,7 +47,7 @@ fn test_range_below_min() raises:
     """Tests that a value below the minimum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "0"]
@@ -68,7 +68,7 @@ fn test_range_above_max() raises:
     """Tests that a value above the maximum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "70000"]
@@ -88,7 +88,7 @@ fn test_range_not_provided_ok() raises:
     """Tests that an optional range arg is fine when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test"]
@@ -100,7 +100,7 @@ fn test_range_with_append() raises:
     """Tests range validation on appended values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Ports").long("port").append().range[1, 100]()
+        Argument("port", help="Ports").long["port"]().append().range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "50", "--port", "101"]
@@ -121,7 +121,10 @@ fn test_range_with_short_option() raises:
     """Tests range validation with a short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").short("l").range[0, 5]()
+        Argument("level", help="Level")
+        .long["level"]()
+        .short["l"]()
+        .range[0, 5]()
     )
 
     var args: List[String] = ["test", "-l", "3"]
@@ -136,7 +139,7 @@ fn test_clamp_above_max() raises:
     """Tests that .clamp() adjusts a value above max to max."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range[1, 100]().clamp()
+        Argument("level", help="Level").long["level"]().range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "200"]
@@ -152,7 +155,7 @@ fn test_clamp_below_min() raises:
     """Tests that .clamp() adjusts a value below min to min."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range[1, 100]().clamp()
+        Argument("level", help="Level").long["level"]().range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "-5"]
@@ -168,7 +171,7 @@ fn test_clamp_within_range_no_change() raises:
     """Tests that .clamp() does not affect a value within range."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("level", help="Level").long("level").range[1, 100]().clamp()
+        Argument("level", help="Level").long["level"]().range[1, 100]().clamp()
     )
 
     var args: List[String] = ["test", "--level", "50"]
@@ -184,7 +187,7 @@ fn test_clamp_at_boundary() raises:
     """Tests that .clamp() does not trigger at exact boundaries."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]().clamp()
+        Argument("port", help="Port").long["port"]().range[1, 65535]().clamp()
     )
 
     var args1: List[String] = ["test", "--port", "1"]
@@ -203,8 +206,8 @@ fn test_clamp_with_short_option() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("level", help="Level")
-        .long("level")
-        .short("l")
+        .long["level"]()
+        .short["l"]()
         .range[0, 10]()
         .clamp()
     )
@@ -223,7 +226,7 @@ fn test_clamp_with_append() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("port", help="Ports")
-        .long("port")
+        .long["port"]()
         .append()
         .range[1, 100]()
         .clamp()
@@ -249,7 +252,7 @@ fn test_range_without_clamp_still_errors() raises:
     """Tests that .range() without .clamp() still raises errors."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 65535]()
+        Argument("port", help="Port").long["port"]().range[1, 65535]()
     )
 
     var args: List[String] = ["test", "--port", "99999"]
@@ -271,8 +274,8 @@ fn test_map_single_pair() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("define", help="Define vars")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
     )
 
@@ -287,8 +290,8 @@ fn test_map_multiple_pairs() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("define", help="Define vars")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
     )
 
@@ -303,7 +306,7 @@ fn test_map_equals_syntax() raises:
     """Tests parsing key=value with --define=key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("define", help="Define vars").long("define").map_option()
+        Argument("define", help="Define vars").long["define"]().map_option()
     )
 
     var args: List[String] = ["test", "--define=CC=gcc"]
@@ -318,7 +321,7 @@ fn test_map_with_delimiter() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("define", help="Define vars")
-        .long("define")
+        .long["define"]()
         .map_option()
         .delimiter(",")
     )
@@ -334,7 +337,7 @@ fn test_map_invalid_no_equals() raises:
     """Tests that a map value without '=' is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("define", help="Define vars").long("define").map_option()
+        Argument("define", help="Define vars").long["define"]().map_option()
     )
 
     var args: List[String] = ["test", "--define", "NOEQUALS"]
@@ -352,7 +355,7 @@ fn test_map_has_check() raises:
     """Tests that has() returns True for a map arg after providing it."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("define", help="Define vars").long("define").map_option()
+        Argument("define", help="Define vars").long["define"]().map_option()
     )
 
     var args: List[String] = ["test", "--define", "A=1"]
@@ -364,7 +367,7 @@ fn test_map_empty_value() raises:
     """Tests that key= (empty value) is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("define", help="Define vars").long("define").map_option()
+        Argument("define", help="Define vars").long["define"]().map_option()
     )
 
     var args: List[String] = ["test", "--define", "KEY="]
@@ -377,7 +380,7 @@ fn test_map_value_with_equals() raises:
     """Tests that key=val=ue keeps everything after first '=' as the value."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("env", help="Env vars").long("env").map_option()
+        Argument("env", help="Env vars").long["env"]().map_option()
     )
 
     var args: List[String] = ["test", "--env", "PATH=/usr/bin:/bin"]
@@ -395,7 +398,7 @@ fn test_alias_basic() raises:
     var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
-        .long("colour")
+        .long["colour"]()
         .aliases(alias_list^)
     )
 
@@ -410,7 +413,7 @@ fn test_alias_primary_still_works() raises:
     var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
-        .long("colour")
+        .long["colour"]()
         .aliases(alias_list^)
     )
 
@@ -425,7 +428,7 @@ fn test_alias_multiple() raises:
     var alias_list: List[String] = ["out", "fmt"]
     command.add_argument(
         Argument("output", help="Output format")
-        .long("output")
+        .long["output"]()
         .aliases(alias_list^)
     )
 
@@ -444,7 +447,7 @@ fn test_alias_prefix_match() raises:
     var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
-        .long("colour")
+        .long["colour"]()
         .aliases(alias_list^)
     )
 
@@ -459,7 +462,7 @@ fn test_alias_with_flag() raises:
     var alias_list: List[String] = ["debug"]
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
+        .long["verbose"]()
         .flag()
         .aliases(alias_list^)
     )
@@ -479,7 +482,7 @@ fn test_deprecated_still_parses() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("format_old", help="Old format")
-        .long("format-old")
+        .long["format-old"]()
         .deprecated("Use --format instead")
     )
 
@@ -493,8 +496,8 @@ fn test_deprecated_short_option() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compat", help="Compat mode")
-        .long("compat")
-        .short("C")
+        .long["compat"]()
+        .short["C"]()
         .flag()
         .deprecated("Will be removed in 2.0")
     )
@@ -509,10 +512,10 @@ fn test_deprecated_not_provided_ok() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("old", help="Old option")
-        .long("old")
+        .long["old"]()
         .deprecated("Use --new instead")
     )
-    command.add_argument(Argument("new", help="New option").long("new"))
+    command.add_argument(Argument("new", help="New option").long["new"]())
 
     var args: List[String] = ["test", "--new", "val"]
     var result = command.parse_arguments(args)
@@ -526,7 +529,7 @@ fn test_deprecated_with_alias() raises:
     var alias_list: List[String] = ["out"]
     command.add_argument(
         Argument("output", help="Output format")
-        .long("output")
+        .long["output"]()
         .aliases(alias_list^)
         .deprecated("Use --format instead")
     )
@@ -544,10 +547,10 @@ fn test_help_deprecated_tag() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("old", help="Old option")
-        .long("old")
+        .long["old"]()
         .deprecated("Use --new instead")
     )
-    command.add_argument(Argument("new", help="New option").long("new"))
+    command.add_argument(Argument("new", help="New option").long["new"]())
 
     var help = command._generate_help(color=False)
     assert_true(
@@ -561,8 +564,8 @@ fn test_help_map_placeholder() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("define", help="Define vars")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
     )
 
@@ -579,7 +582,7 @@ fn test_help_alias_shown() raises:
     var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Enable colour output")
-        .long("colour")
+        .long["colour"]()
         .flag()
         .aliases(alias_list^)
     )

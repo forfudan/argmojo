@@ -145,13 +145,16 @@ fn main() raises:
         Argument("漢字", help="要查詢的漢字（可以輸入多個漢字）").positional().required()
     )
     app.add_argument(
-        Argument("joy", help="使用卿雲編碼（預設為靈明）").long("joy").short("j").flag()
+        Argument("joy", help="使用卿雲編碼（預設為靈明）").long["joy"]().short["j"]().flag()
     )
     app.add_argument(
-        Argument("star", help="使用星陳編碼（預設為靈明）").long("star").short("s").flag()
+        Argument("star", help="使用星陳編碼（預設為靈明）")
+        .long["star"]()
+        .short["s"]()
+        .flag()
     )
     app.add_argument(
-        Argument("all", help="同時顯示靈明、卿雲、星陳編碼").long("all").short("a").flag()
+        Argument("all", help="同時顯示靈明、卿雲、星陳編碼").long["all"]().short["a"]().flag()
     )
 
     app.add_tip("完整碼表與教程請訪問 https://shurufa.app")

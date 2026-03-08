@@ -31,8 +31,8 @@ fn test_persistent_flag_on_root_no_subcommand() raises:
     var command = Command("app", "")
     command.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -45,8 +45,8 @@ fn test_persistent_flag_absent_on_root() raises:
     var command = Command("app", "")
     command.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -63,8 +63,8 @@ fn test_persistent_flag_before_subcommand_in_root_result() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -83,8 +83,8 @@ fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -109,8 +109,8 @@ fn test_persistent_flag_after_subcommand_in_child_result() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -131,8 +131,8 @@ fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -153,8 +153,8 @@ fn test_persistent_short_flag_after_subcommand() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -180,7 +180,7 @@ fn test_persistent_value_option_after_subcommand() raises:
     injected into the child, parsed, and synced both ways."""
     var app = Command("app", "")
     app.add_argument(
-        Argument("output", help="").long("output").short("o").persistent()
+        Argument("output", help="").long["output"]().short["o"]().persistent()
     )
     var search = Command("search", "")
     search.add_argument(Argument("pattern", help="").positional().required())
@@ -199,8 +199,8 @@ fn test_persistent_flag_absent_defaults_false_in_both() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -226,7 +226,7 @@ fn test_non_persistent_root_flag_not_injected_into_child() raises:
     recognised by the child and causes an unknown-option error."""
     var app = Command("app", "")
     app.add_argument(
-        Argument("root-only", help="").long("root-only").flag()
+        Argument("root-only", help="").long["root-only"]().flag()
     )  # NOT persistent
     var search = Command("search", "")
     search.add_argument(Argument("pattern", help="").positional().required())
@@ -251,11 +251,11 @@ fn test_persistent_conflict_long_name_raises() raises:
     with a child long_name."""
     var app = Command("app", "")
     app.add_argument(
-        Argument("verbose", help="").long("verbose").flag().persistent()
+        Argument("verbose", help="").long["verbose"]().flag().persistent()
     )
     var search = Command("search", "")
     search.add_argument(
-        Argument("verbose", help="").long("verbose").flag()
+        Argument("verbose", help="").long["verbose"]().flag()
     )  # same long name!
 
     var raised = False
@@ -275,14 +275,14 @@ fn test_persistent_conflict_short_name_raises() raises:
     var app = Command("app", "")
     app.add_argument(
         Argument("verbose", help="")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
     var search = Command("search", "")
     search.add_argument(
-        Argument("version", help="").long("ver").short("v").flag()
+        Argument("version", help="").long["ver"]().short["v"]().flag()
     )  # same short -v!
 
     var raised = False
@@ -303,11 +303,11 @@ fn test_no_conflict_for_non_persistent_same_name() raises:
     a child arg (only persistent args are checked)."""
     var app = Command("app", "")
     app.add_argument(
-        Argument("verbose", help="").long("verbose").short("v").flag()
+        Argument("verbose", help="").long["verbose"]().short["v"]().flag()
     )  # NOT persistent
     var search = Command("search", "")
     search.add_argument(
-        Argument("verbose", help="").long("verbose").flag()
+        Argument("verbose", help="").long["verbose"]().flag()
     )  # same name, OK
 
     app.add_subcommand(search^)  # must not raise
