@@ -203,7 +203,7 @@ examples/
 | Long option prefix matching (`--verb` → `--verbose`)                                                  | ✓      | ✓     |
 | Append / collect action (`--tag x --tag y` → list)                                                    | ✓      | ✓     |
 | One-required groups (`command.one_required(["json", "yaml"])`)                                        | ✓      | ✓     |
-| Value delimiter (`.delimiter(",")` → split into list)                                                 | ✓      | ✓     |
+| Value delimiter (`.delimiter[","]()` → split into list)                                               | ✓      | ✓     |
 | Number of values (`.number_of_values[N]()` → consume N values per occurrence)                         | ✓      | ✓     |
 | Conditional requirements (`command.required_if("output", "save")`)                                    | ✓      | ✓     |
 | Numeric range validation (`.range[1, 65535]()`)                                                       | ✓      | ✓     |

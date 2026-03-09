@@ -174,7 +174,7 @@ fn main() raises:
     app.add_argument(
         Argument("exclude-dir", help="Skip directories (comma-separated)")
         .long["exclude-dir"]()
-        .delimiter(",")
+        .delimiter[","]()
     )
 
     # ── Required-together group ──────────────────────────────────────────

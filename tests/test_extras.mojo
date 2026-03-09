@@ -323,7 +323,7 @@ fn test_map_with_delimiter() raises:
         Argument("define", help="Define vars")
         .long["define"]()
         .map_option()
-        .delimiter(",")
+        .delimiter[","]()
     )
 
     var args: List[String] = ["test", "--define", "CC=gcc,CXX=g++"]

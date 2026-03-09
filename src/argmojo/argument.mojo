@@ -36,7 +36,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
     _ = Argument("tag", help="...").long["tag"]().short["t"]().append()
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
-    _ = Argument("env", help="...").long["env"]().delimiter(",")
+    _ = Argument("env", help="...").long["env"]().delimiter[","]()
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
     _ = Argument("point", help="...").long["point"]().number_of_values[2]()
     # Numeric range validation  →  result.get_int("port")
@@ -519,25 +519,34 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    # TODO: Allow auto-translating full-width punctuation to ASCII for delimiter.
-    # For example
-    # "，" → ","
-    # "；" → ";"
-    # "：" → ":"
-    fn delimiter(var self, sep: String) -> Self:
+    fn delimiter[sep: StringLiteral](var self) -> Self:
         """Sets a value delimiter for splitting a single value into multiple.
 
         When set, each provided value is split by the delimiter, and each
         piece is added to the list individually.  Implies ``.append()``.
-        For example, ``.delimiter(",")`` causes ``--tag a,b,c`` to produce
+        For example, ``.delimiter[","]()`` causes ``--tag a,b,c`` to produce
         ``["a", "b", "c"]``.
 
-        Args:
-            sep: The delimiter string (e.g., ",").
+        When fullwidth correction is enabled (the default), fullwidth
+        equivalents of the delimiter in user input are auto-corrected
+        before splitting.  For example, ``a，b，c`` is treated as
+        ``a,b,c`` when the delimiter is ``","``.
+
+        Parameters:
+            sep: The delimiter character (e.g., ``","``).
 
         Returns:
             Self with the delimiter and append mode set.
+
+        Constraints:
+            The separator is validated at compile time: it must be one of
+            ``,``, ``;``, ``:``, ``|``.
         """
+        constrained[
+            sep == "," or sep == ";" or sep == ":" or sep == "|",
+            "delimiter must be one of: , ; : |",
+        ]()
+
         self._delimiter_char = sep
         self._is_append = True
         return self^

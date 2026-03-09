@@ -210,7 +210,7 @@ fn main() raises:
         Argument("tags", help="Comma-separated tags")
         .long["tags"]()
         .short["t"]()
-        .delimiter(",")
+        .delimiter[","]()
         .group("Data")
     )
 

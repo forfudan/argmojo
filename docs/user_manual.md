@@ -360,7 +360,7 @@ Argument("name", help="...")
 ║   │   ├── .choices(["a","b","c"])
 ║   │   ├── .range[1, 100]() ─── .clamp()
 ║   │   ├── .append()
-║   │   │   ├── .delimiter(",")
+║   │   │   ├── .delimiter[","]()
 ║   │   │   └── .number_of_values[2]()
 ║   │   ├── .map_option()
 ║   │   └── .allow_hyphen_values()               accept -x as a value, not option
@@ -445,7 +445,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
 | `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
 | `.append()`                      |      ✓      |     —     |     —      |        —        |
-| `.delimiter(",")`                |     ✓ ²     |     —     |     —      |        —        |
+| `.delimiter[","]()`              |     ✓ ²     |     —     |     —      |        —        |
 | `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
@@ -751,11 +751,11 @@ This is similar to Go cobra's `StringSliceVar` and Rust clap's `value_delimiter`
 ```mojo
 command.add_argument(
     Argument("env", help="Target environments")
-    .long["env"]().short["e"]().delimiter(",")
+    .long["env"]().short["e"]().delimiter[","]()
 )
 ```
 
-Calling `.delimiter(",")` automatically implies `.append()` — you do not need to call both.
+Calling `.delimiter[","]()` automatically implies `.append()` — you do not need to call both.
 
 ---
 
@@ -801,7 +801,7 @@ Choices are validated per piece after splitting:
 var envs: List[String] = ["dev", "staging", "prod"]
 command.add_argument(
     Argument("env", help="Target environments")
-    .long["env"]().choices(envs^).delimiter(",")
+    .long["env"]().choices(envs^).delimiter[","]()
 )
 ```
 
@@ -812,14 +812,14 @@ myapp --env dev,local      # Error: Invalid value 'local' for argument 'env'
 
 ---
 
-**Custom delimiter**
+**Other delimiters**
 
-Any string can be used as the delimiter:
+The allowed delimiters are `,` `;` `:` `|`. When fullwidth correction is enabled (the default), fullwidth equivalents in user input (e.g. `，` `；` `：` `｜`) are auto-corrected before splitting:
 
 ```mojo
 command.add_argument(
     Argument("path", help="Search paths")
-    .long["path"]().delimiter(";")
+    .long["path"]().delimiter[";"]()
 )
 ```
 
@@ -836,7 +836,7 @@ When a delimiter option is used multiple times, all split values accumulate:
 
 ```mojo
 command.add_argument(
-    Argument("tag", help="Tags").long["tag"]().short["t"]().append().delimiter(",")
+    Argument("tag", help="Tags").long["tag"]().short["t"]().append().delimiter[","]()
 )
 ```
 
@@ -990,7 +990,7 @@ myapp --define PATH=/usr/bin:/bin
 
 ---
 
-**Delimiter** — combine with `.delimiter(",")` to pass multiple
+**Delimiter** — combine with `.delimiter[","]()` to pass multiple
 key-value pairs in a single token:
 
 ```mojo
@@ -998,7 +998,7 @@ command.add_argument(
     Argument("define", help="Define vars")
         .long["define"]()
         .map_option()
-        .delimiter(",")
+        .delimiter[","]()
 )
 ```
 
@@ -1124,7 +1124,7 @@ myapp --port 65535   # OK
 ---
 
 **Append / list values** — when combined with `.append()` or
-`.delimiter(",")`, every collected value is validated individually:
+`.delimiter[","]()`, every collected value is validated individually:
 
 ```mojo
 command.add_argument(
@@ -3082,7 +3082,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
 | `.negatable()`                | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` ⁵ | —                               | `--no-x` pattern ⁶             |
 | `.append()`                   | `action="append"`                 | `multiple=True`                          | `.action(ArgAction::Append)`    | `StringSliceP`                 |
-| `.delimiter(",")`             | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
+| `.delimiter[","]()`           | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
 | `.number_of_values[N]()`      | `nargs=N`                         | `nargs=N`                                | `.num_args(N)`                  | —                              |
 | `.range[min,max]()`           | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
 | `.clamp()`                    | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |

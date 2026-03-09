@@ -203,7 +203,7 @@ fn test_delimiter_comma() raises:
     """Tests basic comma delimiter splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b,c"]
@@ -219,7 +219,7 @@ fn test_delimiter_equals_syntax() raises:
     """Tests delimiter with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag=x,y,z"]
@@ -235,7 +235,7 @@ fn test_delimiter_short_option() raises:
     """Tests delimiter with short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "-t", "foo,bar"]
@@ -256,7 +256,7 @@ fn test_delimiter_attached_short() raises:
         .flag()
     )
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     # -vta,b means -v -t a,b (v is flag, t takes value)
@@ -273,7 +273,7 @@ fn test_delimiter_repeated() raises:
     """Tests delimiter with multiple uses — values accumulate."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b", "--tag", "c,d"]
@@ -290,7 +290,7 @@ fn test_delimiter_single_value() raises:
     """Tests delimiter with a single value (no delimiter present)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "single"]
@@ -308,7 +308,7 @@ fn test_delimiter_with_choices() raises:
         Argument("env", help="Environments")
         .long["env"]()
         .choices(envs^)
-        .delimiter(",")
+        .delimiter[","]()
     )
 
     # Valid — all pieces are in choices.
@@ -338,7 +338,7 @@ fn test_delimiter_semicolon() raises:
     """Tests using a non-comma delimiter (semicolon)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("path", help="Search paths").long["path"]().delimiter(";")
+        Argument("path", help="Search paths").long["path"]().delimiter[";"]()
     )
 
     var args: List[String] = ["test", "--path", "/usr/lib;/opt/lib;/home/lib"]
@@ -355,7 +355,7 @@ fn test_delimiter_implies_append() raises:
     var command = Command("test", "Test app")
     # Note: no explicit .append() call — delimiter() implies it.
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "x,y"]
@@ -371,7 +371,7 @@ fn test_delimiter_empty_not_provided() raises:
     """Tests delimiter arg not provided returns empty list."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test"]
@@ -384,7 +384,7 @@ fn test_delimiter_trailing_comma() raises:
     """Tests that trailing delimiter does not create empty entry."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b,"]

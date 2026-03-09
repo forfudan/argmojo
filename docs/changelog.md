@@ -154,7 +154,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 16. Required-together groups -- enforce that related flags are provided together (e.g., `--username` + `--password`).
 17. One-required groups -- require at least one argument from a group.
 18. Append / collect action -- `--tag x --tag y` collects repeated options into a list with `.append()`.
-19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
+19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter[","]()`.
 20. Multi-value options (nargs) -- `--point 10 20` consumes N consecutive values with `.number_of_values[N]()`.
 21. Key-value map option -- `--define key=value` builds a `Dict` with `.map_option()`.
 22. Auto-generated help with `--help` / `-h` / `-?`, dynamic column alignment, pixi-style ANSI colours, and customisable header/arg colours.
