@@ -192,7 +192,7 @@ examples/
 | Short flag merging (`-abc` → `-a -b -c`)                                                              | ✓      | ✓     |
 | Short option with attached value (`-ofile.txt`)                                                       | ✓      | ✓     |
 | Choices validation (`.choices()`)                                                                     | ✓      | ✓     |
-| Value Name (`.value_name["FILE"]()`)                                                                    | ✓      | ✓     |
+| Value Name (`.value_name["FILE"]()`)                                                                  | ✓      | ✓     |
 | Hidden arguments (`.hidden()`)                                                                        | ✓      | ✓     |
 | Count action (`-vvv` → 3) with ceiling (`.max(N)`)                                                    | ✓      | ✓     |
 | Positional arg count validation                                                                       | ✓      | ✓     |

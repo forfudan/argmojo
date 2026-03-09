@@ -437,8 +437,8 @@ The table below shows which builder methods can be used with each argument mode.
 
 | Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
 | -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                     |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.long["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                  |      ✓      |     ✓     |     ✓      |        —        |
 | `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
 | `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
@@ -450,7 +450,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name["FILE"]()` ⁴          |      ✓      |     —     |     —      |        ✓        |
+| `.value_name["FILE"]()` ⁴        |      ✓      |     —     |     —      |        ✓        |
 | `.group("name")`                 |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
@@ -2305,13 +2305,13 @@ Padding calculation is always based on the **plain-text width** (without escape 
 
 **What controls the output:**
 
-| Builder method     | Effect on help                                        |
-| ------------------ | ----------------------------------------------------- |
-| `.help("...")`     | Sets the description text for the option.             |
+| Builder method       | Effect on help                                        |
+| -------------------- | ----------------------------------------------------- |
+| `.help("...")`       | Sets the description text for the option.             |
 | `.value_name["X"]()` | Replaces the default placeholder (e.g., `N`, `FILE`). |
-| `.choices()`       | Shows `{a,b,c}` in the placeholder.                   |
-| `.hidden()`        | Completely excludes the option from help.             |
-| `.required()`      | Positional args show as `<name>` instead of `[name]`. |
+| `.choices()`         | Shows `{a,b,c}` in the placeholder.                   |
+| `.hidden()`          | Completely excludes the option from help.             |
+| `.required()`        | Positional args show as `<name>` instead of `[name]`. |
 
 After printing help, the program exits cleanly with exit code 0.
 
@@ -3068,15 +3068,15 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | ArgMojo method                | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
 | ----------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
 | `Argument("name", help="…")`  | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
-| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                     | implicit from flag name        |
-| `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
+| `.long["x"]()`                | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                    | implicit from flag name        |
+| `.short["x"]()`               | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
 | `.flag()`                     | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
 | `.required()`                 | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
 | `.positional()`               | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |
 | `.takes_value()`              | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
 | `.default("val")`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
 | `.choices(["a","b"])`         | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
-| `.value_name["FILE"]()`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
+| `.value_name["FILE"]()`       | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
 | `.hidden()`                   | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
 | `.count()`                    | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
 | `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
