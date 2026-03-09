@@ -17,7 +17,7 @@ fn test_value_name_basic() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
     # Parse succeeds normally — value_name is purely cosmetic.
     var args: List[String] = ["test", "--output", "data.csv"]
@@ -32,7 +32,7 @@ fn test_value_name_in_help() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
     # The help text should contain "FILE" instead of "<output>".
     # We don't assert exact help format, just that it works without errors.

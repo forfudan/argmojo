@@ -338,7 +338,7 @@ fn test_value_name_wrapped_by_default() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
 
     var help = command._generate_help(color=False)
@@ -355,7 +355,7 @@ fn test_value_name_unwrapped() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .short["o"]()
-        .value_name[False]("FILE")
+        .value_name["FILE", False]()
     )
 
     var help = command._generate_help(color=False)
@@ -373,7 +373,7 @@ fn test_value_name_wrapped_explicit() raises:
     """The value_name[True] explicitly wraps in angle brackets."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("path", help="Path").long["path"]().value_name[True]("DIR")
+        Argument("path", help="Path").long["path"]().value_name["DIR"]()
     )
 
     var help = command._generate_help(color=False)
@@ -388,7 +388,7 @@ fn test_value_name_wrapped_with_append() raises:
     command.add_argument(
         Argument("env", help="Target env")
         .long["env"]()
-        .value_name("ENV")
+        .value_name["ENV"]()
         .append()
     )
 
@@ -405,7 +405,7 @@ fn test_value_name_unwrapped_with_append() raises:
     command.add_argument(
         Argument("env", help="Target env")
         .long["env"]()
-        .value_name[False]("ENV")
+        .value_name["ENV", False]()
         .append()
     )
 
@@ -427,7 +427,7 @@ fn test_value_name_wrapped_with_nargs() raises:
         Argument("point", help="X Y")
         .long["point"]()
         .number_of_values[2]()
-        .value_name("N")
+        .value_name["N"]()
     )
 
     var help = command._generate_help(color=False)
@@ -444,7 +444,7 @@ fn test_value_name_unwrapped_with_nargs() raises:
         Argument("point", help="X Y")
         .long["point"]()
         .number_of_values[2]()
-        .value_name[False]("N")
+        .value_name["N", False]()
     )
 
     var help = command._generate_help(color=False)
@@ -465,7 +465,7 @@ fn test_value_name_wrapped_require_equals() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .require_equals()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
 
     var help = command._generate_help(color=False)
@@ -482,7 +482,7 @@ fn test_value_name_wrapped_default_if_no_value() raises:
         Argument("compress", help="Compression")
         .long["compress"]()
         .default_if_no_value("gzip")
-        .value_name("ALGO")
+        .value_name["ALGO"]()
     )
 
     var help = command._generate_help(color=False)
@@ -514,7 +514,7 @@ fn test_value_name_colored_output_wrapped() raises:
     command.add_argument(
         Argument("output", help="Output file")
         .long["output"]()
-        .value_name("PATH")
+        .value_name["PATH"]()
     )
 
     var help = command._generate_help(color=True)
@@ -535,7 +535,7 @@ fn test_group_with_value_name_wrapped() raises:
     command.add_argument(
         Argument("host", help="Server host")
         .long["host"]()
-        .value_name("ADDR")
+        .value_name["ADDR"]()
         .group("Network")
     )
 
@@ -553,7 +553,7 @@ fn test_group_with_value_name_unwrapped() raises:
     command.add_argument(
         Argument("host", help="Server host")
         .long["host"]()
-        .value_name[False]("ADDR")
+        .value_name["ADDR", False]()
         .group("Network")
     )
 

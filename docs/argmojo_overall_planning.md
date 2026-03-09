@@ -192,7 +192,7 @@ examples/
 | Short flag merging (`-abc` → `-a -b -c`)                                                              | ✓      | ✓     |
 | Short option with attached value (`-ofile.txt`)                                                       | ✓      | ✓     |
 | Choices validation (`.choices()`)                                                                     | ✓      | ✓     |
-| Value Name (`.value_name("FILE")`)                                                                    | ✓      | ✓     |
+| Value Name (`.value_name["FILE"]()`)                                                                    | ✓      | ✓     |
 | Hidden arguments (`.hidden()`)                                                                        | ✓      | ✓     |
 | Count action (`-vvv` → 3) with ceiling (`.max(N)`)                                                    | ✓      | ✓     |
 | Positional arg count validation                                                                       | ✓      | ✓     |
@@ -389,7 +389,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **Short flag merging** — `-abc` expands to `-a -b -c` (argparse, cobra, clap all support this)
 - [x] **Short option with attached value** — `-ofile.txt` means `-o file.txt` (argparse, clap)
 - [x] **Choices validation** — restrict values to a set: `.choices(["debug", "info", "warn", "error"])`
-- [x] **Value Name** — display name for values in help: `.value_name("FILE")` → `--output FILE`
+- [x] **Value Name** — display name for values in help: `.value_name["FILE"]()` → `--output FILE`
 - [x] **Positional arg count validation** — fail if too many positional args
 - [x] **Hidden arguments** — `.hidden()` to exclude from help output (cobra, clap)
 - [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)

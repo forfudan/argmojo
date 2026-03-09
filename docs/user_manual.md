@@ -381,8 +381,8 @@ Argument("name", help="...")
 ║       └── (implies .allow_hyphen_values())
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name("FILE")          display name in help      (value / positional)
-║   └── [wrapped=True]           wrap in <> (default); [False] = bare
+║   .value_name["FILE"]()          display name in help      (value / positional)
+║   └── [wrapped=False]           wrap in <> (default); [False] = bare
 ║   .group("Network")            section heading in help
 ║                                  (named options only; ignored for positionals)
 ║   .hidden()                    hide from --help          (any)
@@ -450,7 +450,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name("FILE")` ⁴          |      ✓      |     —     |     —      |        ✓        |
+| `.value_name["FILE"]()` ⁴          |      ✓      |     —     |     —      |        ✓        |
 | `.group("name")`                 |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
@@ -711,7 +711,7 @@ If a value name is set, it replaces the default placeholder:
 
 ```mojo
 command.add_argument(
-    Argument("include", help="Include path").long["include"]().short["I"]().value_name("DIR").append()
+    Argument("include", help="Include path").long["include"]().short["I"]().value_name["DIR"]().append()
 )
 ```
 
@@ -936,7 +936,7 @@ nargs options show the placeholder repeated N times:
 ```txt
 Options:
   --point <point> <point>    X Y coordinates
-  --rgb N N N                RGB colour        (with .value_name("N"))
+  --rgb N N N                RGB colour        (with .value_name["N"]())
 ```
 
 Regular append options show `...` to indicate repeatability, while nargs
@@ -1608,7 +1608,7 @@ app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().sh
 
 var search = Command("search", "Search for patterns")
 search.add_argument(Argument("pattern", help="Search pattern").positional().required())
-search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().value_name("N"))
+search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().value_name["N"]())
 
 var init = Command("init", "Initialise a new project")
 init.add_argument(Argument("name", help="Project name").positional().required())
@@ -1979,11 +1979,11 @@ By default, custom value names are also wrapped in angle brackets, matching the 
 ```mojo
 command.add_argument(
     Argument("output", help="Output file path")
-    .long["output"]().short["o"]().value_name("FILE")
+    .long["output"]().short["o"]().value_name["FILE"]()
 )
 command.add_argument(
     Argument("max-depth", help="Maximum directory depth")
-    .long["max-depth"]().short["d"]().value_name("N")
+    .long["max-depth"]().short["d"]().value_name["N"]()
 )
 ```
 
@@ -2006,7 +2006,7 @@ command.add_argument(
 ```mojo
 command.add_argument(
     Argument("point", help="A 3D coordinate")
-    .long["point"]().number_of_values[3]().value_name[False]("COORD")
+    .long["point"]().number_of_values[3]().value_name["COORD", False]()
 )
 ```
 
@@ -2131,7 +2131,7 @@ Options:
       --compress[=<compress>]    Compression algorithm
 ```
 
-With `.value_name("ALGO")`:
+With `.value_name["ALGO"]()`:
 
 ```bash
 Options:
@@ -2176,7 +2176,7 @@ By default, all options appear under a single "Options:" heading in `--help`. Us
 ```mojo
 command.add_argument(
     Argument("host", help="Server hostname")
-    .long["host"]().value_name("ADDR").group("Network")
+    .long["host"]().value_name["ADDR"]().group("Network")
 )
 command.add_argument(
     Argument("port", help="Server port")
@@ -2184,7 +2184,7 @@ command.add_argument(
 )
 command.add_argument(
     Argument("output", help="Output file path")
-    .long["output"]().short["o"]().value_name("FILE").group("Output")
+    .long["output"]().short["o"]().value_name["FILE"]().group("Output")
 )
 command.add_argument(
     Argument("verbose", help="Increase verbosity")
@@ -2308,7 +2308,7 @@ Padding calculation is always based on the **plain-text width** (without escape 
 | Builder method     | Effect on help                                        |
 | ------------------ | ----------------------------------------------------- |
 | `.help("...")`     | Sets the description text for the option.             |
-| `.value_name("X")` | Replaces the default placeholder (e.g., `N`, `FILE`). |
+| `.value_name["X"]()` | Replaces the default placeholder (e.g., `N`, `FILE`). |
 | `.choices()`       | Shows `{a,b,c}` in the placeholder.                   |
 | `.hidden()`        | Completely excludes the option from help.             |
 | `.required()`      | Positional args show as `<name>` instead of `[name]`. |
@@ -2911,7 +2911,7 @@ Every `Command` automatically responds to `--completions <shell>` — just like 
 ```mojo
 var app = Command("myapp", "My application", version="1.0.0")
 app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
-app.add_argument(Argument("output", help="Output file").long["output"]().short["o"]().value_name("FILE"))
+app.add_argument(Argument("output", help="Output file").long["output"]().short["o"]().value_name["FILE"]())
 var formats: List[String] = ["json", "csv", "table"]
 app.add_argument(Argument("format", help="Output format").long["format"]().choices(formats^))
 
@@ -3076,7 +3076,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.takes_value()`              | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
 | `.default("val")`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
 | `.choices(["a","b"])`         | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
-| `.value_name("FILE")`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
+| `.value_name["FILE"]()`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
 | `.hidden()`                   | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
 | `.count()`                    | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
 | `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
