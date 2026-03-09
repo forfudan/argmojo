@@ -48,9 +48,9 @@ fn test_response_file_basic() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path]
     var result = command.parse_arguments(args)
@@ -66,9 +66,9 @@ fn test_response_file_mixed_with_direct_args() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "--verbose", "@" + path]
     var result = command.parse_arguments(args)
@@ -111,9 +111,9 @@ fn test_response_file_comments_and_blanks() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path]
     var result = command.parse_arguments(args)
@@ -129,9 +129,9 @@ fn test_response_file_whitespace_stripped() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path]
     var result = command.parse_arguments(args)
@@ -179,9 +179,9 @@ fn test_response_file_recursive() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path1]
     var result = command.parse_arguments(args)
@@ -219,7 +219,7 @@ fn test_response_file_max_depth() raises:
     _write_file(path, "@" + path + "\n")
 
     var command = _make_command()
-    command.response_file_max_depth(3)
+    command.response_file_max_depth[3]()
 
     var args: List[String] = ["test", "@" + path]
     var caught = False
@@ -261,7 +261,7 @@ fn test_response_file_custom_prefix() raises:
     var command = Command("test", "Test app")
     command.response_file_prefix("+")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
 
     var args: List[String] = ["test", "+" + path]
@@ -282,9 +282,9 @@ fn test_response_file_multiple() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path1, "@" + path2]
     var result = command.parse_arguments(args)
@@ -304,10 +304,13 @@ fn test_response_file_short_options() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
-        Argument("output", help="Output").long("output").short("o")
+        Argument("output", help="Output").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "@" + path]
@@ -327,7 +330,7 @@ fn test_response_file_value_one_per_line() raises:
     _write_file(path, "--output=my file.txt\n")
 
     var command = _make_command()
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     var args: List[String] = ["test", "@" + path]
     var result = command.parse_arguments(args)
@@ -345,7 +348,7 @@ fn test_response_file_empty() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
 
     var args: List[String] = ["test", "@" + path]
@@ -365,9 +368,9 @@ fn test_response_file_preserves_argv0() raises:
 
     var command = _make_command()
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("output", help="Output").long["output"]())
 
     # Set argv[0] to a token starting with '@'.  Expansion must NOT
     # touch it — it should remain as the program name verbatim.

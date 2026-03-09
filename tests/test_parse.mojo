@@ -10,8 +10,8 @@ fn test_flag_long() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -25,8 +25,8 @@ fn test_flag_short() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -40,8 +40,8 @@ fn test_flag_default_false() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -54,7 +54,7 @@ fn test_key_value_long_space() raises:
     """Tests parsing --key value (space separated)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--output", "file.txt"]
@@ -66,7 +66,7 @@ fn test_key_value_long_equals() raises:
     """Tests parsing --key=value (equals separated)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--output=file.txt"]
@@ -78,7 +78,7 @@ fn test_key_value_short() raises:
     """Tests parsing -o value (short option with value)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "-o", "file.txt"]
@@ -129,20 +129,20 @@ fn test_mixed_args() raises:
     )
     command.add_argument(
         Argument("ling", help="Use Lingming encoding")
-        .long("ling")
-        .short("l")
+        .long["ling"]()
+        .short["l"]()
         .flag()
     )
     command.add_argument(
         Argument("ignore-case", help="Case insensitive")
-        .long("ignore-case")
-        .short("i")
+        .long["ignore-case"]()
+        .short["i"]()
         .flag()
     )
     command.add_argument(
         Argument("max-depth", help="Max directory depth")
-        .long("max-depth")
-        .short("d")
+        .long["max-depth"]()
+        .short["d"]()
     )
 
     var args: List[String] = [
@@ -165,7 +165,9 @@ fn test_mixed_args() raises:
 fn test_double_dash_stop() raises:
     """Tests that '--' stops option parsing."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("verbose").long("verbose").short("v").flag())
+    command.add_argument(
+        Argument("verbose").long["verbose"]().short["v"]().flag()
+    )
 
     var args: List[String] = ["test", "--", "--verbose"]
     var result = command.parse_arguments(args)
@@ -180,8 +182,8 @@ fn test_double_dash_stop() raises:
 fn test_has() raises:
     """Tests the has() method."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("verbose").long("verbose").flag())
-    command.add_argument(Argument("output").long("output"))
+    command.add_argument(Argument("verbose").long["verbose"]().flag())
+    command.add_argument(Argument("output").long["output"]())
 
     var args: List[String] = ["test", "--verbose"]
     var result = command.parse_arguments(args)
@@ -195,9 +197,9 @@ fn test_has() raises:
 fn test_merged_short_flags() raises:
     """Tests that -abc is expanded to -a -b -c for flags."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("all", help="All").short("a").flag())
-    command.add_argument(Argument("brief", help="Brief").short("b").flag())
-    command.add_argument(Argument("color", help="Color").short("c").flag())
+    command.add_argument(Argument("all", help="All").short["a"]().flag())
+    command.add_argument(Argument("brief", help="Brief").short["b"]().flag())
+    command.add_argument(Argument("color", help="Color").short["c"]().flag())
 
     var args: List[String] = ["test", "-abc"]
     var result = command.parse_arguments(args)
@@ -209,9 +211,9 @@ fn test_merged_short_flags() raises:
 fn test_merged_flags_partial() raises:
     """Tests that -ab only sets those two flags, leaving -c unset."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("all", help="All").short("a").flag())
-    command.add_argument(Argument("brief", help="Brief").short("b").flag())
-    command.add_argument(Argument("color", help="Color").short("c").flag())
+    command.add_argument(Argument("all", help="All").short["a"]().flag())
+    command.add_argument(Argument("brief", help="Brief").short["b"]().flag())
+    command.add_argument(Argument("color", help="Color").short["c"]().flag())
 
     var args: List[String] = ["test", "-ab"]
     var result = command.parse_arguments(args)
@@ -223,9 +225,11 @@ fn test_merged_flags_partial() raises:
 fn test_merged_flags_with_trailing_value() raises:
     """Tests -avo file.txt where -a and -v are flags, -o takes a value."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("all", help="All").short("a").flag())
-    command.add_argument(Argument("verbose", help="Verbose").short("v").flag())
-    command.add_argument(Argument("output", help="Output").short("o"))
+    command.add_argument(Argument("all", help="All").short["a"]().flag())
+    command.add_argument(
+        Argument("verbose", help="Verbose").short["v"]().flag()
+    )
+    command.add_argument(Argument("output", help="Output").short["o"]())
 
     var args: List[String] = ["test", "-avo", "file.txt"]
     var result = command.parse_arguments(args)
@@ -240,7 +244,7 @@ fn test_merged_flags_with_trailing_value() raises:
 fn test_attached_short_value() raises:
     """Tests -ofile.txt where -o takes 'file.txt' as attached value."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("output", help="Output").short("o"))
+    command.add_argument(Argument("output", help="Output").short["o"]())
 
     var args: List[String] = ["test", "-ofile.txt"]
     var result = command.parse_arguments(args)
@@ -250,9 +254,9 @@ fn test_attached_short_value() raises:
 fn test_merged_flags_with_attached_value() raises:
     """Tests -abofile.txt where -a,-b are flags, -o takes 'file.txt' inline."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("all", help="All").short("a").flag())
-    command.add_argument(Argument("brief", help="Brief").short("b").flag())
-    command.add_argument(Argument("output", help="Output").short("o"))
+    command.add_argument(Argument("all", help="All").short["a"]().flag())
+    command.add_argument(Argument("brief", help="Brief").short["b"]().flag())
+    command.add_argument(Argument("output", help="Output").short["o"]())
 
     var args: List[String] = ["test", "-abofile.txt"]
     var result = command.parse_arguments(args)
@@ -270,8 +274,8 @@ fn test_choices_valid() raises:
     var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .choices(fmts^)
     )
 
@@ -286,8 +290,8 @@ fn test_choices_invalid() raises:
     var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .choices(fmts^)
     )
 
@@ -314,8 +318,8 @@ fn test_choices_with_short_attached() raises:
     var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .choices(fmts^)
     )
 
@@ -332,8 +336,8 @@ fn test_count_single() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -347,8 +351,8 @@ fn test_count_triple() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -362,8 +366,8 @@ fn test_count_long_repeated() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -377,8 +381,8 @@ fn test_count_mixed_short_long() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -392,8 +396,8 @@ fn test_count_default_zero() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -410,8 +414,8 @@ fn test_count_max_caps_merged_short() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[3]()
     )
@@ -430,8 +434,8 @@ fn test_count_max_caps_repeated_long() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[2]()
     )
@@ -456,8 +460,8 @@ fn test_count_max_caps_mixed() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[3]()
     )
@@ -476,8 +480,8 @@ fn test_count_max_below_ceiling() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[5]()
     )
@@ -496,8 +500,8 @@ fn test_count_max_exact_ceiling() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[3]()
     )
@@ -516,8 +520,8 @@ fn test_count_max_single_short() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[2]()
     )
@@ -536,8 +540,8 @@ fn test_count_without_max_no_ceiling() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
 
@@ -555,8 +559,8 @@ fn test_count_max_one() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[1]()
     )
@@ -620,7 +624,7 @@ fn test_negatable_positive() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("color", help="Colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -635,7 +639,7 @@ fn test_negatable_negative() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("color", help="Colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -653,7 +657,7 @@ fn test_negatable_default() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("color", help="Colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -672,7 +676,7 @@ fn test_non_negatable_rejects_no_prefix() raises:
     """Test that --no-X fails for a non-negatable flag."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var args: List[String] = ["test", "--no-verbose"]
@@ -696,12 +700,12 @@ fn test_prefix_match_unambiguous() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--verb"]
@@ -715,7 +719,7 @@ fn test_prefix_match_value() raises:
     """Test that prefix matching works for value-taking options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--out", "file.txt"]
@@ -727,7 +731,7 @@ fn test_prefix_match_equals() raises:
     """Test that prefix matching works with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--out=file.txt"]
@@ -740,13 +744,13 @@ fn test_prefix_match_ambiguous() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
         Argument("version-info", help="Version info")
-        .long("version-info")
+        .long["version-info"]()
         .flag()
     )
 
@@ -765,10 +769,10 @@ fn test_prefix_match_exact_preferred() raises:
     """Test that exact match is preferred over prefix match."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("color", help="Color mode").long("color").flag()
+        Argument("color", help="Color mode").long["color"]().flag()
     )
     command.add_argument(
-        Argument("colorize", help="Colorize output").long("colorize").flag()
+        Argument("colorize", help="Colorize output").long["colorize"]().flag()
     )
 
     # --color should exactly match 'color', not be ambiguous.
@@ -789,7 +793,7 @@ fn test_prefix_match_negatable() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("color", help="Colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )

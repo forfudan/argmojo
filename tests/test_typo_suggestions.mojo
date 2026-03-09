@@ -11,10 +11,10 @@ fn test_typo_long_option_suggests() raises:
     """Tests that a typo like --verbos suggests --verbose."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("version", help="Show version").long("version").flag()
+        Argument("version", help="Show version").long["version"]().flag()
     )
 
     var _args: List[String] = ["test", "--verbos"]
@@ -42,7 +42,7 @@ fn test_typo_long_option_no_suggestion() raises:
     """Tests that a completely unrelated option doesn't produce a suggestion."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var args: List[String] = ["test", "--zzzzzzz"]
@@ -63,7 +63,7 @@ fn test_typo_long_option_single_char_diff() raises:
     """Tests that a single character difference triggers a suggestion."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var args: List[String] = ["test", "--outptu", "file.txt"]
@@ -143,7 +143,7 @@ fn test_typo_alias_suggests() raises:
     var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Enable colour output")
-        .long("colour")
+        .long["colour"]()
         .flag()
         .aliases(alias_list^)
     )

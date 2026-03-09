@@ -13,14 +13,14 @@ fn test_hidden_not_in_help() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
         Argument("debug", help="Debug mode")
-        .long("debug")
-        .short("d")
+        .long["debug"]()
+        .short["d"]()
         .flag()
         .hidden()
     )
@@ -35,8 +35,8 @@ fn test_hidden_still_works() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("debug", help="Debug mode")
-        .long("debug")
-        .short("d")
+        .long["debug"]()
+        .short["d"]()
         .flag()
         .hidden()
     )
@@ -54,8 +54,8 @@ fn test_value_name_in_help() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
     )
 
@@ -74,8 +74,8 @@ fn test_choices_in_help() raises:
     var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .choices(fmts^)
     )
 
@@ -94,7 +94,7 @@ fn test_negatable_in_help() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("color", help="Colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -112,11 +112,11 @@ fn test_append_in_help() raises:
     """Tests that append args show ... suffix in help output."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
     command.add_argument(
         Argument("env", help="Target env")
-        .long("env")
+        .long["env"]()
         .value_name("ENV")
         .append()
     )
@@ -141,7 +141,7 @@ fn test_help_question_mark_in_help_output() raises:
     """Tests that -h, --help appears in the generated help text."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").flag()
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
 
     var help = command._generate_help(color=False)
@@ -155,7 +155,7 @@ fn test_dynamic_padding_short_options() raises:
     """Tests that help padding adapts to short option names."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("v", help="Verbose").long("verbose").short("v").flag()
+        Argument("v", help="Verbose").long["verbose"]().short["v"]().flag()
     )
 
     var help = command._generate_help()
@@ -176,12 +176,12 @@ fn test_dynamic_padding_long_options() raises:
     """Tests that padding grows when a very long option is present."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("very-long-option-name", help="Description").long(
+        Argument("very-long-option-name", help="Description").long[
             "very-long-option-name"
-        )
+        ]()
     )
     command.add_argument(
-        Argument("short", help="Short one").long("short").short("s")
+        Argument("short", help="Short one").long["short"]().short["s"]()
     )
 
     var help = command._generate_help(color=False)
@@ -214,7 +214,7 @@ fn test_help_and_version_aligned() raises:
     """Tests that built-in -h and -V lines align with user options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var help = command._generate_help(color=False)
@@ -251,7 +251,10 @@ fn test_help_on_no_arguments_disabled_by_default() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
 
     var args: List[String] = ["test"]
@@ -294,7 +297,10 @@ fn test_help_contains_ansi_colors() raises:
     """Tests that colored help output contains ANSI escape codes."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
 
     var colored = command._generate_help(color=True)
@@ -323,7 +329,7 @@ fn test_help_color_false_no_codes() raises:
     """Tests that color=False produces identical output to pre-color era."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
 
     var help = command._generate_help(color=False)
@@ -337,7 +343,7 @@ fn test_help_color_false_no_codes() raises:
 fn test_custom_header_color() raises:
     """Setting header_color changes the header ANSI code in help output."""
     var command = Command("app", "My app")
-    command.add_argument(Argument("file", help="Input file").long("file"))
+    command.add_argument(Argument("file", help="Input file").long["file"]())
     command.header_color["RED"]()
 
     var help = command._generate_help(color=True)
@@ -357,7 +363,7 @@ fn test_custom_arg_color() raises:
     """Setting arg_color changes the arg-name ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(
-        Argument("verbose", help="Be verbose").long("verbose").flag()
+        Argument("verbose", help="Be verbose").long["verbose"]().flag()
     )
     command.arg_color["GREEN"]()
 
@@ -377,7 +383,7 @@ fn test_custom_arg_color() raises:
 fn test_custom_both_colors() raises:
     """Setting both header_color and arg_color at the same time."""
     var command = Command("app", "My app")
-    command.add_argument(Argument("file", help="Input").long("file"))
+    command.add_argument(Argument("file", help="Input").long["file"]())
     command.header_color["BLUE"]()
     command.arg_color["GREEN"]()
 
@@ -393,7 +399,7 @@ fn test_custom_both_colors() raises:
 fn test_default_colors_unchanged() raises:
     """Without any setter, help uses default yellow headers + magenta args."""
     var command = Command("app", "My app")
-    command.add_argument(Argument("name", help="Your name").long("name"))
+    command.add_argument(Argument("name", help="Your name").long["name"]())
 
     var help = command._generate_help(color=True)
     # Default header = yellow \x1b[93m , default arg = magenta \x1b[95m
@@ -404,7 +410,7 @@ fn test_default_colors_unchanged() raises:
 fn test_color_uppercase_only() raises:
     """Colour names must be uppercase: 'GREEN' works."""
     var command = Command("a", "A")
-    command.add_argument(Argument("x", help="x").long("x"))
+    command.add_argument(Argument("x", help="x").long["x"]())
     command.header_color["GREEN"]()
     var h = command._generate_help(color=True)
     assert_true("\x1b[92m" in h, msg="'GREEN' uppercase should resolve")
@@ -413,7 +419,7 @@ fn test_color_uppercase_only() raises:
 fn test_pink_alias_for_magenta() raises:
     """'PINK' is an alias for MAGENTA (\\x1b[95m)."""
     var command = Command("app", "My app")
-    command.add_argument(Argument("f", help="File").long("file"))
+    command.add_argument(Argument("f", help="File").long["file"]())
     command.arg_color["PINK"]()
 
     var help = command._generate_help(color=True)
@@ -461,7 +467,7 @@ fn test_invalid_color_caught_at_compile_time() raises:
 fn test_custom_color_plain_mode_unaffected() raises:
     """Custom colours should not leak into plain (color=False) output."""
     var command = Command("app", "My app")
-    command.add_argument(Argument("x", help="X option").long("x"))
+    command.add_argument(Argument("x", help="X option").long["x"]())
     command.header_color["RED"]()
     command.arg_color["BLUE"]()
 
@@ -479,11 +485,13 @@ fn test_nargs_in_help() raises:
     """Tests that nargs options show repeated placeholders in help."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y coords").long("point").number_of_values[2]()
+        Argument("point", help="X Y coords")
+        .long["point"]()
+        .number_of_values[2]()
     )
     command.add_argument(
         Argument("rgb", help="RGB colour")
-        .long("rgb")
+        .long["rgb"]()
         .number_of_values[3]()
         .value_name("N")
     )
@@ -511,7 +519,7 @@ fn test_nargs_with_value_name() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("size", help="Width and height")
-        .long("size")
+        .long["size"]()
         .number_of_values[2]()
         .value_name("PX")
     )
@@ -532,8 +540,8 @@ fn test_root_help_shows_commands_section() raises:
     var app = Command("app", "My CLI tool")
     app.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var search = Command("search", "Search for patterns")
@@ -560,7 +568,7 @@ fn test_root_help_no_commands_when_no_subcommands() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var help = command._generate_help(color=False)
@@ -621,7 +629,7 @@ fn test_root_help_usage_no_command_placeholder_without_subs() raises:
     """Tests that usage line does NOT include <COMMAND> when no subcommands."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var help = command._generate_help(color=False)
@@ -636,13 +644,13 @@ fn test_persistent_args_under_global_options() raises:
     var app = Command("app", "My app")
     app.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
     app.add_argument(
-        Argument("output", help="Output file").long("output").short("o")
+        Argument("output", help="Output file").long["output"]().short["o"]()
     )
     app.add_subcommand(Command("search", "Search"))
 
@@ -666,7 +674,7 @@ fn test_no_global_options_without_persistent() raises:
     """Tests that Global Options: section is absent when no persistent args."""
     var app = Command("app", "My app")
     app.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     app.add_subcommand(Command("search", "Search"))
 
@@ -708,8 +716,8 @@ fn test_child_help_shows_inherited_persistent_args() raises:
     var app = Command("app", "My app")
     app.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -718,7 +726,7 @@ fn test_child_help_shows_inherited_persistent_args() raises:
         Argument("pattern", help="Search pattern").positional().required()
     )
     search.add_argument(
-        Argument("max-depth", help="Max depth").long("max-depth").short("d")
+        Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]()
     )
     app.add_subcommand(search^)
 
@@ -864,10 +872,10 @@ fn test_cjk_options_aligned() raises:
     """Tests that CJK help text doesn't break column alignment."""
     var command = Command("test", "測試應用")
     command.add_argument(
-        Argument("verbose", help="顯示詳細資訊").long("verbose").short("v").flag()
+        Argument("verbose", help="顯示詳細資訊").long["verbose"]().short["v"]().flag()
     )
     command.add_argument(
-        Argument("output", help="輸出路徑").long("output").short("o")
+        Argument("output", help="輸出路徑").long["output"]().short["o"]()
     )
 
     var help = command._generate_help(color=False)
@@ -949,9 +957,9 @@ fn test_mixed_ascii_cjk_aligned() raises:
     """Tests alignment when mixing ASCII and CJK option names."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
-    command.add_argument(Argument("編碼", help="設定編碼").long("編碼"))
+    command.add_argument(Argument("編碼", help="設定編碼").long["編碼"]())
 
     var help = command._generate_help(color=False)
     var col_output: Int = -1

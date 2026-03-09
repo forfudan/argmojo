@@ -45,7 +45,9 @@ fn test_defaults_named_arg() raises:
     """Tests that a named arg with a default gets filled when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("format", help="Output format").long("format").default("json")
+        Argument("format", help="Output format")
+        .long["format"]()
+        .default("json")
     )
 
     var args: List[String] = ["test"]
@@ -74,7 +76,9 @@ fn test_defaults_not_applied_when_provided() raises:
     """Tests that defaults do not overwrite explicitly provided values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("format", help="Output format").long("format").default("json")
+        Argument("format", help="Output format")
+        .long["format"]()
+        .default("json")
     )
 
     var args: List[String] = ["test", "--format", "csv"]
@@ -106,7 +110,7 @@ fn test_validate_required_missing() raises:
     """Tests that a missing required arg raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").required()
+        Argument("output", help="Output file").long["output"]().required()
     )
 
     var args: List[String] = ["test"]
@@ -128,7 +132,7 @@ fn test_validate_required_provided() raises:
     """Tests that providing a required arg passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").required()
+        Argument("output", help="Output file").long["output"]().required()
     )
 
     var args: List[String] = ["test", "--output", "out.txt"]
@@ -164,8 +168,8 @@ fn test_validate_too_many_positionals() raises:
 fn test_validate_exclusive_conflict() raises:
     """Tests that mutually exclusive args in conflict raise an error."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("json", help="JSON").long("json").flag())
-    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(Argument("yaml", help="YAML").long["yaml"]().flag())
     var group: List[String] = ["json", "yaml"]
     command.mutually_exclusive(group^)
 
@@ -185,8 +189,8 @@ fn test_validate_exclusive_conflict() raises:
 fn test_validate_exclusive_ok() raises:
     """Tests that providing only one from exclusive group is fine."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("json", help="JSON").long("json").flag())
-    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(Argument("yaml", help="YAML").long["yaml"]().flag())
     var group: List[String] = ["json", "yaml"]
     command.mutually_exclusive(group^)
 
@@ -201,8 +205,8 @@ fn test_validate_exclusive_ok() raises:
 fn test_validate_together_partial() raises:
     """Tests that providing only some of a required-together group fails."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("user", help="User").long("user"))
-    command.add_argument(Argument("pass", help="Pass").long("pass"))
+    command.add_argument(Argument("user", help="User").long["user"]())
+    command.add_argument(Argument("pass", help="Pass").long["pass"]())
     var group: List[String] = ["user", "pass"]
     command.required_together(group^)
 
@@ -226,8 +230,8 @@ fn test_validate_together_partial() raises:
 fn test_validate_one_required_none() raises:
     """Tests that providing none from a one-required group fails."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("json", help="JSON").long("json").flag())
-    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(Argument("yaml", help="YAML").long["yaml"]().flag())
     var group: List[String] = ["json", "yaml"]
     command.one_required(group^)
 
@@ -250,8 +254,8 @@ fn test_validate_one_required_none() raises:
 fn test_validate_conditional_triggered() raises:
     """Tests that conditional requirement fires when condition is present."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("save", help="Save").long("save").flag())
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("save", help="Save").long["save"]().flag())
+    command.add_argument(Argument("output", help="Output").long["output"]())
     command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save"]
@@ -270,8 +274,8 @@ fn test_validate_conditional_triggered() raises:
 fn test_validate_conditional_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("save", help="Save").long("save").flag())
-    command.add_argument(Argument("output", help="Output").long("output"))
+    command.add_argument(Argument("save", help="Save").long["save"]().flag())
+    command.add_argument(Argument("output", help="Output").long["output"]())
     command.required_if("output", "save")
 
     var args: List[String] = ["test", "--save", "--output", "out.txt"]
@@ -287,7 +291,7 @@ fn test_validate_range_out_of_bounds() raises:
     """Tests that a value outside numeric range fails validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 100]()
+        Argument("port", help="Port").long["port"]().range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "200"]
@@ -307,7 +311,7 @@ fn test_validate_range_in_bounds() raises:
     """Tests that a value within numeric range passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 100]()
+        Argument("port", help="Port").long["port"]().range[1, 100]()
     )
 
     var args: List[String] = ["test", "--port", "50"]
@@ -326,8 +330,8 @@ fn test_defaults_then_validation_combined() raises:
     Providing just one should trigger the error.
     """
     var command = Command("test", "Test app")
-    command.add_argument(Argument("user", help="User").long("user"))
-    command.add_argument(Argument("pass", help="Pass").long("pass"))
+    command.add_argument(Argument("user", help="User").long["user"]())
+    command.add_argument(Argument("pass", help="Pass").long["pass"]())
     var group: List[String] = ["user", "pass"]
     command.required_together(group^)
 
@@ -342,7 +346,10 @@ fn test_full_parse_with_defaults_and_range() raises:
     """Tests that default values also pass range validation."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("port", help="Port").long("port").range[1, 100]().default("50")
+        Argument("port", help="Port")
+        .long["port"]()
+        .range[1, 100]()
+        .default("50")
     )
 
     # Not providing --port should use default "50" which is in range.
@@ -409,7 +416,7 @@ fn test_add_subcommand_preserves_child_args() raises:
         Argument("pattern", help="Pattern").positional().required()
     )
     search.add_argument(
-        Argument("max-depth", help="Max depth").long("max-depth").short("d")
+        Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]()
     )
     app.add_subcommand(search^)
     assert_equal(len(app.subcommands), 2)
@@ -517,7 +524,10 @@ fn test_parse_without_subcommands_unaffected() raises:
     """
     var command = Command("app", "My app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     var args: List[String] = ["app", "--verbose"]
     var result = command.parse_arguments(args)
@@ -550,7 +560,10 @@ fn test_dispatch_root_flag_before_subcommand() raises:
     """Tests that root flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
     app.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     var search = Command("search", "Search")
     search.add_argument(
@@ -570,7 +583,10 @@ fn test_dispatch_root_short_flag_before_subcommand() raises:
     """Tests that root short flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
     app.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     var search = Command("search", "Search")
     search.add_argument(
@@ -594,7 +610,7 @@ fn test_dispatch_child_flag() raises:
         Argument("pattern", help="Pattern").positional().required()
     )
     search.add_argument(
-        Argument("max-depth", help="Depth").long("max-depth").short("d")
+        Argument("max-depth", help="Depth").long["max-depth"]().short["d"]()
     )
     app.add_subcommand(search^)
 
@@ -614,7 +630,7 @@ fn test_dispatch_child_flag_short() raises:
         Argument("pattern", help="Pattern").positional().required()
     )
     search.add_argument(
-        Argument("max-depth", help="Depth").long("max-depth").short("d")
+        Argument("max-depth", help="Depth").long["max-depth"]().short["d"]()
     )
     app.add_subcommand(search^)
 
@@ -755,7 +771,7 @@ fn test_dispatch_root_still_validates_own_required() raises:
     """Tests that root still validates its own required args after dispatch."""
     var app = Command("app", "My app")
     app.add_argument(
-        Argument("token", help="API token").long("token").required()
+        Argument("token", help="API token").long["token"]().required()
     )
     var search = Command("search", "Search")
     search.add_argument(
@@ -778,7 +794,10 @@ fn test_dispatch_child_receives_no_root_tokens() raises:
     """Tests tokens before subcommand are NOT forwarded to the child."""
     var app = Command("app", "My app")
     app.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     var sub = Command("run", "Run")
     # Child only registers a positional; --verbose is NOT a child arg.
@@ -1084,8 +1103,10 @@ fn test_non_positional_args_unaffected_by_guard() raises:
     var app = Command("app", "My app")
     app.add_subcommand(Command("search", "Search"))
     # These should NOT raise:
-    app.add_argument(Argument("verbose", help="Verbose").long("verbose").flag())
-    app.add_argument(Argument("output", help="Output").long("output"))
+    app.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+    app.add_argument(Argument("output", help="Output").long["output"]())
     assert_true(True, msg="Non-positional args should not trigger guard")
 
 
@@ -1145,9 +1166,9 @@ fn test_alias_dispatch_with_child_flags() raises:
     var app = Command("app", "My app")
     var commit = Command("commit", "Record changes")
     commit.add_argument(
-        Argument("message", help="Message").short("m").long("message")
+        Argument("message", help="Message").short["m"]().long["message"]()
     )
-    commit.add_argument(Argument("amend", help="Amend").long("amend").flag())
+    commit.add_argument(Argument("amend", help="Amend").long["amend"]().flag())
     var aliases: List[String] = ["ci"]
     commit.command_aliases(aliases^)
     app.add_subcommand(commit^)
@@ -1251,7 +1272,7 @@ fn test_hidden_subcommand_still_dispatchable() raises:
     var hidden = Command("debug", "Debug")
     hidden.hidden()
     hidden.add_argument(
-        Argument("level", help="Debug level").long("level").default("info")
+        Argument("level", help="Debug level").long["level"]().default("info")
     )
     app.add_subcommand(hidden^)
 

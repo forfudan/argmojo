@@ -103,7 +103,10 @@ fn test_mixed_negative_and_options() raises:
     """Negative positionals coexist with normal named options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
         Argument("value", help="A number").positional().required()
@@ -126,7 +129,10 @@ fn test_explicit_allow_negative_numbers() raises:
     # Register a digit short option — without allow_negative_numbers() this
     # would suppress auto-detect.
     command.add_argument(
-        Argument("triple", help="Triple mode").long("triple").short("3").flag()
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
     )
     command.add_argument(
         Argument("value", help="A number").positional().required()
@@ -146,7 +152,10 @@ fn test_explicit_allow_keeps_digit_short_option() raises:
     var command = Command("test", "Test app")
     command.allow_negative_numbers()
     command.add_argument(
-        Argument("triple", help="Triple mode").long("triple").short("3").flag()
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
     )
     command.add_argument(
         Argument("value", help="A number").positional().required()
@@ -167,7 +176,10 @@ fn test_digit_short_suppresses_auto_detect() raises:
     is consumed as the flag."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("triple", help="Triple mode").long("triple").short("3").flag()
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
     )
 
     var args: List[String] = ["test", "-3"]

@@ -12,7 +12,7 @@ fn test_const_long_without_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -26,7 +26,7 @@ fn test_const_long_with_equals_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -42,7 +42,7 @@ fn test_const_long_space_separated_not_consumed() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
     command.add_argument(Argument("file", help="File").positional())
@@ -61,7 +61,7 @@ fn test_const_long_not_provided() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -76,7 +76,7 @@ fn test_const_long_with_default() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .default("none")
     )
@@ -103,7 +103,7 @@ fn test_const_long_with_choices() raises:
     var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .choices(choices^)
     )
@@ -125,7 +125,7 @@ fn test_const_long_choices_invalid_eq() raises:
     var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .choices(choices^)
     )
@@ -152,8 +152,8 @@ fn test_const_short_without_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
-        .short("c")
+        .long["compress"]()
+        .short["c"]()
         .default_if_no_value("gzip")
     )
 
@@ -167,8 +167,8 @@ fn test_const_short_with_attached_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
-        .short("c")
+        .long["compress"]()
+        .short["c"]()
         .default_if_no_value("gzip")
     )
 
@@ -182,7 +182,7 @@ fn test_const_short_does_not_consume_next() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .short("c")
+        .short["c"]()
         .default_if_no_value("gzip")
     )
     command.add_argument(Argument("file", help="File").positional())
@@ -198,12 +198,15 @@ fn test_const_short_merged_flags() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
-        .short("c")
+        .long["compress"]()
+        .short["c"]()
         .default_if_no_value("gzip")
     )
 
@@ -217,12 +220,15 @@ fn test_const_short_merged_with_attached() raises:
     """-vcbzip2 in merged flags: v=flag, c=takes value 'bzip2' (attached)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
-        .short("c")
+        .long["compress"]()
+        .short["c"]()
         .default_if_no_value("gzip")
     )
 
@@ -240,7 +246,7 @@ fn test_const_prefix_match() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -254,7 +260,7 @@ fn test_const_prefix_match_with_equals() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -270,7 +276,7 @@ fn test_require_equals_with_eq() raises:
     """--output=file.txt is accepted when require_equals is set."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var args: List[String] = ["test", "--output=file.txt"]
@@ -282,7 +288,7 @@ fn test_require_equals_space_rejected() raises:
     """--output file.txt (space) is rejected when require_equals is set."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var args: List[String] = ["test", "--output", "file.txt"]
@@ -304,7 +310,7 @@ fn test_require_equals_no_value_rejected() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var args: List[String] = ["test", "--output"]
@@ -325,7 +331,7 @@ fn test_require_equals_prefix_match() raises:
     """--out=file.txt (prefix) works with require_equals."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var args: List[String] = ["test", "--out=file.txt"]
@@ -337,7 +343,7 @@ fn test_require_equals_empty_value() raises:
     """--output= (empty value after =) is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var args: List[String] = ["test", "--output="]
@@ -351,7 +357,7 @@ fn test_require_equals_with_choices() raises:
     var choices: List[String] = ["json", "yaml", "toml"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
+        .long["format"]()
         .require_equals()
         .choices(choices^)
     )
@@ -368,7 +374,7 @@ fn test_require_equals_choices_invalid() raises:
     var choices: List[String] = ["json", "yaml", "toml"]
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
+        .long["format"]()
         .require_equals()
         .choices(choices^)
     )
@@ -391,8 +397,8 @@ fn test_require_equals_short_still_works() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .require_equals()
     )
 
@@ -412,7 +418,7 @@ fn test_require_equals_and_const_long_bare() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("log", help="Log level")
-        .long("log")
+        .long["log"]()
         .default_if_no_value("INFO")
     )
 
@@ -426,7 +432,7 @@ fn test_require_equals_and_const_long_explicit() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("log", help="Log level")
-        .long("log")
+        .long["log"]()
         .default_if_no_value("INFO")
     )
 
@@ -442,7 +448,7 @@ fn test_help_require_equals_format() raises:
     """Help shows --output=<output> format for require_equals."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output", help="Output file").long("output").require_equals()
+        Argument("output", help="Output file").long["output"]().require_equals()
     )
 
     var help = command._generate_help(color=False)
@@ -457,7 +463,7 @@ fn test_help_const_format() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
     )
 
@@ -474,7 +480,7 @@ fn test_help_const_with_value_name() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .value_name("ALGO")
     )
@@ -491,7 +497,7 @@ fn test_help_require_equals_with_value_name() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
+        .long["output"]()
         .require_equals()
         .value_name("FILE")
     )
@@ -513,7 +519,7 @@ fn test_const_with_append() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("tag", help="Tag")
-        .long("tag")
+        .long["tag"]()
         .default_if_no_value("default-tag")
         .append()
     )
@@ -531,7 +537,7 @@ fn test_const_with_persistent() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("compress", help="Compression")
-        .long("compress")
+        .long["compress"]()
         .default_if_no_value("gzip")
         .persistent()
     )

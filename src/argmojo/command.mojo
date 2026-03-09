@@ -139,7 +139,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     ```mojo
     from argmojo import Command, Argument
     var command = Command("myapp", "A sample application")
-    command.add_argument(Argument("verbose", help="Enable verbose output").long("verbose").short("v").flag())
+    command.add_argument(Argument("verbose", help="Enable verbose output").long["verbose"]().short["v"]().flag())
     var result = command.parse()
     ```
     """
@@ -808,7 +808,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         - Leading / trailing whitespace on each line is stripped.
         - Response files may reference other response files (recursive),
           up to the configured nesting depth (set via
-          ``response_file_max_depth()``; default 10).
+          ``response_file_max_depth[depth]()``; default 10).
         - To pass a literal token that starts with the prefix (e.g. an
           email ``@user``), escape it by doubling the prefix: ``@@user``
           is inserted as ``@user``.
@@ -828,14 +828,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._response_file_prefix = prefix
 
-    fn response_file_max_depth(mut self, depth: Int):
+    fn response_file_max_depth[depth: Int](mut self) where depth > 0:
         """Sets the maximum nesting depth for response-file expansion.
 
         Warning: **Temporarily disabled** — see
         ``response_file_prefix()`` docstring for details.
 
-        Args:
+        Parameters:
             depth: Maximum recursion depth (default 10).
+                Constraints: must be positive.
         """
         self._response_file_max_depth = depth
 
@@ -898,8 +899,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+        command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
         var format_excl: List[String] = ["json", "yaml"]
         command.mutually_exclusive(format_excl^)
         ```
@@ -920,8 +921,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("username", help="Auth username").long("username").short("u"))
-        command.add_argument(Argument("password", help="Auth password").long("password").short("p"))
+        command.add_argument(Argument("username", help="Auth username").long["username"]().short["u"]())
+        command.add_argument(Argument("password", help="Auth password").long["password"]().short["p"]())
         var auth_group: List[String] = ["username", "password"]
         command.required_together(auth_group^)
         ```
@@ -942,8 +943,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("json", help="Output as JSON").long("json").flag())
-        command.add_argument(Argument("yaml", help="Output as YAML").long("yaml").flag())
+        command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
+        command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
         var format_group: List[String] = ["json", "yaml"]
         command.one_required(format_group^)
         ```
@@ -965,8 +966,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("save", help="Save results").long("save").flag())
-        command.add_argument(Argument("output", help="Output path").long("output").short("o"))
+        command.add_argument(Argument("save", help="Save results").long["save"]().flag())
+        command.add_argument(Argument("output", help="Output path").long["output"]().short["o"]())
         command.required_if("output", "save")
         ```
         """
@@ -1001,8 +1002,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("debug", help="Debug mode").long("debug").flag())
-        command.add_argument(Argument("verbose", help="Verbose output").long("verbose").flag())
+        command.add_argument(Argument("debug", help="Debug mode").long["debug"]().flag())
+        command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().flag())
         command.implies("debug", "verbose")
         # --debug now automatically sets --verbose as well
         ```
@@ -1083,7 +1084,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         ```mojo
         from argmojo import Command, Argument
         var command = Command("myapp", "A sample application")
-        command.add_argument(Argument("file", help="Input file").long("file").required())
+        command.add_argument(Argument("file", help="Input file").long["file"]().required())
         command.help_on_no_arguments()
         ```
         """

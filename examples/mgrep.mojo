@@ -47,26 +47,26 @@ fn main() raises:
     # ── Matching control ─────────────────────────────────────────────────
     app.add_argument(
         Argument("ignore-case", help="Ignore case distinctions in patterns")
-        .long("ignore-case")
-        .short("i")
+        .long["ignore-case"]()
+        .short["i"]()
         .flag()
     )
     app.add_argument(
         Argument("invert-match", help="Select non-matching lines")
-        .long("invert-match")
-        .short("v")
+        .long["invert-match"]()
+        .short["v"]()
         .flag()
     )
     app.add_argument(
         Argument("word-regexp", help="Match only whole words")
-        .long("word-regexp")
-        .short("w")
+        .long["word-regexp"]()
+        .short["w"]()
         .flag()
     )
     app.add_argument(
         Argument("line-regexp", help="Match only whole lines")
-        .long("line-regexp")
-        .short("x")
+        .long["line-regexp"]()
+        .short["x"]()
         .flag()
     )
 
@@ -75,20 +75,20 @@ fn main() raises:
         Argument(
             "extended-regexp", help="PATTERN is an extended regular expression"
         )
-        .long("extended-regexp")
-        .short("E")
+        .long["extended-regexp"]()
+        .short["E"]()
         .flag()
     )
     app.add_argument(
         Argument("fixed-strings", help="PATTERN is a fixed string")
-        .long("fixed-strings")
-        .short("F")
+        .long["fixed-strings"]()
+        .short["F"]()
         .flag()
     )
     app.add_argument(
         Argument("perl-regexp", help="PATTERN is a Perl regular expression")
-        .long("perl-regexp")
-        .short("P")
+        .long["perl-regexp"]()
+        .short["P"]()
         .flag()
     )
     var regex_type: List[String] = [
@@ -101,29 +101,29 @@ fn main() raises:
     # ── Output control ───────────────────────────────────────────────────
     app.add_argument(
         Argument("count", help="Print only a count of matching lines")
-        .long("count")
-        .short("c")
+        .long["count"]()
+        .short["c"]()
         .flag()
     )
     app.add_argument(
         Argument(
             "files-with-matches", help="Print only names of files with matches"
         )
-        .long("files-with-matches")
-        .short("l")
+        .long["files-with-matches"]()
+        .short["l"]()
         .flag()
     )
     app.add_argument(
         Argument("line-number", help="Prefix each line with its line number")
-        .long("line-number")
-        .short("n")
+        .long["line-number"]()
+        .short["n"]()
         .flag()
     )
 
     # ── Negatable flag ───────────────────────────────────────────────────
     app.add_argument(
         Argument("color", help="Highlight matching text")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -131,14 +131,14 @@ fn main() raises:
     # ── Directory control ────────────────────────────────────────────────
     app.add_argument(
         Argument("recursive", help="Search directories recursively")
-        .long("recursive")
-        .short("r")
+        .long["recursive"]()
+        .short["r"]()
         .flag()
     )
     app.add_argument(
         Argument("max-depth", help="Maximum directory depth")
-        .long("max-depth")
-        .short("d")
+        .long["max-depth"]()
+        .short["d"]()
         .value_name("N")
         .range[0, 999]()
     )
@@ -146,8 +146,8 @@ fn main() raises:
     # ── Context control (nargs) ──────────────────────────────────────────
     app.add_argument(
         Argument("context", help="Print B lines before and A lines after match")
-        .long("context")
-        .short("C")
+        .long["context"]()
+        .short["C"]()
         .number_of_values[2]()
         .value_name("N")
     )
@@ -156,8 +156,8 @@ fn main() raises:
     var fmts: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .choices(fmts^)
         .default("text")
     )
@@ -165,24 +165,28 @@ fn main() raises:
     # ── Append / collect ─────────────────────────────────────────────────
     app.add_argument(
         Argument("tag", help="Add a tag (repeatable)")
-        .long("tag")
-        .short("t")
+        .long["tag"]()
+        .short["t"]()
         .append()
     )
 
     # ── Value delimiter ──────────────────────────────────────────────────
     app.add_argument(
         Argument("exclude-dir", help="Skip directories (comma-separated)")
-        .long("exclude-dir")
+        .long["exclude-dir"]()
         .delimiter(",")
     )
 
     # ── Required-together group ──────────────────────────────────────────
     app.add_argument(
-        Argument("username", help="Auth username").long("username").short("u")
+        Argument("username", help="Auth username")
+        .long["username"]()
+        .short["u"]()
     )
     app.add_argument(
-        Argument("password", help="Auth password").long("password").short("p")
+        Argument("password", help="Auth password")
+        .long["password"]()
+        .short["p"]()
     )
     var auth: List[String] = ["username", "password"]
     app.required_together(auth^)
@@ -190,14 +194,14 @@ fn main() raises:
     # ── Conditional requirement ──────────────────────────────────────────
     app.add_argument(
         Argument("save", help="Save results to file")
-        .long("save")
-        .short("S")
+        .long["save"]()
+        .short["S"]()
         .flag()
     )
     app.add_argument(
         Argument("output", help="Output file path (required with --save)")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
     )
     app.required_if("output", "save")
@@ -205,8 +209,8 @@ fn main() raises:
     # ── Key-value map option ─────────────────────────────────────────────
     app.add_argument(
         Argument("define", help="Define a variable (key=value, repeatable)")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
     )
 
@@ -214,7 +218,7 @@ fn main() raises:
     var colour_aliases: List[String] = ["color-mode"]
     app.add_argument(
         Argument("colour", help="Colour theme")
-        .long("colour")
+        .long["colour"]()
         .aliases(colour_aliases^)
         .default("auto")
     )
@@ -222,7 +226,7 @@ fn main() raises:
     # ── Deprecated argument ──────────────────────────────────────────────
     app.add_argument(
         Argument("mmap", help="Use memory-mapped I/O (legacy)")
-        .long("mmap")
+        .long["mmap"]()
         .flag()
         .deprecated("Memory-mapping is now automatic")
     )
@@ -230,7 +234,7 @@ fn main() raises:
     # ── Hidden argument ──────────────────────────────────────────────────
     app.add_argument(
         Argument("debug-index", help="Dump internal index (debug only)")
-        .long("debug-index")
+        .long["debug-index"]()
         .flag()
         .hidden()
     )

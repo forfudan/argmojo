@@ -182,8 +182,8 @@ fn test_fullwidth_long_flag() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -200,8 +200,8 @@ fn test_fullwidth_short_flag() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -218,8 +218,8 @@ fn test_fullwidth_key_value_equals() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .takes_value()
     )
 
@@ -237,8 +237,8 @@ fn test_fullwidth_key_space_value() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .takes_value()
     )
 
@@ -256,12 +256,12 @@ fn test_fullwidth_embedded_space() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.add_argument(
-        Argument("name", help="Name").long("name").short("n").takes_value()
+        Argument("name", help="Name").long["name"]().short["n"]().takes_value()
     )
 
     var fw_space = chr(0x3000)
@@ -304,8 +304,8 @@ fn test_disable_fullwidth_correction() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.disable_fullwidth_correction()
@@ -326,8 +326,8 @@ fn test_fullwidth_with_choices() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("format", help="Output format")
-        .long("format")
-        .short("f")
+        .long["format"]()
+        .short["f"]()
         .takes_value()
         .choices(["json", "yaml", "csv"])
     )
@@ -345,13 +345,16 @@ fn test_fullwidth_merged_short_flags() raises:
     """Tests fullwidth merged short flags like -abc."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("all", help="Show all").long("all").short("a").flag()
+        Argument("all", help="Show all").long["all"]().short["a"]().flag()
     )
     command.add_argument(
-        Argument("brief", help="Brief output").long("brief").short("b").flag()
+        Argument("brief", help="Brief output")
+        .long["brief"]()
+        .short["b"]()
+        .flag()
     )
     command.add_argument(
-        Argument("color", help="Colorize").long("color").short("c").flag()
+        Argument("color", help="Colorize").long["color"]().short["c"]().flag()
     )
 
     var args: List[String] = ["test", "－ａｂｃ"]
@@ -366,8 +369,8 @@ fn test_fullwidth_with_subcommand() raises:
     var app = Command("test", "Test app")
     app.add_argument(
         Argument("verbose", help="Verbose")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
         .persistent()
     )
@@ -394,8 +397,8 @@ fn test_fullwidth_parse_known_arguments() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
 
@@ -428,8 +431,8 @@ fn test_fullwidth_punctuation_em_dash_correction() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     var em_dash = chr(0x2014)
@@ -446,8 +449,8 @@ fn test_fullwidth_punctuation_disabled() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .flag()
     )
     command.disable_punctuation_correction()

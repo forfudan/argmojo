@@ -131,8 +131,8 @@ fn main() raises:
     # -vvvvv caps at 3; emits a warning when exceeded.
     app.add_argument(
         Argument("verbose", help="Increase verbosity (capped at 3)")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
         .max[3]()
     )
@@ -141,8 +141,8 @@ fn main() raises:
     # --level 20 → clamped to 9 with a warning; --level -5 → clamped to 0.
     app.add_argument(
         Argument("level", help="Processing level [0–9]")
-        .long("level")
-        .short("l")
+        .long["level"]()
+        .short["l"]()
         .range[0, 9]()
         .clamp()
     )
@@ -150,7 +150,7 @@ fn main() raises:
     # ── Negatable flag ───────────────────────────────────────────────────
     app.add_argument(
         Argument("color", help="Enable colored output")
-        .long("color")
+        .long["color"]()
         .flag()
         .negatable()
     )
@@ -159,8 +159,8 @@ fn main() raises:
     # --host and --port must both appear or both be absent.
     app.add_argument(
         Argument("host", help="Server hostname")
-        .long("host")
-        .short("H")
+        .long["host"]()
+        .short["H"]()
         .value_name("ADDR")
         .group("Network")
     )
@@ -168,8 +168,8 @@ fn main() raises:
         Argument(
             "port", help="Server port(s), repeatable, clamped to [1, 65535]"
         )
-        .long("port")
-        .short("P")
+        .long["port"]()
+        .short["P"]()
         .append()
         .range[1, 65535]()
         .clamp()
@@ -182,15 +182,15 @@ fn main() raises:
     # --output is required when --save is present.
     app.add_argument(
         Argument("save", help="Save results to a file")
-        .long("save")
-        .short("S")
+        .long["save"]()
+        .short["S"]()
         .flag()
         .group("Output")
     )
     app.add_argument(
         Argument("output", help="Output file path (required with --save)")
-        .long("output")
-        .short("o")
+        .long["output"]()
+        .short["o"]()
         .value_name("FILE")
         .group("Output")
     )
@@ -199,7 +199,7 @@ fn main() raises:
     # ── Nargs: consumes exactly 3 values ─────────────────────────────────
     app.add_argument(
         Argument("point", help="A 3D point (X Y Z)")
-        .long("point")
+        .long["point"]()
         .number_of_values[3]()
         .value_name[False]("COORD")
         .group("Data")
@@ -208,8 +208,8 @@ fn main() raises:
     # ── Value delimiter ──────────────────────────────────────────────────
     app.add_argument(
         Argument("tags", help="Comma-separated tags")
-        .long("tags")
-        .short("t")
+        .long["tags"]()
+        .short["t"]()
         .delimiter(",")
         .group("Data")
     )
@@ -217,8 +217,8 @@ fn main() raises:
     # ── Key-value map ────────────────────────────────────────────────────
     app.add_argument(
         Argument("define", help="Define a variable (key=value, repeatable)")
-        .long("define")
-        .short("D")
+        .long["define"]()
+        .short["D"]()
         .map_option()
         .group("Data")
     )
@@ -227,7 +227,7 @@ fn main() raises:
     var theme_aliases: List[String] = ["colour"]
     app.add_argument(
         Argument("color-theme", help="Color theme name")
-        .long("color-theme")
+        .long["color-theme"]()
         .aliases(theme_aliases^)
         .default("auto")
     )
@@ -235,7 +235,7 @@ fn main() raises:
     # ── Deprecated argument ──────────────────────────────────────────────
     app.add_argument(
         Argument("legacy", help="Enable legacy mode (deprecated)")
-        .long("legacy")
+        .long["legacy"]()
         .flag()
         .deprecated(
             "Legacy mode will be removed in v1.0; use --level 0 instead"
@@ -246,8 +246,8 @@ fn main() raises:
     # --compress → "gzip" (default-if-no-value); --compress=bzip2 → "bzip2" (explicit).
     app.add_argument(
         Argument("compress", help="Compression algorithm")
-        .long("compress")
-        .short("c")
+        .long["compress"]()
+        .short["c"]()
         .default_if_no_value("gzip")
         .value_name("ALGO")
         .group("Output")
@@ -257,7 +257,7 @@ fn main() raises:
     # --separator=X only; --separator X is rejected.
     app.add_argument(
         Argument("separator", help="Field separator (must use = syntax)")
-        .long("separator")
+        .long["separator"]()
         .require_equals()
         .value_name("CHAR")
         .default(",")
@@ -267,7 +267,7 @@ fn main() raises:
     # ── Hidden argument ──────────────────────────────────────────────────
     app.add_argument(
         Argument("debug-internals", help="Dump internal state (debug)")
-        .long("debug-internals")
+        .long["debug-internals"]()
         .flag()
         .hidden()
     )
@@ -291,13 +291,13 @@ fn main() raises:
         Argument("file", help="File to export").positional().required()
     )
     export.add_argument(
-        Argument("json", help="Export as JSON").long("json").flag()
+        Argument("json", help="Export as JSON").long["json"]().flag()
     )
     export.add_argument(
-        Argument("yaml", help="Export as YAML").long("yaml").flag()
+        Argument("yaml", help="Export as YAML").long["yaml"]().flag()
     )
     export.add_argument(
-        Argument("toml", help="Export as TOML").long("toml").flag()
+        Argument("toml", help="Export as TOML").long["toml"]().flag()
     )
     var format_group: List[String] = ["json", "yaml", "toml"]
     export.one_required(format_group.copy())
@@ -315,15 +315,15 @@ fn main() raises:
     )
     analyze.add_argument(
         Argument("workers", help="Number of parallel workers [1-32]")
-        .long("workers")
-        .short("w")
+        .long["workers"]()
+        .short["w"]()
         .range[1, 32]()
         .clamp()
         .default("4")
     )
     analyze.add_argument(
         Argument("threshold", help="Confidence threshold [0-100]")
-        .long("threshold")
+        .long["threshold"]()
         .value_name("PCT")
         .range[0, 100]()
         .clamp()

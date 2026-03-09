@@ -17,45 +17,45 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     ```mojo
     from argmojo import Command, Argument
     # Boolean flag  →  result.get_flag("verbose")
-    _ = Argument("verbose", help="...").long("verbose").short("v").flag()
+    _ = Argument("verbose", help="...").long["verbose"]().short["v"]().flag()
     # Key-value option  →  result.get_string("output")
-    _ = Argument("output", help="...").long("output").short("o")
+    _ = Argument("output", help="...").long["output"]().short["o"]()
     # Key-value with default  →  result.get_string("format")
-    _ = Argument("format", help="...").long("format").default("json")
+    _ = Argument("format", help="...").long["format"]().default("json")
     # Restrict to a set of values
-    _ = Argument("level", help="...").long("level").choices(["debug","info","warn"])
+    _ = Argument("level", help="...").long["level"]().choices(["debug","info","warn"])
     # Positional (matched by order)  →  result.get_string("path")
     _ = Argument("path", help="...").positional().required()
     _ = Argument("dest", help="...").positional().default(".")
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
-    _ = Argument("verbose", help="...").long("verbose").short("v").count()
+    _ = Argument("verbose", help="...").long["verbose"]().short["v"]().count()
     # Count flag with ceiling  (-vvvvv capped at 3)
-    _ = Argument("verbose", help="...").long("verbose").short("v").count().max[3]()
+    _ = Argument("verbose", help="...").long["verbose"]().short["v"]().count().max[3]()
     # Negatable flag  (--color / --no-color)  →  result.get_flag("color")
-    _ = Argument("color", help="...").long("color").flag().negatable()
+    _ = Argument("color", help="...").long["color"]().flag().negatable()
     # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
-    _ = Argument("tag", help="...").long("tag").short("t").append()
+    _ = Argument("tag", help="...").long["tag"]().short["t"]().append()
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
-    _ = Argument("env", help="...").long("env").delimiter(",")
+    _ = Argument("env", help="...").long["env"]().delimiter(",")
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
-    _ = Argument("point", help="...").long("point").number_of_values[2]()
+    _ = Argument("point", help="...").long["point"]().number_of_values[2]()
     # Numeric range validation  →  result.get_int("port")
-    _ = Argument("port", help="...").long("port").range[1, 65535]()
+    _ = Argument("port", help="...").long["port"]().range[1, 65535]()
     # Numeric range with clamping  (--level 200 → 100 with warning)
-    _ = Argument("level", help="...").long("level").range[0, 100]().clamp()
+    _ = Argument("level", help="...").long["level"]().range[0, 100]().clamp()
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
-    _ = Argument("def", help="...").long("define").short("D").map_option()
+    _ = Argument("def", help="...").long["define"]().short["D"]().map_option()
     # Aliases  (--colour and --color both work)
-    _ = Argument("colour", help="...").long("colour").aliases(["color"])
+    _ = Argument("colour", help="...").long["colour"]().aliases(["color"])
     # Deprecated argument  (still works but prints a warning to stderr)
-    _ = Argument("old", help="...").long("old-flag").deprecated("Use --new-flag instead")
+    _ = Argument("old", help="...").long["old-flag"]().deprecated("Use --new-flag instead")
     # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
-    _ = Argument("compress", help="...").long("compress").short("c").default_if_no_value("gzip")
+    _ = Argument("compress", help="...").long["compress"]().short["c"]().default_if_no_value("gzip")
     # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
-    _ = Argument("output", help="...").long("output").require_equals()
+    _ = Argument("output", help="...").long["output"]().require_equals()
     # Display helpers
-    _ = Argument("file", help="...").long("file").value_name("PATH")  # help: --file PATH
-    _ = Argument("internal", help="...").long("internal").hidden()  # hidden from help
+    _ = Argument("file", help="...").long["file"]().value_name("PATH")  # help: --file PATH
+    _ = Argument("internal", help="...").long["internal"]().hidden()  # hidden from help
     ```
     """
 
@@ -278,27 +278,64 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Builder methods for configuring the argument
     # ===------------------------------------------------------------------=== #
 
-    fn long(var self, name: String) -> Self:
+    fn long[name: StringLiteral](var self) -> Self:
         """Sets the long option name (e.g., 'verbose' for --verbose).
 
-        Args:
-            name: The long option name without the '--' prefix.
+        Parameters:
+            name: The long option name without the ``--`` prefix.
 
         Returns:
             Self with the long name set.
+
+        Constraints:
+            The name is validated at compile time:
+            - Must not be empty.
+            - Must not start with ``-`` (the ``--`` prefix is added automatically).
+            - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
         """
+        constrained[
+            len(name) > 0,
+            "long name must not be empty",
+        ]()
+        constrained[
+            not name.startswith("-"),
+            "long name must not start with '-'; omit the '--' prefix",
+        ]()
+        constrained[
+            name.find("=") == -1,
+            (
+                "long name must not contain '='; it conflicts with --key=value"
+                " syntax"
+            ),
+        ]()
         self._long_name = name
         return self^
 
-    fn short(var self, name: String) -> Self:
+    fn short[name: StringLiteral](var self) -> Self:
         """Sets the short option name (e.g., 'l' for -l).
 
-        Args:
-            name: A single character for the short option without '-' prefix.
+        Parameters:
+            name: A single character for the short option without ``-`` prefix.
 
         Returns:
             Self with the short name set.
+
+        Constraints:
+            The name is validated at compile time: it must be exactly one
+            character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
+            (which would conflict with the ``--`` end-of-options sentinel).
         """
+        constrained[
+            len(name) == 1,
+            "short name must be exactly 1 character",
+        ]()
+        constrained[
+            name != "-",
+            (
+                "short name must not be '-'; it conflicts with the"
+                " end-of-options sentinel '--'"
+            ),
+        ]()
         self._short_name = name
         return self^
 
@@ -458,7 +495,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Marks this flag as negatable.
 
         A negatable flag accepts both ``--X`` (sets True) and ``--no-X``
-        (sets False). For example, ``.long("color").flag().negatable()``
+        (sets False). For example, ``.long["color"]().flag().negatable()``
         accepts ``--color`` and ``--no-color``.
 
         Returns:
@@ -587,7 +624,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Sets alternative long names for this argument.
 
         Any alias resolves to this argument during parsing.  For
-        example, ``.long("colour").aliases(["color"])`` makes both
+        example, ``.long["colour"]().aliases(["color"])`` makes both
         ``--colour`` and ``--color`` accepted.
 
         Args:
@@ -664,7 +701,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             # --compress=bzip2  → "bzip2" (explicit)
             # -c                → "gzip"  (default-if-no-value)
             # -cbzip2           → "bzip2" (attached)
-            _ = Argument("compress", help="...").long("compress").short("c").default_if_no_value("gzip")
+            _ = Argument("compress", help="...").long["compress"]().short["c"]().default_if_no_value("gzip")
 
         Args:
             value: The value to use when no explicit value is given.
@@ -692,7 +729,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
             # --output=file.txt  → "file.txt" (OK)
             # --output file.txt  → error
-            _ = Argument("output", help="...").long("output").require_equals()
+            _ = Argument("output", help="...").long["output"]().require_equals()
 
         Returns:
             Self with require-equals enabled.
@@ -750,7 +787,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             _ = Argument("input", help="...").positional().allow_hyphen_values()
 
             # Option: myapp --file -  → file value is "-"
-            _ = Argument("file", help="...").long("file").allow_hyphen_values()
+            _ = Argument("file", help="...").long["file"]().allow_hyphen_values()
 
         Returns:
             Self with hyphen-value support enabled.

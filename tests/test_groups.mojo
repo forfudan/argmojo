@@ -11,13 +11,13 @@ fn test_exclusive_one_provided() raises:
     """Tests that providing one arg from an exclusive group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     command.add_argument(
-        Argument("toml", help="TOML output").long("toml").flag()
+        Argument("toml", help="TOML output").long["toml"]().flag()
     )
     var group: List[String] = ["json", "yaml", "toml"]
     command.mutually_exclusive(group^)
@@ -32,10 +32,10 @@ fn test_exclusive_none_provided() raises:
     """Tests that providing no arg from an exclusive group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     var group: List[String] = ["json", "yaml"]
     command.mutually_exclusive(group^)
@@ -50,13 +50,13 @@ fn test_exclusive_conflict() raises:
     """Tests that providing two args from an exclusive group raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     command.add_argument(
-        Argument("toml", help="TOML output").long("toml").flag()
+        Argument("toml", help="TOML output").long["toml"]().flag()
     )
     var group: List[String] = ["json", "yaml", "toml"]
     command.mutually_exclusive(group^)
@@ -86,9 +86,9 @@ fn test_exclusive_conflict() raises:
 fn test_exclusive_value_args() raises:
     """Tests mutually exclusive with value-taking args."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("input", help="Input file").long("input"))
+    command.add_argument(Argument("input", help="Input file").long["input"]())
     command.add_argument(
-        Argument("stdin", help="Read stdin").long("stdin").flag()
+        Argument("stdin", help="Read stdin").long["stdin"]().flag()
     )
     var group: List[String] = ["input", "stdin"]
     command.mutually_exclusive(group^)
@@ -114,10 +114,10 @@ fn test_required_together_all_provided() raises:
     """Tests that providing all args from a required-together group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("username", help="User").long("username").short("u")
+        Argument("username", help="User").long["username"]().short["u"]()
     )
     command.add_argument(
-        Argument("password", help="Pass").long("password").short("p")
+        Argument("password", help="Pass").long["password"]().short["p"]()
     )
     var group: List[String] = ["username", "password"]
     command.required_together(group^)
@@ -138,10 +138,10 @@ fn test_required_together_none_provided() raises:
     """Tests that providing none from a required-together group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("username", help="User").long("username").short("u")
+        Argument("username", help="User").long["username"]().short["u"]()
     )
     command.add_argument(
-        Argument("password", help="Pass").long("password").short("p")
+        Argument("password", help="Pass").long["password"]().short["p"]()
     )
     var group: List[String] = ["username", "password"]
     command.required_together(group^)
@@ -157,10 +157,10 @@ fn test_required_together_partial() raises:
     error."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("username", help="User").long("username").short("u")
+        Argument("username", help="User").long["username"]().short["u"]()
     )
     command.add_argument(
-        Argument("password", help="Pass").long("password").short("p")
+        Argument("password", help="Pass").long["password"]().short["p"]()
     )
     var group: List[String] = ["username", "password"]
     command.required_together(group^)
@@ -186,9 +186,9 @@ fn test_required_together_partial() raises:
 fn test_required_together_three_args() raises:
     """Tests required-together with three arguments, only one provided."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("host", help="Host").long("host"))
-    command.add_argument(Argument("port", help="Port").long("port"))
-    command.add_argument(Argument("proto", help="Protocol").long("proto"))
+    command.add_argument(Argument("host", help="Host").long["host"]())
+    command.add_argument(Argument("port", help="Port").long["port"]())
+    command.add_argument(Argument("proto", help="Protocol").long["proto"]())
     var group: List[String] = ["host", "port", "proto"]
     command.required_together(group^)
 
@@ -219,13 +219,13 @@ fn test_one_required_one_provided() raises:
     """Tests one-required group when exactly one is provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     command.add_argument(
-        Argument("toml", help="TOML output").long("toml").flag()
+        Argument("toml", help="TOML output").long["toml"]().flag()
     )
     var group: List[String] = ["json", "yaml", "toml"]
     command.one_required(group^)
@@ -241,10 +241,10 @@ fn test_one_required_multiple_provided() raises:
     """Tests one-required group when multiple from the group are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     var group: List[String] = ["json", "yaml"]
     command.one_required(group^)
@@ -260,10 +260,10 @@ fn test_one_required_none_provided() raises:
     """Tests one-required group when none from the group are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     var group: List[String] = ["json", "yaml"]
     command.one_required(group^)
@@ -294,10 +294,10 @@ fn test_one_required_with_value_args() raises:
     """Tests one-required group with value-taking arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("input", help="Input file").long("input").short("i")
+        Argument("input", help="Input file").long["input"]().short["i"]()
     )
     command.add_argument(
-        Argument("stdin", help="Read from stdin").long("stdin").flag()
+        Argument("stdin", help="Read from stdin").long["stdin"]().flag()
     )
     var group: List[String] = ["input", "stdin"]
     command.one_required(group^)
@@ -312,10 +312,10 @@ fn test_one_required_with_short_option() raises:
     """Tests one-required with a short option satisfying the group."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").short("j").flag()
+        Argument("json", help="JSON output").long["json"]().short["j"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").short("y").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().short["y"]().flag()
     )
     var group: List[String] = ["json", "yaml"]
     command.one_required(group^)
@@ -330,10 +330,10 @@ fn test_one_required_error_shows_display_names() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("output-json", help="JSON").long("json").flag()
+        Argument("output-json", help="JSON").long["json"]().flag()
     )
     command.add_argument(
-        Argument("output-yaml", help="YAML").long("yaml").flag()
+        Argument("output-yaml", help="YAML").long["yaml"]().flag()
     )
     var group: List[String] = ["output-json", "output-yaml"]
     command.one_required(group^)
@@ -356,10 +356,10 @@ fn test_one_required_combined_with_exclusive() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("json", help="JSON output").long("json").flag()
+        Argument("json", help="JSON output").long["json"]().flag()
     )
     command.add_argument(
-        Argument("yaml", help="YAML output").long("yaml").flag()
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
     # Must provide at least one, but not both.
     var excl_group: List[String] = ["json", "yaml"]
@@ -394,11 +394,11 @@ fn test_one_required_combined_with_exclusive() raises:
 fn test_one_required_multiple_groups() raises:
     """Tests multiple one-required groups."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("json", help="JSON").long("json").flag())
-    command.add_argument(Argument("yaml", help="YAML").long("yaml").flag())
-    command.add_argument(Argument("input", help="Input file").long("input"))
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(Argument("yaml", help="YAML").long["yaml"]().flag())
+    command.add_argument(Argument("input", help="Input file").long["input"]())
     command.add_argument(
-        Argument("stdin", help="Read stdin").long("stdin").flag()
+        Argument("stdin", help="Read stdin").long["stdin"]().flag()
     )
     var format_group: List[String] = ["json", "yaml"]
     var source_group: List[String] = ["input", "stdin"]
@@ -429,9 +429,11 @@ fn test_one_required_multiple_groups() raises:
 fn test_one_required_with_append_arg() raises:
     """Tests one-required group with an append-type argument."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("tag", help="Add a tag").long("tag").append())
     command.add_argument(
-        Argument("label", help="Add a label").long("label").append()
+        Argument("tag", help="Add a tag").long["tag"]().append()
+    )
+    command.add_argument(
+        Argument("label", help="Add a label").long["label"]().append()
     )
     var group: List[String] = ["tag", "label"]
     command.one_required(group^)
@@ -453,10 +455,10 @@ fn test_conditional_req_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
     command.required_if("output", "save")
 
@@ -471,10 +473,10 @@ fn test_conditional_req_condition_absent() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
     command.required_if("output", "save")
 
@@ -489,10 +491,10 @@ fn test_conditional_req_violated() raises:
     """Tests that providing condition without target raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
     command.required_if("output", "save")
 
@@ -523,10 +525,10 @@ fn test_conditional_req_target_alone_ok() raises:
     """Tests that providing target without condition is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
     command.required_if("output", "save")
 
@@ -541,14 +543,16 @@ fn test_conditional_req_multiple_rules() raises:
     """Tests multiple conditional requirements on the same command."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").flag()
-    )
-    command.add_argument(Argument("output", help="Output path").long("output"))
-    command.add_argument(
-        Argument("compress", help="Compress output").long("compress").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command.add_argument(
-        Argument("format", help="Compression format").long("format")
+        Argument("output", help="Output path").long["output"]()
+    )
+    command.add_argument(
+        Argument("compress", help="Compress output").long["compress"]().flag()
+    )
+    command.add_argument(
+        Argument("format", help="Compression format").long["format"]()
     )
     # --output required when --save, --format required when --compress
     command.required_if("output", "save")
@@ -571,14 +575,16 @@ fn test_conditional_req_multiple_rules() raises:
     # Providing --compress without --format → error
     var command2 = Command("test", "Test app")
     command2.add_argument(
-        Argument("save", help="Save results").long("save").flag()
-    )
-    command2.add_argument(Argument("output", help="Output path").long("output"))
-    command2.add_argument(
-        Argument("compress", help="Compress output").long("compress").flag()
+        Argument("save", help="Save results").long["save"]().flag()
     )
     command2.add_argument(
-        Argument("format", help="Compression format").long("format")
+        Argument("output", help="Output path").long["output"]()
+    )
+    command2.add_argument(
+        Argument("compress", help="Compress output").long["compress"]().flag()
+    )
+    command2.add_argument(
+        Argument("format", help="Compression format").long["format"]()
     )
     command2.required_if("output", "save")
     command2.required_if("format", "compress")
@@ -605,10 +611,10 @@ fn test_conditional_req_with_short_option() raises:
     """Tests conditional requirement works with short options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("save", help="Save results").long("save").short("s").flag()
+        Argument("save", help="Save results").long["save"]().short["s"]().flag()
     )
     command.add_argument(
-        Argument("output", help="Output path").long("output").short("o")
+        Argument("output", help="Output path").long["output"]().short["o"]()
     )
     command.required_if("output", "save")
 
@@ -637,9 +643,11 @@ fn test_conditional_req_with_value_condition() raises:
     """Tests conditional requirement where condition is a value arg."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("format", help="Output format").long("format")
+        Argument("format", help="Output format").long["format"]()
     )
-    command.add_argument(Argument("output", help="Output file").long("output"))
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
     # --output is required whenever --format is provided
     command.required_if("output", "format")
 
@@ -659,10 +667,13 @@ fn test_conditional_req_error_uses_display_names() raises:
     """Tests that error message uses --long names, not internal names."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("do-save", help="Save results").long("save").short("s").flag()
+        Argument("do-save", help="Save results")
+        .long["save"]()
+        .short["s"]()
+        .flag()
     )
     command.add_argument(
-        Argument("out-path", help="Output path").long("output").short("o")
+        Argument("out-path", help="Output path").long["output"]().short["o"]()
     )
     # Internal names differ from long names
     command.required_if("out-path", "do-save")

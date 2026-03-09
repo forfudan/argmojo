@@ -11,7 +11,7 @@ fn test_append_single() raises:
     """Tests that a single --tag x produces a list with one element."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test", "--tag", "alpha"]
@@ -26,7 +26,7 @@ fn test_append_multiple() raises:
     """Tests that --tag x --tag y --tag z collects all values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = [
@@ -50,7 +50,7 @@ fn test_append_short_option() raises:
     """Tests that -t x -t y collects values via short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test", "-t", "alpha", "-t", "beta"]
@@ -65,7 +65,7 @@ fn test_append_equals_syntax() raises:
     """Tests that --tag=x --tag=y collects values with equals syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test", "--tag=alpha", "--tag=beta"]
@@ -80,7 +80,7 @@ fn test_append_attached_short() raises:
     """Tests that -talpha -tbeta collects values with attached short syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test", "-talpha", "-tbeta"]
@@ -95,7 +95,7 @@ fn test_append_mixed_syntax() raises:
     """Tests mixing long, short, equals, and attached syntax for append."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test", "--tag", "a", "-t", "b", "--tag=c", "-td"]
@@ -112,7 +112,7 @@ fn test_append_empty() raises:
     """Tests that get_list returns empty list when option never provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Add a tag").long("tag").short("t").append()
+        Argument("tag", help="Add a tag").long["tag"]().short["t"]().append()
     )
 
     var args: List[String] = ["test"]
@@ -127,7 +127,7 @@ fn test_append_with_choices() raises:
     var command = Command("test", "Test app")
     var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
-        Argument("env", help="Target env").long("env").choices(envs^).append()
+        Argument("env", help="Target env").long["env"]().choices(envs^).append()
     )
 
     # Valid choices
@@ -142,7 +142,10 @@ fn test_append_with_choices() raises:
     var command2 = Command("test", "Test app")
     var envs2: List[String] = ["dev", "staging", "prod"]
     command2.add_argument(
-        Argument("env", help="Target env").long("env").choices(envs2^).append()
+        Argument("env", help="Target env")
+        .long["env"]()
+        .choices(envs2^)
+        .append()
     )
     var args2: List[String] = ["test", "--env", "local"]
     var caught = False
@@ -161,12 +164,14 @@ fn test_append_with_choices() raises:
 fn test_append_with_other_args() raises:
     """Tests that append args work alongside regular flags and values."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("verbose").long("verbose").short("v").flag())
-    command.add_argument(Argument("output").long("output").short("o"))
+    command.add_argument(
+        Argument("verbose").long["verbose"]().short["v"]().flag()
+    )
+    command.add_argument(Argument("output").long["output"]().short["o"]())
     command.add_argument(
         Argument("include", help="Include path")
-        .long("include")
-        .short("I")
+        .long["include"]()
+        .short["I"]()
         .append()
     )
 
@@ -198,7 +203,7 @@ fn test_delimiter_comma() raises:
     """Tests basic comma delimiter splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").short("t").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag", "a,b,c"]
@@ -214,7 +219,7 @@ fn test_delimiter_equals_syntax() raises:
     """Tests delimiter with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag=x,y,z"]
@@ -230,7 +235,7 @@ fn test_delimiter_short_option() raises:
     """Tests delimiter with short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").short("t").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "-t", "foo,bar"]
@@ -245,10 +250,13 @@ fn test_delimiter_attached_short() raises:
     """Tests delimiter with attached short value (-tfoo,bar)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").short("t").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
     )
 
     # -vta,b means -v -t a,b (v is flag, t takes value)
@@ -265,7 +273,7 @@ fn test_delimiter_repeated() raises:
     """Tests delimiter with multiple uses — values accumulate."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").short("t").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag", "a,b", "--tag", "c,d"]
@@ -282,7 +290,7 @@ fn test_delimiter_single_value() raises:
     """Tests delimiter with a single value (no delimiter present)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag", "single"]
@@ -298,7 +306,7 @@ fn test_delimiter_with_choices() raises:
     var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
         Argument("env", help="Environments")
-        .long("env")
+        .long["env"]()
         .choices(envs^)
         .delimiter(",")
     )
@@ -330,7 +338,7 @@ fn test_delimiter_semicolon() raises:
     """Tests using a non-comma delimiter (semicolon)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("path", help="Search paths").long("path").delimiter(";")
+        Argument("path", help="Search paths").long["path"]().delimiter(";")
     )
 
     var args: List[String] = ["test", "--path", "/usr/lib;/opt/lib;/home/lib"]
@@ -347,7 +355,7 @@ fn test_delimiter_implies_append() raises:
     var command = Command("test", "Test app")
     # Note: no explicit .append() call — delimiter() implies it.
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag", "x,y"]
@@ -363,7 +371,7 @@ fn test_delimiter_empty_not_provided() raises:
     """Tests delimiter arg not provided returns empty list."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter(",")
     )
 
     var args: List[String] = ["test"]
@@ -376,7 +384,7 @@ fn test_delimiter_trailing_comma() raises:
     """Tests that trailing delimiter does not create empty entry."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long("tag").delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter(",")
     )
 
     var args: List[String] = ["test", "--tag", "a,b,"]
@@ -397,7 +405,7 @@ fn test_nargs_basic() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("point", help="X Y coordinates")
-        .long("point")
+        .long["point"]()
         .number_of_values[2]()
     )
 
@@ -413,7 +421,7 @@ fn test_nargs_three() raises:
     """Tests that number_of_values(3) consumes exactly 3 values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("rgb", help="RGB colour").long("rgb").number_of_values[3]()
+        Argument("rgb", help="RGB colour").long["rgb"]().number_of_values[3]()
     )
 
     var args: List[String] = ["test", "--rgb", "255", "128", "0"]
@@ -430,8 +438,8 @@ fn test_nargs_short_option() raises:
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("point", help="X Y")
-        .long("point")
-        .short("p")
+        .long["point"]()
+        .short["p"]()
         .number_of_values[2]()
     )
 
@@ -449,7 +457,7 @@ fn test_nargs_repeated() raises:
     """Tests that nargs collects across repeated occurrences."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values[2]()
+        Argument("point", help="X Y").long["point"]().number_of_values[2]()
     )
 
     var args: List[String] = [
@@ -476,7 +484,7 @@ fn test_nargs_too_few_values() raises:
     """Tests that nargs raises when not enough values are available."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values[2]()
+        Argument("point", help="X Y").long["point"]().number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--point", "10"]
@@ -497,7 +505,7 @@ fn test_nargs_too_few_short() raises:
     """Tests that nargs raises with short option when not enough values."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").short("p").number_of_values[2]()
+        Argument("point", help="X Y").short["p"]().number_of_values[2]()
     )
 
     var args: List[String] = ["test", "-p", "10"]
@@ -520,7 +528,7 @@ fn test_nargs_with_choices() raises:
     var dirs: List[String] = ["north", "south", "east", "west"]
     command.add_argument(
         Argument("dir", help="Two directions")
-        .long("dir")
+        .long["dir"]()
         .number_of_values[2]()
         .choices(dirs^)
     )
@@ -548,13 +556,16 @@ fn test_nargs_with_other_args() raises:
     """Tests nargs coexisting with flags and regular value args."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose").long("verbose").short("v").flag()
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
     )
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values[2]()
+        Argument("point", help="X Y").long["point"]().number_of_values[2]()
     )
     command.add_argument(
-        Argument("output", help="File").long("output").short("o")
+        Argument("output", help="File").long["output"]().short["o"]()
     )
 
     var args: List[String] = [
@@ -581,7 +592,7 @@ fn test_nargs_equals_syntax_rejected() raises:
     """Tests that = syntax is rejected for nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("point", help="X Y").long("point").number_of_values[2]()
+        Argument("point", help="X Y").long["point"]().number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--point=10", "20"]
@@ -602,7 +613,9 @@ fn test_nargs_prefix_match() raises:
     """Tests that prefix matching works with nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("position", help="X Y").long("position").number_of_values[2]()
+        Argument("position", help="X Y")
+        .long["position"]()
+        .number_of_values[2]()
     )
 
     var args: List[String] = ["test", "--pos", "7", "8"]

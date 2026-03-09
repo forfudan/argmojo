@@ -11,10 +11,10 @@ fn test_implies_basic_flag() raises:
     """Tests that --debug implies --verbose (both flags)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.implies("debug", "verbose")
 
@@ -30,10 +30,10 @@ fn test_implies_no_trigger() raises:
     """Tests that without --debug, --verbose is not auto-set."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.implies("debug", "verbose")
 
@@ -47,10 +47,10 @@ fn test_implies_both_set_explicitly() raises:
     """Tests that both --debug --verbose works without conflict."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.implies("debug", "verbose")
 
@@ -65,10 +65,10 @@ fn test_implies_unidirectional() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.implies("debug", "verbose")
 
@@ -85,13 +85,13 @@ fn test_implies_chain() raises:
     """Tests chained implication: --debug → --verbose → --log."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("log", help="Enable logging").long("log").flag()
+        Argument("log", help="Enable logging").long["log"]().flag()
     )
     command.implies("debug", "verbose")
     command.implies("verbose", "log")
@@ -111,13 +111,13 @@ fn test_implies_chain_middle() raises:
     """Tests chain from middle: --verbose sets --log but not --debug."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("log", help="Enable logging").long("log").flag()
+        Argument("log", help="Enable logging").long["log"]().flag()
     )
     command.implies("debug", "verbose")
     command.implies("verbose", "log")
@@ -136,13 +136,13 @@ fn test_implies_multiple_from_same_trigger() raises:
     """Tests that one trigger can imply multiple targets."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("log", help="Enable logging").long("log").flag()
+        Argument("log", help="Enable logging").long["log"]().flag()
     )
     command.implies("debug", "verbose")
     command.implies("debug", "log")
@@ -161,12 +161,12 @@ fn test_implies_count_argument() raises:
     """Tests that implication works with count-type arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
     command.implies("debug", "verbose")
@@ -185,12 +185,12 @@ fn test_implies_count_already_set() raises:
     """Tests that explicit count is preserved when trigger is also set."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
         Argument("verbose", help="Verbosity level")
-        .long("verbose")
-        .short("v")
+        .long["verbose"]()
+        .short["v"]()
         .count()
     )
     command.implies("debug", "verbose")
@@ -212,7 +212,7 @@ fn test_implies_self_cycle() raises:
     """Tests that A implies A is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
 
     var caught = False
@@ -231,8 +231,8 @@ fn test_implies_self_cycle() raises:
 fn test_implies_direct_cycle() raises:
     """Tests that A→B, B→A cycle is detected at registration."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("a", help="Flag A").long("a").flag())
-    command.add_argument(Argument("b", help="Flag B").long("b").flag())
+    command.add_argument(Argument("a", help="Flag A").long["a"]().flag())
+    command.add_argument(Argument("b", help="Flag B").long["b"]().flag())
     command.implies("a", "b")
 
     var caught = False
@@ -251,9 +251,9 @@ fn test_implies_direct_cycle() raises:
 fn test_implies_indirect_cycle() raises:
     """Tests that A→B→C, C→A cycle is detected at registration."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("a", help="Flag A").long("a").flag())
-    command.add_argument(Argument("b", help="Flag B").long("b").flag())
-    command.add_argument(Argument("c", help="Flag C").long("c").flag())
+    command.add_argument(Argument("a", help="Flag A").long["a"]().flag())
+    command.add_argument(Argument("b", help="Flag B").long["b"]().flag())
+    command.add_argument(Argument("c", help="Flag C").long["c"]().flag())
     command.implies("a", "b")
     command.implies("b", "c")
 
@@ -273,10 +273,10 @@ fn test_implies_indirect_cycle() raises:
 fn test_implies_no_false_cycle() raises:
     """Tests that non-cyclic diamond shape is allowed: A→B, A→C, B→D, C→D."""
     var command = Command("test", "Test app")
-    command.add_argument(Argument("a", help="A").long("a").flag())
-    command.add_argument(Argument("b", help="B").long("b").flag())
-    command.add_argument(Argument("c", help="C").long("c").flag())
-    command.add_argument(Argument("d", help="D").long("d").flag())
+    command.add_argument(Argument("a", help="A").long["a"]().flag())
+    command.add_argument(Argument("b", help="B").long["b"]().flag())
+    command.add_argument(Argument("c", help="C").long["c"]().flag())
+    command.add_argument(Argument("d", help="D").long["d"]().flag())
     command.implies("a", "b")
     command.implies("a", "c")
     command.implies("b", "d")
@@ -298,12 +298,14 @@ fn test_implies_with_required_if() raises:
     verbose requires output."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output path").long("output"))
+    command.add_argument(
+        Argument("output", help="Output path").long["output"]()
+    )
     command.implies("debug", "verbose")
     command.required_if("output", "verbose")
 
@@ -327,12 +329,14 @@ fn test_implies_with_required_if_satisfied() raises:
     """Tests implies + required_if when the requirement is satisfied."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
-    command.add_argument(Argument("output", help="Output path").long("output"))
+    command.add_argument(
+        Argument("output", help="Output path").long["output"]()
+    )
     command.implies("debug", "verbose")
     command.required_if("output", "verbose")
 
@@ -349,13 +353,13 @@ fn test_implies_with_mutually_exclusive() raises:
     then --debug --quiet should fail."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
     command.add_argument(
-        Argument("quiet", help="Quiet mode").long("quiet").flag()
+        Argument("quiet", help="Quiet mode").long["quiet"]().flag()
     )
     command.implies("debug", "verbose")
     var excl: List[String] = ["verbose", "quiet"]
@@ -377,7 +381,7 @@ fn test_implies_unknown_trigger() raises:
     """Tests that implies() rejects unknown trigger argument."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("verbose", help="Verbose output").long("verbose").flag()
+        Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var caught = False
@@ -397,7 +401,7 @@ fn test_implies_unknown_implied() raises:
     """Tests that implies() rejects unknown implied argument."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
 
     var caught = False
@@ -417,9 +421,11 @@ fn test_implies_rejects_value_taking_implied() raises:
     """Tests that implies() rejects value-taking argument as implied target."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("debug", help="Debug mode").long("debug").flag()
+        Argument("debug", help="Debug mode").long["debug"]().flag()
     )
-    command.add_argument(Argument("output", help="Output file").long("output"))
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
 
     var caught = False
     try:
