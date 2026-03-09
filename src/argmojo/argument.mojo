@@ -281,17 +281,17 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn long[name: StringLiteral](var self) -> Self:
         """Sets the long option name (e.g., 'verbose' for --verbose).
 
-        The name is validated at compile time:
-
-        - Must not be empty.
-        - Must not start with ``-`` (the ``--`` prefix is added automatically).
-        - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
-
         Parameters:
             name: The long option name without the ``--`` prefix.
 
         Returns:
             Self with the long name set.
+
+        Constraints:
+            The name is validated at compile time:
+            - Must not be empty.
+            - Must not start with ``-`` (the ``--`` prefix is added automatically).
+            - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
         """
         constrained[
             len(name) > 0,
@@ -314,15 +314,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     fn short[name: StringLiteral](var self) -> Self:
         """Sets the short option name (e.g., 'l' for -l).
 
-        The name is validated at compile time: it must be exactly one
-        character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
-        (which would conflict with the ``--`` end-of-options sentinel).
-
         Parameters:
             name: A single character for the short option without ``-`` prefix.
 
         Returns:
             Self with the short name set.
+
+        Constraints:
+            The name is validated at compile time: it must be exactly one
+            character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
+            (which would conflict with the ``--`` end-of-options sentinel).
         """
         constrained[
             len(name) == 1,
