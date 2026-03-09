@@ -46,7 +46,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long["define"]().short["D"]().map_option()
     # Aliases  (--colour and --color both work)
-    _ = Argument("colour", help="...").long["colour"]().aliases(["color"])
+    _ = Argument("colour", help="...").long["colour"]().aliases["color"]()
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long["old-flag"]().deprecated("Use --new-flag instead")
     # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
@@ -631,20 +631,42 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn aliases(var self, var names: List[String]) -> Self:
-        """Sets alternative long names for this argument.
+    fn aliases[name: StringLiteral](var self) -> Self:
+        """Sets an alternative long name for this argument.
 
         Any alias resolves to this argument during parsing.  For
-        example, ``.long["colour"]().aliases(["color"])`` makes both
-        ``--colour`` and ``--color`` accepted.
+        example, ``.long["colour"]().aliases["color"]()`` makes both
+        ``--colour`` and ``--color`` accepted.  Chain multiple calls
+        for several aliases:
+        ``.aliases["out"]().aliases["fmt"]()``.
 
-        Args:
-            names: The alternative long option names (without ``--``).
+        Parameters:
+            name: The alternative long option name (without ``--``).
 
         Returns:
-            Self with aliases registered.
+            Self with the alias registered.
+
+        Constraints:
+            The alias is validated at compile time (same rules as
+            ``.long[]``): must not be empty, must not start with ``-``,
+            and must not contain ``=``.
         """
-        self._alias_names = names^
+        constrained[
+            len(name) > 0,
+            "alias name must not be empty",
+        ]()
+        constrained[
+            not name.startswith("-"),
+            "alias name must not start with '-'; omit the '--' prefix",
+        ]()
+        constrained[
+            name.find("=") == -1,
+            (
+                "alias name must not contain '='; it conflicts with"
+                " --key=value syntax"
+            ),
+        ]()
+        self._alias_names.append(name)
         return self^
 
     fn deprecated(var self, message: String) -> Self:

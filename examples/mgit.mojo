@@ -296,7 +296,6 @@ fn main() raises:
         .append()
     )
     # Aliases
-    var format_aliases: List[String] = ["pretty"]
     var format_choices: List[String] = [
         "oneline",
         "short",
@@ -307,7 +306,7 @@ fn main() raises:
     log.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
-        .aliases(format_aliases^)
+        .aliases["pretty"]()
         .choices(format_choices^)
     )
     app.add_subcommand(log^)
@@ -401,11 +400,10 @@ fn main() raises:
         Argument("staged", help="Show staged changes").long["staged"]().flag()
     )
     # Alias for --staged
-    var cached_aliases: List[String] = ["staged"]
     diff.add_argument(
         Argument("cached", help="Synonym for --staged")
         .long["cached"]()
-        .aliases(cached_aliases^)
+        .aliases["staged"]()
         .flag()
         .hidden()
     )

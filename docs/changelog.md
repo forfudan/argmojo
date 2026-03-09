@@ -27,6 +27,8 @@ Comment out unreleased changes here. This file will be edited just before each r
 
 - **Rename `.metavar()` to `.value_name()`** across the entire API and documentation. The internal field is now `_value_name`. This follows clap's naming convention and better describes the purpose. There is no backward-compatible alias — all call sites must use `.value_name()` (PR #13).
 - **Value-name display now uses angle brackets by default.** Custom value names set via `.value_name["FOO"]()` are now rendered as `<FOO>` in help output. To preserve the old behaviour (bare `FOO`), use `.value_name["FOO", False]()`. This only affects custom value names — the auto-generated placeholder was already wrapped in `<>` (PR #17).
+- **Parameterise `.aliases[]()` as a compile-time parameter.** Changed from `.aliases(["color"])` (runtime `List[String]`) to `.aliases["color"]()` (compile-time `StringLiteral`). Alias names are validated at compile time (same rules as `.long[]`). For multiple aliases, chain calls: `.aliases["out"]().aliases["fmt"]()` (PR #18).
+- **Parameterise `.delimiter[]()` as a compile-time parameter.** Changed from `.delimiter(",")` (runtime `String`) to `.delimiter[","]()` (compile-time `StringLiteral`). Only `,`, `;`, `:`, `|` are accepted; validated at compile time (PR #18).
 
 ### 🔧 Fixes in v0.4.0
 
@@ -154,7 +156,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 16. Required-together groups -- enforce that related flags are provided together (e.g., `--username` + `--password`).
 17. One-required groups -- require at least one argument from a group.
 18. Append / collect action -- `--tag x --tag y` collects repeated options into a list with `.append()`.
-19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter[","]()`.
+19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
 20. Multi-value options (nargs) -- `--point 10 20` consumes N consecutive values with `.number_of_values[N]()`.
 21. Key-value map option -- `--define key=value` builds a `Dict` with `.map_option()`.
 22. Auto-generated help with `--help` / `-h` / `-?`, dynamic column alignment, pixi-style ANSI colours, and customisable header/arg colours.

@@ -308,15 +308,15 @@ Typically used for positional arguments. Named options can also be marked requir
 
 ### Aliases
 
-Register alternative long names for an argument with `.aliases()`.
-Any alias resolves to the same argument during parsing.
+Register alternative long names for an argument with `.aliases[]()`. The alias
+is validated at compile time (same rules as `.long[]()`: not empty, no `-` prefix,
+no `=`).  Chain multiple calls for several aliases.
 
 ```mojo
-var alias_list: List[String] = ["color"]
 command.add_argument(
     Argument("colour", help="Colour theme")
         .long["colour"]()
-        .aliases(alias_list^)
+        .aliases["color"]()
 )
 ```
 
@@ -331,14 +331,13 @@ myapp --color  red     # OK — resolved via alias, colour = "red"
 primary name and an alias share a prefix, `_find_by_long` deduplicates
 so the match is never ambiguous within a single argument.
 
-Multiple aliases are supported:
+Multiple aliases are supported by chaining:
 
 ```mojo
-var alias_list: List[String] = ["out", "fmt"]
 command.add_argument(
     Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
+        .aliases["out"]().aliases["fmt"]()
 )
 ```
 
@@ -381,12 +380,12 @@ Argument("name", help="...")
 ║       └── (implies .allow_hyphen_values())
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name["FILE"]()          display name in help      (value / positional)
-║   └── [wrapped=False]           wrap in <> (default); [False] = bare
+║   .value_name["FILE"]()        display name in help      (value / positional)
+║   └── [wrapped=False]          wrap in <> (default); [False] = bare
 ║   .group("Network")            section heading in help
 ║                                  (named options only; ignored for positionals)
 ║   .hidden()                    hide from --help          (any)
-║   .aliases(["alt"])            alternative --names       (named only)
+║   .aliases["alt", "other"]()   alternative --names       (named only)
 ║   .deprecated("msg")           deprecation warning       (any)
 ║   .persistent()                inherit to subcommands    (named only)
 ║   .default_if_no_value("val")  default-if-no-value       (value only)
@@ -453,7 +452,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.value_name["FILE"]()` ⁴        |      ✓      |     —     |     —      |        ✓        |
 | `.group("name")`                 |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
+| `.aliases["alt"]()`              |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
 | `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
@@ -3087,7 +3086,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.range[min,max]()`           | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
 | `.clamp()`                    | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |
 | `.map_option()`               | —                                 | —                                        | —                               | —                              |
-| `.aliases(["alt"])`           | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
+| `.aliases["alt"]()`           | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
 | `.deprecated("msg")`          | `deprecated` (3.13+)              | `deprecated=True`                        | `.hide(true)` + manual          | `ShorthandDeprecated()` ¹      |
 | `.persistent()`               | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
 | `.default_if_no_value("val")` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |

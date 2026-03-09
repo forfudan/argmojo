@@ -140,12 +140,11 @@ fn test_typo_subcommand_no_suggestion() raises:
 fn test_typo_alias_suggests() raises:
     """Tests that a typo close to an alias triggers a suggestion."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .aliases(alias_list^)
+        .aliases["color"]()
     )
 
     var args: List[String] = ["test", "--colro"]

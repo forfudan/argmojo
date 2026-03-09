@@ -215,11 +215,10 @@ fn main() raises:
     )
 
     # ── Aliases ──────────────────────────────────────────────────────────
-    var colour_aliases: List[String] = ["color-mode"]
     app.add_argument(
         Argument("colour", help="Colour theme")
         .long["colour"]()
-        .aliases(colour_aliases^)
+        .aliases["color-mode"]()
         .default("auto")
     )
 

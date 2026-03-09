@@ -395,11 +395,10 @@ fn test_map_value_with_equals() raises:
 fn test_alias_basic() raises:
     """Tests that an alias resolves to the primary argument."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .aliases["color"]()
     )
 
     var args: List[String] = ["test", "--color", "red"]
@@ -410,11 +409,10 @@ fn test_alias_basic() raises:
 fn test_alias_primary_still_works() raises:
     """Tests that using the primary long name still works alongside aliases."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .aliases["color"]()
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
@@ -425,11 +423,11 @@ fn test_alias_primary_still_works() raises:
 fn test_alias_multiple() raises:
     """Tests that multiple aliases all resolve correctly."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["out", "fmt"]
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
+        .aliases["out"]()
+        .aliases["fmt"]()
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
@@ -444,11 +442,10 @@ fn test_alias_multiple() raises:
 fn test_alias_prefix_match() raises:
     """Tests that prefix matching works with aliases."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .aliases["color"]()
     )
 
     var args: List[String] = ["test", "--colo", "green"]
@@ -459,12 +456,11 @@ fn test_alias_prefix_match() raises:
 fn test_alias_with_flag() raises:
     """Tests that aliases work with flags."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["debug"]
     command.add_argument(
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .flag()
-        .aliases(alias_list^)
+        .aliases["debug"]()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -526,11 +522,10 @@ fn test_deprecated_not_provided_ok() raises:
 fn test_deprecated_with_alias() raises:
     """Tests that deprecation works when accessed via an alias."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["out"]
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
+        .aliases["out"]()
         .deprecated("Use --format instead")
     )
 
@@ -579,12 +574,11 @@ fn test_help_map_placeholder() raises:
 fn test_help_alias_shown() raises:
     """Tests that aliases are shown alongside the primary name in help."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .aliases(alias_list^)
+        .aliases["color"]()
     )
 
     var help = command._generate_help(color=False)

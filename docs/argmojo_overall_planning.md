@@ -208,7 +208,7 @@ examples/
 | Conditional requirements (`command.required_if("output", "save")`)                                    | ✓      | ✓     |
 | Numeric range validation (`.range[1, 65535]()`)                                                       | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                       | ✓      | ✓     |
-| Aliases (`.aliases(["color"])` for `--colour` / `--color`)                                            | ✓      | ✓     |
+| Aliases (`.aliases["color"]()` for `--colour` / `--color`)                                            | ✓      | ✓     |
 | Deprecated arguments (`.deprecated("msg")` → stderr warning)                                          | ✓      | ✓     |
 | Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals)                                 | ✓      | ✓     |
 | Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                      | ✓      | ✓     |
@@ -412,7 +412,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
 - [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)
 - [x] **Key-value map option** — `--define key=value --define k2=v2` → `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
-- [x] **Aliases** for long names — `.aliases(["color"])` for `--colour` / `--color`
+- [x] **Aliases** for long names — `.aliases["color"]()` for `--colour` / `--color`
 - [x] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning to stderr (argparse 3.13)
 
 ### Phase 4: Subcommands (for v0.2)
