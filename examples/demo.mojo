@@ -13,7 +13,7 @@ negative number passthrough, allow_positional_with_subcommands, custom tips,
 help_on_no_arguments, default_if_no_value, require_equals, response files,
 remainder positionals, allow_hyphen_values, parse_known_arguments,
 argument groups in help (.group()), and value_name wrapping control
-(.value_name("NAME") or .value_name[False]("NAME")).
+(.value_name["NAME"]() or .value_name["NAME", False]()).
 
 Note: This demo looks very strange, but useful :D
 
@@ -161,7 +161,7 @@ fn main() raises:
         Argument("host", help="Server hostname")
         .long["host"]()
         .short["H"]()
-        .value_name("ADDR")
+        .value_name["ADDR"]()
         .group("Network")
     )
     app.add_argument(
@@ -191,7 +191,7 @@ fn main() raises:
         Argument("output", help="Output file path (required with --save)")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
         .group("Output")
     )
     app.required_if("output", "save")
@@ -201,7 +201,7 @@ fn main() raises:
         Argument("point", help="A 3D point (X Y Z)")
         .long["point"]()
         .number_of_values[3]()
-        .value_name[False]("COORD")
+        .value_name["COORD"]()
         .group("Data")
     )
 
@@ -249,7 +249,7 @@ fn main() raises:
         .long["compress"]()
         .short["c"]()
         .default_if_no_value("gzip")
-        .value_name("ALGO")
+        .value_name["ALGO"]()
         .group("Output")
     )
 
@@ -259,7 +259,7 @@ fn main() raises:
         Argument("separator", help="Field separator (must use = syntax)")
         .long["separator"]()
         .require_equals()
-        .value_name("CHAR")
+        .value_name["CHAR"]()
         .default(",")
         .group("Output")
     )
@@ -324,7 +324,7 @@ fn main() raises:
     analyze.add_argument(
         Argument("threshold", help="Confidence threshold [0-100]")
         .long["threshold"]()
-        .value_name("PCT")
+        .value_name["PCT"]()
         .range[0, 100]()
         .clamp()
     )

@@ -51,13 +51,13 @@ fn main() raises:
     app.add_argument(
         Argument("git-dir", help="Set the path to the repository (.git)")
         .long["git-dir"]()
-        .value_name("PATH")
+        .value_name["PATH"]()
         .persistent()
     )
     app.add_argument(
         Argument("work-tree", help="Set the path to the working tree")
         .long["work-tree"]()
-        .value_name("PATH")
+        .value_name["PATH"]()
         .persistent()
     )
 
@@ -77,7 +77,7 @@ fn main() raises:
     clone.add_argument(
         Argument("depth", help="Create a shallow clone with N commits")
         .long["depth"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[1, 999999]()
     )
     clone.add_argument(

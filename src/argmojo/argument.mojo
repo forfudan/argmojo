@@ -54,7 +54,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
     _ = Argument("output", help="...").long["output"]().require_equals()
     # Display helpers
-    _ = Argument("file", help="...").long["file"]().value_name("PATH")  # help: --file PATH
+    _ = Argument("file", help="...").long["file"]().value_name["PATH"]()  # help: --file PATH
     _ = Argument("internal", help="...").long["internal"]().hidden()  # hidden from help
     ```
     """
@@ -411,7 +411,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values = values^
         return self^
 
-    fn value_name[wrapped: Bool = True](var self, name: String) -> Self:
+    fn value_name[name: String, wrapped: Bool = True](var self) -> Self:
         """Sets the display name for the value in help text.
 
         When *wrapped* is True (default), the name is displayed inside angle
@@ -419,14 +419,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``--output FILE``.
 
         Parameters:
+            name: The display name of the value (e.g., "FILE" for --output).
             wrapped: Wrap the display name in ``<>`` (default True).
-
-        Args:
-            name: The display name.
 
         Returns:
             Self with the value_name set.
+
+        Constraints:
+            The value name must be a non-empty string.
         """
+        constrained[len(name) > 0, "value name must be a non-empty string"]()
         self._value_name = name
         self._value_name_wrapped = wrapped
         return self^
