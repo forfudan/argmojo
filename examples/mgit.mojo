@@ -103,23 +103,22 @@ fn main() raises:
     init.add_argument(
         Argument("directory", help="Directory to initialize")
         .positional()
-        .default(".")
+        .default["."]()
     )
     init.add_argument(
         Argument("bare", help="Create a bare repository").long["bare"]().flag()
     )
-    var templates: List[String] = ["default", "minimal"]
     init.add_argument(
         Argument("template", help="Template directory")
         .long["template"]()
-        .choices(templates^)
-        .default("default")
+        .choice["default"]().choice["minimal"]()
+        .default["default"]()
     )
     init.add_argument(
         Argument("initial-branch", help="Name for the initial branch")
         .long["initial-branch"]()
         .short["b"]()
-        .default("main")
+        .default["main"]()
     )
     app.add_subcommand(init^)
 
@@ -186,7 +185,7 @@ fn main() raises:
     commit.add_argument(
         Argument("cleanup-mode", help="Set cleanup mode (legacy)")
         .long["cleanup-mode"]()
-        .deprecated("Use --cleanup instead")
+        .deprecated["Use --cleanup instead"]()
     )
     var commit_aliases: List[String] = ["ci"]
     commit.command_aliases(commit_aliases^)
@@ -195,7 +194,7 @@ fn main() raises:
     # ── push ─────────────────────────────────────────────────────────────
     var push = Command("push", "Update remote refs along with objects")
     push.add_argument(
-        Argument("remote", help="Remote name").positional().default("origin")
+        Argument("remote", help="Remote name").positional().default["origin"]()
     )
     push.add_argument(
         Argument("refspec", help="Branch or refspec to push").positional()
@@ -234,7 +233,7 @@ fn main() raises:
     # ── pull ─────────────────────────────────────────────────────────────
     var pull = Command("pull", "Fetch from and integrate with a remote")
     pull.add_argument(
-        Argument("remote", help="Remote name").positional().default("origin")
+        Argument("remote", help="Remote name").positional().default["origin"]()
     )
     pull.add_argument(Argument("branch", help="Branch to pull").positional())
     # Mutually exclusive: merge strategy
@@ -296,18 +295,11 @@ fn main() raises:
         .append()
     )
     # Aliases
-    var format_choices: List[String] = [
-        "oneline",
-        "short",
-        "medium",
-        "full",
-        "fuller",
-    ]
     log.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
-        .aliases["pretty"]()
-        .choices(format_choices^)
+        .alias["pretty"]()
+        .choice["oneline"]().choice["short"]().choice["medium"]().choice["full"]().choice["fuller"]()
     )
     app.add_subcommand(log^)
 
@@ -403,7 +395,7 @@ fn main() raises:
     diff.add_argument(
         Argument("cached", help="Synonym for --staged")
         .long["cached"]()
-        .aliases["staged"]()
+        .alias["staged"]()
         .flag()
         .hidden()
     )

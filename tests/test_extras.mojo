@@ -398,7 +398,7 @@ fn test_alias_basic() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases["color"]()
+        .alias["color"]()
     )
 
     var args: List[String] = ["test", "--color", "red"]
@@ -412,7 +412,7 @@ fn test_alias_primary_still_works() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases["color"]()
+        .alias["color"]()
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
@@ -426,8 +426,8 @@ fn test_alias_multiple() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases["out"]()
-        .aliases["fmt"]()
+        .alias["out"]()
+        .alias["fmt"]()
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
@@ -445,7 +445,7 @@ fn test_alias_prefix_match() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases["color"]()
+        .alias["color"]()
     )
 
     var args: List[String] = ["test", "--colo", "green"]
@@ -460,7 +460,7 @@ fn test_alias_with_flag() raises:
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .flag()
-        .aliases["debug"]()
+        .alias["debug"]()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -479,7 +479,7 @@ fn test_deprecated_still_parses() raises:
     command.add_argument(
         Argument("format_old", help="Old format")
         .long["format-old"]()
-        .deprecated("Use --format instead")
+        .deprecated["Use --format instead"]()
     )
 
     var args: List[String] = ["test", "--format-old", "csv"]
@@ -495,7 +495,7 @@ fn test_deprecated_short_option() raises:
         .long["compat"]()
         .short["C"]()
         .flag()
-        .deprecated("Will be removed in 2.0")
+        .deprecated["Will be removed in 2.0"]()
     )
 
     var args: List[String] = ["test", "-C"]
@@ -509,7 +509,7 @@ fn test_deprecated_not_provided_ok() raises:
     command.add_argument(
         Argument("old", help="Old option")
         .long["old"]()
-        .deprecated("Use --new instead")
+        .deprecated["Use --new instead"]()
     )
     command.add_argument(Argument("new", help="New option").long["new"]())
 
@@ -525,8 +525,8 @@ fn test_deprecated_with_alias() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases["out"]()
-        .deprecated("Use --format instead")
+        .alias["out"]()
+        .deprecated["Use --format instead"]()
     )
 
     var args: List[String] = ["test", "--out", "json"]
@@ -543,7 +543,7 @@ fn test_help_deprecated_tag() raises:
     command.add_argument(
         Argument("old", help="Old option")
         .long["old"]()
-        .deprecated("Use --new instead")
+        .deprecated["Use --new instead"]()
     )
     command.add_argument(Argument("new", help="New option").long["new"]())
 
@@ -578,7 +578,7 @@ fn test_help_alias_shown() raises:
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .aliases["color"]()
+        .alias["color"]()
     )
 
     var help = command._generate_help(color=False)

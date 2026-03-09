@@ -329,7 +329,9 @@ fn test_fullwidth_with_choices() raises:
         .long["format"]()
         .short["f"]()
         .takes_value()
-        .choices(["json", "yaml", "csv"])
+        .choice["json"]()
+        .choice["yaml"]()
+        .choice["csv"]()
     )
 
     var args: List[String] = ["test", "－－ｆｏｒｍａｔ＝ｊｓｏｎ"]

@@ -124,7 +124,7 @@ fn main() raises:
     app.add_argument(
         Argument("input", help="Input file to process")
         .positional()
-        .default("stdin")
+        .default["stdin"]()
     )
 
     # ── Count flag with ceiling ──────────────────────────────────────────
@@ -162,7 +162,7 @@ fn main() raises:
         .long["host"]()
         .short["H"]()
         .value_name["ADDR"]()
-        .group("Network")
+        .group["Network"]()
     )
     app.add_argument(
         Argument(
@@ -173,7 +173,7 @@ fn main() raises:
         .append()
         .range[1, 65535]()
         .clamp()
-        .group("Network")
+        .group["Network"]()
     )
     var net_group: List[String] = ["host", "port"]
     app.required_together(net_group^)
@@ -185,14 +185,14 @@ fn main() raises:
         .long["save"]()
         .short["S"]()
         .flag()
-        .group("Output")
+        .group["Output"]()
     )
     app.add_argument(
         Argument("output", help="Output file path (required with --save)")
         .long["output"]()
         .short["o"]()
         .value_name["FILE"]()
-        .group("Output")
+        .group["Output"]()
     )
     app.required_if("output", "save")
 
@@ -202,7 +202,7 @@ fn main() raises:
         .long["point"]()
         .number_of_values[3]()
         .value_name["COORD"]()
-        .group("Data")
+        .group["Data"]()
     )
 
     # ── Value delimiter ──────────────────────────────────────────────────
@@ -211,7 +211,7 @@ fn main() raises:
         .long["tags"]()
         .short["t"]()
         .delimiter[","]()
-        .group("Data")
+        .group["Data"]()
     )
 
     # ── Key-value map ────────────────────────────────────────────────────
@@ -220,15 +220,15 @@ fn main() raises:
         .long["define"]()
         .short["D"]()
         .map_option()
-        .group("Data")
+        .group["Data"]()
     )
 
     # ── Aliases ──────────────────────────────────────────────────────────
     app.add_argument(
         Argument("color-theme", help="Color theme name")
         .long["color-theme"]()
-        .aliases["colour"]()
-        .default("auto")
+        .alias["colour"]()
+        .default["auto"]()
     )
 
     # ── Deprecated argument ──────────────────────────────────────────────
@@ -236,9 +236,9 @@ fn main() raises:
         Argument("legacy", help="Enable legacy mode (deprecated)")
         .long["legacy"]()
         .flag()
-        .deprecated(
+        .deprecated[
             "Legacy mode will be removed in v1.0; use --level 0 instead"
-        )
+        ]()
     )
 
     # ── default_if_no_value ───────────────────────────────────────────────────
@@ -247,9 +247,9 @@ fn main() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
         .value_name["ALGO"]()
-        .group("Output")
+        .group["Output"]()
     )
 
     # ── Require equals (standalone) ──────────────────────────────────────
@@ -259,8 +259,8 @@ fn main() raises:
         .long["separator"]()
         .require_equals()
         .value_name["CHAR"]()
-        .default(",")
-        .group("Output")
+        .default[","]()
+        .group["Output"]()
     )
 
     # ── Hidden argument ──────────────────────────────────────────────────
@@ -318,7 +318,7 @@ fn main() raises:
         .short["w"]()
         .range[1, 32]()
         .clamp()
-        .default("4")
+        .default["4"]()
     )
     analyze.add_argument(
         Argument("threshold", help="Confidence threshold [0-100]")

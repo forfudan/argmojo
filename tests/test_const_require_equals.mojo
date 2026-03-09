@@ -13,7 +13,7 @@ fn test_const_long_without_value() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "--compress"]
@@ -27,7 +27,7 @@ fn test_const_long_with_equals_value() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "--compress=bzip2"]
@@ -43,7 +43,7 @@ fn test_const_long_space_separated_not_consumed() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
     command.add_argument(Argument("file", help="File").positional())
 
@@ -62,7 +62,7 @@ fn test_const_long_not_provided() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test"]
@@ -77,8 +77,8 @@ fn test_const_long_with_default() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
-        .default("none")
+        .default_if_no_value["gzip"]()
+        .default["none"]()
     )
 
     # Not provided → default.
@@ -100,12 +100,13 @@ fn test_const_long_with_default() raises:
 fn test_const_long_with_choices() raises:
     """Tests default_if_no_value must pass choices validation."""
     var command = Command("test", "Test app")
-    var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
-        .choices(choices^)
+        .default_if_no_value["gzip"]()
+        .choice["gzip"]()
+        .choice["bzip2"]()
+        .choice["xz"]()
     )
 
     # --compress → default-if-no-value "gzip" passes choices.
@@ -122,12 +123,13 @@ fn test_const_long_with_choices() raises:
 fn test_const_long_choices_invalid_eq() raises:
     """Explicit value via = that violates choices is rejected."""
     var command = Command("test", "Test app")
-    var choices: List[String] = ["gzip", "bzip2", "xz"]
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
-        .choices(choices^)
+        .default_if_no_value["gzip"]()
+        .choice["gzip"]()
+        .choice["bzip2"]()
+        .choice["xz"]()
     )
 
     var args: List[String] = ["test", "--compress=invalid"]
@@ -154,7 +156,7 @@ fn test_const_short_without_value() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "-c"]
@@ -169,7 +171,7 @@ fn test_const_short_with_attached_value() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "-cbzip2"]
@@ -183,7 +185,7 @@ fn test_const_short_does_not_consume_next() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
     command.add_argument(Argument("file", help="File").positional())
 
@@ -207,7 +209,7 @@ fn test_const_short_merged_flags() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "-vc"]
@@ -229,7 +231,7 @@ fn test_const_short_merged_with_attached() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .short["c"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "-vcbzip2"]
@@ -247,7 +249,7 @@ fn test_const_prefix_match() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "--comp"]
@@ -261,7 +263,7 @@ fn test_const_prefix_match_with_equals() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var args: List[String] = ["test", "--comp=bzip2"]
@@ -354,12 +356,13 @@ fn test_require_equals_empty_value() raises:
 fn test_require_equals_with_choices() raises:
     """Require_equals works with choices validation."""
     var command = Command("test", "Test app")
-    var choices: List[String] = ["json", "yaml", "toml"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .require_equals()
-        .choices(choices^)
+        .choice["json"]()
+        .choice["yaml"]()
+        .choice["toml"]()
     )
 
     # Valid choice via =.
@@ -371,12 +374,13 @@ fn test_require_equals_with_choices() raises:
 fn test_require_equals_choices_invalid() raises:
     """Require_equals with invalid choice is rejected."""
     var command = Command("test", "Test app")
-    var choices: List[String] = ["json", "yaml", "toml"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .require_equals()
-        .choices(choices^)
+        .choice["json"]()
+        .choice["yaml"]()
+        .choice["toml"]()
     )
 
     var args: List[String] = ["test", "--format=csv"]
@@ -419,7 +423,7 @@ fn test_require_equals_and_const_long_bare() raises:
     command.add_argument(
         Argument("log", help="Log level")
         .long["log"]()
-        .default_if_no_value("INFO")
+        .default_if_no_value["INFO"]()
     )
 
     var args: List[String] = ["test", "--log"]
@@ -433,7 +437,7 @@ fn test_require_equals_and_const_long_explicit() raises:
     command.add_argument(
         Argument("log", help="Log level")
         .long["log"]()
-        .default_if_no_value("INFO")
+        .default_if_no_value["INFO"]()
     )
 
     var args: List[String] = ["test", "--log=DEBUG"]
@@ -464,7 +468,7 @@ fn test_help_const_format() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
     )
 
     var help = command._generate_help(color=False)
@@ -481,7 +485,7 @@ fn test_help_const_with_value_name() raises:
     command.add_argument(
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
         .value_name["ALGO"]()
     )
 
@@ -520,7 +524,7 @@ fn test_const_with_append() raises:
     command.add_argument(
         Argument("tag", help="Tag")
         .long["tag"]()
-        .default_if_no_value("default-tag")
+        .default_if_no_value["default-tag"]()
         .append()
     )
 
@@ -538,7 +542,7 @@ fn test_const_with_persistent() raises:
     command.add_argument(
         Argument("compress", help="Compression")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
         .persistent()
     )
     var sub = Command("build", "Build things")

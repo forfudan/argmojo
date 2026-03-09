@@ -170,11 +170,12 @@ fn test_fish_value_option_has_require() raises:
 fn test_fish_choices() raises:
     """Tests that Fish script includes choices with -a."""
     var command = Command("myapp", "A test app")
-    var choices: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
-        .choices(choices^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
     var script = command.generate_completion["fish"]()
     assert_true(
@@ -300,11 +301,11 @@ fn test_zsh_simple_flag() raises:
 fn test_zsh_choices() raises:
     """Tests that Zsh script includes choices in value spec."""
     var command = Command("myapp", "A test app")
-    var choices: List[String] = ["json", "csv"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
-        .choices(choices^)
+        .choice["json"]()
+        .choice["csv"]()
     )
     var script = command.generate_completion["zsh"]()
     assert_true(
@@ -434,9 +435,12 @@ fn test_bash_subcommands() raises:
 fn test_bash_choices_prev() raises:
     """Tests that Bash script completes choices based on $prev."""
     var command = Command("myapp", "A test app")
-    var choices: List[String] = ["debug", "info", "warn"]
     command.add_argument(
-        Argument("level", help="Log level").long["level"]().choices(choices^)
+        Argument("level", help="Log level")
+        .long["level"]()
+        .choice["debug"]()
+        .choice["info"]()
+        .choice["warn"]()
     )
     var script = command.generate_completion["bash"]()
     assert_true(
@@ -498,9 +502,11 @@ fn test_all_shells_include_same_options() raises:
     command.add_argument(
         Argument("output", help="Output file").long["output"]().short["o"]()
     )
-    var choices: List[String] = ["json", "csv"]
     command.add_argument(
-        Argument("format", help="Format").long["format"]().choices(choices^)
+        Argument("format", help="Format")
+        .long["format"]()
+        .choice["json"]()
+        .choice["csv"]()
     )
 
     var fish = command.generate_completion["fish"]()

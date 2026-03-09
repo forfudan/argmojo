@@ -125,9 +125,13 @@ fn test_append_empty() raises:
 fn test_append_with_choices() raises:
     """Tests that append respects choices validation."""
     var command = Command("test", "Test app")
-    var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
-        Argument("env", help="Target env").long["env"]().choices(envs^).append()
+        Argument("env", help="Target env")
+        .long["env"]()
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
+        .append()
     )
 
     # Valid choices
@@ -140,11 +144,12 @@ fn test_append_with_choices() raises:
 
     # Invalid choice
     var command2 = Command("test", "Test app")
-    var envs2: List[String] = ["dev", "staging", "prod"]
     command2.add_argument(
         Argument("env", help="Target env")
         .long["env"]()
-        .choices(envs2^)
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
         .append()
     )
     var args2: List[String] = ["test", "--env", "local"]
@@ -303,11 +308,12 @@ fn test_delimiter_single_value() raises:
 fn test_delimiter_with_choices() raises:
     """Tests that choices are validated per-piece after splitting."""
     var command = Command("test", "Test app")
-    var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
         Argument("env", help="Environments")
         .long["env"]()
-        .choices(envs^)
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
         .delimiter[","]()
     )
 
@@ -525,12 +531,14 @@ fn test_nargs_too_few_short() raises:
 fn test_nargs_with_choices() raises:
     """Tests that choices validation applies to each nargs value."""
     var command = Command("test", "Test app")
-    var dirs: List[String] = ["north", "south", "east", "west"]
     command.add_argument(
         Argument("dir", help="Two directions")
         .long["dir"]()
         .number_of_values[2]()
-        .choices(dirs^)
+        .choice["north"]()
+        .choice["south"]()
+        .choice["east"]()
+        .choice["west"]()
     )
 
     # Valid.

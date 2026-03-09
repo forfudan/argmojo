@@ -71,12 +71,13 @@ fn test_value_name_in_help() raises:
 fn test_choices_in_help() raises:
     """Tests that choices are displayed in help when no value_name."""
     var command = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
 
     var help = command._generate_help()
@@ -272,7 +273,7 @@ fn test_positional_args_aligned_in_help() raises:
     command.add_argument(
         Argument("output-directory", help="Output dir")
         .positional()
-        .default(".")
+        .default["."]()
     )
 
     var help = command._generate_help()

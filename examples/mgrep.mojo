@@ -41,7 +41,7 @@ fn main() raises:
     app.add_argument(
         Argument("path", help="Files or directories to search")
         .positional()
-        .default(".")
+        .default["."]()
     )
 
     # ── Matching control ─────────────────────────────────────────────────
@@ -153,13 +153,12 @@ fn main() raises:
     )
 
     # ── Output format (choices) ──────────────────────────────────────────
-    var fmts: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
-        .default("text")
+        .choice["text"]().choice["json"]().choice["csv"]()
+        .default["text"]()
     )
 
     # ── Append / collect ─────────────────────────────────────────────────
@@ -218,8 +217,8 @@ fn main() raises:
     app.add_argument(
         Argument("colour", help="Colour theme")
         .long["colour"]()
-        .aliases["color-mode"]()
-        .default("auto")
+        .alias["color-mode"]()
+        .default["auto"]()
     )
 
     # ── Deprecated argument ──────────────────────────────────────────────
@@ -227,7 +226,7 @@ fn main() raises:
         Argument("mmap", help="Use memory-mapped I/O (legacy)")
         .long["mmap"]()
         .flag()
-        .deprecated("Memory-mapping is now automatic")
+        .deprecated["Memory-mapping is now automatic"]()
     )
 
     # ── Hidden argument ──────────────────────────────────────────────────

@@ -100,7 +100,7 @@ fn main() raises:
 
     # Positional arguments
     app.add_argument(Argument("pattern", help="Search pattern").positional().required())
-    app.add_argument(Argument("path", help="Search path").positional().default("."))
+    app.add_argument(Argument("path", help="Search path").positional().default["."]())
 
     # Boolean flags
     app.add_argument(
@@ -119,10 +119,9 @@ fn main() raises:
     )
 
     # Key-value option with choices
-    var formats: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
-        .long["format"]().short["f"]().choices(formats^).default("text")
+        .long["format"]().short["f"]().choice["text"]().choice["json"]().choice["csv"]().default["text"]()
     )
 
     # Negatable flag — --color enables, --no-color disables

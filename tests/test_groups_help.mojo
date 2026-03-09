@@ -23,13 +23,13 @@ fn test_group_basic() raises:
         Argument("host", help="Server host")
         .long["host"]()
         .short["H"]()
-        .group("Network")
+        .group["Network"]()
     )
     command.add_argument(
         Argument("port", help="Server port")
         .long["port"]()
         .short["p"]()
-        .group("Network")
+        .group["Network"]()
     )
 
     var help = command._generate_help(color=False)
@@ -54,7 +54,7 @@ fn test_group_ungrouped_separate_from_grouped() raises:
         .flag()
     )
     command.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
 
     var help = command._generate_help(color=False)
@@ -79,16 +79,20 @@ fn test_group_multiple_groups() raises:
     """Multiple groups each get their own heading, in first-appearance order."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("user", help="Username").long["user"]().group("Authentication")
+        Argument("user", help="Username")
+        .long["user"]()
+        .group["Authentication"]()
     )
     command.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
     command.add_argument(
-        Argument("pass", help="Password").long["pass"]().group("Authentication")
+        Argument("pass", help="Password")
+        .long["pass"]()
+        .group["Authentication"]()
     )
     command.add_argument(
-        Argument("port", help="Server port").long["port"]().group("Network")
+        Argument("port", help="Server port").long["port"]().group["Network"]()
     )
 
     var help = command._generate_help(color=False)
@@ -149,7 +153,7 @@ fn test_group_builtin_options_ungrouped() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
 
     var help = command._generate_help(color=False)
@@ -179,7 +183,7 @@ fn test_group_with_persistent() raises:
         .persistent()
     )
     command.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
 
     var sub = Command("sub", "A subcommand")
@@ -205,14 +209,14 @@ fn test_group_independent_padding() raises:
     var command = Command("test", "Test app")
     # Group A: short names → small padding.
     command.add_argument(
-        Argument("a", help="Alpha").long["a"]().flag().group("Short")
+        Argument("a", help="Alpha").long["a"]().flag().group["Short"]()
     )
     # Group B: long name → wider padding.
     command.add_argument(
         Argument("very-long-option-name", help="Beta")
         .long["very-long-option-name"]()
         .flag()
-        .group("Long")
+        .group["Long"]()
     )
 
     var help = command._generate_help(color=False)
@@ -228,7 +232,7 @@ fn test_group_with_colored_output() raises:
     """
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
 
     var help = command._generate_help(color=True)
@@ -245,13 +249,13 @@ fn test_group_hidden_arg_not_shown() raises:
     command.add_argument(
         Argument("secret", help="Secret option")
         .long["secret"]()
-        .group("Internal")
+        .group["Internal"]()
         .hidden()
     )
     command.add_argument(
         Argument("public", help="Public option")
         .long["public"]()
-        .group("Internal")
+        .group["Internal"]()
     )
 
     var help = command._generate_help(color=False)
@@ -267,13 +271,13 @@ fn test_group_all_hidden_no_heading() raises:
     command.add_argument(
         Argument("debug1", help="Debug 1")
         .long["debug1"]()
-        .group("Debug")
+        .group["Debug"]()
         .hidden()
     )
     command.add_argument(
         Argument("debug2", help="Debug 2")
         .long["debug2"]()
-        .group("Debug")
+        .group["Debug"]()
         .hidden()
     )
     command.add_argument(
@@ -291,10 +295,10 @@ fn test_group_does_not_affect_parsing() raises:
     """Groups are purely cosmetic — they don't change parsing behavior."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("host", help="Host").long["host"]().group("Network")
+        Argument("host", help="Host").long["host"]().group["Network"]()
     )
     command.add_argument(
-        Argument("port", help="Port").long["port"]().group("Network")
+        Argument("port", help="Port").long["port"]().group["Network"]()
     )
 
     var args: List[String] = ["test", "--host", "localhost", "--port", "8080"]
@@ -308,10 +312,10 @@ fn test_group_with_subcommand_help() raises:
     var app = Command("app", "App")
     var sub = Command("serve", "Start server")
     sub.add_argument(
-        Argument("host", help="Server host").long["host"]().group("Network")
+        Argument("host", help="Server host").long["host"]().group["Network"]()
     )
     sub.add_argument(
-        Argument("port", help="Server port").long["port"]().group("Network")
+        Argument("port", help="Server port").long["port"]().group["Network"]()
     )
     sub.add_argument(Argument("workers", help="Worker count").long["workers"]())
     app.add_subcommand(sub^)
@@ -481,7 +485,7 @@ fn test_value_name_wrapped_default_if_no_value() raises:
     command.add_argument(
         Argument("compress", help="Compression")
         .long["compress"]()
-        .default_if_no_value("gzip")
+        .default_if_no_value["gzip"]()
         .value_name["ALGO"]()
     )
 
@@ -536,7 +540,7 @@ fn test_group_with_value_name_wrapped() raises:
         Argument("host", help="Server host")
         .long["host"]()
         .value_name["ADDR"]()
-        .group("Network")
+        .group["Network"]()
     )
 
     var help = command._generate_help(color=False)
@@ -554,7 +558,7 @@ fn test_group_with_value_name_unwrapped() raises:
         Argument("host", help="Server host")
         .long["host"]()
         .value_name["ADDR", False]()
-        .group("Network")
+        .group["Network"]()
     )
 
     var help = command._generate_help(color=False)

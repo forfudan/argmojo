@@ -388,7 +388,7 @@ fn test_hyphen_value_with_other_positional() raises:
         .allow_hyphen_values()
     )
     command.add_argument(
-        Argument("output", help="Output").positional().default("out.txt")
+        Argument("output", help="Output").positional().default["out.txt"]()
     )
 
     var args: List[String] = ["test", "-", "result.csv"]
