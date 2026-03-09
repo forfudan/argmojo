@@ -418,7 +418,7 @@ Argument("name", help="...")
 ║   │   command.completions_as_subcommand()     expose as subcommand instead
 ║   ├── Response files
 ║   │   command.response_file_prefix("@")       enable @args.txt expansion ⁵
-║   │   command.response_file_max_depth(10)     max recursive nesting depth ⁵
+║   │   command.response_file_max_depth[10]()   max recursive nesting depth ⁵
 ║   └── CJK / i18n
 ║       command.disable_fullwidth_correction()  disable fullwidth→halfwidth auto-fix
 ║       command.disable_punctuation_correction()  disable CJK punctuation correction
@@ -2879,10 +2879,10 @@ mytool @build-args.txt
 # expands to: mytool --verbose --output=build/release
 ```
 
-Recursion depth is limited to 10 by default. Adjust with `response_file_max_depth()`:
+Recursion depth is limited to 10 by default. Adjust with `response_file_max_depth[depth]()`:
 
 ```mojo
-command.response_file_max_depth(5)
+command.response_file_max_depth[5]()
 ```
 
 A self-referencing or circular response file triggers an error once the depth limit is reached.
@@ -3068,7 +3068,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | ArgMojo method                | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
 | ----------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
 | `Argument("name", help="…")`  | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
-| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long["x"]()`                    | implicit from flag name        |
+| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                     | implicit from flag name        |
 | `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
 | `.flag()`                     | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
 | `.required()`                 | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |

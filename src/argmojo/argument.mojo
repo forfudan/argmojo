@@ -285,6 +285,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
         - Must not be empty.
         - Must not start with ``-`` (the ``--`` prefix is added automatically).
+        - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
 
         Parameters:
             name: The long option name without the ``--`` prefix.
@@ -300,6 +301,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             not name.startswith("-"),
             "long name must not start with '-'; omit the '--' prefix",
         ]()
+        constrained[
+            name.find("=") == -1,
+            (
+                "long name must not contain '='; it conflicts with --key=value"
+                " syntax"
+            ),
+        ]()
         self._long_name = name
         return self^
 
@@ -307,7 +315,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """Sets the short option name (e.g., 'l' for -l).
 
         The name is validated at compile time: it must be exactly one
-        character (e.g., ``"v"``, ``"o"``).
+        character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
+        (which would conflict with the ``--`` end-of-options sentinel).
 
         Parameters:
             name: A single character for the short option without ``-`` prefix.
@@ -318,6 +327,13 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         constrained[
             len(name) == 1,
             "short name must be exactly 1 character",
+        ]()
+        constrained[
+            name != "-",
+            (
+                "short name must not be '-'; it conflicts with the"
+                " end-of-options sentinel '--'"
+            ),
         ]()
         self._short_name = name
         return self^

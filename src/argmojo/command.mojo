@@ -808,7 +808,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         - Leading / trailing whitespace on each line is stripped.
         - Response files may reference other response files (recursive),
           up to the configured nesting depth (set via
-          ``response_file_max_depth()``; default 10).
+          ``response_file_max_depth[depth]()``; default 10).
         - To pass a literal token that starts with the prefix (e.g. an
           email ``@user``), escape it by doubling the prefix: ``@@user``
           is inserted as ``@user``.
