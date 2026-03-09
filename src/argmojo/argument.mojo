@@ -46,7 +46,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long["define"]().short["D"]().map_option()
     # Aliases  (--colour and --color both work)
-    _ = Argument("colour", help="...").long["colour"]().alias["color"]()
+    _ = Argument("colour", help="...").long["colour"]().alias_name["color"]()
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long["old-flag"]().deprecated["Use --new-flag instead"]()
     # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
@@ -637,14 +637,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn alias[name: StringLiteral](var self) -> Self:
+    fn alias_name[name: StringLiteral](var self) -> Self:
         """Sets an alternative long name for this argument.
 
         Any alias resolves to this argument during parsing.  For
-        example, ``.long["colour"]().alias["color"]()`` makes both
+        example, ``.long["colour"]().alias_name["color"]()`` makes both
         ``--colour`` and ``--color`` accepted.  Chain multiple calls
         for several aliases:
-        ``.alias["out"]().alias["fmt"]()``.
+        ``.alias_name["out"]().alias_name["fmt"]()``.}
 
         Parameters:
             name: The alternative long option name (without ``--``).

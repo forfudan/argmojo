@@ -398,7 +398,7 @@ fn test_alias_basic() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .alias["color"]()
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--color", "red"]
@@ -412,7 +412,7 @@ fn test_alias_primary_still_works() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .alias["color"]()
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
@@ -426,8 +426,8 @@ fn test_alias_multiple() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .alias["out"]()
-        .alias["fmt"]()
+        .alias_name["out"]()
+        .alias_name["fmt"]()
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
@@ -445,7 +445,7 @@ fn test_alias_prefix_match() raises:
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .alias["color"]()
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--colo", "green"]
@@ -460,7 +460,7 @@ fn test_alias_with_flag() raises:
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .flag()
-        .alias["debug"]()
+        .alias_name["debug"]()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -525,7 +525,7 @@ fn test_deprecated_with_alias() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .alias["out"]()
+        .alias_name["out"]()
         .deprecated["Use --format instead"]()
     )
 
@@ -578,7 +578,7 @@ fn test_help_alias_shown() raises:
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .alias["color"]()
+        .alias_name["color"]()
     )
 
     var help = command._generate_help(color=False)

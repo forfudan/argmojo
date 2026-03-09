@@ -157,7 +157,9 @@ fn main() raises:
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choice["text"]().choice["json"]().choice["csv"]()
+        .choice["text"]()
+        .choice["json"]()
+        .choice["csv"]()
         .default["text"]()
     )
 
@@ -217,7 +219,7 @@ fn main() raises:
     app.add_argument(
         Argument("colour", help="Colour theme")
         .long["colour"]()
-        .alias["color-mode"]()
+        .alias_name["color-mode"]()
         .default["auto"]()
     )
 

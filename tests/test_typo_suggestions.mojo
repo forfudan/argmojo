@@ -144,7 +144,7 @@ fn test_typo_alias_suggests() raises:
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .alias["color"]()
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--colro"]

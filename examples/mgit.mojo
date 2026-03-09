@@ -111,7 +111,8 @@ fn main() raises:
     init.add_argument(
         Argument("template", help="Template directory")
         .long["template"]()
-        .choice["default"]().choice["minimal"]()
+        .choice["default"]()
+        .choice["minimal"]()
         .default["default"]()
     )
     init.add_argument(
@@ -298,8 +299,12 @@ fn main() raises:
     log.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
-        .alias["pretty"]()
-        .choice["oneline"]().choice["short"]().choice["medium"]().choice["full"]().choice["fuller"]()
+        .alias_name["pretty"]()
+        .choice["oneline"]()
+        .choice["short"]()
+        .choice["medium"]()
+        .choice["full"]()
+        .choice["fuller"]()
     )
     app.add_subcommand(log^)
 
@@ -395,7 +400,7 @@ fn main() raises:
     diff.add_argument(
         Argument("cached", help="Synonym for --staged")
         .long["cached"]()
-        .alias["staged"]()
+        .alias_name["staged"]()
         .flag()
         .hidden()
     )
