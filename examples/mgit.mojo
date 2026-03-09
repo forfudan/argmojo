@@ -180,7 +180,7 @@ fn main() raises:
     commit.add_argument(
         Argument("author", help="Override the commit author")
         .long["author"]()
-        .value_name("NAME")
+        .value_name["NAME"]()
     )
     # Deprecated flag
     commit.add_argument(
@@ -271,23 +271,23 @@ fn main() raises:
         Argument("number", help="Limit number of commits shown")
         .long["number"]()
         .short["n"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[1, 999999]()
     )
     log.add_argument(
         Argument("author", help="Filter by author")
         .long["author"]()
-        .value_name("PATTERN")
+        .value_name["PATTERN"]()
     )
     log.add_argument(
         Argument("since", help="Show commits after date")
         .long["since"]()
-        .value_name("DATE")
+        .value_name["DATE"]()
     )
     log.add_argument(
         Argument("until", help="Show commits before date")
         .long["until"]()
-        .value_name("DATE")
+        .value_name["DATE"]()
     )
     # Append: multiple --grep patterns
     log.add_argument(
@@ -424,7 +424,7 @@ fn main() raises:
         Argument("unified", help="Generate diffs with N lines of context")
         .long["unified"]()
         .short["U"]()
-        .value_name("N")
+        .value_name["N"]()
     )
     app.add_subcommand(diff^)
 

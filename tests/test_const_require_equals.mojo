@@ -482,7 +482,7 @@ fn test_help_const_with_value_name() raises:
         Argument("compress", help="Compression algorithm")
         .long["compress"]()
         .default_if_no_value("gzip")
-        .value_name("ALGO")
+        .value_name["ALGO"]()
     )
 
     var help = command._generate_help(color=False)
@@ -499,7 +499,7 @@ fn test_help_require_equals_with_value_name() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .require_equals()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
 
     var help = command._generate_help(color=False)

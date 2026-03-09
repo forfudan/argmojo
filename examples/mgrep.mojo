@@ -139,7 +139,7 @@ fn main() raises:
         Argument("max-depth", help="Maximum directory depth")
         .long["max-depth"]()
         .short["d"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[0, 999]()
     )
 
@@ -149,7 +149,7 @@ fn main() raises:
         .long["context"]()
         .short["C"]()
         .number_of_values[2]()
-        .value_name("N")
+        .value_name["N"]()
     )
 
     # ── Output format (choices) ──────────────────────────────────────────
@@ -202,7 +202,7 @@ fn main() raises:
         Argument("output", help="Output file path (required with --save)")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
     app.required_if("output", "save")
 
