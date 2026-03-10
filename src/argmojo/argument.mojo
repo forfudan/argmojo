@@ -417,7 +417,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._choice_values.append(value)
         return self^
 
-    fn value_name[name: String, wrapped: Bool = True](var self) -> Self:
+    fn value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
         """Sets the display name for the value in help text.
 
         When *wrapped* is True (default), the name is displayed inside angle
@@ -546,7 +546,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
 
         Constraints:
             The separator is validated at compile time: it must be one of
-            ``,``, ``;``, ``:``, ``|``.
+            ``,`` | ``;`` | ``:`` | ``|``.
         """
         constrained[
             sep == "," or sep == ";" or sep == ":" or sep == "|",
@@ -644,7 +644,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         example, ``.long["colour"]().alias_name["color"]()`` makes both
         ``--colour`` and ``--color`` accepted.  Chain multiple calls
         for several aliases:
-        ``.alias_name["out"]().alias_name["fmt"]()``.}
+        ``.alias_name["out"]().alias_name["fmt"]()``.
 
         Parameters:
             name: The alternative long option name (without ``--``).

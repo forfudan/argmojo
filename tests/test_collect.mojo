@@ -634,5 +634,78 @@ fn test_nargs_prefix_match() raises:
     assert_equal(lst[1], "8", msg="Second = 8")
 
 
+# ── Fullwidth delimiter tests ────────────────────────────────────────────────────
+
+
+fn test_delimiter_fullwidth_comma() raises:
+    """Fullwidth comma ，(U+FF0C) is normalized to , before splitting."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # "a，b，c" → fullwidth commas normalized → split as "a", "b", "c"
+    var args: List[String] = ["test", "--tag", "a，b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 3, msg="fullwidth comma should split into 3")
+    assert_equal(tags[0], "a")
+    assert_equal(tags[1], "b")
+    assert_equal(tags[2], "c")
+
+
+fn test_delimiter_fullwidth_semicolon() raises:
+    """Fullwidth semicolon ；(U+FF1B) is normalized to ; before splitting."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("path", help="Paths").long["path"]().delimiter[";"]()
+    )
+
+    var args: List[String] = ["test", "--path", "x；y；z"]
+    var result = command.parse_arguments(args)
+    var paths = result.get_list("path")
+    assert_equal(len(paths), 3, msg="fullwidth semicolon should split into 3")
+    assert_equal(paths[0], "x")
+    assert_equal(paths[1], "y")
+    assert_equal(paths[2], "z")
+
+
+fn test_delimiter_fullwidth_disabled() raises:
+    """Fullwidth commas are NOT normalized when correction is disabled."""
+    var command = Command("test", "Test app")
+    command.disable_fullwidth_correction()
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # With correction disabled, ， stays as-is, so no split happens.
+    var args: List[String] = ["test", "--tag", "a，b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(
+        len(tags),
+        1,
+        msg="fullwidth comma should NOT split when correction disabled",
+    )
+    assert_equal(tags[0], "a，b，c")
+
+
+fn test_delimiter_fullwidth_mixed() raises:
+    """Mix of halfwidth and fullwidth commas both split correctly."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # "a,b，c" → after normalization → "a,b,c" → split into 3
+    var args: List[String] = ["test", "--tag", "a,b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 3, msg="mixed commas should split into 3")
+    assert_equal(tags[0], "a")
+    assert_equal(tags[1], "b")
+    assert_equal(tags[2], "c")
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

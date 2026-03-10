@@ -21,7 +21,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 9. **Full-width → half-width auto-correction.** When CJK users forget to switch input methods and type fullwidth ASCII (e.g., `－－ｖｅｒｂｏｓｅ` instead of `--verbose`, or `＝` instead of `=`), ArgMojo auto-detects and corrects these characters with a coloured warning. Fullwidth spaces (`U+3000`) embedded in a token cause it to be split into multiple arguments. All tokens containing fullwidth ASCII are normalized; only option tokens (starting with `-` after correction) trigger a warning. Disabled via `disable_fullwidth_correction()` (PR #15).
 10. **CJK punctuation auto-correction.** Common CJK punctuation outside the fullwidth ASCII range is also corrected — for example, em-dash (`——verbose`) is converted to `--verbose`. This runs as a separate pass after fullwidth correction. Disabled via `disable_punctuation_correction()` (PR #16).
 11. **Argument groups in help.** Add `.group["name"]()` builder method on `Argument`. Arguments assigned to the same group are displayed under a dedicated heading in `--help` output, in first-appearance order. Ungrouped arguments remain under the default "Options:" heading. Persistent arguments are collected under "Global Options:" as before (PR #17).
-12. **Value-name wrapping control.** Change `.value_name()` to accept compile-time parameters: `.value_name["NAME", wrapped: Bool = True]()`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
+12. **Value-name wrapping control.** Change `.value_name()` to accept compile-time parameters: `.value_name["NAME"]()` or `.value_name["NAME", False]()`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
 
 ### 🦋 Changed in v0.4.0
 
@@ -161,7 +161,7 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 16. Required-together groups -- enforce that related flags are provided together (e.g., `--username` + `--password`).
 17. One-required groups -- require at least one argument from a group.
 18. Append / collect action -- `--tag x --tag y` collects repeated options into a list with `.append()`.
-19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`.
+19. Value delimiter -- `--env dev,staging,prod` splits by delimiter into a list with `.delimiter[","]()`.
 20. Multi-value options (nargs) -- `--point 10 20` consumes N consecutive values with `.number_of_values[N]()`.
 21. Key-value map option -- `--define key=value` builds a `Dict` with `.map_option()`.
 22. Auto-generated help with `--help` / `-h` / `-?`, dynamic column alignment, pixi-style ANSI colours, and customisable header/arg colours.
@@ -169,5 +169,5 @@ ArgMojo v0.1.0 is compatible with Mojo v0.26.1.
 24. Version display with `--version` / `-V`.
 25. Metavar -- custom display name for values in help text.
 26. Hidden arguments -- exclude internal args from help output.
-27. Aliases for long names -- `.aliases(["color"])` for `--colour` / `--color`.
+27. Aliases for long names -- `.alias_name["color"]()` for `--colour` / `--color`.
 28. Deprecated arguments -- `.deprecated["Use --format instead"]()` prints warning to stderr.
