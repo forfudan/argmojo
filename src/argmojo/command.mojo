@@ -912,11 +912,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var command = Command("myapp", "A sample application")
         command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
         command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
-        var format_excl: List[String] = ["json", "yaml"]
-        command.mutually_exclusive(format_excl^)
+        command.mutually_exclusive(["json", "yaml"])
         ```
         """
+        if len(names) == 0:
+            raise Error("mutually_exclusive(): 'names' list must not be empty")
+        var unique = List[String]()
         for ni in range(len(names)):
+            var dup = False
+            for ui in range(len(unique)):
+                if unique[ui] == names[ni]:
+                    dup = True
+                    break
+            if dup:
+                continue  # Proceed to the next name; duplicates are ignored.
             var found = False
             for ai in range(len(self.args)):
                 if self.args[ai].name == names[ni]:
@@ -926,7 +935,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 raise Error(
                     "mutually_exclusive(): unknown argument '" + names[ni] + "'"
                 )
-        self._exclusive_groups.append(names^)
+            unique.append(names[ni])
+        self._exclusive_groups.append(unique^)
 
     fn required_together(mut self, var names: List[String]) raises:
         """Declares a group of arguments that must be provided together.
@@ -952,11 +962,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var command = Command("myapp", "A sample application")
         command.add_argument(Argument("username", help="Auth username").long["username"]().short["u"]())
         command.add_argument(Argument("password", help="Auth password").long["password"]().short["p"]())
-        var auth_group: List[String] = ["username", "password"]
-        command.required_together(auth_group^)
+        command.required_together(["username", "password"])
         ```
         """
+        if len(names) == 0:
+            raise Error("required_together(): 'names' list must not be empty")
+        var unique = List[String]()
         for ni in range(len(names)):
+            var dup = False
+            for ui in range(len(unique)):
+                if unique[ui] == names[ni]:
+                    dup = True
+                    break
+            if dup:
+                continue
             var found = False
             for ai in range(len(self.args)):
                 if self.args[ai].name == names[ni]:
@@ -966,7 +985,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 raise Error(
                     "required_together(): unknown argument '" + names[ni] + "'"
                 )
-        self._required_groups.append(names^)
+            unique.append(names[ni])
+        self._required_groups.append(unique^)
 
     fn one_required(mut self, var names: List[String]) raises:
         """Declares a group where at least one argument must be provided.
@@ -995,7 +1015,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.one_required(["json", "yaml"])
         ```
         """
+        if len(names) == 0:
+            raise Error("one_required(): 'names' list must not be empty")
+        var unique = List[String]()
         for ni in range(len(names)):
+            var dup = False
+            for ui in range(len(unique)):
+                if unique[ui] == names[ni]:
+                    dup = True
+                    break
+            if dup:
+                continue
             var found = False
             for ai in range(len(self.args)):
                 if self.args[ai].name == names[ni]:
@@ -1005,7 +1035,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 raise Error(
                     "one_required(): unknown argument '" + names[ni] + "'"
                 )
-        self._one_required_groups.append(names^)
+            unique.append(names[ni])
+        self._one_required_groups.append(unique^)
 
     fn required_if(mut self, target: String, condition: String) raises:
         """Declares that an argument is required when another is present.
@@ -1035,6 +1066,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.required_if("output", "save")
         ```
         """
+        if target == condition:
+            raise Error(
+                "required_if(): target and condition must differ, got '"
+                + target
+                + "'"
+            )
         var checks: List[String] = [target, condition]
         for ci in range(len(checks)):
             var found = False

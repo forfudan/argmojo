@@ -55,11 +55,14 @@ build = """pixi run package \
 """
 
 # run (debug mode) example binaries
+# Uses --help so examples with required positional args exit cleanly.
+# The purpose is to exercise command construction (registration-time
+# validation), not argument parsing.
 debug = """pixi run package \
-&& mojo run -I src -D ASSERT=all examples/mgrep.mojo \
-&& mojo run -I src -D ASSERT=all examples/mgit.mojo \
-&& mojo run -I src -D ASSERT=all examples/demo.mojo \
-&& mojo run -I src -D ASSERT=all examples/yu.mojo \
+&& mojo run -I src -D ASSERT=all examples/mgrep.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/mgit.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/demo.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/yu.mojo -- --help \
 """
 
 # clean build artifacts

@@ -3126,20 +3126,12 @@ Methods validated at registration time:
 
 To ensure your CLI definition is free of developer errors:
 
-1. **Build your project** — catches compile-time parameter errors (wrong colour names, invalid builder values, etc.).
+1. **Compile your application** (`mojo build …`) — catches compile-time parameter errors (wrong colour names, invalid builder values, etc.).
 2. **Run the executable once** (even without arguments) — catches registration-time errors (typos in argument names passed to group constraints).
 
-Using the provided `pixi` tasks:
+Note that a single `mojo run` is enough (it sequentially builds and then executes the binary).
 
-```bash
-# Step 1: Compile — catches compile-time errors
-pixi run build
-
-# Step 2: Execute in debug mode — catches registration-time errors
-pixi run debug
-```
-
-Both steps are included in the CI workflow, so pull requests automatically catch both classes of errors.
+> **ArgMojo contributors:** the repository provides `pixi run debug`, which packages the library and runs every example under `-D ASSERT=all` with `--help`. This exercises both compile-time and registration-time validation in one step. The CI workflow runs `pixi run package`, `pixi run test`, and `pixi run debug`, so pull requests automatically catch both classes of errors.
 
 ## Cross-Library Method Name Reference
 
