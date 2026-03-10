@@ -298,12 +298,10 @@ fn main() raises:
     export.add_argument(
         Argument("toml", help="Export as TOML").long["toml"]().flag()
     )
-    var format_group: List[String] = ["json", "yaml", "toml"]
-    export.one_required(format_group.copy())
-    export.mutually_exclusive(format_group^)
+    export.one_required(["json", "yaml", "toml"])
+    export.mutually_exclusive(["json", "yaml", "toml"])
     export.help_on_no_arguments()
-    var export_aliases: List[String] = ["ex"]
-    export.command_aliases(export_aliases^)
+    export.command_aliases(["ex"])
     app.add_subcommand(export^)
 
     # ── Subcommand: analyze ──────────────────────────────────────────────
@@ -328,8 +326,7 @@ fn main() raises:
         .clamp()
     )
     analyze.help_on_no_arguments()
-    var analyze_aliases: List[String] = ["an"]
-    analyze.command_aliases(analyze_aliases^)
+    analyze.command_aliases(["an", "ana"])
     app.add_subcommand(analyze^)
 
     # ── Subcommand: run (remainder + allow_hyphen_values) ────────────────

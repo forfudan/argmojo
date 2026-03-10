@@ -246,8 +246,7 @@ fn test_one_required_multiple_provided() raises:
     command.add_argument(
         Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
-    var group: List[String] = ["json", "yaml"]
-    command.one_required(group^)
+    command.one_required(["json", "yaml"])
 
     # Both provided — one_required is satisfied (it only requires at least one).
     var args: List[String] = ["test", "--json", "--yaml"]
@@ -265,8 +264,7 @@ fn test_one_required_none_provided() raises:
     command.add_argument(
         Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
-    var group: List[String] = ["json", "yaml"]
-    command.one_required(group^)
+    command.one_required(["json", "yaml"])
 
     var args: List[String] = ["test"]
     var caught = False
@@ -299,8 +297,7 @@ fn test_one_required_with_value_args() raises:
     command.add_argument(
         Argument("stdin", help="Read from stdin").long["stdin"]().flag()
     )
-    var group: List[String] = ["input", "stdin"]
-    command.one_required(group^)
+    command.one_required(["input", "stdin"])
 
     # Providing --input satisfies the group.
     var args: List[String] = ["test", "--input", "data.txt"]

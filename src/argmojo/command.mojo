@@ -744,6 +744,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._tips.append(tip)
 
+    # TODO: alias_name[name: StringLiteral](mut self) for compile-time checks
     fn command_aliases(mut self, var names: List[String]):
         """Registers alternate names for this command when used as a subcommand.
 
@@ -790,6 +791,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._is_hidden = True
 
+    # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
     fn response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 
@@ -886,6 +888,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._disable_punctuation_correction = True
 
+    # TODO: See whether compile-time validation is possible
     fn mutually_exclusive(mut self, var names: List[String]):
         """Declares a group of mutually exclusive arguments.
 
@@ -946,8 +949,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var command = Command("myapp", "A sample application")
         command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
         command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag())
-        var format_group: List[String] = ["json", "yaml"]
-        command.one_required(format_group^)
+        command.one_required(["json", "yaml"])
         ```
         """
         self._one_required_groups.append(names^)

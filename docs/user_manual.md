@@ -1318,8 +1318,7 @@ myapp --json --yaml        # Error: Arguments are mutually exclusive: '--json', 
 ```mojo
 command.add_argument(Argument("input", help="Input file").long["input"]().short["i"]())
 command.add_argument(Argument("stdin", help="Read from stdin").long["stdin"]().flag())
-var source: List[String] = ["input", "stdin"]
-command.one_required(source^)
+command.one_required(["input", "stdin"])
 ```
 
 ```bash
@@ -1335,10 +1334,8 @@ myapp                      # Error: At least one of the following arguments is r
 You can declare multiple groups. Each is validated independently:
 
 ```mojo
-var format_group: List[String] = ["json", "yaml"]
-var source_group: List[String] = ["input", "stdin"]
-command.one_required(format_group^)
-command.one_required(source_group^)
+command.one_required(["json", "yaml"])
+command.one_required(["input", "stdin"])
 ```
 
 ```bash
