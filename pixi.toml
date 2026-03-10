@@ -54,5 +54,13 @@ build = """pixi run package \
 && mojo build -I src examples/yu.mojo -o yu \
 """
 
+# run (debug mode) example binaries
+debug = """pixi run package \
+&& mojo run -I src -D ASSERT=all examples/mgrep.mojo \
+&& mojo run -I src -D ASSERT=all examples/mgit.mojo \
+&& mojo run -I src -D ASSERT=all examples/demo.mojo \
+&& mojo run -I src -D ASSERT=all examples/yu.mojo \
+"""
+
 # clean build artifacts
 clean = "rm -f argmojo.mojopkg mgrep mgit demo yu"

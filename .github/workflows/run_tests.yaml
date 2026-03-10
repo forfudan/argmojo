@@ -75,3 +75,19 @@ jobs:
             echo "=== test run crashed, retrying in 5s... ==="
             sleep 5
           done
+
+      - name: Run example binaries in debug mode (catches developer-facing validation errors)
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== debug attempt $attempt ==="
+            if pixi run debug; then
+              echo "=== debug passed on attempt $attempt ==="
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "=== debug failed after 3 attempts ==="
+              exit 1
+            fi
+            echo "=== debug run crashed, retrying in 5s... ==="
+            sleep 5
+          done

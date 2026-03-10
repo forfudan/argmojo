@@ -888,15 +888,22 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         self._disable_punctuation_correction = True
 
-    # TODO: See whether compile-time validation is possible
-    fn mutually_exclusive(mut self, var names: List[String]):
+    fn mutually_exclusive(mut self, var names: List[String]) raises:
         """Declares a group of mutually exclusive arguments.
 
         At most one argument from each group may be provided. Parsing
         will fail if more than one is present.
 
+        All names must refer to arguments already registered via
+        ``add_argument()``.  An ``Error`` is raised immediately if any
+        name is unknown, so that typos are caught during command
+        construction rather than at end-user runtime.
+
         Args:
             names: The internal names of the arguments in the group.
+
+        Raises:
+            Error: If any name in the group is not a registered argument.
 
         Example:
 
@@ -909,16 +916,34 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.mutually_exclusive(format_excl^)
         ```
         """
+        for ni in range(len(names)):
+            var found = False
+            for ai in range(len(self.args)):
+                if self.args[ai].name == names[ni]:
+                    found = True
+                    break
+            if not found:
+                raise Error(
+                    "mutually_exclusive(): unknown argument '" + names[ni] + "'"
+                )
         self._exclusive_groups.append(names^)
 
-    fn required_together(mut self, var names: List[String]):
+    fn required_together(mut self, var names: List[String]) raises:
         """Declares a group of arguments that must be provided together.
 
         If any argument from the group is provided, all others in the
         group must also be provided. Parsing will fail otherwise.
 
+        All names must refer to arguments already registered via
+        ``add_argument()``.  An ``Error`` is raised immediately if any
+        name is unknown, so that typos are caught during command
+        construction rather than at end-user runtime.
+
         Args:
             names: The internal names of the arguments in the group.
+
+        Raises:
+            Error: If any name in the group is not a registered argument.
 
         Example:
 
@@ -931,16 +956,34 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.required_together(auth_group^)
         ```
         """
+        for ni in range(len(names)):
+            var found = False
+            for ai in range(len(self.args)):
+                if self.args[ai].name == names[ni]:
+                    found = True
+                    break
+            if not found:
+                raise Error(
+                    "required_together(): unknown argument '" + names[ni] + "'"
+                )
         self._required_groups.append(names^)
 
-    fn one_required(mut self, var names: List[String]):
+    fn one_required(mut self, var names: List[String]) raises:
         """Declares a group where at least one argument must be provided.
 
         Parsing will fail if none of the arguments in the group are
         present on the command line.
 
+        All names must refer to arguments already registered via
+        ``add_argument()``.  An ``Error`` is raised immediately if any
+        name is unknown, so that typos are caught during command
+        construction rather than at end-user runtime.
+
         Args:
             names: The internal names of the arguments in the group.
+
+        Raises:
+            Error: If any name in the group is not a registered argument.
 
         Example:
 
@@ -952,17 +995,35 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.one_required(["json", "yaml"])
         ```
         """
+        for ni in range(len(names)):
+            var found = False
+            for ai in range(len(self.args)):
+                if self.args[ai].name == names[ni]:
+                    found = True
+                    break
+            if not found:
+                raise Error(
+                    "one_required(): unknown argument '" + names[ni] + "'"
+                )
         self._one_required_groups.append(names^)
 
-    fn required_if(mut self, target: String, condition: String):
+    fn required_if(mut self, target: String, condition: String) raises:
         """Declares that an argument is required when another is present.
 
         When ``condition`` is provided on the command line, ``target``
         must also be provided.  Parsing will fail otherwise.
 
+        Both ``target`` and ``condition`` must refer to arguments already
+        registered via ``add_argument()``.  An ``Error`` is raised
+        immediately if either name is unknown, so that typos are caught
+        during command construction rather than at end-user runtime.
+
         Args:
             target: The name of the argument that becomes required.
             condition: The name of the argument that triggers the requirement.
+
+        Raises:
+            Error: If either name is not a registered argument.
 
         Example:
 
@@ -974,6 +1035,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.required_if("output", "save")
         ```
         """
+        var checks: List[String] = [target, condition]
+        for ci in range(len(checks)):
+            var found = False
+            for ai in range(len(self.args)):
+                if self.args[ai].name == checks[ci]:
+                    found = True
+                    break
+            if not found:
+                raise Error(
+                    "required_if(): unknown argument '" + checks[ci] + "'"
+                )
         var pair: List[String] = [target, condition]
         self._conditional_reqs.append(pair^)
 
