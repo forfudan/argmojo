@@ -22,6 +22,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 10. **CJK punctuation auto-correction.** Common CJK punctuation outside the fullwidth ASCII range is also corrected — for example, em-dash (`——verbose`) is converted to `--verbose`. This runs as a separate pass after fullwidth correction. Disabled via `disable_punctuation_correction()` (PR #16).
 11. **Argument groups in help.** Add `.group["name"]()` builder method on `Argument`. Arguments assigned to the same group are displayed under a dedicated heading in `--help` output, in first-appearance order. Ungrouped arguments remain under the default "Options:" heading. Persistent arguments are collected under "Global Options:" as before (PR #17).
 12. **Value-name wrapping control.** Change `.value_name()` to accept compile-time parameters: `.value_name["NAME"]()` or `.value_name["NAME", False]()`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
+13. **Registration-time validation for group constraints.** `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` now validate argument names against `self.args` at the moment they are called. An `Error` is raised immediately if any name is unknown, empty lists are rejected, and duplicates are silently deduplicated. `required_if()` additionally rejects self-referential rules (`target == condition`). This catches developer typos on the very first `mojo run`, without waiting for end-user input (PR #22).
 
 ### 🦋 Changed in v0.4.0
 
@@ -41,6 +42,11 @@ Comment out unreleased changes here. This file will be edited just before each r
 - Fix cross-library comparison: click is described as "Python CLI framework" instead of incorrectly saying "built on top of argparse" (PR #12, review feedback).
 - Reject `.require_equals()` / `.default_if_no_value()` combined with `.number_of_values[N]()` at `add_argument()` time with a clear error (PR #12, review feedback).
 
+### 🛡️ Validation improvements in v0.4.0
+
+- **Compile-time `StringLiteral` parameters.** Builder methods that accept fixed, known values (`.long[]`, `.short[]`, `.choice[]`, `.default[]`, `.delimiter[]`, `.deprecated[]`, `.default_if_no_value[]`, `.group[]`, `.alias_name[]`, `.value_name[]`, `header_color[]`, `arg_color[]`, `warn_color[]`, `error_color[]`, `.max[]`, `.range[]`, `.number_of_values[]`, `response_file_max_depth[]`) now use compile-time `StringLiteral` or `Int` parameters. Invalid values are rejected by the compiler before a binary is produced (PR #18, and earlier PRs).
+- **Registration-time name validation.** `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` now raise an `Error` immediately if any referenced argument name is not registered. Empty lists are rejected and duplicates are deduplicated. `required_if()` rejects self-referential rules. This matches the existing pattern in `implies()` (PR #22).
+
 ### 📚 Documentation and testing in v0.4.0
 
 - Add `tests/test_const_require_equals.mojo` with 30 tests covering default_if_no_value, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
@@ -48,6 +54,9 @@ Comment out unreleased changes here. This file will be edited just before each r
 - Add `tests/test_remainder_known.mojo` with 18 tests covering remainder positionals, `parse_known_arguments()`, `allow_hyphen_values()`, and the `value_name` rename (PR #13).
 - Add `tests/test_fullwidth.mojo` with 30 tests covering full-width → half-width auto-correction and CJK punctuation correction, including utility functions, fullwidth flags, equals syntax, embedded fullwidth spaces, opt-out, choices validation, merged short flags, subcommand dispatch, parse_known_arguments, and CJK punctuation em-dash correction (PR #15, #16).
 - Add `tests/test_groups_help.mojo` with 25 tests covering argument groups in help output and value-name wrapping control, including basic grouping, multiple groups, independent padding, hidden arguments in groups, groups with subcommands, wrapped/unwrapped value names with append/nargs/require_equals/default_if_no_value, and coloured output (PR #17).
+- Add 5 tests to `tests/test_groups.mojo` covering registration-time validation: unknown argument detection for `mutually_exclusive`, `required_together`, `one_required`, and `required_if` (both target and condition) (PR #22).
+- Add Developer Validation section to user manual documenting the two-layer validation model (compile-time `StringLiteral` + runtime registration-time `raises`) with recommended workflow (PR #22).
+- Add `pixi run debug` task that runs all examples under `-D ASSERT=all` with `--help` to exercise registration-time validation in CI (PR #22).
 
 ---
 

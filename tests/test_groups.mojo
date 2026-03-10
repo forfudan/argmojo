@@ -246,8 +246,7 @@ fn test_one_required_multiple_provided() raises:
     command.add_argument(
         Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
-    var group: List[String] = ["json", "yaml"]
-    command.one_required(group^)
+    command.one_required(["json", "yaml"])
 
     # Both provided — one_required is satisfied (it only requires at least one).
     var args: List[String] = ["test", "--json", "--yaml"]
@@ -265,8 +264,7 @@ fn test_one_required_none_provided() raises:
     command.add_argument(
         Argument("yaml", help="YAML output").long["yaml"]().flag()
     )
-    var group: List[String] = ["json", "yaml"]
-    command.one_required(group^)
+    command.one_required(["json", "yaml"])
 
     var args: List[String] = ["test"]
     var caught = False
@@ -299,8 +297,7 @@ fn test_one_required_with_value_args() raises:
     command.add_argument(
         Argument("stdin", help="Read from stdin").long["stdin"]().flag()
     )
-    var group: List[String] = ["input", "stdin"]
-    command.one_required(group^)
+    command.one_required(["input", "stdin"])
 
     # Providing --input satisfies the group.
     var args: List[String] = ["test", "--input", "data.txt"]
@@ -695,6 +692,131 @@ fn test_conditional_req_error_uses_display_names() raises:
             msg="Should show '--save' not 'do-save'",
         )
     assert_true(caught, msg="Should raise error")
+
+
+# ===------------------------------------------------------------------=== #
+# Registration-time validation: unknown argument names
+# ===------------------------------------------------------------------=== #
+
+
+fn test_mutually_exclusive_unknown_arg() raises:
+    """Tests that mutually_exclusive() rejects unknown argument names."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long["json"]().flag()
+    )
+
+    var caught = False
+    try:
+        var group: List[String] = ["json", "nonexistent"]
+        command.mutually_exclusive(group^)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+        assert_true(
+            "nonexistent" in msg,
+            msg="error should mention the bad name",
+        )
+    assert_true(caught, msg="unknown arg should raise an error")
+
+
+fn test_required_together_unknown_arg() raises:
+    """Tests that required_together() rejects unknown argument names."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("username", help="User").long["username"]())
+
+    var caught = False
+    try:
+        var group: List[String] = ["username", "nonexistent"]
+        command.required_together(group^)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+        assert_true(
+            "nonexistent" in msg,
+            msg="error should mention the bad name",
+        )
+    assert_true(caught, msg="unknown arg should raise an error")
+
+
+fn test_one_required_unknown_arg() raises:
+    """Tests that one_required() rejects unknown argument names."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("json", help="JSON output").long["json"]().flag()
+    )
+
+    var caught = False
+    try:
+        command.one_required(["json", "nonexistent"])
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+        assert_true(
+            "nonexistent" in msg,
+            msg="error should mention the bad name",
+        )
+    assert_true(caught, msg="unknown arg should raise an error")
+
+
+fn test_required_if_unknown_target() raises:
+    """Tests that required_if() rejects unknown target argument."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("save", help="Save results").long["save"]().flag()
+    )
+
+    var caught = False
+    try:
+        command.required_if("nonexistent", "save")
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+        assert_true(
+            "nonexistent" in msg,
+            msg="error should mention the bad name",
+        )
+    assert_true(caught, msg="unknown target should raise an error")
+
+
+fn test_required_if_unknown_condition() raises:
+    """Tests that required_if() rejects unknown condition argument."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output path").long["output"]()
+    )
+
+    var caught = False
+    try:
+        command.required_if("output", "nonexistent")
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "unknown" in String.lower(msg),
+            msg="error should mention 'unknown'",
+        )
+        assert_true(
+            "nonexistent" in msg,
+            msg="error should mention the bad name",
+        )
+    assert_true(caught, msg="unknown condition should raise an error")
 
 
 fn main() raises:

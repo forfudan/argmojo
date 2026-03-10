@@ -84,6 +84,8 @@ These features appear across multiple libraries and depend only on string operat
 | CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
 | CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
+| Comptime `StringLiteral` params    | —        | —     | —     | ✓    | clap derive macros           | **Done**      |
+| Registration-time name validation  | —        | —     | —     | ✓    | clap panic on unknown ID     | **Done**      |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase unknown |
 | Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros         | Phase unknown |
 | Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection          | Phase unknown |
@@ -231,6 +233,8 @@ examples/
 | CJK-aware help formatting (`_display_width` for column alignment)                                     | ✓      | ✓     |
 | Full-width → half-width auto-correction (fullwidth ASCII + `U+3000` space)                            | ✓      | ✓     |
 | CJK punctuation auto-correction (em-dash `U+2014` → hyphen-minus)                                     | ✓      | ✓     |
+| Compile-time `StringLiteral` builder params (`.long[]`, `.short[]`, `.choice[]`, colours, etc.)       | ✓      | —     |
+| Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 

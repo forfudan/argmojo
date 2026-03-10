@@ -81,6 +81,10 @@ from argmojo import Argument, Command
   - [Generating a Script Programmatically](#generating-a-script-programmatically)
   - [Installing Completions](#installing-completions)
   - [What Gets Completed](#what-gets-completed)
+- [Developer Validation](#developer-validation)
+  - [Compile-Time Validation](#compile-time-validation)
+  - [Runtime Registration Validation](#runtime-registration-validation)
+  - [Recommended Workflow](#recommended-workflow)
 - [Cross-Library Method Name Reference](#cross-library-method-name-reference)
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
   - [Command-Level Constraint Methods](#command-level-constraint-methods)
@@ -101,6 +105,10 @@ from argmojo import Argument, Command
   - [Generating a Script Programmatically](#generating-a-script-programmatically)
   - [Installing Completions](#installing-completions)
   - [What Gets Completed](#what-gets-completed)
+- [Developer Validation](#developer-validation)
+  - [Compile-Time Validation](#compile-time-validation)
+  - [Runtime Registration Validation](#runtime-registration-validation)
+  - [Recommended Workflow](#recommended-workflow)
 - [Cross-Library Method Name Reference](#cross-library-method-name-reference)
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
   - [Command-Level Constraint Methods](#command-level-constraint-methods)
@@ -380,16 +388,16 @@ Argument("name", help="...")
 ║       └── (implies .allow_hyphen_values())
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name["FILE"]()             display name in help      (value / positional)
-║   └── [wrapped=False]               wrap in <> (default); [False] = bare
-║   .group["Network"]()               section heading in help
-║                                     (named options only; ignored for positionals)
-║   .hidden()                         hide from --help          (any)
+║   .value_name["FILE"]()                       display name in help      (value / positional)
+║   └── [wrapped=False]                         wrap in <> (default); [False] = bare
+║   .group["Network"]()                         section heading in help
+║                                               (named options only; ignored for positionals)
+║   .hidden()                                   hide from --help          (any)
 ║   .alias_name["alt"]().alias_name["other"]()  alternative --names       (named only)
-║   .deprecated["msg"]()              deprecation warning       (any)
-║   .persistent()                     inherit to subcommands    (named only)
-║   .default_if_no_value["val"]()     default-if-no-value       (value only)
-║   .require_equals()                 force --key=value syntax  (named value only)
+║   .deprecated["msg"]()                        deprecation warning       (any)
+║   .persistent()                               inherit to subcommands    (named only)
+║   .default_if_no_value["val"]()               default-if-no-value       (value only)
+║   .require_equals()                           force --key=value syntax  (named value only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -1318,8 +1326,7 @@ myapp --json --yaml        # Error: Arguments are mutually exclusive: '--json', 
 ```mojo
 command.add_argument(Argument("input", help="Input file").long["input"]().short["i"]())
 command.add_argument(Argument("stdin", help="Read from stdin").long["stdin"]().flag())
-var source: List[String] = ["input", "stdin"]
-command.one_required(source^)
+command.one_required(["input", "stdin"])
 ```
 
 ```bash
@@ -1335,10 +1342,8 @@ myapp                      # Error: At least one of the following arguments is r
 You can declare multiple groups. Each is validated independently:
 
 ```mojo
-var format_group: List[String] = ["json", "yaml"]
-var source_group: List[String] = ["input", "stdin"]
-command.one_required(format_group^)
-command.one_required(source_group^)
+command.one_required(["json", "yaml"])
+command.one_required(["input", "stdin"])
 ```
 
 ```bash
@@ -3051,6 +3056,82 @@ The generated scripts cover the full command tree:
 | Persistent (global) flags         | Yes (root level) | Inherited flags appear in the root command's completions             |
 
 > **Note:** Negatable flags (`--color` / `--no-color`) — the `--no-X` form is **not** separately listed in completions. The base `--color` flag is completed; users type `--no-` manually. This matches the behaviour of other CLI frameworks.
+
+## Developer Validation
+
+ArgMojo provides **two layers of validation** to catch developer mistakes as early as possible — before end users ever see them.
+
+### Compile-Time Validation
+
+All `Argument` builder methods that accept fixed, known values use **compile-time parameters** (`StringLiteral`). The Mojo compiler rejects invalid values during `mojo build`, so the binary is never produced:
+
+```mojo
+# ✓ Valid — compiles successfully
+Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag()
+
+# ✗ Compile error — "REED" is not a valid colour name
+command.header_color["REED"]()   # caught by constrained[] at compile time
+```
+
+Methods validated at compile time include:
+
+| Method                         | What is checked                             |
+| ------------------------------ | ------------------------------------------- |
+| `.long[name]()`                | Long option name is a `StringLiteral`       |
+| `.short[ch]()`                 | Short option character is a `StringLiteral` |
+| `.choice[val]()`               | Choice value is a `StringLiteral`           |
+| `.default[val]()`              | Default value is a `StringLiteral`          |
+| `.value_name[name]()`          | Value placeholder is a `StringLiteral`      |
+| `.max[N]()`                    | Count ceiling is a positive `Int`           |
+| `.number_of_values[N]()`       | Value count is a positive `Int`             |
+| `.range[min, max]()`           | Range bounds are valid `Int` values         |
+| `header_color[name]()`         | Colour name is one of the accepted names    |
+| `arg_color[name]()`            | Same as above                               |
+| `warn_color[name]()`           | Same as above                               |
+| `error_color[name]()`          | Same as above                               |
+| `response_file_max_depth[N]()` | Depth is a positive `Int`                   |
+
+### Runtime Registration Validation
+
+Some `Command`-level methods accept **argument names as strings** to define group constraints or relationships. Because the set of registered arguments is built dynamically at runtime (via `add_argument()`), these names cannot be validated at compile time.
+
+Instead, ArgMojo validates them **at registration time** — the moment you call the method, not when the end user provides input. If any name does not match a registered argument, an `Error` is raised immediately:
+
+```mojo
+var command = Command("myapp", "A sample application")
+command.add_argument(Argument("json", help="JSON output").long["json"]().flag())
+command.add_argument(Argument("yaml", help="YAML output").long["yaml"]().flag())
+
+# ✓ Valid — both names are registered
+command.one_required(["json", "yaml"])
+
+# ✗ Runtime Error — "ymal" is not a registered argument
+# Error: one_required(): unknown argument 'ymal'
+command.one_required(["json", "ymal"])   # typo caught on first execution
+```
+
+This error fires **every time the program starts**, during command construction, regardless of what arguments the end user passes. The developer sees it on their very first `mojo run`.
+
+Methods validated at registration time:
+
+| Method                           | What is checked                                      |
+| -------------------------------- | ---------------------------------------------------- |
+| `mutually_exclusive(names)`      | All names exist in `self.args`                       |
+| `required_together(names)`       | All names exist in `self.args`                       |
+| `one_required(names)`            | All names exist in `self.args`                       |
+| `required_if(target, condition)` | Both names exist in `self.args`                      |
+| `implies(trigger, implied)`      | Both names exist, implied is a flag/count, no cycles |
+
+### Recommended Workflow
+
+To ensure your CLI definition is free of developer errors:
+
+1. **Compile your application** (`mojo build …`) — catches compile-time parameter errors (wrong colour names, invalid builder values, etc.).
+2. **Run the executable once** (even without arguments) — catches registration-time errors (typos in argument names passed to group constraints).
+
+Note that a single `mojo run` is enough (it sequentially builds and then executes the binary).
+
+> **ArgMojo contributors:** the repository provides `pixi run debug`, which packages the library and runs every example under `-D ASSERT=all` with `--help`. This exercises both compile-time and registration-time validation in one step. The CI workflow runs `pixi run package`, `pixi run test`, and `pixi run debug`, so pull requests automatically catch both classes of errors.
 
 ## Cross-Library Method Name Reference
 
