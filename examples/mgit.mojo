@@ -51,13 +51,13 @@ fn main() raises:
     app.add_argument(
         Argument("git-dir", help="Set the path to the repository (.git)")
         .long["git-dir"]()
-        .value_name("PATH")
+        .value_name["PATH"]()
         .persistent()
     )
     app.add_argument(
         Argument("work-tree", help="Set the path to the working tree")
         .long["work-tree"]()
-        .value_name("PATH")
+        .value_name["PATH"]()
         .persistent()
     )
 
@@ -77,7 +77,7 @@ fn main() raises:
     clone.add_argument(
         Argument("depth", help="Create a shallow clone with N commits")
         .long["depth"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[1, 999999]()
     )
     clone.add_argument(
@@ -103,23 +103,23 @@ fn main() raises:
     init.add_argument(
         Argument("directory", help="Directory to initialize")
         .positional()
-        .default(".")
+        .default["."]()
     )
     init.add_argument(
         Argument("bare", help="Create a bare repository").long["bare"]().flag()
     )
-    var templates: List[String] = ["default", "minimal"]
     init.add_argument(
         Argument("template", help="Template directory")
         .long["template"]()
-        .choices(templates^)
-        .default("default")
+        .choice["default"]()
+        .choice["minimal"]()
+        .default["default"]()
     )
     init.add_argument(
         Argument("initial-branch", help="Name for the initial branch")
         .long["initial-branch"]()
         .short["b"]()
-        .default("main")
+        .default["main"]()
     )
     app.add_subcommand(init^)
 
@@ -180,13 +180,13 @@ fn main() raises:
     commit.add_argument(
         Argument("author", help="Override the commit author")
         .long["author"]()
-        .value_name("NAME")
+        .value_name["NAME"]()
     )
     # Deprecated flag
     commit.add_argument(
         Argument("cleanup-mode", help="Set cleanup mode (legacy)")
         .long["cleanup-mode"]()
-        .deprecated("Use --cleanup instead")
+        .deprecated["Use --cleanup instead"]()
     )
     var commit_aliases: List[String] = ["ci"]
     commit.command_aliases(commit_aliases^)
@@ -195,7 +195,7 @@ fn main() raises:
     # ── push ─────────────────────────────────────────────────────────────
     var push = Command("push", "Update remote refs along with objects")
     push.add_argument(
-        Argument("remote", help="Remote name").positional().default("origin")
+        Argument("remote", help="Remote name").positional().default["origin"]()
     )
     push.add_argument(
         Argument("refspec", help="Branch or refspec to push").positional()
@@ -234,7 +234,7 @@ fn main() raises:
     # ── pull ─────────────────────────────────────────────────────────────
     var pull = Command("pull", "Fetch from and integrate with a remote")
     pull.add_argument(
-        Argument("remote", help="Remote name").positional().default("origin")
+        Argument("remote", help="Remote name").positional().default["origin"]()
     )
     pull.add_argument(Argument("branch", help="Branch to pull").positional())
     # Mutually exclusive: merge strategy
@@ -271,23 +271,23 @@ fn main() raises:
         Argument("number", help="Limit number of commits shown")
         .long["number"]()
         .short["n"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[1, 999999]()
     )
     log.add_argument(
         Argument("author", help="Filter by author")
         .long["author"]()
-        .value_name("PATTERN")
+        .value_name["PATTERN"]()
     )
     log.add_argument(
         Argument("since", help="Show commits after date")
         .long["since"]()
-        .value_name("DATE")
+        .value_name["DATE"]()
     )
     log.add_argument(
         Argument("until", help="Show commits before date")
         .long["until"]()
-        .value_name("DATE")
+        .value_name["DATE"]()
     )
     # Append: multiple --grep patterns
     log.add_argument(
@@ -296,19 +296,15 @@ fn main() raises:
         .append()
     )
     # Aliases
-    var format_aliases: List[String] = ["pretty"]
-    var format_choices: List[String] = [
-        "oneline",
-        "short",
-        "medium",
-        "full",
-        "fuller",
-    ]
     log.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
-        .aliases(format_aliases^)
-        .choices(format_choices^)
+        .alias_name["pretty"]()
+        .choice["oneline"]()
+        .choice["short"]()
+        .choice["medium"]()
+        .choice["full"]()
+        .choice["fuller"]()
     )
     app.add_subcommand(log^)
 
@@ -401,11 +397,10 @@ fn main() raises:
         Argument("staged", help="Show staged changes").long["staged"]().flag()
     )
     # Alias for --staged
-    var cached_aliases: List[String] = ["staged"]
     diff.add_argument(
         Argument("cached", help="Synonym for --staged")
         .long["cached"]()
-        .aliases(cached_aliases^)
+        .alias_name["staged"]()
         .flag()
         .hidden()
     )
@@ -424,7 +419,7 @@ fn main() raises:
         Argument("unified", help="Generate diffs with N lines of context")
         .long["unified"]()
         .short["U"]()
-        .value_name("N")
+        .value_name["N"]()
     )
     app.add_subcommand(diff^)
 

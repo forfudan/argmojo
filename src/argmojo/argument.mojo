@@ -21,12 +21,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Key-value option  →  result.get_string("output")
     _ = Argument("output", help="...").long["output"]().short["o"]()
     # Key-value with default  →  result.get_string("format")
-    _ = Argument("format", help="...").long["format"]().default("json")
+    _ = Argument("format", help="...").long["format"]().default["json"]()
     # Restrict to a set of values
-    _ = Argument("level", help="...").long["level"]().choices(["debug","info","warn"])
+    _ = Argument("level", help="...").long["level"]().choice["debug"]().choice["info"]().choice["warn"]()
     # Positional (matched by order)  →  result.get_string("path")
     _ = Argument("path", help="...").positional().required()
-    _ = Argument("dest", help="...").positional().default(".")
+    _ = Argument("dest", help="...").positional().default["."]()
     # Count flag  (-vvv → 3)  →  result.get_count("verbose")
     _ = Argument("verbose", help="...").long["verbose"]().short["v"]().count()
     # Count flag with ceiling  (-vvvvv capped at 3)
@@ -36,7 +36,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Append / collect  (--tag x --tag y → ["x","y"])  →  result.get_list("tag")
     _ = Argument("tag", help="...").long["tag"]().short["t"]().append()
     # Value delimiter  (--env a,b,c → ["a","b","c"])  →  result.get_list("env")
-    _ = Argument("env", help="...").long["env"]().delimiter(",")
+    _ = Argument("env", help="...").long["env"]().delimiter[","]()
     # Multi-value  (--point 1 2 → ["1","2"])  →  result.get_list("point")
     _ = Argument("point", help="...").long["point"]().number_of_values[2]()
     # Numeric range validation  →  result.get_int("port")
@@ -46,15 +46,15 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long["define"]().short["D"]().map_option()
     # Aliases  (--colour and --color both work)
-    _ = Argument("colour", help="...").long["colour"]().aliases(["color"])
+    _ = Argument("colour", help="...").long["colour"]().alias_name["color"]()
     # Deprecated argument  (still works but prints a warning to stderr)
-    _ = Argument("old", help="...").long["old-flag"]().deprecated("Use --new-flag instead")
+    _ = Argument("old", help="...").long["old-flag"]().deprecated["Use --new-flag instead"]()
     # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
-    _ = Argument("compress", help="...").long["compress"]().short["c"]().default_if_no_value("gzip")
+    _ = Argument("compress", help="...").long["compress"]().short["c"]().default_if_no_value["gzip"]()
     # Require equals syntax  (--output=file.txt OK, --output file.txt rejected)
     _ = Argument("output", help="...").long["output"]().require_equals()
     # Display helpers
-    _ = Argument("file", help="...").long["file"]().value_name("PATH")  # help: --file PATH
+    _ = Argument("file", help="...").long["file"]().value_name["PATH"]()  # help: --file PATH
     _ = Argument("internal", help="...").long["internal"]().hidden()  # hidden from help
     ```
     """
@@ -386,10 +386,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_flag = False
         return self^
 
-    fn default(var self, value: String) -> Self:
+    fn default[value: StringLiteral](var self) -> Self:
         """Sets a default value for this argument.
 
-        Args:
+        Parameters:
             value: The default value.
 
         Returns:
@@ -399,19 +399,25 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._has_default = True
         return self^
 
-    fn choices(var self, var values: List[String]) -> Self:
-        """Restricts the allowed values for this argument.
+    fn choice[value: StringLiteral](var self) -> Self:
+        """Adds an allowed value for this argument.
 
-        Args:
-            values: The list of allowed values.
+        Chain multiple calls to build the full set of choices:
+        ``.choice["json"]().choice["csv"]().choice["table"]()``.
+        Parameters:
+            value: An allowed value.
 
         Returns:
-            Self with the choices set.
+            Self with the choice added.
+
+        Constraints:
+            The value must not be empty.
         """
-        self._choice_values = values^
+        constrained[len(value) > 0, "choice value must not be empty"]()
+        self._choice_values.append(value)
         return self^
 
-    fn value_name[wrapped: Bool = True](var self, name: String) -> Self:
+    fn value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
         """Sets the display name for the value in help text.
 
         When *wrapped* is True (default), the name is displayed inside angle
@@ -419,14 +425,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``--output FILE``.
 
         Parameters:
+            name: The display name of the value (e.g., "FILE" for --output).
             wrapped: Wrap the display name in ``<>`` (default True).
-
-        Args:
-            name: The display name.
 
         Returns:
             Self with the value_name set.
+
+        Constraints:
+            The value name must be a non-empty string.
         """
+        constrained[len(name) > 0, "value name must be a non-empty string"]()
         self._value_name = name
         self._value_name_wrapped = wrapped
         return self^
@@ -517,25 +525,34 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    # TODO: Allow auto-translating full-width punctuation to ASCII for delimiter.
-    # For example
-    # "，" → ","
-    # "；" → ";"
-    # "：" → ":"
-    fn delimiter(var self, sep: String) -> Self:
+    fn delimiter[sep: StringLiteral](var self) -> Self:
         """Sets a value delimiter for splitting a single value into multiple.
 
         When set, each provided value is split by the delimiter, and each
         piece is added to the list individually.  Implies ``.append()``.
-        For example, ``.delimiter(",")`` causes ``--tag a,b,c`` to produce
+        For example, ``.delimiter[","]()`` causes ``--tag a,b,c`` to produce
         ``["a", "b", "c"]``.
 
-        Args:
-            sep: The delimiter string (e.g., ",").
+        When fullwidth correction is enabled (the default), fullwidth
+        equivalents of the delimiter in user input are auto-corrected
+        before splitting.  For example, ``a，b，c`` is treated as
+        ``a,b,c`` when the delimiter is ``","``.
+
+        Parameters:
+            sep: The delimiter character (e.g., ``","``).
 
         Returns:
             Self with the delimiter and append mode set.
+
+        Constraints:
+            The separator is validated at compile time: it must be one of
+            ``,`` | ``;`` | ``:`` | ``|``.
         """
+        constrained[
+            sep == "," or sep == ";" or sep == ":" or sep == "|",
+            "delimiter must be one of: , ; : |",
+        ]()
+
         self._delimiter_char = sep
         self._is_append = True
         return self^
@@ -620,34 +637,60 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_append = True
         return self^
 
-    fn aliases(var self, var names: List[String]) -> Self:
-        """Sets alternative long names for this argument.
+    fn alias_name[name: StringLiteral](var self) -> Self:
+        """Sets an alternative long name for this argument.
 
         Any alias resolves to this argument during parsing.  For
-        example, ``.long["colour"]().aliases(["color"])`` makes both
-        ``--colour`` and ``--color`` accepted.
+        example, ``.long["colour"]().alias_name["color"]()`` makes both
+        ``--colour`` and ``--color`` accepted.  Chain multiple calls
+        for several aliases:
+        ``.alias_name["out"]().alias_name["fmt"]()``.
 
-        Args:
-            names: The alternative long option names (without ``--``).
+        Parameters:
+            name: The alternative long option name (without ``--``).
 
         Returns:
-            Self with aliases registered.
+            Self with the alias registered.
+
+        Constraints:
+            The alias is validated at compile time (same rules as
+            ``.long[]``): must not be empty, must not start with ``-``,
+            and must not contain ``=``.
         """
-        self._alias_names = names^
+        constrained[
+            len(name) > 0,
+            "alias name must not be empty",
+        ]()
+        constrained[
+            not name.startswith("-"),
+            "alias name must not start with '-'; omit the '--' prefix",
+        ]()
+        constrained[
+            name.find("=") == -1,
+            (
+                "alias name must not contain '='; it conflicts with"
+                " --key=value syntax"
+            ),
+        ]()
+        self._alias_names.append(name)
         return self^
 
-    fn deprecated(var self, message: String) -> Self:
+    fn deprecated[message: StringLiteral](var self) -> Self:
         """Marks this argument as deprecated.
 
         When the user provides a deprecated argument, a warning is
         printed to stderr but parsing continues normally.
 
-        Args:
+        Parameters:
             message: The deprecation message (e.g., "Use --format instead").
 
         Returns:
             Self marked as deprecated.
+
+        Constraints:
+            The message must not be empty.
         """
+        constrained[len(message) > 0, "deprecation message must not be empty"]()
         self._deprecated_msg = message
         return self^
 
@@ -678,7 +721,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._is_persistent = True
         return self^
 
-    fn default_if_no_value(var self, value: String) -> Self:
+    fn default_if_no_value[value: StringLiteral](var self) -> Self:
         """Sets a default value for when the option appears without an explicit value.
 
         When set, the option may appear without a value.  If no value
@@ -695,19 +738,26 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         explicit value for the option, the user must write
         ``--compress=val``.
 
-        Examples::
-
-            # --compress        → "gzip"  (default-if-no-value)
-            # --compress=bzip2  → "bzip2" (explicit)
-            # -c                → "gzip"  (default-if-no-value)
-            # -cbzip2           → "bzip2" (attached)
-            _ = Argument("compress", help="...").long["compress"]().short["c"]().default_if_no_value("gzip")
-
-        Args:
+        Parameters:
             value: The value to use when no explicit value is given.
 
         Returns:
             Self with the default-if-no-value set.
+
+        Examples:
+
+        ```mojo
+        # --compress        → "gzip"  (default-if-no-value)
+        # --compress=bzip2  → "bzip2" (explicit)
+        # -c                → "gzip"  (default-if-no-value)
+        # -cbzip2           → "bzip2" (attached)
+
+        from argmojo import Argument
+        _ = (Argument("compress", help="...")
+            .long["compress"]()
+            .short["c"]()
+            .default_if_no_value["gzip"]())
+        ```
         """
         self._default_if_no_value = value
         self._has_default_if_no_value = True
@@ -795,7 +845,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._allow_hyphen_values = True
         return self^
 
-    fn group(var self, name: String) -> Self:
+    fn group[name: StringLiteral](var self) -> Self:
         """Assigns this argument to a named help-output group.
 
         Arguments sharing the same group name are displayed together
@@ -803,12 +853,16 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         ``Network:`` or ``Authentication:``).  Ungrouped arguments
         remain under the default ``Options:`` heading.
 
-        Args:
+        Parameters:
             name: The group name (used as the section heading).
 
         Returns:
             Self with the group set.
+
+        Constraints:
+            The group name must not be empty.
         """
+        constrained[len(name) > 0, "group name must not be empty"]()
         self._group = name
         return self^
 

@@ -179,7 +179,7 @@ Positional arguments are matched **by order**, not by name. They do not start wi
 
 ```mojo
 command.add_argument(Argument("pattern", help="Search pattern").positional().required())
-command.add_argument(Argument("path",    help="Search path").positional().default("."))
+command.add_argument(Argument("path",    help="Search path").positional().default["."]())
 ```
 
 ```bash
@@ -274,10 +274,10 @@ When an argument is not provided on the command line, its default value (if any)
 ```mojo
 command.add_argument(
     Argument("format", help="Output format")
-    .long["format"]().short["f"]().default("table")
+    .long["format"]().short["f"]().default["table"]()
 )
 command.add_argument(
-    Argument("path", help="Search path").positional().default(".")
+    Argument("path", help="Search path").positional().default["."]()
 )
 ```
 
@@ -308,15 +308,15 @@ Typically used for positional arguments. Named options can also be marked requir
 
 ### Aliases
 
-Register alternative long names for an argument with `.aliases()`.
-Any alias resolves to the same argument during parsing.
+Register alternative long names for an argument with `.alias_name[]()`. The alias
+is validated at compile time (same rules as `.long[]()`: not empty, no `-` prefix,
+no `=`).  Chain multiple calls for several aliases.
 
 ```mojo
-var alias_list: List[String] = ["color"]
 command.add_argument(
     Argument("colour", help="Colour theme")
         .long["colour"]()
-        .aliases(alias_list^)
+        .alias_name["color"]()
 )
 ```
 
@@ -331,14 +331,13 @@ myapp --color  red     # OK — resolved via alias, colour = "red"
 primary name and an alias share a prefix, `_find_by_long` deduplicates
 so the match is never ambiguous within a single argument.
 
-Multiple aliases are supported:
+Multiple aliases are supported by chaining:
 
 ```mojo
-var alias_list: List[String] = ["out", "fmt"]
 command.add_argument(
     Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
+        .alias_name["out"]().alias_name["fmt"]()
 )
 ```
 
@@ -356,11 +355,11 @@ Argument("name", help="...")
 ║   │
 ║   ├── [value mode] (default)             ← takes a string value
 ║   │   ├── .required()
-║   │   ├── .default("val")
-║   │   ├── .choices(["a","b","c"])
+║   │   ├── .default["val"]()
+║   │   ├── .choice["a"]().choice["b"]().choice["c"]()
 ║   │   ├── .range[1, 100]() ─── .clamp()
 ║   │   ├── .append()
-║   │   │   ├── .delimiter(",")
+║   │   │   ├── .delimiter[","]()
 ║   │   │   └── .number_of_values[2]()
 ║   │   ├── .map_option()
 ║   │   └── .allow_hyphen_values()               accept -x as a value, not option
@@ -374,23 +373,23 @@ Argument("name", help="...")
 ╠══ Positional ═════════════════════════════════════════════════════════════════
 ║   .positional()                          ← matched by position
 ║   ├── .required()
-║   ├── .default("val")
-║   ├── .choices(["a","b","c"])
+║   ├── .default["val"]()
+║   ├── .choice["a"]().choice["b"]().choice["c"]()
 ║   ├── .allow_hyphen_values()               accept -x as a value, not option
 ║   └── .remainder()                         consume ALL remaining tokens
 ║       └── (implies .allow_hyphen_values())
 ║
 ╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name("FILE")          display name in help      (value / positional)
-║   └── [wrapped=True]           wrap in <> (default); [False] = bare
-║   .group("Network")            section heading in help
-║                                  (named options only; ignored for positionals)
-║   .hidden()                    hide from --help          (any)
-║   .aliases(["alt"])            alternative --names       (named only)
-║   .deprecated("msg")           deprecation warning       (any)
-║   .persistent()                inherit to subcommands    (named only)
-║   .default_if_no_value("val")  default-if-no-value       (value only)
-║   .require_equals()            force --key=value syntax  (named value only)
+║   .value_name["FILE"]()             display name in help      (value / positional)
+║   └── [wrapped=False]               wrap in <> (default); [False] = bare
+║   .group["Network"]()               section heading in help
+║                                     (named options only; ignored for positionals)
+║   .hidden()                         hide from --help          (any)
+║   .alias_name["alt"]().alias_name["other"]()  alternative --names       (named only)
+║   .deprecated["msg"]()              deprecation warning       (any)
+║   .persistent()                     inherit to subcommands    (named only)
+║   .default_if_no_value["val"]()     default-if-no-value       (value only)
+║   .require_equals()                 force --key=value syntax  (named value only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -400,27 +399,27 @@ Argument("name", help="...")
 ║   command.implies("trigger","implied")   auto-set implied when trigger is set
 ║
 ╠══ Command-level configuration (called on Command) ════════════════════════════
-║   command.help_on_no_arguments()              show help when invoked with no args
-║   command.allow_negative_numbers()            negative tokens treated as positionals
-║   command.allow_positional_with_subcommands() allow positionals + subcommands
-║   command.add_tip("...")                      custom tip shown in help footer
-║   command.command_aliases(["co"])             alternate names for this subcommand
-║   command.hidden()                            hide subcommand from help/completions
-║   command.disable_help_subcommand()           opt out of auto-added help subcommand
+║   command.help_on_no_arguments()                show help when invoked with no args
+║   command.allow_negative_numbers()              negative tokens treated as positionals
+║   command.allow_positional_with_subcommands()   allow positionals + subcommands
+║   command.add_tip("...")                        custom tip shown in help footer
+║   command.command_aliases(["co"])               alternate names for this subcommand
+║   command.hidden()                              hide subcommand from help/completions
+║   command.disable_help_subcommand()             opt out of auto-added help subcommand
 ║   ├── Colour customisation
-║   │   command.header_color["CYAN"]()          section header colour
-║   │   command.arg_color["GREEN"]()            argument name colour
-║   │   command.warn_color["YELLOW"]()          deprecation warning colour
-║   │   command.error_color["RED"]()            error message colour
+║   │   command.header_color["CYAN"]()            section header colour
+║   │   command.arg_color["GREEN"]()              argument name colour
+║   │   command.warn_color["YELLOW"]()            deprecation warning colour
+║   │   command.error_color["RED"]()              error message colour
 ║   ├── Shell completion
-║   │   command.disable_default_completions()   disable built-in --completions
-║   │   command.completions_name("name")        custom trigger name
-║   │   command.completions_as_subcommand()     expose as subcommand instead
+║   │   command.disable_default_completions()     disable built-in --completions
+║   │   command.completions_name("name")          custom trigger name
+║   │   command.completions_as_subcommand()       expose as subcommand instead
 ║   ├── Response files
-║   │   command.response_file_prefix("@")       enable @args.txt expansion ⁵
-║   │   command.response_file_max_depth[10]()   max recursive nesting depth ⁵
+║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
+║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
 ║   └── CJK / i18n
-║       command.disable_fullwidth_correction()  disable fullwidth→halfwidth auto-fix
+║       command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
 ║       command.disable_punctuation_correction()  disable CJK punctuation correction
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
@@ -437,26 +436,26 @@ The table below shows which builder methods can be used with each argument mode.
 
 | Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
 | -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                     |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.long["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                  |      ✓      |     ✓     |     ✓      |        —        |
 | `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default("val")`                |      ✓      |     —     |     —      |        ✓        |
-| `.choices(["a","b"])`            |      ✓      |     —     |     —      |        ✓        |
+| `.default["val"]()`              |      ✓      |     —     |     —      |        ✓        |
+| `.choice["a"]().choice["b"]()`   |      ✓      |     —     |     —      |        ✓        |
 | `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
 | `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
 | `.append()`                      |      ✓      |     —     |     —      |        —        |
-| `.delimiter(",")`                |     ✓ ²     |     —     |     —      |        —        |
+| `.delimiter[","]()`              |     ✓ ²     |     —     |     —      |        —        |
 | `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
 | `.map_option()`                  |      ✓      |     —     |     —      |        —        |
 | `.negatable()`                   |      —      |     ✓     |     —      |        —        |
 | `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name("FILE")` ⁴          |      ✓      |     —     |     —      |        ✓        |
-| `.group("name")`                 |      ✓      |     ✓     |     ✓      |        —        |
+| `.value_name["FILE"]()` ⁴        |      ✓      |     —     |     —      |        ✓        |
+| `.group["name"]()`               |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.aliases(["alt"])`              |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated("msg")`             |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.alias_name["alt"]()`           |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated["msg"]()`           |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value("val")`    |      ✓      |     —     |     —      |        —        |
+| `.default_if_no_value["val"]()`  |      ✓      |     —     |     —      |        —        |
 | `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
 | `.remainder()`                   |      —      |     —     |     —      |        ✓        |
 | `.require_equals()`              |      ✓      |     —     |     —      |        —        |
@@ -711,7 +710,7 @@ If a value name is set, it replaces the default placeholder:
 
 ```mojo
 command.add_argument(
-    Argument("include", help="Include path").long["include"]().short["I"]().value_name("DIR").append()
+    Argument("include", help="Include path").long["include"]().short["I"]().value_name["DIR"]().append()
 )
 ```
 
@@ -726,10 +725,9 @@ command.add_argument(
 Choices validation is applied to each individual value:
 
 ```mojo
-var envs: List[String] = ["dev", "staging", "prod"]
 command.add_argument(
     Argument("env", help="Target environment")
-    .long["env"]().choices(envs^).append()
+    .long["env"]().choice["dev"]().choice["staging"]().choice["prod"]().append()
 )
 ```
 
@@ -751,11 +749,11 @@ This is similar to Go cobra's `StringSliceVar` and Rust clap's `value_delimiter`
 ```mojo
 command.add_argument(
     Argument("env", help="Target environments")
-    .long["env"]().short["e"]().delimiter(",")
+    .long["env"]().short["e"]().delimiter[","]()
 )
 ```
 
-Calling `.delimiter(",")` automatically implies `.append()` — you do not need to call both.
+Calling `.delimiter[","]()` automatically implies `.append()` — you do not need to call both.
 
 ---
 
@@ -798,10 +796,9 @@ for i in range(len(envs)):
 Choices are validated per piece after splitting:
 
 ```mojo
-var envs: List[String] = ["dev", "staging", "prod"]
 command.add_argument(
     Argument("env", help="Target environments")
-    .long["env"]().choices(envs^).delimiter(",")
+    .long["env"]().choice["dev"]().choice["staging"]().choice["prod"]().delimiter[","]()
 )
 ```
 
@@ -812,14 +809,14 @@ myapp --env dev,local      # Error: Invalid value 'local' for argument 'env'
 
 ---
 
-**Custom delimiter**
+**Other delimiters**
 
-Any string can be used as the delimiter:
+The allowed delimiters are `,` `;` `:` `|`. When fullwidth correction is enabled (the default), fullwidth equivalents in user input (e.g. `，` `；` `：` `｜`) are auto-corrected before splitting:
 
 ```mojo
 command.add_argument(
     Argument("path", help="Search paths")
-    .long["path"]().delimiter(";")
+    .long["path"]().delimiter[";"]()
 )
 ```
 
@@ -836,7 +833,7 @@ When a delimiter option is used multiple times, all split values accumulate:
 
 ```mojo
 command.add_argument(
-    Argument("tag", help="Tags").long["tag"]().short["t"]().append().delimiter(",")
+    Argument("tag", help="Tags").long["tag"]().short["t"]().append().delimiter[","]()
 )
 ```
 
@@ -916,9 +913,9 @@ var coords = result.get_list("point")
 Choices are validated for **each** value individually:
 
 ```mojo
-var dirs: List[String] = ["north", "south", "east", "west"]
 command.add_argument(
-    Argument("route", help="Start and end").long["route"]().number_of_values[2]().choices(dirs^)
+    Argument("route", help="Start and end").long["route"]().number_of_values[2]()
+    .choice["north"]().choice["south"]().choice["east"]().choice["west"]()
 )
 ```
 
@@ -936,7 +933,7 @@ nargs options show the placeholder repeated N times:
 ```txt
 Options:
   --point <point> <point>    X Y coordinates
-  --rgb N N N                RGB colour        (with .value_name("N"))
+  --rgb N N N                RGB colour        (with .value_name["N"]())
 ```
 
 Regular append options show `...` to indicate repeatability, while nargs
@@ -990,7 +987,7 @@ myapp --define PATH=/usr/bin:/bin
 
 ---
 
-**Delimiter** — combine with `.delimiter(",")` to pass multiple
+**Delimiter** — combine with `.delimiter[","]()` to pass multiple
 key-value pairs in a single token:
 
 ```mojo
@@ -998,7 +995,7 @@ command.add_argument(
     Argument("define", help="Define vars")
         .long["define"]()
         .map_option()
-        .delimiter(",")
+        .delimiter[","]()
 )
 ```
 
@@ -1037,10 +1034,9 @@ Options:
 Restrict an option's value to a fixed set of allowed strings. If the user provides a value not in the set, parsing fails with a clear error message.
 
 ```mojo
-var levels: List[String] = ["debug", "info", "warn", "error"]
 command.add_argument(
     Argument("log-level", help="Log level")
-    .long["log-level"]().choices(levels^).default("info")
+    .long["log-level"]().choice["debug"]().choice["info"]().choice["warn"]().choice["error"]().default["info"]()
 )
 ```
 
@@ -1083,7 +1079,7 @@ With two positional args defined:
 
 ```mojo
 command.add_argument(Argument("pattern", help="Search pattern").positional().required())
-command.add_argument(Argument("path",    help="Search path").positional().default("."))
+command.add_argument(Argument("path",    help="Search path").positional().default["."]())
 ```
 
 ```bash
@@ -1124,7 +1120,7 @@ myapp --port 65535   # OK
 ---
 
 **Append / list values** — when combined with `.append()` or
-`.delimiter(",")`, every collected value is validated individually:
+`.delimiter[","]()`, every collected value is validated individually:
 
 ```mojo
 command.add_argument(
@@ -1608,7 +1604,7 @@ app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().sh
 
 var search = Command("search", "Search for patterns")
 search.add_argument(Argument("pattern", help="Search pattern").positional().required())
-search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().value_name("N"))
+search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().value_name["N"]())
 
 var init = Command("init", "Initialise a new project")
 init.add_argument(Argument("name", help="Project name").positional().required())
@@ -1731,8 +1727,8 @@ app.add_argument(
 app.add_argument(
     Argument("output", help="Output format")
     .long["output"]().short["o"]()
-    .choices(["json", "text", "yaml"])
-    .default("text")
+    .choice["json"]().choice["text"]().choice["yaml"]()
+    .default["text"]()
     .persistent()
 )
 
@@ -1812,8 +1808,8 @@ Non-persistent root flags with the same name as child flags do **not** conflict 
 ```mojo
 app.add_argument(
     Argument("log-level", help="Log level")
-    .long["log-level"]().choices(["debug", "info", "warn", "error"])
-    .default("info").persistent()
+    .long["log-level"]().choice["debug"]().choice["info"]().choice["warn"]().choice["error"]()
+    .default["info"]().persistent()
 )
 ```
 
@@ -1979,11 +1975,11 @@ By default, custom value names are also wrapped in angle brackets, matching the 
 ```mojo
 command.add_argument(
     Argument("output", help="Output file path")
-    .long["output"]().short["o"]().value_name("FILE")
+    .long["output"]().short["o"]().value_name["FILE"]()
 )
 command.add_argument(
     Argument("max-depth", help="Maximum directory depth")
-    .long["max-depth"]().short["d"]().value_name("N")
+    .long["max-depth"]().short["d"]().value_name["N"]()
 )
 ```
 
@@ -2006,7 +2002,7 @@ command.add_argument(
 ```mojo
 command.add_argument(
     Argument("point", help="A 3D coordinate")
-    .long["point"]().number_of_values[3]().value_name[False]("COORD")
+    .long["point"]().number_of_values[3]().value_name["COORD", False]()
 )
 ```
 
@@ -2040,7 +2036,7 @@ myapp --help           # --debug-index does NOT appear in the help text
 
 ### Deprecated Arguments
 
-Mark an argument as deprecated with `.deprecated("message")`.
+Mark an argument as deprecated with `.deprecated["message"]()`.
 The argument still works normally, but a warning is printed to
 **stderr** when the user provides it.
 
@@ -2048,7 +2044,7 @@ The argument still works normally, but a warning is printed to
 command.add_argument(
     Argument("format_old", help="Legacy output format")
         .long["format-old"]()
-        .deprecated("Use --format instead")
+        .deprecated["Use --format instead"]()
 )
 ```
 
@@ -2066,7 +2062,7 @@ myapp --format-old csv
 command.add_argument(
     Argument("compat", help="Compat mode")
         .long["compat"]().short["C"]().flag()
-        .deprecated("Will be removed in 2.0")
+        .deprecated["Will be removed in 2.0"]()
 )
 ```
 
@@ -2087,7 +2083,7 @@ Options:
 
 ### Default-if-no-value
 
-Use `.default_if_no_value("value")` to make an option's value **optional**. When the option is present without an explicit value, the default-if-no-value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
+Use `.default_if_no_value["value"]()` to make an option's value **optional**. When the option is present without an explicit value, the default-if-no-value is used. When an explicit value is provided (via `=` for long options, or attached for short options), that value is used instead.
 
 `.default_if_no_value()` automatically implies `.require_equals()` for long options in the sense that `=` is required to attach an *explicit* value. A bare `--key` is still accepted and uses the default-if-no-value; `--key value` (space-separated) does *not* treat `value` as the argument to `--key` but leaves it to be parsed as a positional argument or another option. To supply an explicit value to the option itself, the user must write `--key=value`.
 
@@ -2096,7 +2092,7 @@ command.add_argument(
     Argument("compress", help="Compression algorithm")
     .long["compress"]()
     .short["c"]()
-    .default_if_no_value("gzip")
+    .default_if_no_value["gzip"]()
 )
 ```
 
@@ -2116,8 +2112,8 @@ command.add_argument(
 command.add_argument(
     Argument("compress", help="Compression algorithm")
     .long["compress"]()
-    .default_if_no_value("gzip")
-    .default("none")
+    .default_if_no_value["gzip"]()
+    .default["none"]()
 )
 # Not provided  → "none"  (default)
 # --compress    → "gzip"  (default-if-no-value)
@@ -2131,7 +2127,7 @@ Options:
       --compress[=<compress>]    Compression algorithm
 ```
 
-With `.value_name("ALGO")`:
+With `.value_name["ALGO"]()`:
 
 ```bash
 Options:
@@ -2171,20 +2167,20 @@ Options:
 
 ### Argument Groups
 
-By default, all options appear under a single "Options:" heading in `--help`. Use `.group("name")` to organise related arguments under their own section heading.
+By default, all options appear under a single "Options:" heading in `--help`. Use `.group["name"]()` to organise related arguments under their own section heading.
 
 ```mojo
 command.add_argument(
     Argument("host", help="Server hostname")
-    .long["host"]().value_name("ADDR").group("Network")
+    .long["host"]().value_name["ADDR"]().group["Network"]()
 )
 command.add_argument(
     Argument("port", help="Server port")
-    .long["port"]().short["P"]().group("Network")
+    .long["port"]().short["P"]().group["Network"]()
 )
 command.add_argument(
     Argument("output", help="Output file path")
-    .long["output"]().short["o"]().value_name("FILE").group("Output")
+    .long["output"]().short["o"]().value_name["FILE"]().group["Output"]()
 )
 command.add_argument(
     Argument("verbose", help="Increase verbosity")
@@ -2305,13 +2301,13 @@ Padding calculation is always based on the **plain-text width** (without escape 
 
 **What controls the output:**
 
-| Builder method     | Effect on help                                        |
-| ------------------ | ----------------------------------------------------- |
-| `.help("...")`     | Sets the description text for the option.             |
-| `.value_name("X")` | Replaces the default placeholder (e.g., `N`, `FILE`). |
-| `.choices()`       | Shows `{a,b,c}` in the placeholder.                   |
-| `.hidden()`        | Completely excludes the option from help.             |
-| `.required()`      | Positional args show as `<name>` instead of `[name]`. |
+| Builder method       | Effect on help                                        |
+| -------------------- | ----------------------------------------------------- |
+| `.help("...")`       | Sets the description text for the option.             |
+| `.value_name["X"]()` | Replaces the default placeholder (e.g., `N`, `FILE`). |
+| `.choice[]()`        | Shows `{a,b,c}` in the placeholder.                   |
+| `.hidden()`          | Completely excludes the option from help.             |
+| `.required()`        | Positional args show as `<name>` instead of `[name]`. |
 
 After printing help, the program exits cleanly with exit code 0.
 
@@ -2911,9 +2907,8 @@ Every `Command` automatically responds to `--completions <shell>` — just like 
 ```mojo
 var app = Command("myapp", "My application", version="1.0.0")
 app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
-app.add_argument(Argument("output", help="Output file").long["output"]().short["o"]().value_name("FILE"))
-var formats: List[String] = ["json", "csv", "table"]
-app.add_argument(Argument("format", help="Output format").long["format"]().choices(formats^))
+app.add_argument(Argument("output", help="Output file").long["output"]().short["o"]().value_name["FILE"]())
+app.add_argument(Argument("format", help="Output format").long["format"]().choice["json"]().choice["csv"]().choice["table"]())
 
 var sub = Command("serve", "Start a server")
 sub.add_argument(Argument("port", help="Port number").long["port"]().short["p"]())
@@ -3065,42 +3060,42 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 ### Argument-Level Builder Methods
 
-| ArgMojo method                | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
-| ----------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
-| `Argument("name", help="…")`  | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
-| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                     | implicit from flag name        |
+| ArgMojo method                  | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
+| ------------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
+| `Argument("name", help="…")`    | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
+| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                    | implicit from flag name        |
 | `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
-| `.flag()`                     | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
-| `.required()`                 | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
-| `.positional()`               | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |
-| `.takes_value()`              | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
-| `.default("val")`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
-| `.choices(["a","b"])`         | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
-| `.value_name("FILE")`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
-| `.hidden()`                   | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
-| `.count()`                    | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
-| `.max[N]()`                   | —                                 | —                                        | —                               | —                              |
-| `.negatable()`                | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` ⁵ | —                               | `--no-x` pattern ⁶             |
-| `.append()`                   | `action="append"`                 | `multiple=True`                          | `.action(ArgAction::Append)`    | `StringSliceP`                 |
-| `.delimiter(",")`             | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
-| `.number_of_values[N]()`      | `nargs=N`                         | `nargs=N`                                | `.num_args(N)`                  | —                              |
-| `.range[min,max]()`           | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
-| `.clamp()`                    | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |
-| `.map_option()`               | —                                 | —                                        | —                               | —                              |
-| `.aliases(["alt"])`           | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
-| `.deprecated("msg")`          | `deprecated` (3.13+)              | `deprecated=True`                        | `.hide(true)` + manual          | `ShorthandDeprecated()` ¹      |
-| `.persistent()`               | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
-| `.default_if_no_value("val")` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |
-| `.require_equals()`           | —                                 | —                                        | `.require_equals(true)`         | —                              |
-| `.remainder()`                | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
-| `.allow_hyphen_values()`      | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
+| `.flag()`                       | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
+| `.required()`                   | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
+| `.positional()`                 | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |
+| `.takes_value()`                | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
+| `.default["val"]()`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
+| `.choice["a"]().choice["b"]()`  | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
+| `.value_name["FILE"]()`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
+| `.hidden()`                     | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
+| `.count()`                      | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
+| `.max[N]()`                     | —                                 | —                                        | —                               | —                              |
+| `.negatable()`                  | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` ⁵ | —                               | `--no-x` pattern ⁶             |
+| `.append()`                     | `action="append"`                 | `multiple=True`                          | `.action(ArgAction::Append)`    | `StringSliceP`                 |
+| `.delimiter[","]()`             | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
+| `.number_of_values[N]()`        | `nargs=N`                         | `nargs=N`                                | `.num_args(N)`                  | —                              |
+| `.range[min,max]()`             | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
+| `.clamp()`                      | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |
+| `.map_option()`                 | —                                 | —                                        | —                               | —                              |
+| `.alias_name["alt"]()`          | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
+| `.deprecated["msg"]()`          | `deprecated` (3.13+)              | `deprecated=True`                        | `.hide(true)` + manual          | `ShorthandDeprecated()` ¹      |
+| `.persistent()`                 | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
+| `.default_if_no_value["val"]()` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |
+| `.require_equals()`             | —                                 | —                                        | `.require_equals(true)`         | —                              |
+| `.remainder()`                  | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
+| `.allow_hyphen_values()`        | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
 
 ### Command-Level Constraint Methods
 
 | ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
 | --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
 | `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` ⁹ | `.conflicts_with("x")` per arg | — ⁴                             |
-| `one_required(…)`           | group + `required=True`          | —                               | `.group("G").required(true)`   | — ⁴                             |
+| `one_required(…)`           | group + `required=True`          | —                               | `.group["G"]().required(true)` | — ⁴                             |
 | `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |

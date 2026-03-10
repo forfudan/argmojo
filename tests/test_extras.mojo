@@ -323,7 +323,7 @@ fn test_map_with_delimiter() raises:
         Argument("define", help="Define vars")
         .long["define"]()
         .map_option()
-        .delimiter(",")
+        .delimiter[","]()
     )
 
     var args: List[String] = ["test", "--define", "CC=gcc,CXX=g++"]
@@ -395,11 +395,10 @@ fn test_map_value_with_equals() raises:
 fn test_alias_basic() raises:
     """Tests that an alias resolves to the primary argument."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--color", "red"]
@@ -410,11 +409,10 @@ fn test_alias_basic() raises:
 fn test_alias_primary_still_works() raises:
     """Tests that using the primary long name still works alongside aliases."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
@@ -425,11 +423,11 @@ fn test_alias_primary_still_works() raises:
 fn test_alias_multiple() raises:
     """Tests that multiple aliases all resolve correctly."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["out", "fmt"]
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
+        .alias_name["out"]()
+        .alias_name["fmt"]()
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
@@ -444,11 +442,10 @@ fn test_alias_multiple() raises:
 fn test_alias_prefix_match() raises:
     """Tests that prefix matching works with aliases."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Colour mode")
         .long["colour"]()
-        .aliases(alias_list^)
+        .alias_name["color"]()
     )
 
     var args: List[String] = ["test", "--colo", "green"]
@@ -459,12 +456,11 @@ fn test_alias_prefix_match() raises:
 fn test_alias_with_flag() raises:
     """Tests that aliases work with flags."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["debug"]
     command.add_argument(
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .flag()
-        .aliases(alias_list^)
+        .alias_name["debug"]()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -483,7 +479,7 @@ fn test_deprecated_still_parses() raises:
     command.add_argument(
         Argument("format_old", help="Old format")
         .long["format-old"]()
-        .deprecated("Use --format instead")
+        .deprecated["Use --format instead"]()
     )
 
     var args: List[String] = ["test", "--format-old", "csv"]
@@ -499,7 +495,7 @@ fn test_deprecated_short_option() raises:
         .long["compat"]()
         .short["C"]()
         .flag()
-        .deprecated("Will be removed in 2.0")
+        .deprecated["Will be removed in 2.0"]()
     )
 
     var args: List[String] = ["test", "-C"]
@@ -513,7 +509,7 @@ fn test_deprecated_not_provided_ok() raises:
     command.add_argument(
         Argument("old", help="Old option")
         .long["old"]()
-        .deprecated("Use --new instead")
+        .deprecated["Use --new instead"]()
     )
     command.add_argument(Argument("new", help="New option").long["new"]())
 
@@ -526,12 +522,11 @@ fn test_deprecated_not_provided_ok() raises:
 fn test_deprecated_with_alias() raises:
     """Tests that deprecation works when accessed via an alias."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["out"]
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .aliases(alias_list^)
-        .deprecated("Use --format instead")
+        .alias_name["out"]()
+        .deprecated["Use --format instead"]()
     )
 
     var args: List[String] = ["test", "--out", "json"]
@@ -548,7 +543,7 @@ fn test_help_deprecated_tag() raises:
     command.add_argument(
         Argument("old", help="Old option")
         .long["old"]()
-        .deprecated("Use --new instead")
+        .deprecated["Use --new instead"]()
     )
     command.add_argument(Argument("new", help="New option").long["new"]())
 
@@ -579,12 +574,11 @@ fn test_help_map_placeholder() raises:
 fn test_help_alias_shown() raises:
     """Tests that aliases are shown alongside the primary name in help."""
     var command = Command("test", "Test app")
-    var alias_list: List[String] = ["color"]
     command.add_argument(
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .aliases(alias_list^)
+        .alias_name["color"]()
     )
 
     var help = command._generate_help(color=False)

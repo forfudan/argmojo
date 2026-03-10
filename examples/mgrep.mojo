@@ -41,7 +41,7 @@ fn main() raises:
     app.add_argument(
         Argument("path", help="Files or directories to search")
         .positional()
-        .default(".")
+        .default["."]()
     )
 
     # ── Matching control ─────────────────────────────────────────────────
@@ -139,7 +139,7 @@ fn main() raises:
         Argument("max-depth", help="Maximum directory depth")
         .long["max-depth"]()
         .short["d"]()
-        .value_name("N")
+        .value_name["N"]()
         .range[0, 999]()
     )
 
@@ -149,17 +149,18 @@ fn main() raises:
         .long["context"]()
         .short["C"]()
         .number_of_values[2]()
-        .value_name("N")
+        .value_name["N"]()
     )
 
     # ── Output format (choices) ──────────────────────────────────────────
-    var fmts: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
-        .default("text")
+        .choice["text"]()
+        .choice["json"]()
+        .choice["csv"]()
+        .default["text"]()
     )
 
     # ── Append / collect ─────────────────────────────────────────────────
@@ -174,7 +175,7 @@ fn main() raises:
     app.add_argument(
         Argument("exclude-dir", help="Skip directories (comma-separated)")
         .long["exclude-dir"]()
-        .delimiter(",")
+        .delimiter[","]()
     )
 
     # ── Required-together group ──────────────────────────────────────────
@@ -202,7 +203,7 @@ fn main() raises:
         Argument("output", help="Output file path (required with --save)")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
     app.required_if("output", "save")
 
@@ -215,12 +216,11 @@ fn main() raises:
     )
 
     # ── Aliases ──────────────────────────────────────────────────────────
-    var colour_aliases: List[String] = ["color-mode"]
     app.add_argument(
         Argument("colour", help="Colour theme")
         .long["colour"]()
-        .aliases(colour_aliases^)
-        .default("auto")
+        .alias_name["color-mode"]()
+        .default["auto"]()
     )
 
     # ── Deprecated argument ──────────────────────────────────────────────
@@ -228,7 +228,7 @@ fn main() raises:
         Argument("mmap", help="Use memory-mapped I/O (legacy)")
         .long["mmap"]()
         .flag()
-        .deprecated("Memory-mapping is now automatic")
+        .deprecated["Memory-mapping is now automatic"]()
     )
 
     # ── Hidden argument ──────────────────────────────────────────────────

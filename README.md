@@ -50,7 +50,7 @@ ArgMojo provides a builder-pattern API for defining and parsing command-line arg
 - **Long option prefix matching**: allow abbreviated options (e.g., `--verb` → `--verbose`). If the prefix is ambiguous (e.g., `--ver` could match both `--verbose` and `--version-info`), an error is raised.
 - **Append / collect action**: `--tag x --tag y` collects repeated options into a list with `.append()`
 - **One-required groups**: require at least one argument from a group (e.g., must provide `--json` or `--yaml`)
-- **Value delimiter**: `--env dev,staging,prod` splits by delimiter into a list with `.delimiter(",")`
+- **Value delimiter**: `--env dev,staging,prod` splits by delimiter into a list with `.delimiter[","]()`
 - **Multi-value options (nargs)**: `--point 10 20` consumes N consecutive values with `.nargs(N)`
 - **Shell completion script generation**: `generate_completion("bash"|"zsh"|"fish")` produces a complete tab-completion script for your CLI
 
@@ -100,7 +100,7 @@ fn main() raises:
 
     # Positional arguments
     app.add_argument(Argument("pattern", help="Search pattern").positional().required())
-    app.add_argument(Argument("path", help="Search path").positional().default("."))
+    app.add_argument(Argument("path", help="Search path").positional().default["."]())
 
     # Boolean flags
     app.add_argument(
@@ -119,10 +119,9 @@ fn main() raises:
     )
 
     # Key-value option with choices
-    var formats: List[String] = ["text", "json", "csv"]
     app.add_argument(
         Argument("format", help="Output format")
-        .long["format"]().short["f"]().choices(formats^).default("text")
+        .long["format"]().short["f"]().choice["text"]().choice["json"]().choice["csv"]().default["text"]()
     )
 
     # Negatable flag — --color enables, --no-color disables

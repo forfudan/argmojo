@@ -191,8 +191,8 @@ examples/
 | Demo binary (`mojo build`)                                                                            | ✓      | —     |
 | Short flag merging (`-abc` → `-a -b -c`)                                                              | ✓      | ✓     |
 | Short option with attached value (`-ofile.txt`)                                                       | ✓      | ✓     |
-| Choices validation (`.choices()`)                                                                     | ✓      | ✓     |
-| Value Name (`.value_name("FILE")`)                                                                    | ✓      | ✓     |
+| Choices validation (`.choice[]()`)                                                                    | ✓      | ✓     |
+| Value Name (`.value_name["FILE"]()`)                                                                  | ✓      | ✓     |
 | Hidden arguments (`.hidden()`)                                                                        | ✓      | ✓     |
 | Count action (`-vvv` → 3) with ceiling (`.max(N)`)                                                    | ✓      | ✓     |
 | Positional arg count validation                                                                       | ✓      | ✓     |
@@ -203,18 +203,18 @@ examples/
 | Long option prefix matching (`--verb` → `--verbose`)                                                  | ✓      | ✓     |
 | Append / collect action (`--tag x --tag y` → list)                                                    | ✓      | ✓     |
 | One-required groups (`command.one_required(["json", "yaml"])`)                                        | ✓      | ✓     |
-| Value delimiter (`.delimiter(",")` → split into list)                                                 | ✓      | ✓     |
+| Value delimiter (`.delimiter[","]()` → split into list)                                               | ✓      | ✓     |
 | Number of values (`.number_of_values[N]()` → consume N values per occurrence)                         | ✓      | ✓     |
 | Conditional requirements (`command.required_if("output", "save")`)                                    | ✓      | ✓     |
 | Numeric range validation (`.range[1, 65535]()`)                                                       | ✓      | ✓     |
 | Key-value map option (`.map_option()` → `Dict[String, String]`)                                       | ✓      | ✓     |
-| Aliases (`.aliases(["color"])` for `--colour` / `--color`)                                            | ✓      | ✓     |
-| Deprecated arguments (`.deprecated("msg")` → stderr warning)                                          | ✓      | ✓     |
+| Aliases (`.alias_name["color"]()` for `--colour` / `--color`)                                         | ✓      | ✓     |
+| Deprecated arguments (`.deprecated["msg"]()` → stderr warning)                                        | ✓      | ✓     |
 | Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals)                                 | ✓      | ✓     |
 | Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                      | ✓      | ✓     |
 | Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr)    | ✓      | ✓     |
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                          | ✓      | ✓     |
-| Default-if-no-value (`.default_if_no_value("gzip")` → optional value with fallback)                   | ✓      | ✓     |
+| Default-if-no-value (`.default_if_no_value["gzip"]()` → optional value with fallback)                 | ✓      | ✓     |
 | Require equals syntax (`.require_equals()` → `--key=value` only)                                      | ✓      | ✓     |
 | Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)                  | ✓ ⚠    | ✓     |
 | Typo suggestions (Levenshtein "did you mean ...?" for long options and subcommands)                   | ✓      | ✓     |
@@ -244,7 +244,7 @@ fn main() raises:
 
     # Positional arguments
     command.add_argument(Argument("pattern", help="Search pattern").required().positional())
-    command.add_argument(Argument("path", help="Search path").positional().default("."))
+    command.add_argument(Argument("path", help="Search path").positional().default["."]())
 
     # Optional arguments
     command.add_argument(Argument("ling", help="Use Yuhao Lingming encoding").long["ling"]().short["l"]().flag())
@@ -388,8 +388,8 @@ The practical view — both dimensions checked together at parse time:
 
 - [x] **Short flag merging** — `-abc` expands to `-a -b -c` (argparse, cobra, clap all support this)
 - [x] **Short option with attached value** — `-ofile.txt` means `-o file.txt` (argparse, clap)
-- [x] **Choices validation** — restrict values to a set: `.choices(["debug", "info", "warn", "error"])`
-- [x] **Value Name** — display name for values in help: `.value_name("FILE")` → `--output FILE`
+- [x] **Choices validation** — restrict values to a set: `.choice["debug"]().choice["info"]().choice["warn"]().choice["error"]()`
+- [x] **Value Name** — display name for values in help: `.value_name["FILE"]()` → `--output FILE`
 - [x] **Positional arg count validation** — fail if too many positional args
 - [x] **Hidden arguments** — `.hidden()` to exclude from help output (cobra, clap)
 - [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v` counting)
@@ -412,8 +412,8 @@ The practical view — both dimensions checked together at parse time:
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
 - [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)
 - [x] **Key-value map option** — `--define key=value --define k2=v2` → `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
-- [x] **Aliases** for long names — `.aliases(["color"])` for `--colour` / `--color`
-- [x] **Deprecated arguments** — `.deprecated("Use --format instead")` prints warning to stderr (argparse 3.13)
+- [x] **Aliases** for long names — `.alias_name["color"]()` for `--colour` / `--color`
+- [x] **Deprecated arguments** — `.deprecated["Use --format instead"]()` prints warning to stderr (argparse 3.13)
 
 ### Phase 4: Subcommands (for v0.2)
 
@@ -570,11 +570,11 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Range clamping** — `.range[min, max]().clamp()` adjusts out-of-range values to the nearest boundary with a warning instead of erroring (Click has `IntRange(clamp=True)`)
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [x] **Shell completion script generation** — `generate_completion["bash"]()` (compile-time validated) or `generate_completion("bash")` (runtime, case-insensitive) returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
-- [x] **Argument groups in help** — `.group("name")` groups related options under headings; independent per-section padding; persistent args stay in "Global Options:" (argparse `add_argument_group`) (PR #17)
+- [x] **Argument groups in help** — `.group["name"]()` groups related options under headings; independent per-section padding; persistent args stay in "Global Options:" (argparse `add_argument_group`) (PR #17)
 - [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised options instead of erroring; access via `result.get_unknown_args()` (argparse `parse_known_args`) (PR #13)
 - [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
-- [x] **Default-if-no-value** — `.default_if_no_value("val")`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
+- [x] **Default-if-no-value** — `.default_if_no_value["val"]()`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
 - [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Temporarily disabled — Mojo compiler deadlock under `-D ASSERT=all`*
 - [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
 - [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
@@ -702,8 +702,8 @@ These features represent the "next generation" of CLI parser design, inspired by
 | "Missing" feature            | ArgMojo equivalent                                                                                                                             | How                                             |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | Typed retrieval              | `get_flag()->Bool`, `get_int()->Int`, `get_string()->String`, `get_count()->Int`, `get_list()->List[String]`, `get_map()->Dict[String,String]` | Already typed at retrieval                      |
-| Enum validation              | `.choices(["debug", "release"])`                                                                                                               | String-level enum; help shows `{debug,release}` |
-| Required / optional          | `.required()` / `.default("...")`                                                                                                              | Parse-time enforcement with coloured errors     |
+| Enum validation              | `.choice["debug"]().choice["release"]()`                                                                                                       | String-level enum; help shows `{debug,release}` |
+| Required / optional          | `.required()` / `.default["..."]()`                                                                                                            | Parse-time enforcement with coloured errors     |
 | Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
 | Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
 | Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
@@ -809,3 +809,9 @@ These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji) to
 | `[a, b, c]` for `List` | List literal syntax instead of variadic constructor |
 | `.copy()`              | Explicit copy for non-ImplicitlyCopyable types      |
 | `Movable` conformance  | Required for structs stored in containers           |
+
+## 9. Pending Renames
+
+| Current Name      | Target Name  | Condition                                                                                                                                                                 |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.alias_name[]()` | `.alias[]()` | Blocked: `alias` is a reserved keyword in Mojo (`alias X = Int`). Rename once Mojo fully deprecates or removes the `alias` keyword. Track upstream Mojo language changes. |

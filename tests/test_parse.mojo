@@ -93,7 +93,7 @@ fn test_positional_args() raises:
         Argument("pattern", help="Search pattern").positional().required()
     )
     command.add_argument(
-        Argument("path", help="Search path").positional().default(".")
+        Argument("path", help="Search path").positional().default["."]()
     )
 
     var args: List[String] = ["test", "hello", "./src"]
@@ -109,7 +109,7 @@ fn test_positional_with_default() raises:
         Argument("pattern", help="Search pattern").positional().required()
     )
     command.add_argument(
-        Argument("path", help="Search path").positional().default(".")
+        Argument("path", help="Search path").positional().default["."]()
     )
 
     var args: List[String] = ["test", "hello"]
@@ -125,7 +125,7 @@ fn test_mixed_args() raises:
         Argument("pattern", help="Search pattern").positional().required()
     )
     command.add_argument(
-        Argument("path", help="Search path").positional().default(".")
+        Argument("path", help="Search path").positional().default["."]()
     )
     command.add_argument(
         Argument("ling", help="Use Lingming encoding")
@@ -271,12 +271,13 @@ fn test_merged_flags_with_attached_value() raises:
 fn test_choices_valid() raises:
     """Tests that a valid choice is accepted."""
     var command = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
 
     var args: List[String] = ["test", "--format", "json"]
@@ -287,12 +288,13 @@ fn test_choices_valid() raises:
 fn test_choices_invalid() raises:
     """Tests that an invalid choice raises an error."""
     var command = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
 
     var args: List[String] = ["test", "--format", "xml"]
@@ -315,12 +317,13 @@ fn test_choices_invalid() raises:
 fn test_choices_with_short_attached() raises:
     """Tests choices validation with attached short value like -fxml."""
     var command = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
 
     var args: List[String] = ["test", "-fjson"]
@@ -607,7 +610,7 @@ fn test_exact_positionals_ok() raises:
         Argument("pattern", help="Pattern").positional().required()
     )
     command.add_argument(
-        Argument("path", help="Path").positional().default(".")
+        Argument("path", help="Path").positional().default["."]()
     )
 
     var args: List[String] = ["test", "hello", "./src"]

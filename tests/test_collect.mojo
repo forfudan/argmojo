@@ -125,9 +125,13 @@ fn test_append_empty() raises:
 fn test_append_with_choices() raises:
     """Tests that append respects choices validation."""
     var command = Command("test", "Test app")
-    var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
-        Argument("env", help="Target env").long["env"]().choices(envs^).append()
+        Argument("env", help="Target env")
+        .long["env"]()
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
+        .append()
     )
 
     # Valid choices
@@ -140,11 +144,12 @@ fn test_append_with_choices() raises:
 
     # Invalid choice
     var command2 = Command("test", "Test app")
-    var envs2: List[String] = ["dev", "staging", "prod"]
     command2.add_argument(
         Argument("env", help="Target env")
         .long["env"]()
-        .choices(envs2^)
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
         .append()
     )
     var args2: List[String] = ["test", "--env", "local"]
@@ -203,7 +208,7 @@ fn test_delimiter_comma() raises:
     """Tests basic comma delimiter splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b,c"]
@@ -219,7 +224,7 @@ fn test_delimiter_equals_syntax() raises:
     """Tests delimiter with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag=x,y,z"]
@@ -235,7 +240,7 @@ fn test_delimiter_short_option() raises:
     """Tests delimiter with short option."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "-t", "foo,bar"]
@@ -256,7 +261,7 @@ fn test_delimiter_attached_short() raises:
         .flag()
     )
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     # -vta,b means -v -t a,b (v is flag, t takes value)
@@ -273,7 +278,7 @@ fn test_delimiter_repeated() raises:
     """Tests delimiter with multiple uses — values accumulate."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().short["t"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b", "--tag", "c,d"]
@@ -290,7 +295,7 @@ fn test_delimiter_single_value() raises:
     """Tests delimiter with a single value (no delimiter present)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "single"]
@@ -303,12 +308,13 @@ fn test_delimiter_single_value() raises:
 fn test_delimiter_with_choices() raises:
     """Tests that choices are validated per-piece after splitting."""
     var command = Command("test", "Test app")
-    var envs: List[String] = ["dev", "staging", "prod"]
     command.add_argument(
         Argument("env", help="Environments")
         .long["env"]()
-        .choices(envs^)
-        .delimiter(",")
+        .choice["dev"]()
+        .choice["staging"]()
+        .choice["prod"]()
+        .delimiter[","]()
     )
 
     # Valid — all pieces are in choices.
@@ -338,7 +344,7 @@ fn test_delimiter_semicolon() raises:
     """Tests using a non-comma delimiter (semicolon)."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("path", help="Search paths").long["path"]().delimiter(";")
+        Argument("path", help="Search paths").long["path"]().delimiter[";"]()
     )
 
     var args: List[String] = ["test", "--path", "/usr/lib;/opt/lib;/home/lib"]
@@ -355,7 +361,7 @@ fn test_delimiter_implies_append() raises:
     var command = Command("test", "Test app")
     # Note: no explicit .append() call — delimiter() implies it.
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "x,y"]
@@ -371,7 +377,7 @@ fn test_delimiter_empty_not_provided() raises:
     """Tests delimiter arg not provided returns empty list."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test"]
@@ -384,7 +390,7 @@ fn test_delimiter_trailing_comma() raises:
     """Tests that trailing delimiter does not create empty entry."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("tag", help="Tags").long["tag"]().delimiter(",")
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
     )
 
     var args: List[String] = ["test", "--tag", "a,b,"]
@@ -525,12 +531,14 @@ fn test_nargs_too_few_short() raises:
 fn test_nargs_with_choices() raises:
     """Tests that choices validation applies to each nargs value."""
     var command = Command("test", "Test app")
-    var dirs: List[String] = ["north", "south", "east", "west"]
     command.add_argument(
         Argument("dir", help="Two directions")
         .long["dir"]()
         .number_of_values[2]()
-        .choices(dirs^)
+        .choice["north"]()
+        .choice["south"]()
+        .choice["east"]()
+        .choice["west"]()
     )
 
     # Valid.
@@ -624,6 +632,79 @@ fn test_nargs_prefix_match() raises:
     assert_equal(len(lst), 2, msg="prefix --pos should resolve to --position")
     assert_equal(lst[0], "7", msg="First = 7")
     assert_equal(lst[1], "8", msg="Second = 8")
+
+
+# ── Fullwidth delimiter tests ────────────────────────────────────────────────────
+
+
+fn test_delimiter_fullwidth_comma() raises:
+    """Fullwidth comma ，(U+FF0C) is normalized to , before splitting."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # "a，b，c" → fullwidth commas normalized → split as "a", "b", "c"
+    var args: List[String] = ["test", "--tag", "a，b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 3, msg="fullwidth comma should split into 3")
+    assert_equal(tags[0], "a")
+    assert_equal(tags[1], "b")
+    assert_equal(tags[2], "c")
+
+
+fn test_delimiter_fullwidth_semicolon() raises:
+    """Fullwidth semicolon ；(U+FF1B) is normalized to ; before splitting."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("path", help="Paths").long["path"]().delimiter[";"]()
+    )
+
+    var args: List[String] = ["test", "--path", "x；y；z"]
+    var result = command.parse_arguments(args)
+    var paths = result.get_list("path")
+    assert_equal(len(paths), 3, msg="fullwidth semicolon should split into 3")
+    assert_equal(paths[0], "x")
+    assert_equal(paths[1], "y")
+    assert_equal(paths[2], "z")
+
+
+fn test_delimiter_fullwidth_disabled() raises:
+    """Fullwidth commas are NOT normalized when correction is disabled."""
+    var command = Command("test", "Test app")
+    command.disable_fullwidth_correction()
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # With correction disabled, ， stays as-is, so no split happens.
+    var args: List[String] = ["test", "--tag", "a，b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(
+        len(tags),
+        1,
+        msg="fullwidth comma should NOT split when correction disabled",
+    )
+    assert_equal(tags[0], "a，b，c")
+
+
+fn test_delimiter_fullwidth_mixed() raises:
+    """Mix of halfwidth and fullwidth commas both split correctly."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("tag", help="Tags").long["tag"]().delimiter[","]()
+    )
+
+    # "a,b，c" → after normalization → "a,b,c" → split into 3
+    var args: List[String] = ["test", "--tag", "a,b，c"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 3, msg="mixed commas should split into 3")
+    assert_equal(tags[0], "a")
+    assert_equal(tags[1], "b")
+    assert_equal(tags[2], "c")
 
 
 fn main() raises:

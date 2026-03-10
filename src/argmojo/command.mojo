@@ -15,6 +15,7 @@ from .utils import (
     _DEFAULT_ERROR_COLOR,
     _correct_cjk_punctuation,
     _display_width,
+    _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _looks_like_number,
     _resolve_color,
@@ -2949,7 +2950,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
         if arg.name not in result._lists:
             result._lists[arg.name] = List[String]()
         if arg._delimiter_char:
-            var parts = value.split(arg._delimiter_char)
+            var val = value
+            if not self._disable_fullwidth_correction:
+                val = _fullwidth_to_halfwidth(value)
+            var parts = val.split(arg._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:  # skip empty pieces from e.g. trailing comma
@@ -2980,7 +2984,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result._lists[arg.name] = List[String]()
 
         if arg._delimiter_char:
-            var parts = value.split(arg._delimiter_char)
+            var val = value
+            if not self._disable_fullwidth_correction:
+                val = _fullwidth_to_halfwidth(value)
+            var parts = val.split(arg._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:

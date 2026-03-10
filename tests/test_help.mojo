@@ -56,7 +56,7 @@ fn test_value_name_in_help() raises:
         Argument("output", help="Output file")
         .long["output"]()
         .short["o"]()
-        .value_name("FILE")
+        .value_name["FILE"]()
     )
 
     var help = command._generate_help()
@@ -71,12 +71,13 @@ fn test_value_name_in_help() raises:
 fn test_choices_in_help() raises:
     """Tests that choices are displayed in help when no value_name."""
     var command = Command("test", "Test app")
-    var fmts: List[String] = ["json", "csv", "table"]
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
-        .choices(fmts^)
+        .choice["json"]()
+        .choice["csv"]()
+        .choice["table"]()
     )
 
     var help = command._generate_help()
@@ -117,7 +118,7 @@ fn test_append_in_help() raises:
     command.add_argument(
         Argument("env", help="Target env")
         .long["env"]()
-        .value_name("ENV")
+        .value_name["ENV"]()
         .append()
     )
 
@@ -272,7 +273,7 @@ fn test_positional_args_aligned_in_help() raises:
     command.add_argument(
         Argument("output-directory", help="Output dir")
         .positional()
-        .default(".")
+        .default["."]()
     )
 
     var help = command._generate_help()
@@ -493,7 +494,7 @@ fn test_nargs_in_help() raises:
         Argument("rgb", help="RGB colour")
         .long["rgb"]()
         .number_of_values[3]()
-        .value_name("N")
+        .value_name["N"]()
     )
 
     var help = command._generate_help(color=False)
@@ -521,7 +522,7 @@ fn test_nargs_with_value_name() raises:
         Argument("size", help="Width and height")
         .long["size"]()
         .number_of_values[2]()
-        .value_name("PX")
+        .value_name["PX"]()
     )
 
     var help = command._generate_help(color=False)

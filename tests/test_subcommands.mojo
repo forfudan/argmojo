@@ -47,7 +47,7 @@ fn test_defaults_named_arg() raises:
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
-        .default("json")
+        .default["json"]()
     )
 
     var args: List[String] = ["test"]
@@ -63,7 +63,7 @@ fn test_defaults_positional_arg() raises:
         Argument("pattern", help="Pattern").positional().required()
     )
     command.add_argument(
-        Argument("path", help="Path").positional().default(".")
+        Argument("path", help="Path").positional().default["."]()
     )
 
     var args: List[String] = ["test", "hello"]
@@ -78,7 +78,7 @@ fn test_defaults_not_applied_when_provided() raises:
     command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
-        .default("json")
+        .default["json"]()
     )
 
     var args: List[String] = ["test", "--format", "csv"]
@@ -90,10 +90,10 @@ fn test_defaults_multiple_positional() raises:
     """Tests defaults with multiple positional args where some are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("src", help="Source").positional().default("a.txt")
+        Argument("src", help="Source").positional().default["a.txt"]()
     )
     command.add_argument(
-        Argument("dst", help="Dest").positional().default("b.txt")
+        Argument("dst", help="Dest").positional().default["b.txt"]()
     )
 
     # Provide only the first positional.
@@ -349,7 +349,7 @@ fn test_full_parse_with_defaults_and_range() raises:
         Argument("port", help="Port")
         .long["port"]()
         .range[1, 100]()
-        .default("50")
+        .default["50"]()
     )
 
     # Not providing --port should use default "50" which is in range.
@@ -743,7 +743,9 @@ fn test_dispatch_child_default_value() raises:
     search.add_argument(
         Argument("pattern", help="Pattern").positional().required()
     )
-    search.add_argument(Argument("path", help="Path").positional().default("."))
+    search.add_argument(
+        Argument("path", help="Path").positional().default["."]()
+    )
     app.add_subcommand(search^)
 
     var args: List[String] = ["app", "search", "hello"]
@@ -1272,7 +1274,7 @@ fn test_hidden_subcommand_still_dispatchable() raises:
     var hidden = Command("debug", "Debug")
     hidden.hidden()
     hidden.add_argument(
-        Argument("level", help="Debug level").long["level"]().default("info")
+        Argument("level", help="Debug level").long["level"]().default["info"]()
     )
     app.add_subcommand(hidden^)
 
