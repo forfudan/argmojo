@@ -469,6 +469,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         + self.args[_ri].name
                         + "')"
                     )
+        # Guard: .prompt() conflicts with help_on_no_arguments().
+        if argument._prompt and self._help_on_no_arguments:
+            self._error(
+                "Argument '"
+                + argument.name
+                + "': .prompt() cannot be used on a command with"
+                " help_on_no_arguments() — when no arguments are"
+                " provided, help is shown and prompting never runs."
+                " Remove help_on_no_arguments() or .prompt()"
+            )
         self.args.append(argument^)
 
     fn add_subcommand(mut self, var sub: Command) raises:
@@ -1185,11 +1195,15 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var imp_triple: List[String] = [trigger, implied, implied_kind]
         self._implications.append(imp_triple^)
 
-    fn help_on_no_arguments(mut self):
+    fn help_on_no_arguments(mut self) raises:
         """Enables showing help when invoked with no arguments.
 
         When enabled, calling the command with no arguments (only the
         program name) will print the help message and exit.
+
+        Raises:
+            Error if any registered argument has ``.prompt()`` enabled,
+            since prompting is unreachable when help is shown on no args.
 
         Example:
 
@@ -1200,6 +1214,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         command.help_on_no_arguments()
         ```
         """
+        # Guard: conflict with .prompt() arguments.
+        for _pi in range(len(self.args)):
+            if self.args[_pi]._prompt:
+                self._error(
+                    "help_on_no_arguments() cannot be used on a command"
+                    " that has .prompt() arguments (argument '"
+                    + self.args[_pi].name
+                    + "'). When no arguments are provided, help is"
+                    " shown and prompting never runs. Remove"
+                    " help_on_no_arguments() or .prompt()"
+                )
         self._help_on_no_arguments = True
 
     # [Mojo Miji]
@@ -1732,9 +1757,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
             result._positionals.append(arg)
             i += 1
 
-        # Apply defaults, propagate implications, then validate constraints.
-        self._prompt_missing_args(result)
+        # Apply defaults, propagate implications, prompt for remaining
+        # values, re-apply implications (in case prompts triggered new
+        # ones), then validate constraints.
         self._apply_defaults(result)
+        self._apply_implications(result)
+        self._prompt_missing_args(result)
         self._apply_implications(result)
         self._validate(result)
 
@@ -2469,19 +2497,20 @@ struct Command(Copyable, Movable, Stringable, Writable):
         fill in only remaining gaps.  For flag arguments, the prompt
         accepts ``y``/``n`` (case-insensitive).  For arguments with
         choices, valid options are shown.  For arguments with a default,
-        the default is displayed in brackets and used when the user
+        the default is displayed in parentheses and used when the user
         enters nothing.
 
         Prompting is skipped entirely when no arguments have
         ``.prompt()`` enabled.  When stdin is not a terminal (e.g.,
-        piped input, CI environments, ``/dev/null``), ``input()`` raises
-        immediately and prompting stops gracefully.
+        piped input, CI environments, ``/dev/null``), or when ``input()``
+        otherwise raises, the exception is caught, prompting stops
+        gracefully, and any values collected so far are preserved.
 
         Args:
             result: The parse result to mutate in-place.
 
         Raises:
-            Error if input cannot be read (propagated from ``input()``).
+            Error: If validation or conversion of a prompted value fails.
         """
         # Fast path: skip entirely if no args have prompting enabled.
         var has_prompt_args = False
@@ -2528,63 +2557,65 @@ struct Command(Copyable, Movable, Stringable, Writable):
             msg += ": "
 
             # ── Read input ───────────────────────────────────────────
+            var value: String
             try:
-                var value = input(msg)
-                if len(value) == 0:
-                    # Empty input — fall through to _apply_defaults.
-                    continue
-                if a._is_flag:
-                    var lower = value.lower()
-                    if (
-                        lower == "y"
-                        or lower == "yes"
-                        or lower == "true"
-                        or lower == "1"
-                    ):
-                        result._flags[a.name] = True
-                    elif (
-                        lower == "n"
-                        or lower == "no"
-                        or lower == "false"
-                        or lower == "0"
-                    ):
-                        result._flags[a.name] = False
-                    else:
-                        self._warn(
-                            "Invalid input for flag '"
-                            + a.name
-                            + "': expected y/n, got '"
-                            + value
-                            + "'"
-                        )
-                elif a._is_count:
-                    try:
-                        result._counts[a.name] = Int(atol(value))
-                    except:
-                        self._warn(
-                            "Invalid count for '"
-                            + a.name
-                            + "': '"
-                            + value
-                            + "'"
-                        )
-                elif a._is_positional:
-                    # Fill the correct positional slot.
-                    for k in range(len(result._positional_names)):
-                        if result._positional_names[k] == a.name:
-                            while len(result._positionals) <= k:
-                                result._positionals.append("")
-                            result._positionals[k] = value
-                            break
-                else:
-                    # Validate choices before storing.
-                    if len(a._choice_values) > 0:
-                        self._validate_choices(a, value)
-                    result._values[a.name] = value
+                value = input(msg)
             except e:
                 # EOF or stdin error — stop prompting entirely.
                 # This handles non-interactive / piped usage gracefully.
                 return
+
+            if len(value) == 0:
+                # Empty input — fall through to _apply_defaults.
+                continue
+            if a._is_flag:
+                var lower = value.lower()
+                if (
+                    lower == "y"
+                    or lower == "yes"
+                    or lower == "true"
+                    or lower == "1"
+                ):
+                    result._flags[a.name] = True
+                elif (
+                    lower == "n"
+                    or lower == "no"
+                    or lower == "false"
+                    or lower == "0"
+                ):
+                    result._flags[a.name] = False
+                else:
+                    self._warn(
+                        "Invalid input for flag '"
+                        + a.name
+                        + "': expected y/n, got '"
+                        + value
+                        + "'"
+                    )
+            elif a._is_count:
+                try:
+                    result._counts[a.name] = Int(atol(value))
+                except:
+                    self._warn(
+                        "Invalid count for '" + a.name + "': '" + value + "'"
+                    )
+            elif a._is_positional:
+                # Fill the correct positional slot.
+                for k in range(len(result._positional_names)):
+                    if result._positional_names[k] == a.name:
+                        while len(result._positionals) <= k:
+                            result._positionals.append("")
+                        result._positionals[k] = value
+                        break
+            elif a._is_map:
+                self._store_map_value(a, value, result)
+            elif a._is_append or a._number_of_values > 1:
+                self._store_append_value(a, value, result)
+            else:
+                # Validate choices before storing.
+                if len(a._choice_values) > 0:
+                    self._validate_choices(a, value)
+                result._values[a.name] = value
 
     # ===------------------------------------------------------------------=== #
     # Defaults & validation helpers (extracted for subcommand reuse)
@@ -3870,7 +3901,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         were actually provided.
 
         Args:
-            result: The ParseResult returned by ``parse()`` or ``parse_arguments()``.
+            result: The ParseResult returned by ``parse()`` or
+                ``parse_arguments()``.
         """
         print("=== Parsed Arguments ===")
 

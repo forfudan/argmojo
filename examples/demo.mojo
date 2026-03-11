@@ -14,7 +14,7 @@ help_on_no_arguments, default_if_no_value, require_equals, response files,
 remainder positionals, allow_hyphen_values, parse_known_arguments,
 argument groups in help (.group()), value_name wrapping control
 (.value_name["NAME"]() or .value_name["NAME", False]()), and interactive
-prompting (.prompt(), .prompt_text["..."]()).
+prompting (.prompt(), .prompt["..."]()).
 
 Note: This demo looks very strange, but useful :D
 
@@ -102,7 +102,7 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
 
   # ── Subcommand: login (interactive prompting) ────────────────────────
   ./demo login                                # prompts for user and token interactively
-  ./demo login --user alice --token secret     # no prompts needed
+  ./demo login --user alice --token secret    # no prompts needed
   ./demo login --user alice                   # prompts only for token
 """
 
@@ -378,7 +378,6 @@ fn main() raises:
         .default["us"]()
         .prompt()
     )
-    login.help_on_no_arguments()
     app.add_subcommand(login^)
 
     # ── Show help when invoked with no arguments ─────────────────────────

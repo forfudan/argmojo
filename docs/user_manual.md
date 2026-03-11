@@ -412,7 +412,7 @@ Argument("name", help="...")
 ║   .default_if_no_value["val"]()               default-if-no-value       (value only)
 ║   .require_equals()                           force --key=value syntax  (named value only)
 ║   .prompt()                                   prompt interactively      (any)
-║   .prompt_text["msg"]()                       custom prompt message     (any; implies .prompt())
+║   .prompt["msg"]()                            custom prompt message     (any; implies .prompt())
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -482,7 +482,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
 | `.remainder()`                   |      —      |     —     |     —      |        ✓        |
 | `.prompt()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.prompt_text["msg"]()`          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt["msg"]()`               |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
@@ -3083,16 +3083,17 @@ Enable verbose output [y/n]:        ← flag prompt
 - **`.choice[]()` **: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
 - **Subcommands**: Each subcommand can have its own prompt-enabled arguments.
 - **Persistent flags**: Persistent arguments with `.prompt()` are prompted at the level where they are missing.
+- **`help_on_no_arguments()`**: Cannot be combined with `.prompt()` on the same command. When no arguments are given, `help_on_no_arguments()` prints help and exits *before* prompting runs, making prompt-enabled arguments unreachable. ArgMojo raises a registration-time error if you attempt this combination.
 
 ### Non-Interactive Use (CI / Piped Input)
 
-When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the `input()` call raises on EOF. ArgMojo catches this gracefully and stops prompting — defaults are then applied normally, and validation proceeds as usual.
+When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the `input()` call raises on EOF. ArgMojo catches this gracefully and stops prompting — any values collected so far are preserved, defaults are then applied normally, and validation proceeds as usual.
 
 ```console
 $ echo "" | ./login --user alice --token secret
 ```
 
-No prompts appear because stdin is a pipe. `--region` gets its default `"us"`.
+Prompts are still printed to stdout, but `input()` reads from the pipe. Once the pipe is exhausted, `input()` raises and prompting stops. `--region` gets its default `"us"`.
 
 To avoid prompting entirely, always provide all arguments on the command line:
 
@@ -3372,7 +3373,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.remainder()`                  | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
 | `.allow_hyphen_values()`        | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
 | `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
-| `.prompt_text["msg"]()`         | —                                 | `prompt="msg"`                           | —                               | —                              |
+| `.prompt["msg"]()`              | —                                 | `prompt="msg"`                           | —                               | —                              |
 
 ### Command-Level Constraint Methods
 

@@ -236,7 +236,7 @@ examples/
 | CJK punctuation auto-correction (em-dash `U+2014` → hyphen-minus)                                     | ✓      | ✓     |
 | Compile-time `StringLiteral` builder params (`.long[]`, `.short[]`, `.choice[]`, colours, etc.)       | ✓      | —     |
 | Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
-| Interactive prompting (`.prompt()`, `.prompt_text[]()` → prompt for missing args)                     | ✓      | ✓     |
+| Interactive prompting (`.prompt()`, `.prompt["..."]()` → prompt for missing args)                     | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
