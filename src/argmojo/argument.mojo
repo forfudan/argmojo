@@ -893,7 +893,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         For flag arguments, the prompt accepts ``y``/``n`` (case-insensitive).
         For arguments with choices, the valid choices are displayed in
         the prompt.  For arguments with a default, the default is shown
-        in brackets and used when the user enters nothing.
+        in parentheses and used when the user enters nothing.
 
         Returns:
             Self with prompting enabled.
