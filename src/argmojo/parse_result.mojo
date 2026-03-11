@@ -287,24 +287,19 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         for _ in range(indent):
             prefix += " "
 
-        if indent == 0:
+        if len(name) == 0:
             print(prefix + "=== Parsed Arguments ===")
         else:
-            print(
-                prefix
-                + "=== Subcommand: "
-                + name
-                + " ==="
-            )
+            print(prefix + "=== Subcommand: " + name + " ===")
 
         # Positional arguments.
         for i in range(len(self._positionals)):
-            var name: String
+            var pos_name: String
             if i < len(self._positional_names):
-                name = self._positional_names[i]
+                pos_name = self._positional_names[i]
             else:
-                name = "positional[" + String(i) + "]"
-            print(prefix + "  " + name + ": " + self._positionals[i])
+                pos_name = "positional[" + String(i) + "]"
+            print(prefix + "  " + pos_name + ": " + self._positionals[i])
 
         # Collect named entries for aligned printing.
         var names = List[String]()
@@ -381,11 +376,8 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
 
         # Recurse into subcommand result.
         if self.has_subcommand_result():
-            try:
-                var sub = self.get_subcommand_result()
-                sub._print_summary_impl(indent + 2, self.subcommand)
-            except:
-                pass
+            var sub = self._subcommand_results[0].copy()
+            sub._print_summary_impl(indent + 2, self.subcommand)
 
     fn __str__(self) -> String:
         """Return a string representation of the parse result."""
