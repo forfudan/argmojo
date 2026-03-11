@@ -250,4 +250,4 @@ fn main() raises:
 
     # ── Parse & display ──────────────────────────────────────────────────
     var result = app.parse()
-    app.print_summary(result)
+    result.print_summary()

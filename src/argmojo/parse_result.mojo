@@ -264,6 +264,129 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         """
         return self._unknown_args.copy()
 
+    fn print_summary(self, indent: Int = 0):
+        """Prints a human-readable summary of all parsed arguments.
+
+        Displays positionals, flags, values, counts, lists, and maps
+        stored in this result.  If a subcommand result is present, it
+        is printed recursively with increased indentation.
+
+        Args:
+            indent: Number of leading spaces for nested output.
+        """
+        self._print_summary_impl(indent, String(""))
+
+    fn _print_summary_impl(self, indent: Int, name: String):
+        """Internal implementation that accepts a subcommand name.
+
+        Args:
+            indent: Number of leading spaces for nested output.
+            name: Subcommand name passed from parent (empty at top level).
+        """
+        var prefix = String("")
+        for _ in range(indent):
+            prefix += " "
+
+        if indent == 0:
+            print(prefix + "=== Parsed Arguments ===")
+        else:
+            print(
+                prefix
+                + "=== Subcommand: "
+                + name
+                + " ==="
+            )
+
+        # Positional arguments.
+        for i in range(len(self._positionals)):
+            var name: String
+            if i < len(self._positional_names):
+                name = self._positional_names[i]
+            else:
+                name = "positional[" + String(i) + "]"
+            print(prefix + "  " + name + ": " + self._positionals[i])
+
+        # Collect named entries for aligned printing.
+        var names = List[String]()
+        var vals = List[String]()
+
+        # Flags.
+        for entry in self._flags.items():
+            names.append(entry.key)
+            vals.append(String(entry.value))
+
+        # Counts.
+        for entry in self._counts.items():
+            names.append(entry.key)
+            vals.append(String(entry.value))
+
+        # String values.
+        for entry in self._values.items():
+            names.append(entry.key)
+            vals.append(entry.value)
+
+        # Lists.
+        for entry in self._lists.items():
+            # Skip list entries that also appear in _maps (maps store
+            # raw key=value strings in _lists for has() detection).
+            if entry.key in self._maps:
+                continue
+            names.append(entry.key)
+            var s = String("[")
+            for j in range(len(entry.value)):
+                if j > 0:
+                    s += ", "
+                s += entry.value[j]
+            s += "]"
+            vals.append(s)
+
+        # Maps.
+        for entry in self._maps.items():
+            names.append(entry.key)
+            var s = String("{")
+            var first = True
+            for kv in entry.value.items():
+                if not first:
+                    s += ", "
+                s += kv.key + "=" + kv.value
+                first = False
+            s += "}"
+            vals.append(s)
+
+        # Compute padding width.
+        var max_len: Int = 0
+        for k in range(len(names)):
+            if len(names[k]) > max_len:
+                max_len = len(names[k])
+        var pad_width = max_len + 2
+
+        # Print with aligned columns.
+        for k in range(len(names)):
+            var line = prefix + "  " + names[k]
+            var padding = pad_width - len(names[k])
+            for _p in range(padding):
+                line += " "
+            line += vals[k]
+            print(line)
+
+        # Unknown args.
+        if len(self._unknown_args) > 0:
+            var s = prefix + "  (unknown): ["
+            for j in range(len(self._unknown_args)):
+                if j > 0:
+                    s += ", "
+                s += self._unknown_args[j]
+            s += "]"
+            print(s)
+
+        # Recurse into subcommand result.
+        if self.has_subcommand_result():
+            try:
+                var sub = self.get_subcommand_result()
+                sub._print_summary_impl(indent + 2, self.subcommand)
+            except:
+                pass
+
     fn __str__(self) -> String:
         """Return a string representation of the parse result."""
         var s = String("ParseResult(")
