@@ -23,6 +23,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 11. **Argument groups in help.** Add `.group["name"]()` builder method on `Argument`. Arguments assigned to the same group are displayed under a dedicated heading in `--help` output, in first-appearance order. Ungrouped arguments remain under the default "Options:" heading. Persistent arguments are collected under "Global Options:" as before (PR #17).
 12. **Value-name wrapping control.** Change `.value_name()` to accept compile-time parameters: `.value_name["NAME"]()` or `.value_name["NAME", False]()`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
 13. **Registration-time validation for group constraints.** `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` now validate argument names against `self.args` at the moment they are called. An `Error` is raised immediately if any name is unknown, empty lists are rejected, and duplicates are silently deduplicated. `required_if()` additionally rejects self-referential rules (`target == condition`). This catches developer typos on the very first `mojo run`, without waiting for end-user input (PR #22).
+14. **Interactive prompting.** Add `.prompt[text: StringLiteral = ""]()` builder method on `Argument`. When an argument marked with `.prompt()` is not provided on the command line, the user is interactively prompted for its value before validation runs. Use `.prompt()` to prompt with the argument's help text, or `.prompt["Custom text"]()` to set a custom message. Works on both required and optional arguments. Prompts show valid choices for `.choice[]()` arguments and show default values in brackets. For flag arguments, `y`/`n` input is accepted. When stdin is not available (piped/closed), prompting fails gracefully and defaults are applied (PR #23).
 
 ### 🦋 Changed in v0.4.0
 
@@ -57,6 +58,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 - Add 5 tests to `tests/test_groups.mojo` covering registration-time validation: unknown argument detection for `mutually_exclusive`, `required_together`, `one_required`, and `required_if` (both target and condition) (PR #22).
 - Add Developer Validation section to user manual documenting the two-layer validation model (compile-time `StringLiteral` + runtime registration-time `raises`) with recommended workflow (PR #22).
 - Add `pixi run debug` task that runs all examples under `-D ASSERT=all` with `--help` to exercise registration-time validation in CI (PR #22).
+- Add `tests/test_prompt.mojo` with tests covering interactive prompting builder methods, optional/required prompt arguments, prompting skipped when values are provided, choices and defaults integration, field propagation through copy, and combined features (PR #23).
 
 ---
 

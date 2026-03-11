@@ -12,8 +12,9 @@ clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
 help_on_no_arguments, default_if_no_value, require_equals, response files,
 remainder positionals, allow_hyphen_values, parse_known_arguments,
-argument groups in help (.group()), and value_name wrapping control
-(.value_name["NAME"]() or .value_name["NAME", False]()).
+argument groups in help (.group()), value_name wrapping control
+(.value_name["NAME"]() or .value_name["NAME", False]()), and interactive
+prompting (.prompt(), .prompt_text["..."]()).
 
 Note: This demo looks very strange, but useful :D
 
@@ -98,6 +99,11 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   ./demo run myapp --verbose -x --output=foo.txt
   ./demo run -                                # stdin convention via allow_hyphen_values
   ./demo run myapp                            # no extra args → empty remainder
+
+  # ── Subcommand: login (interactive prompting) ────────────────────────
+  ./demo login                                # prompts for user and token interactively
+  ./demo login --user alice --token secret     # no prompts needed
+  ./demo login --user alice                   # prompts only for token
 """
 
 from argmojo import Argument, Command
@@ -344,6 +350,36 @@ fn main() raises:
     )
     run.help_on_no_arguments()
     app.add_subcommand(run^)
+
+    # ── Subcommand: login (interactive prompting) ────────────────────────
+    # Demonstrates .prompt() and .prompt["..."]() for interactive input.
+    # Missing arguments are prompted for interactively.
+    var login = Command("login", "Authenticate with the service")
+    login.add_argument(
+        Argument("user", help="Username")
+        .long["user"]()
+        .short["u"]()
+        .required()
+        .prompt()
+    )
+    login.add_argument(
+        Argument("token", help="API token")
+        .long["token"]()
+        .short["t"]()
+        .required()
+        .prompt["Enter your API token"]()
+    )
+    login.add_argument(
+        Argument("region", help="Server region")
+        .long["region"]()
+        .choice["us"]()
+        .choice["eu"]()
+        .choice["ap"]()
+        .default["us"]()
+        .prompt()
+    )
+    login.help_on_no_arguments()
+    app.add_subcommand(login^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
     app.help_on_no_arguments()

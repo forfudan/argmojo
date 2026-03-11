@@ -141,6 +141,12 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     """Help-output group name for this argument.  Arguments with the same
     group name are displayed together under a shared heading.  Empty
     string means ungrouped (shown under the default 'Options:' heading)."""
+    var _prompt: Bool
+    """If True, the user is interactively prompted for this argument's
+    value when it is not provided on the command line."""
+    var _prompt_text: String
+    """Custom prompt message.  When empty, a default message is built
+    from the argument's help text or name."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -187,6 +193,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._allow_hyphen_values = False
         self._value_name_wrapped = True
         self._group = ""
+        self._prompt = False
+        self._prompt_text = ""
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -232,6 +240,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._allow_hyphen_values = copy._allow_hyphen_values
         self._value_name_wrapped = copy._value_name_wrapped
         self._group = copy._group
+        self._prompt = copy._prompt
+        self._prompt_text = copy._prompt_text
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -273,6 +283,8 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._allow_hyphen_values = move._allow_hyphen_values
         self._value_name_wrapped = move._value_name_wrapped
         self._group = move._group^
+        self._prompt = move._prompt
+        self._prompt_text = move._prompt_text^
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -864,6 +876,64 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         """
         constrained[len(name) > 0, "group name must not be empty"]()
         self._group = name
+        return self^
+
+    fn prompt(var self) -> Self:
+        """Enables interactive prompting for this argument.
+
+        When prompting is enabled, the user is interactively asked to
+        provide a value if the argument was not supplied on the command
+        line.  This works with any argument — required or optional,
+        named or positional.
+
+        The prompt message is derived from the argument's help text
+        (or name as fallback).  Use ``prompt["custom text"]()`` to
+        set a custom prompt message instead.
+
+        For flag arguments, the prompt accepts ``y``/``n`` (case-insensitive).
+        For arguments with choices, the valid choices are displayed in
+        the prompt.  For arguments with a default, the default is shown
+        in brackets and used when the user enters nothing.
+
+        Returns:
+            Self with prompting enabled.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Argument
+        _ = Argument("name", help="Your name").long["name"]().prompt()
+        ```
+        """
+        self._prompt = True
+        return self^
+
+    fn prompt[text: StringLiteral](var self) -> Self:
+        """Enables interactive prompting with custom text.
+
+        When the argument is not supplied on the command line, the
+        custom ``text`` is displayed instead of the default message
+        (which is derived from help text or argument name).
+
+        Parameters:
+            text: Custom prompt message.
+
+        Returns:
+            Self with prompting enabled and custom text set.
+
+        Constraints:
+            The prompt text must not be empty.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Argument
+        _ = Argument("token", help="API token").long["token"]().prompt["Enter your API token"]()
+        ```
+        """
+        constrained[len(text) > 0, "prompt text must not be empty"]()
+        self._prompt = True
+        self._prompt_text = text
         return self^
 
     # ===------------------------------------------------------------------=== #

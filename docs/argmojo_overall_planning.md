@@ -67,7 +67,7 @@ These features appear across multiple libraries and depend only on string operat
 | `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | **Done**      |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                              | Phase 5       |
-| Interactive prompting              | —        | ✓     | —     | —    |                              | Phase 5       |
+| Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | Phase 5       |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
@@ -166,7 +166,8 @@ tests/
 ├── test_response_file.mojo         # response file (@args.txt) expansion tests
 ├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
 ├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
-└── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
+├── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
+└── test_prompt.mojo               # interactive prompting tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -235,6 +236,7 @@ examples/
 | CJK punctuation auto-correction (em-dash `U+2014` → hyphen-minus)                                     | ✓      | ✓     |
 | Compile-time `StringLiteral` builder params (`.long[]`, `.short[]`, `.choice[]`, colours, etc.)       | ✓      | —     |
 | Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
+| Interactive prompting (`.prompt()`, `.prompt_text[]()` → prompt for missing args)                     | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 

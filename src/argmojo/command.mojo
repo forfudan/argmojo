@@ -1733,6 +1733,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             i += 1
 
         # Apply defaults, propagate implications, then validate constraints.
+        self._prompt_missing_args(result)
         self._apply_defaults(result)
         self._apply_implications(result)
         self._validate(result)
@@ -2454,6 +2455,136 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + hint
                 )
             return -1
+
+    # ===------------------------------------------------------------------=== #
+    # Interactive prompting
+    # ===------------------------------------------------------------------=== #
+
+    fn _prompt_missing_args(self, mut result: ParseResult) raises:
+        """Prompts the user interactively for arguments marked with ``.prompt()``
+        that were not provided on the command line.
+
+        Called after the parsing loop but before ``_apply_defaults()``, so
+        that user-provided prompt responses take priority and defaults
+        fill in only remaining gaps.  For flag arguments, the prompt
+        accepts ``y``/``n`` (case-insensitive).  For arguments with
+        choices, valid options are shown.  For arguments with a default,
+        the default is displayed in brackets and used when the user
+        enters nothing.
+
+        Prompting is skipped entirely when no arguments have
+        ``.prompt()`` enabled.  When stdin is not a terminal (e.g.,
+        piped input, CI environments, ``/dev/null``), ``input()`` raises
+        immediately and prompting stops gracefully.
+
+        Args:
+            result: The parse result to mutate in-place.
+
+        Raises:
+            Error if input cannot be read (propagated from ``input()``).
+        """
+        # Fast path: skip entirely if no args have prompting enabled.
+        var has_prompt_args = False
+        for j in range(len(self.args)):
+            if self.args[j]._prompt:
+                has_prompt_args = True
+                break
+        if not has_prompt_args:
+            return
+
+        for j in range(len(self.args)):
+            var a = self.args[j].copy()
+            if not a._prompt:
+                continue
+            if result.has(a.name):
+                continue
+
+            # ── Build prompt message ─────────────────────────────────
+            var msg: String
+            if a._prompt_text:
+                msg = a._prompt_text
+            elif a.help_text:
+                msg = a.help_text
+            else:
+                msg = a.name
+
+            # Show choices if defined.
+            if len(a._choice_values) > 0:
+                msg += " ["
+                for c in range(len(a._choice_values)):
+                    if c > 0:
+                        msg += "/"
+                    msg += a._choice_values[c]
+                msg += "]"
+
+            # Show default if available.
+            if a._has_default:
+                msg += " (" + a._default_value + ")"
+
+            # Flags get a y/n hint.
+            if a._is_flag:
+                msg += " [y/n]"
+
+            msg += ": "
+
+            # ── Read input ───────────────────────────────────────────
+            try:
+                var value = input(msg)
+                if len(value) == 0:
+                    # Empty input — fall through to _apply_defaults.
+                    continue
+                if a._is_flag:
+                    var lower = value.lower()
+                    if (
+                        lower == "y"
+                        or lower == "yes"
+                        or lower == "true"
+                        or lower == "1"
+                    ):
+                        result._flags[a.name] = True
+                    elif (
+                        lower == "n"
+                        or lower == "no"
+                        or lower == "false"
+                        or lower == "0"
+                    ):
+                        result._flags[a.name] = False
+                    else:
+                        self._warn(
+                            "Invalid input for flag '"
+                            + a.name
+                            + "': expected y/n, got '"
+                            + value
+                            + "'"
+                        )
+                elif a._is_count:
+                    try:
+                        result._counts[a.name] = Int(atol(value))
+                    except:
+                        self._warn(
+                            "Invalid count for '"
+                            + a.name
+                            + "': '"
+                            + value
+                            + "'"
+                        )
+                elif a._is_positional:
+                    # Fill the correct positional slot.
+                    for k in range(len(result._positional_names)):
+                        if result._positional_names[k] == a.name:
+                            while len(result._positionals) <= k:
+                                result._positionals.append("")
+                            result._positionals[k] = value
+                            break
+                else:
+                    # Validate choices before storing.
+                    if len(a._choice_values) > 0:
+                        self._validate_choices(a, value)
+                    result._values[a.name] = value
+            except e:
+                # EOF or stdin error — stop prompting entirely.
+                # This handles non-interactive / piped usage gracefully.
+                return
 
     # ===------------------------------------------------------------------=== #
     # Defaults & validation helpers (extracted for subcommand reuse)

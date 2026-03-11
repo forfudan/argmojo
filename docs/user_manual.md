@@ -73,6 +73,19 @@ from argmojo import Argument, Command
   - [Remainder Positional (`.remainder()`)](#remainder-positional-remainder)
   - [Allow Hyphen Values (`.allow_hyphen_values()`)](#allow-hyphen-values-allow_hyphen_values)
   - [Partial Parsing (`parse_known_arguments()`)](#partial-parsing-parse_known_arguments)
+- [Interactive Prompting](#interactive-prompting)
+  - [Setup Example](#setup-example)
+  - [Enabling Prompting](#enabling-prompting)
+  - [Interactive Session Examples](#interactive-session-examples)
+    - [All arguments missing — full prompting](#all-arguments-missing--full-prompting)
+    - [Partial arguments — only missing ones are prompted](#partial-arguments--only-missing-ones-are-prompted)
+    - [All arguments provided — no prompting at all](#all-arguments-provided--no-prompting-at-all)
+    - [Empty input with a default — default value is used](#empty-input-with-a-default--default-value-is-used)
+    - [Flag argument — y/n prompt](#flag-argument--yn-prompt)
+    - [Argument with choices — choices are shown](#argument-with-choices--choices-are-shown)
+  - [Prompt Format](#prompt-format)
+  - [Interaction with Other Features](#interaction-with-other-features)
+  - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -398,6 +411,8 @@ Argument("name", help="...")
 ║   .persistent()                               inherit to subcommands    (named only)
 ║   .default_if_no_value["val"]()               default-if-no-value       (value only)
 ║   .require_equals()                           force --key=value syntax  (named value only)
+║   .prompt()                                   prompt interactively      (any)
+║   .prompt_text["msg"]()                       custom prompt message     (any; implies .prompt())
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -466,6 +481,8 @@ The table below shows which builder methods can be used with each argument mode.
 | `.default_if_no_value["val"]()`  |      ✓      |     —     |     —      |        —        |
 | `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
 | `.remainder()`                   |      —      |     —     |     —      |        ✓        |
+| `.prompt()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt_text["msg"]()`          |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.require_equals()`              |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
@@ -2899,6 +2916,190 @@ command.response_file_prefix("+")
 
 end of Response Files section -->
 
+## Interactive Prompting
+
+ArgMojo supports **interactive prompting** for missing arguments. When an argument marked with `.prompt()` is not provided on the command line, the user is asked to enter its value interactively before validation runs.
+
+This is useful for required credentials, configuration wizards, or any scenario where guided input improves the user experience.
+
+### Setup Example
+
+The examples below use this `login` command:
+
+```mojo
+from argmojo import Argument, Command
+
+fn main() raises:
+    var command = Command("login", "Authenticate with the service")
+    command.add_argument(
+        Argument("user", help="Username")
+        .long["user"]()
+        .required()
+        .prompt()
+    )
+    command.add_argument(
+        Argument("token", help="API token")
+        .long["token"]()
+        .required()
+        .prompt["Enter your API token"]()
+    )
+    command.add_argument(
+        Argument("region", help="Server region")
+        .long["region"]()
+        .choice["us"]()
+        .choice["eu"]()
+        .choice["ap"]()
+        .default["us"]()
+        .prompt()
+    )
+    var result = command.parse()
+```
+
+Three arguments are prompt-enabled:
+
+- `--user` — required, prompt uses the help text `"Username"`.
+- `--token` — required, prompt uses custom text `"Enter your API token"`.
+- `--region` — optional with choices and a default, prompt shows choices and default.
+
+### Enabling Prompting
+
+Use `.prompt()` on any argument — both required and optional — to enable interactive prompting:
+
+```mojo
+# Prompt using the argument's help text (or name as fallback).
+Argument("user", help="Username").long["user"]().prompt()
+
+# Prompt with custom text.
+Argument("token", help="API token").long["token"]().prompt["Enter your API token"]()
+```
+
+`.prompt()` and `.prompt["custom text"]()` are the same builder method. When no text is given, the argument's help text is displayed. When custom text is provided, it overrides the help text in the prompt.
+
+### Interactive Session Examples
+
+#### All arguments missing — full prompting
+
+When none of the prompt-enabled arguments are provided, the user is prompted for each one in order:
+
+```console
+$ ./login
+Username: alice
+Enter your API token: secret-123
+Server region [us/eu/ap] (us): eu
+```
+
+The parsed result contains `user="alice"`, `token="secret-123"`, `region="eu"`.
+
+#### Partial arguments — only missing ones are prompted
+
+When some arguments are already provided on the command line, only the missing ones trigger a prompt:
+
+```console
+$ ./login --user alice
+Enter your API token: secret-123
+Server region [us/eu/ap] (us): ap
+```
+
+`--user` was given on the CLI, so `Username:` is **not** asked.
+
+#### All arguments provided — no prompting at all
+
+```console
+$ ./login --user alice --token secret-123 --region eu
+```
+
+No prompts appear. The CLI values are used directly.
+
+#### Empty input with a default — default value is used
+
+When the user presses Enter without typing anything and the argument has a `.default[]()`, the default is applied:
+
+```console
+$ ./login
+Username: alice
+Enter your API token: secret-123
+Server region [us/eu/ap] (us):
+```
+
+The user pressed Enter at `Server region`, so `region` gets the default value `"us"`.
+
+#### Flag argument — y/n prompt
+
+Flag arguments accept `y`/`n`/`yes`/`no` (case-insensitive):
+
+```mojo
+Argument("verbose", help="Enable verbose output")
+    .long["verbose"]()
+    .flag()
+    .prompt()
+```
+
+```console
+$ ./app
+Enable verbose output [y/n]: y
+```
+
+Answering `y` or `yes` sets the flag to `True`. Answering `n` or `no` sets it to `False`.
+
+#### Argument with choices — choices are shown
+
+When a prompt-enabled argument has `.choice[]()` values, they are displayed in brackets. If a default exists, it is shown in parentheses:
+
+```console
+$ ./login --user alice --token secret
+Server region [us/eu/ap] (us): eu
+```
+
+The user sees the valid options and the default before typing.
+
+### Prompt Format
+
+The prompt message is built automatically from the argument's metadata:
+
+```text
+<text> [choice1/choice2/choice3] (default_value): _
+```
+
+Where:
+
+- **`<text>`** — custom prompt text if given via `.prompt["..."]()`, otherwise the argument's help text, otherwise the argument name.
+- **`[choices]`** — shown only when `.choice[]()` values exist.
+- **`(default)`** — shown only when `.default[]()` is set.
+- **`[y/n]`** — shown instead of choices for `.flag()` arguments.
+
+Examples of prompt lines:
+
+```console
+Username:                           ← help text, no choices, no default
+Enter your API token:               ← custom prompt text
+Server region [us/eu/ap] (us):      ← help text + choices + default
+Enable verbose output [y/n]:        ← flag prompt
+```
+
+### Interaction with Other Features
+
+- **`.required()`**: Prompting happens *before* validation. If the user provides a value via the prompt, the required check passes. `.prompt()` does **not** require `.required()` — it works on any argument.
+- **`.default[]()` **: If the user presses Enter (empty input), the default is applied by the normal default-filling phase.
+- **`.choice[]()` **: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
+- **Subcommands**: Each subcommand can have its own prompt-enabled arguments.
+- **Persistent flags**: Persistent arguments with `.prompt()` are prompted at the level where they are missing.
+
+### Non-Interactive Use (CI / Piped Input)
+
+When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the `input()` call raises on EOF. ArgMojo catches this gracefully and stops prompting — defaults are then applied normally, and validation proceeds as usual.
+
+```console
+$ echo "" | ./login --user alice --token secret
+```
+
+No prompts appear because stdin is a pipe. `--region` gets its default `"us"`.
+
+To avoid prompting entirely, always provide all arguments on the command line:
+
+```console
+$ ./login --user alice --token secret --region eu
+```
+
 ## Shell Completion
 
 ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These scripts enable tab-completion for your CLI's options, flags, subcommands, and choice values — with zero runtime overhead.
@@ -3170,6 +3371,8 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.require_equals()`             | —                                 | —                                        | `.require_equals(true)`         | —                              |
 | `.remainder()`                  | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
 | `.allow_hyphen_values()`        | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
+| `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
+| `.prompt_text["msg"]()`         | —                                 | `prompt="msg"`                           | —                               | —                              |
 
 ### Command-Level Constraint Methods
 
