@@ -92,6 +92,11 @@ from argmojo import Argument, Command
   - [Multiple Parents](#multiple-parents)
   - [Using with Subcommands](#using-with-subcommands)
   - [Notes](#notes)
+- [Confirmation Option](#confirmation-option)
+  - [Basic Usage](#basic-usage)
+  - [Custom Prompt Text](#custom-prompt-text)
+  - [Using with Subcommands](#using-with-subcommands-1)
+  - [Non-Interactive Use](#non-interactive-use)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -431,9 +436,14 @@ Argument("name", help="...")
 ║   ├── Response files
 ║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
 ║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
-║   └── CJK / i18n
-║       command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
-║       command.disable_punctuation_correction()  disable CJK punctuation correction
+║   ├── CJK / i18n
+║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
+║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
+║   ├── Argument inheritance
+║   │   command.add_parent(parent)                copy arguments from a parent command
+║   └── Confirmation
+║       command.confirmation_option()             add --yes/-y confirmation prompt
+║       command.confirmation_option["text"]()     custom confirmation prompt text
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
 
@@ -447,40 +457,42 @@ Argument("name", help="...")
 
 The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
 
-| Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
-| -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default["val"]()`              |      ✓      |     —     |     —      |        ✓        |
-| `.choice["a"]().choice["b"]()`   |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
-| `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`                      |      ✓      |     —     |     —      |        —        |
-| `.delimiter[","]()`              |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`                  |      ✓      |     —     |     —      |        —        |
-| `.negatable()`                   |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name["FILE"]()` ⁴        |      ✓      |     —     |     —      |        ✓        |
-| `.group["name"]()`               |      ✓      |     ✓     |     ✓      |        —        |
-| `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.alias_name["alt"]()`           |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated["msg"]()`           |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value["val"]()`  |      ✓      |     —     |     —      |        —        |
-| `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
-| `.remainder()`                   |      —      |     —     |     —      |        ✓        |
-| `.prompt()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.prompt["msg"]()`               |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
-| `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
-| `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
-| `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
+| Method                            | Named value | `.flag()` | `.count()` | `.positional()` |
+| --------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.default["val"]()`               |      ✓      |     —     |     —      |        ✓        |
+| `.choice["a"]().choice["b"]()`    |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`               |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                        |     ✓ ¹     |     —     |     —      |        —        |
+| `.append()`                       |      ✓      |     —     |     —      |        —        |
+| `.delimiter[","]()`               |     ✓ ²     |     —     |     —      |        —        |
+| `.number_of_values[N]()`          |     ✓ ²     |     —     |     —      |        —        |
+| `.map_option()`                   |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                    |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                       |      —      |     —     |     ✓      |        —        |
+| `.value_name["FILE"]()` ⁴         |      ✓      |     —     |     —      |        ✓        |
+| `.group["name"]()`                |      ✓      |     ✓     |     ✓      |        —        |
+| `.hidden()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.alias_name["alt"]()`            |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated["msg"]()`            |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value["val"]()`   |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`          |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                    |      —      |     —     |     —      |        ✓        |
+| `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.require_equals()`               |      ✓      |     —     |     —      |        —        |
+| `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` ³   |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` ³         |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
+| `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
 
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
 
 ## Short Option Details
 
@@ -3193,6 +3205,85 @@ var result = app.parse()
 - Child arguments added via `add_argument()` coexist with inherited ones.
 - If you need different constraints for different children, apply them after `add_parent()` on each child individually.
 
+## Confirmation Option
+
+Some commands are destructive or irreversible — dropping databases, deleting files, deploying to production. The **confirmation option** adds a built-in `--yes` / `-y` flag that lets users skip an interactive confirmation prompt. This is equivalent to Click's `confirmation_option` decorator.
+
+### Basic Usage
+
+```mojo
+from argmojo import Command, Argument
+
+fn main() raises:
+    var cmd = Command("drop", "Drop the database")
+    cmd.add_argument(
+        Argument("name", help="Database name").positional().required()
+    )
+    cmd.confirmation_option()
+
+    var result = cmd.parse()
+    # Without --yes: prompts "Are you sure? [y/N]: "
+    # With --yes or -y: skips the prompt
+    print("Dropping database:", result.get_string("name"))
+```
+
+Running without `--yes`:
+
+```sh
+$ ./drop mydb
+Are you sure? [y/N]: y
+Dropping database: mydb
+```
+
+Running with `--yes`:
+
+```sh
+$ ./drop mydb --yes
+Dropping database: mydb
+```
+
+### Custom Prompt Text
+
+Use the compile-time parameter overload to set a custom prompt:
+
+```mojo
+cmd.confirmation_option["Drop the database? This cannot be undone."]()
+```
+
+This changes the prompt to:
+  
+```sh
+Drop the database? This cannot be undone. [y/N]: 
+```
+
+### Using with Subcommands
+
+Confirmation works naturally with subcommands. The `--yes` flag is registered on the command that calls `confirmation_option()`:
+
+```mojo
+var app = Command("app", "My app")
+app.confirmation_option()
+
+var deploy = Command("deploy", "Deploy to production")
+deploy.add_argument(Argument("env", help="Environment").positional().required())
+app.add_subcommand(deploy^)
+
+var result = app.parse()
+# app --yes deploy prod  →  skips confirmation
+```
+
+### Non-Interactive Use
+
+When stdin is not available (piped input, CI environments, `/dev/null`), the confirmation prompt cannot be displayed. In this case, the command **aborts with an error** unless `--yes` is passed. This ensures that destructive commands never run silently without explicit opt-in:
+
+```sh
+$ echo "" | ./drop mydb
+error: drop: Aborted (no interactive input available)
+
+$ ./drop mydb --yes    # works in CI
+Dropping database: mydb
+```
+
 ## Shell Completion
 
 ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These scripts enable tab-completion for your CLI's options, flags, subcommands, and choice values — with zero runtime overhead.
@@ -3479,6 +3570,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `parse_known_arguments()`   | `parse_known_args()`             | —                               | — ¹¹                           | `FParseErrWhitelist` ¹²         |
 | `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
 | `add_parent(parent)`        | `parents=[parent]`               | —                               | —                              | —                               |
+| `confirmation_option()`     | —                                | `confirmation_option`           | —                              | —                               |
 
 ### Notes
 
