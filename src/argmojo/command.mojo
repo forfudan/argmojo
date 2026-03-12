@@ -249,7 +249,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
     ``confirmation_option()``."""
     var _confirmation_prompt: String
     """The prompt text shown when asking for confirmation.
-    Defaults to ``"Are you sure?"``."""
+    Empty until ``confirmation_option()`` is called."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -1345,6 +1345,17 @@ struct Command(Copyable, Movable, Stringable, Writable):
         #   drop mydb --yes
         ```
         """
+        # Guard: reject if --yes or -y is already registered.
+        for i in range(len(self.args)):
+            if self.args[i]._long_name == "yes":
+                self._error(
+                    "confirmation_option: a '--yes' argument is already"
+                    " registered"
+                )
+            if self.args[i]._short_name == "y":
+                self._error(
+                    "confirmation_option: a '-y' argument is already registered"
+                )
         self._confirmation_enabled = True
         self._confirmation_prompt = String("Are you sure?")
         self.add_argument(
@@ -1383,14 +1394,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
             len(prompt) > 0,
             "confirmation_option: prompt text must not be empty",
         ]()
-        self._confirmation_enabled = True
+        self.confirmation_option()
         self._confirmation_prompt = String(prompt)
-        self.add_argument(
-            Argument("yes", help="Skip confirmation prompt")
-            .long["yes"]()
-            .short["y"]()
-            .flag()
-        )
 
     # [Mojo Miji]
     # `name` is a type parameter (StringLiteral) rather than a runtime
@@ -2678,7 +2683,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             value = input(prompt)
         except:
             self._error("Aborted (no interactive input available)")
-            return
+            return  # unreachable — _error() always raises; keeps the compiler happy
         var lower = value.lower()
         if lower != "y" and lower != "yes":
             self._error("Aborted")

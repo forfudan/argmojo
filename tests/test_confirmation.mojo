@@ -145,8 +145,7 @@ fn test_confirmation_with_flag_and_option() raises:
 
 
 fn test_confirmation_yes_is_false_by_default() raises:
-    """Tests that the --yes flag defaults to False when not provided (with --yes to skip).
-    """
+    """Tests that --yes works alongside defaulted options."""
     var cmd = Command("deploy", "Deploy the application")
     cmd.add_argument(
         Argument("env", help="Target environment")
@@ -155,7 +154,6 @@ fn test_confirmation_yes_is_false_by_default() raises:
     )
     cmd.confirmation_option()
 
-    # Pass --yes to skip confirmation, but check that yes defaults to False before parsing.
     var args: List[String] = ["deploy", "--yes"]
     var result = cmd.parse_arguments(args)
     assert_true(result.get_flag("yes"), msg="--yes should be True")

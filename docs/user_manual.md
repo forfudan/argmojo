@@ -3253,7 +3253,7 @@ cmd.confirmation_option["Drop the database? This cannot be undone."]()
 This changes the prompt to:
   
 ```sh
-Drop the database? This cannot be undone. [y/N]:
+Drop the database? This cannot be undone. [y/N]: 
 ```
 
 ### Using with Subcommands
