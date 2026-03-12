@@ -66,7 +66,7 @@ These features appear across multiple libraries and depend only on string operat
 | Hidden subcommands                 | —        | —     | ✓     | ✓    |                              | **Done**      |
 | `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | **Done**      |
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | **Done**      |
-| Argument parents (shared args)     | ✓        | —     | —     | —    |                              | Phase 5       |
+| Argument parents (shared args)     | ✓        | —     | —     | —    |                              | **Done**      |
 | Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | Phase 5       |
@@ -167,7 +167,8 @@ tests/
 ├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
 ├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
 ├── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
-└── test_prompt.mojo               # interactive prompting tests
+├── test_prompt.mojo               # interactive prompting tests
+└── test_parents.mojo              # argument parents (shared definitions) tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -237,6 +238,7 @@ examples/
 | Compile-time `StringLiteral` builder params (`.long[]`, `.short[]`, `.choice[]`, colours, etc.)       | ✓      | —     |
 | Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
 | Interactive prompting (`.prompt()`, `.prompt["..."]()` → prompt for missing args)                     | ✓      | ✓     |
+| Argument parents (`add_parent(parent)` → share args across commands)                                  | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -582,8 +584,8 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
 - [x] **Default-if-no-value** — `.default_if_no_value["val"]()`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
 - [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Temporarily disabled — Mojo compiler deadlock under `-D ASSERT=all`*
-- [ ] **Argument parents** — share a common set of Argument definitions across multiple Commands (argparse `parents`)
-- [ ] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`)
+- [x] **Argument parents** — `add_parent(parent)` copies all arguments and group constraints from a parent Command, sharing definitions across multiple commands (argparse `parents`) (PR #25)
+- [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)

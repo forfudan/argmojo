@@ -578,6 +578,71 @@ struct Command(Copyable, Movable, Stringable, Writable):
             self.subcommands.append(h^)
         self.subcommands.append(sub^)
 
+    fn add_parent(mut self, parent: Command) raises:
+        """Inherits argument definitions and group constraints from a parent.
+
+        All arguments registered on ``parent`` are copied into this command,
+        and all group constraints (mutually exclusive, required together,
+        one-required, conditional requirements, implications) are inherited.
+
+        This is equivalent to Python argparse's ``parents`` parameter — it
+        lets you share a common set of ``Argument`` definitions across
+        multiple ``Command`` instances without repeating them.
+
+        The parent should **not** have ``--help`` / ``-h`` registered as a
+        user argument (the built-in help is always present), but any other
+        argument is fine.  All validation guards in ``add_argument()`` run
+        on each inherited argument as usual.
+
+        Args:
+            parent: The Command whose arguments and constraints to inherit.
+
+        Raises:
+            Error if any inherited argument violates registration guards.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+
+        var shared = Command("_shared")
+        shared.add_argument(
+            Argument("verbose", help="Enable verbose output")
+            .long["verbose"]()
+            .short["v"]()
+            .flag()
+        )
+        shared.add_argument(
+            Argument("format", help="Output format")
+            .long["format"]()
+            .short["f"]()
+            .choice["json"]()
+            .choice["yaml"]()
+        )
+        shared.mutually_exclusive(["json_output", "yaml_output"])
+
+        var cmd_a = Command("cmd_a", "First command")
+        cmd_a.add_parent(shared)
+
+        var cmd_b = Command("cmd_b", "Second command")
+        cmd_b.add_parent(shared)
+        ```
+        """
+        for i in range(len(parent.args)):
+            self.add_argument(parent.args[i].copy())
+        for i in range(len(parent._exclusive_groups)):
+            self._exclusive_groups.append(parent._exclusive_groups[i].copy())
+        for i in range(len(parent._required_groups)):
+            self._required_groups.append(parent._required_groups[i].copy())
+        for i in range(len(parent._one_required_groups)):
+            self._one_required_groups.append(
+                parent._one_required_groups[i].copy()
+            )
+        for i in range(len(parent._conditional_reqs)):
+            self._conditional_reqs.append(parent._conditional_reqs[i].copy())
+        for i in range(len(parent._implications)):
+            self._implications.append(parent._implications[i].copy())
+
     fn disable_help_subcommand(mut self):
         """Opts out of the auto-added ``help`` subcommand.
 
