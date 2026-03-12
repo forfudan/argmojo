@@ -242,6 +242,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
     CJK punctuation (e.g. em-dash ``U+2014``) is substituted before
     running Levenshtein typo suggestion.  Call
     ``disable_punctuation_correction()`` to opt out."""
+    var _confirmation_enabled: Bool
+    """When True, the command prompts the user for confirmation before
+    returning the parse result.  If ``--yes`` / ``-y`` is provided on
+    the command line, the prompt is skipped.  Enable via
+    ``confirmation_option()``."""
+    var _confirmation_prompt: String
+    """The prompt text shown when asking for confirmation.
+    Defaults to ``"Are you sure?"``."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -285,6 +293,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._response_file_max_depth = 10
         self._disable_fullwidth_correction = False
         self._disable_punctuation_correction = False
+        self._confirmation_enabled = False
+        self._confirmation_prompt = String("")
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -325,6 +335,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._disable_punctuation_correction = (
             move._disable_punctuation_correction
         )
+        self._confirmation_enabled = move._confirmation_enabled
+        self._confirmation_prompt = move._confirmation_prompt^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -382,6 +394,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._disable_punctuation_correction = (
             copy._disable_punctuation_correction
         )
+        self._confirmation_enabled = copy._confirmation_enabled
+        self._confirmation_prompt = copy._confirmation_prompt
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -1301,6 +1315,83 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 )
         self._help_on_no_arguments = True
 
+    fn confirmation_option(mut self) raises:
+        """Adds a ``--yes`` / ``-y`` flag to skip a confirmation prompt.
+
+        When enabled, the command will prompt the user with
+        ``"Are you sure? [y/N]: "`` after parsing (and after interactive
+        prompting, if any) but before validation.  If the user does not
+        answer ``y`` or ``yes``, the command aborts with an error.
+
+        Passing ``--yes`` or ``-y`` on the command line skips the prompt
+        entirely.  This is equivalent to Click's ``confirmation_option``
+        decorator.
+
+        Raises:
+            Error if a ``--yes`` / ``-y`` argument is already registered.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+
+        var cmd = Command("drop", "Drop the database")
+        cmd.add_argument(
+            Argument("name", help="Database name")
+            .positional().required()
+        )
+        cmd.confirmation_option()
+        # Users must pass --yes (or -y) to skip the prompt:
+        #   drop mydb --yes
+        ```
+        """
+        self._confirmation_enabled = True
+        self._confirmation_prompt = String("Are you sure?")
+        self.add_argument(
+            Argument("yes", help="Skip confirmation prompt")
+            .long["yes"]()
+            .short["y"]()
+            .flag()
+        )
+
+    fn confirmation_option[prompt: StringLiteral](mut self) raises:
+        """Adds a ``--yes`` / ``-y`` flag with a custom confirmation prompt.
+
+        Behaves like ``confirmation_option()`` but uses the provided
+        ``prompt`` text instead of the default ``"Are you sure?"``.
+
+        Parameters:
+            prompt: The custom prompt text to display.
+
+        Raises:
+            Error if a ``--yes`` / ``-y`` argument is already registered.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+
+        var cmd = Command("drop", "Drop the database")
+        cmd.add_argument(
+            Argument("name", help="Database name")
+            .positional().required()
+        )
+        cmd.confirmation_option["Drop the database? This cannot be undone."]()
+        ```
+        """
+        constrained[
+            len(prompt) > 0,
+            "confirmation_option: prompt text must not be empty",
+        ]()
+        self._confirmation_enabled = True
+        self._confirmation_prompt = String(prompt)
+        self.add_argument(
+            Argument("yes", help="Skip confirmation prompt")
+            .long["yes"]()
+            .short["y"]()
+            .flag()
+        )
+
     # [Mojo Miji]
     # `name` is a type parameter (StringLiteral) rather than a runtime
     # argument so that the colour name is validated at compile time.
@@ -1833,11 +1924,12 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         # Apply defaults, propagate implications, prompt for remaining
         # values, re-apply implications (in case prompts triggered new
-        # ones), then validate constraints.
+        # ones), confirm if required, then validate constraints.
         self._apply_defaults(result)
         self._apply_implications(result)
         self._prompt_missing_args(result)
         self._apply_implications(result)
+        self._confirm(result)
         self._validate(result)
 
         return result^
@@ -2557,6 +2649,39 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + hint
                 )
             return -1
+
+    # ===------------------------------------------------------------------=== #
+    # Confirmation prompt
+    # ===------------------------------------------------------------------=== #
+
+    fn _confirm(self, result: ParseResult) raises:
+        """Prompts the user for confirmation if ``confirmation_option()`` is
+        enabled and ``--yes`` / ``-y`` was not passed.
+
+        Aborts with an error if the user does not confirm, or if stdin is
+        not interactive (e.g. piped / ``/dev/null``).
+
+        Args:
+            result: The parse result (read-only; only checks the ``yes``
+                flag).
+
+        Raises:
+            Error: If the user declines or stdin is unavailable.
+        """
+        if not self._confirmation_enabled:
+            return
+        if result.get_flag("yes"):
+            return
+        var prompt = self._confirmation_prompt + " [y/N]: "
+        var value: String
+        try:
+            value = input(prompt)
+        except:
+            self._error("Aborted (no interactive input available)")
+            return
+        var lower = value.lower()
+        if lower != "y" and lower != "yes":
+            self._error("Aborted")
 
     # ===------------------------------------------------------------------=== #
     # Interactive prompting

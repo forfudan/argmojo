@@ -69,7 +69,7 @@ These features appear across multiple libraries and depend only on string operat
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                              | **Done**      |
 | Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
 | Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
-| Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | Phase 5       |
+| Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | **Done**      |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
 | REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | **Done**      |
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | **Done**      |
@@ -168,7 +168,8 @@ tests/
 ├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
 ├── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
 ├── test_prompt.mojo               # interactive prompting tests
-└── test_parents.mojo              # argument parents (shared definitions) tests
+├── test_parents.mojo              # argument parents (shared definitions) tests
+└── test_confirmation.mojo         # confirmation option (--yes / -y) tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -239,6 +240,7 @@ examples/
 | Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
 | Interactive prompting (`.prompt()`, `.prompt["..."]()` → prompt for missing args)                     | ✓      | ✓     |
 | Argument parents (`add_parent(parent)` → share args across commands)                                  | ✓      | ✓     |
+| Confirmation option (`confirmation_option()` → `--yes`/`-y` to skip confirmation)                     | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -587,7 +589,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Argument parents** — `add_parent(parent)` copies all arguments and group constraints from a parent Command, sharing definitions across multiple commands (argparse `parents`) (PR #25)
 - [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
 - [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
-- [ ] **Confirmation option** — built-in `--yes` / `-y` to skip confirmation prompts (Click `confirmation_option`)
+- [x] **Confirmation option** — `confirmation_option()` or `confirmation_option["prompt"]()` auto-registers `--yes`/`-y` flag; prompts user for confirmation after parsing; aborts on decline or non-interactive stdin (Click `confirmation_option`) (PR #26)
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
 - [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens (including `-` prefixed); at most one per command, must be last positional (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
 - [x] **Allow hyphen values** — `.allow_hyphen_values()` on positional accepts dash-prefixed tokens as values without `--`; remainder enables this automatically (clap `allow_hyphen_values`) (PR #13)
