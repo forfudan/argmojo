@@ -35,3 +35,5 @@ logs/
 
 # Local notes (not tracked)
 local/
+temp*.mojo
+temp*.py

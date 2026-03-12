@@ -86,6 +86,12 @@ from argmojo import Argument, Command
   - [Prompt Format](#prompt-format)
   - [Interaction with Other Features](#interaction-with-other-features)
   - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
+- [Argument Parents and Inheritance](#argument-parents-and-inheritance)
+  - [Defining Shared Arguments](#defining-shared-arguments)
+  - [What Gets Inherited](#what-gets-inherited)
+  - [Multiple Parents](#multiple-parents)
+  - [Using with Subcommands](#using-with-subcommands)
+  - [Notes](#notes)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -101,7 +107,7 @@ from argmojo import Argument, Command
 - [Cross-Library Method Name Reference](#cross-library-method-name-reference)
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
   - [Command-Level Constraint Methods](#command-level-constraint-methods)
-  - [Notes](#notes)
+  - [Notes](#notes-1)
 <!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
 - [Response Files](#response-files)
   - [Enabling Response Files](#enabling-response-files)
@@ -110,22 +116,6 @@ from argmojo import Argument, Command
   - [Recursive Response Files](#recursive-response-files)
   - [Custom Prefix](#custom-prefix)
 -->
-- [Shell Completion](#shell-completion)
-  - [Built-in `--completions` Flag](#built-in---completions-flag)
-  - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
-  - [Customising the Trigger Name](#customising-the-trigger-name)
-  - [Using a Subcommand Instead of an Option](#using-a-subcommand-instead-of-an-option)
-  - [Generating a Script Programmatically](#generating-a-script-programmatically)
-  - [Installing Completions](#installing-completions)
-  - [What Gets Completed](#what-gets-completed)
-- [Developer Validation](#developer-validation)
-  - [Compile-Time Validation](#compile-time-validation)
-  - [Runtime Registration Validation](#runtime-registration-validation)
-  - [Recommended Workflow](#recommended-workflow)
-- [Cross-Library Method Name Reference](#cross-library-method-name-reference)
-  - [Argument-Level Builder Methods](#argument-level-builder-methods)
-  - [Command-Level Constraint Methods](#command-level-constraint-methods)
-  - [Notes](#notes)
 
 ## Getting Started
 
@@ -3101,6 +3091,108 @@ To avoid prompting entirely, always provide all arguments on the command line:
 $ ./login --user alice --token secret --region eu
 ```
 
+## Argument Parents and Inheritance
+
+When multiple commands share the same set of arguments (e.g., `--verbose`, `--format`, `--output`), you can define them once in a **parent** command and inherit them via `add_parent()`. This is equivalent to Python argparse's `parents` parameter.
+
+### Defining Shared Arguments
+
+```mojo
+from argmojo import Command, Argument
+
+fn main() raises:
+    # Define shared arguments in a "parent" command.
+    # The name is arbitrary — it is never shown to users.
+    var shared = Command("_shared")
+    shared.add_argument(
+        Argument("verbose", help="Enable verbose output")
+        .long["verbose"]().short["v"]().flag()
+    )
+    shared.add_argument(
+        Argument("format", help="Output format")
+        .long["format"]().short["f"]()
+        .choice["json"]().choice["yaml"]().choice["csv"]()
+        .default["json"]()
+    )
+
+    # Inherit into multiple commands.
+    var cmd_a = Command("export", "Export data")
+    cmd_a.add_parent(shared)
+    cmd_a.add_argument(
+        Argument("path", help="Export path").positional().required()
+    )
+
+    var cmd_b = Command("report", "Generate report")
+    cmd_b.add_parent(shared)
+    cmd_b.add_argument(
+        Argument("title", help="Report title").long["title"]()
+    )
+```
+
+Both `export` and `report` now accept `--verbose`, `-v`, `--format`, and `-f` without repeating their definitions.
+
+### What Gets Inherited
+
+`add_parent()` copies:
+
+- **All arguments** — flags, options, positionals, count flags, append, map, etc.
+- **Mutually exclusive groups** — `mutually_exclusive()`
+- **Required-together groups** — `required_together()`
+- **One-required groups** — `one_required()`
+- **Conditional requirements** — `required_if()`
+- **Implications** — `implies()`
+
+All registration-time validation guards run on each inherited argument, so invalid combinations are caught immediately.
+
+### Multiple Parents
+
+A command can inherit from multiple parents:
+
+```mojo
+var io_args = Command("_io")
+io_args.add_argument(
+    Argument("output", help="Output file").long["output"]().short["o"]()
+)
+
+var log_args = Command("_log")
+log_args.add_argument(
+    Argument("verbose", help="Verbose").long["verbose"]().short["v"]().flag()
+)
+
+var cmd = Command("process", "Process data")
+cmd.add_parent(io_args)
+cmd.add_parent(log_args)
+# cmd now has --output, -o, --verbose, -v
+```
+
+### Using with Subcommands
+
+Parent arguments can include `.persistent()` flags, which are then inherited by the command and automatically propagated to its subcommands:
+
+```mojo
+var global_args = Command("_global")
+global_args.add_argument(
+    Argument("verbose", help="Verbose")
+    .long["verbose"]().short["v"]().flag().persistent()
+)
+
+var app = Command("app", "My app")
+app.add_parent(global_args)
+
+var sub = Command("run", "Run something")
+sub.add_argument(Argument("target", help="Target").positional().required())
+app.add_subcommand(sub^)
+
+var result = app.parse()
+# app -v run main  →  verbose=True, subcommand="run"
+```
+
+### Notes
+
+- The parent `Command` is **not modified** by `add_parent()` — it can be shared safely across multiple children.
+- Child arguments added via `add_argument()` coexist with inherited ones.
+- If you need different constraints for different children, apply them after `add_parent()` on each child individually.
+
 ## Shell Completion
 
 ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These scripts enable tab-completion for your CLI's options, flags, subcommands, and choice values — with zero runtime overhead.
@@ -3386,6 +3478,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
 | `parse_known_arguments()`   | `parse_known_args()`             | —                               | — ¹¹                           | `FParseErrWhitelist` ¹²         |
 | `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
+| `add_parent(parent)`        | `parents=[parent]`               | —                               | —                              | —                               |
 
 ### Notes
 
