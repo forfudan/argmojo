@@ -436,9 +436,14 @@ Argument("name", help="...")
 ║   ├── Response files
 ║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
 ║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
-║   └── CJK / i18n
-║       command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
-║       command.disable_punctuation_correction()  disable CJK punctuation correction
+║   ├── CJK / i18n
+║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
+║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
+║   ├── Argument inheritance
+║   │   command.add_parent(parent)                copy arguments from a parent command
+║   └── Confirmation
+║       command.confirmation_option()             add --yes/-y confirmation prompt
+║       command.confirmation_option["text"]()     custom confirmation prompt text
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
 
@@ -452,40 +457,42 @@ Argument("name", help="...")
 
 The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
 
-| Method                           | Named value | `.flag()` | `.count()` | `.positional()` |
-| -------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                    |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default["val"]()`              |      ✓      |     —     |     —      |        ✓        |
-| `.choice["a"]().choice["b"]()`   |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`              |      ✓      |     —     |     —      |        —        |
-| `.clamp()`                       |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`                      |      ✓      |     —     |     —      |        —        |
-| `.delimiter[","]()`              |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()`         |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`                  |      ✓      |     —     |     —      |        —        |
-| `.negatable()`                   |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`                      |      —      |     —     |     ✓      |        —        |
-| `.value_name["FILE"]()` ⁴        |      ✓      |     —     |     —      |        ✓        |
-| `.group["name"]()`               |      ✓      |     ✓     |     ✓      |        —        |
-| `.hidden()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.alias_name["alt"]()`           |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated["msg"]()`           |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`                  |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value["val"]()`  |      ✓      |     —     |     —      |        —        |
-| `.allow_hyphen_values()`         |      ✓      |     —     |     —      |        ✓        |
-| `.remainder()`                   |      —      |     —     |     —      |        ✓        |
-| `.prompt()`                      |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.prompt["msg"]()`               |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.require_equals()`              |      ✓      |     —     |     —      |        —        |
-| `command.mutually_exclusive()` ³ |      ✓      |     ✓     |     ✓      |        —        |
-| `command.one_required()` ³       |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_together()` ³  |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_if()` ³        |      ✓      |     ✓     |     ✓      |        —        |
-| `command.implies()` ³            |      ✓      |     ✓     |     ✓      |        —        |
+| Method                            | Named value | `.flag()` | `.count()` | `.positional()` |
+| --------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.default["val"]()`               |      ✓      |     —     |     —      |        ✓        |
+| `.choice["a"]().choice["b"]()`    |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`               |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                        |     ✓ ¹     |     —     |     —      |        —        |
+| `.append()`                       |      ✓      |     —     |     —      |        —        |
+| `.delimiter[","]()`               |     ✓ ²     |     —     |     —      |        —        |
+| `.number_of_values[N]()`          |     ✓ ²     |     —     |     —      |        —        |
+| `.map_option()`                   |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                    |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                       |      —      |     —     |     ✓      |        —        |
+| `.value_name["FILE"]()` ⁴         |      ✓      |     —     |     —      |        ✓        |
+| `.group["name"]()`                |      ✓      |     ✓     |     ✓      |        —        |
+| `.hidden()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.alias_name["alt"]()`            |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated["msg"]()`            |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value["val"]()`   |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`          |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                    |      —      |     —     |     —      |        ✓        |
+| `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.require_equals()`               |      ✓      |     —     |     —      |        —        |
+| `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` ³   |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` ³         |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
+| `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
 
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — takes argument names as strings, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
 
 ## Short Option Details
 
