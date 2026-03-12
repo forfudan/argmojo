@@ -619,7 +619,6 @@ struct Command(Copyable, Movable, Stringable, Writable):
             .choice["json"]()
             .choice["yaml"]()
         )
-        shared.mutually_exclusive(["json_output", "yaml_output"])
 
         var cmd_a = Command("cmd_a", "First command")
         cmd_a.add_parent(shared)
@@ -628,8 +627,18 @@ struct Command(Copyable, Movable, Stringable, Writable):
         cmd_b.add_parent(shared)
         ```
         """
-        for i in range(len(parent.args)):
-            self.add_argument(parent.args[i].copy())
+        # Stage args with rollback: if any add_argument() raises (e.g.
+        # name/short/long conflict), undo partially-added args so that
+        # self is not left in a half-inherited state.
+        var orig_len = len(self.args)
+        try:
+            for i in range(len(parent.args)):
+                self.add_argument(parent.args[i].copy())
+        except e:
+            while len(self.args) > orig_len:
+                _ = self.args.pop()
+            raise e^
+        # All args inherited successfully; copy constraint groups.
         for i in range(len(parent._exclusive_groups)):
             self._exclusive_groups.append(parent._exclusive_groups[i].copy())
         for i in range(len(parent._required_groups)):

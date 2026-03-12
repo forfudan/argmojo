@@ -86,7 +86,7 @@ from argmojo import Argument, Command
   - [Prompt Format](#prompt-format)
   - [Interaction with Other Features](#interaction-with-other-features)
   - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
-- [Argument Parents and inheritance](#argument-parents-and-inheritance)
+- [Argument Parents and Inheritance](#argument-parents-and-inheritance)
   - [Defining Shared Arguments](#defining-shared-arguments)
   - [What Gets Inherited](#what-gets-inherited)
   - [Multiple Parents](#multiple-parents)
@@ -3091,7 +3091,7 @@ To avoid prompting entirely, always provide all arguments on the command line:
 $ ./login --user alice --token secret --region eu
 ```
 
-## Argument Parents and inheritance
+## Argument Parents and Inheritance
 
 When multiple commands share the same set of arguments (e.g., `--verbose`, `--format`, `--output`), you can define them once in a **parent** command and inherit them via `add_parent()`. This is equivalent to Python argparse's `parents` parameter.
 
