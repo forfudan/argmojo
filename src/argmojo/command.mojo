@@ -250,6 +250,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
     var _confirmation_prompt: String
     """The prompt text shown when asking for confirmation.
     Empty until ``confirmation_option()`` is called."""
+    var _custom_usage: String
+    """When non-empty, replaces the auto-generated usage line.
+    Set via ``usage("...")``."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -295,6 +298,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._disable_punctuation_correction = False
         self._confirmation_enabled = False
         self._confirmation_prompt = String("")
+        self._custom_usage = String("")
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
@@ -337,6 +341,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         )
         self._confirmation_enabled = move._confirmation_enabled
         self._confirmation_prompt = move._confirmation_prompt^
+        self._custom_usage = move._custom_usage^
         self._header_color = move._header_color^
         self._arg_color = move._arg_color^
         self._warn_color = move._warn_color^
@@ -396,6 +401,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         )
         self._confirmation_enabled = copy._confirmation_enabled
         self._confirmation_prompt = copy._confirmation_prompt
+        self._custom_usage = copy._custom_usage
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
@@ -1283,6 +1289,33 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var imp_triple: List[String] = [trigger, implied, implied_kind]
         self._implications.append(imp_triple^)
 
+    fn usage(mut self, text: String):
+        """Sets a custom usage line, replacing the auto-generated one.
+
+        By default, ArgMojo generates a usage line like::
+
+            Usage: myapp <file> [OPTIONS]
+
+        Call this method to override it with a completely custom string.
+        The string should **not** include the ``Usage:`` prefix — it will
+        be added automatically.
+
+        Args:
+            text: The custom usage text (e.g. ``"myapp [-v | --version]
+                [-C <path>] <command> [<args>]"``).
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var cmd = Command("git", "The stupid content tracker")
+        cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+        # --help will show:
+        #   Usage: git [-v | --version] [-C <path>] <command> [<args>]
+        ```
+        """
+        self._custom_usage = text
+
     fn help_on_no_arguments(mut self) raises:
         """Enables showing help when invoked with no arguments.
 
@@ -1623,6 +1656,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
         Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
         """
+        if self._custom_usage:
+            return String("Usage: ") + self._custom_usage
         var s = String("Usage: ") + self.name
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
@@ -3545,6 +3580,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
             s += self.description + "\n\n"
 
         # Usage line.
+        if self._custom_usage:
+            s += header_color + "Usage:" + reset_code + " "
+            s += self._custom_usage + "\n\n"
+            return s
         s += header_color + "Usage:" + reset_code + " "
         s += arg_color + self.name + reset_code
 

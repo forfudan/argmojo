@@ -44,6 +44,7 @@ test = """\
     && mojo run -I src -D ASSERT=all tests/test_groups_help.mojo \
     && mojo run -I src -D ASSERT=all tests/test_prompt.mojo < /dev/null \
     && mojo run -I src -D ASSERT=all tests/test_parents.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_usage.mojo \
     && mojo run -I src -D ASSERT=all tests/test_confirmation.mojo < /dev/null"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
 # is temporarily disabled to work around a Mojo compiler deadlock

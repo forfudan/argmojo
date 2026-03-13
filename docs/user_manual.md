@@ -97,6 +97,7 @@ from argmojo import Argument, Command
   - [Custom Prompt Text](#custom-prompt-text)
   - [Using with Subcommands](#using-with-subcommands-1)
   - [Non-Interactive Use](#non-interactive-use)
+- [Usage Line Customisation](#usage-line-customisation)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
   - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
@@ -441,9 +442,11 @@ Argument("name", help="...")
 ║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
 ║   ├── Argument inheritance
 ║   │   command.add_parent(parent)                copy arguments from a parent command
-║   └── Confirmation
-║       command.confirmation_option()             add --yes/-y confirmation prompt
-║       command.confirmation_option["text"]()     custom confirmation prompt text
+║   ├── Confirmation
+║   │   command.confirmation_option()             add --yes/-y confirmation prompt
+║   │   command.confirmation_option["text"]()     custom confirmation prompt text
+║   └── Usage
+║       command.usage("...")                      override the auto-generated usage line
 ╚═══════════════════════════════════════════════════════════════════════════════
 ```
 
@@ -491,6 +494,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
 | `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
 | `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
+| `command.usage()` ³               |      —      |     —     |     —      |        —        |
 
 > ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
 
@@ -3283,6 +3287,42 @@ error: drop: Aborted (no interactive input available)
 $ ./drop mydb --yes    # works in CI
 Dropping database: mydb
 ```
+
+## Usage Line Customisation
+
+By default, ArgMojo generates usage lines like `Usage: myapp [OPTIONS] <PATTERN>` — showing `[OPTIONS]` for named arguments and listing each positional. This convention (shared by clap, cobra, and Click) works well for most CLIs.
+
+For some programs you may want a hand-written usage string — for example, git's usage line enumerates a few key flags inline rather than collapsing them into `[OPTIONS]`. The `usage()` method on `Command` lets you replace the auto-generated usage line with your own text:
+
+```mojo
+from argmojo import Command, Argument
+
+fn main() raises:
+    var cmd = Command("git", "The stupid content tracker", version="2.45.0")
+    cmd.usage("git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]")
+
+    cmd.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
+    cmd.add_argument(Argument("path", help="Run as if started in <path>").long["C"]().short["C"]())
+
+    var result = cmd.parse()
+```
+
+The custom string appears as-is after `Usage: ` in both `--help` output and error messages:
+
+```sh
+$ ./git --help
+Usage: git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]
+
+The stupid content tracker
+
+Options:
+  -v, --verbose   Verbose output
+  -C <path>       Run as if started in <path>
+  -h, --help      Print help
+  -V, --version   Print version
+```
+
+When no custom usage is set, the auto-generated line is used as before — no change in default behaviour.
 
 ## Shell Completion
 
