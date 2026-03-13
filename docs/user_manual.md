@@ -3290,7 +3290,7 @@ Dropping database: mydb
 
 ## Usage Line Customisation
 
-By default, ArgMojo generates usage lines like `Usage: myapp [OPTIONS] <PATTERN>` — showing `[OPTIONS]` for named arguments and listing each positional. This convention (shared by clap, cobra, and Click) works well for most CLIs.
+By default, ArgMojo generates usage lines like `Usage: myapp <PATTERN> [OPTIONS]` — showing `[OPTIONS]` for named arguments and listing each positional. This convention (shared by clap, cobra, and Click) works well for most CLIs.
 
 For some programs you may want a hand-written usage string — for example, git's usage line enumerates a few key flags inline rather than collapsing them into `[OPTIONS]`. The `usage()` method on `Command` lets you replace the auto-generated usage line with your own text:
 
@@ -3302,7 +3302,7 @@ fn main() raises:
     cmd.usage("git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]")
 
     cmd.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
-    cmd.add_argument(Argument("path", help="Run as if started in <path>").long["C"]().short["C"]())
+    cmd.add_argument(Argument("path", help="Run as if started in <path>").short["C"]())
 
     var result = cmd.parse()
 ```
@@ -3311,9 +3311,9 @@ The custom string appears as-is after `Usage: ` in both `--help` output and erro
 
 ```sh
 $ ./git --help
-Usage: git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]
-
 The stupid content tracker
+
+Usage: git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]
 
 Options:
   -v, --verbose   Verbose output

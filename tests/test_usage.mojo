@@ -172,5 +172,19 @@ fn test_custom_usage_parsing_still_works() raises:
     assert_true(result.get_flag("verbose"), msg="--verbose should work")
 
 
+fn test_custom_usage_in_plain_usage_hint() raises:
+    """Tests that custom usage appears in the plain usage hint (_plain_usage).
+    """
+    var cmd = Command("git", "The stupid content tracker")
+    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+
+    # _plain_usage is used for error/usage hints; ensure it reflects custom usage.
+    var usage = cmd._plain_usage()
+    assert_true(
+        "git [-v | --version] [-C <path>] <command> [<args>]" in usage,
+        msg="Custom usage should appear in plain usage hint: " + usage,
+    )
+
+
 fn main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
