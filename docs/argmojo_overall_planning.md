@@ -167,9 +167,10 @@ tests/
 ├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
 ├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
 ├── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
-├── test_prompt.mojo               # interactive prompting tests
-├── test_parents.mojo              # argument parents (shared definitions) tests
-└── test_confirmation.mojo         # confirmation option (--yes / -y) tests
+├── test_prompt.mojo                # interactive prompting tests
+├── test_parents.mojo               # argument parents (shared definitions) tests
+├── test_confirmation.mojo          # confirmation option (--yes / -y) tests
+└── test_usage.mojo                 # usage line customisation tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -241,6 +242,7 @@ examples/
 | Interactive prompting (`.prompt()`, `.prompt["..."]()` → prompt for missing args)                     | ✓      | ✓     |
 | Argument parents (`add_parent(parent)` → share args across commands)                                  | ✓      | ✓     |
 | Confirmation option (`confirmation_option()` → `--yes`/`-y` to skip confirmation)                     | ✓      | ✓     |
+| Usage line customisation (`command.usage("...")` → override auto-generated usage line)                | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -581,7 +583,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Colored error output** — ANSI styled error messages (help output already colored)
 - [x] **Shell completion script generation** — `generate_completion["bash"]()` (compile-time validated) or `generate_completion("bash")` (runtime, case-insensitive) returns a complete completion script; static approach (no runtime hook), covers options/flags/choices/subcommands (clap `generate`, cobra `completion`, click `shell_complete`)
 - [x] **Argument groups in help** — `.group["name"]()` groups related options under headings; independent per-section padding; persistent args stay in "Global Options:" (argparse `add_argument_group`) (PR #17)
-- [ ] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
+- [x] **Usage line customisation** — two approaches: (1) manual override via `.usage("...")` for git-style hand-written usage strings (e.g. `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode that enumerates every flag inline like argparse (good for small CLIs, noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the cobra/clap/click convention and is the right default.
 - [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised options instead of erroring; access via `result.get_unknown_args()` (argparse `parse_known_args`) (PR #13)
 - [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
 - [x] **Default-if-no-value** — `.default_if_no_value["val"]()`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
