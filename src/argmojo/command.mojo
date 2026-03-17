@@ -16,7 +16,7 @@ from .utils import (
     _correct_cjk_punctuation,
     _disable_echo,
     _display_width,
-    _enable_echo,
+    _restore_echo,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _looks_like_number,
@@ -2811,16 +2811,16 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 # Password mode: disable echo, read, re-enable echo,
                 # then print a newline (since the user's Enter is not
                 # echoed either on some terminals).
-                _ = _disable_echo()
+                var saved = _disable_echo()
                 try:
                     value = input(msg)
                 except e:
-                    _ = _enable_echo()
+                    _ = _restore_echo(saved^)
                     return
-                _ = _enable_echo()
-                # Print newline to stderr so the cursor moves to the
-                # next line (the user's Enter was not echoed).
-                print(file=stderr)
+                _ = _restore_echo(saved^)
+                # Print a newline so the cursor moves to the next line
+                # (the user's Enter was not echoed).
+                print()
             else:
                 try:
                     value = input(msg)

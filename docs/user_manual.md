@@ -3243,7 +3243,7 @@ fn main() raises:
 
 ```console
 $ ./login --username alice
-Your password: ••••••••
+Your password: <hidden>
 ```
 
 The `.password()` builder method:

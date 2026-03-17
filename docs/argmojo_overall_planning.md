@@ -170,7 +170,7 @@ tests/
 ├── test_prompt.mojo                # interactive prompting tests
 ├── test_parents.mojo               # argument parents (shared definitions) tests
 ├── test_confirmation.mojo          # confirmation option (--yes / -y) tests
-└── test_password.mojo              # password / masked input tests
+├── test_password.mojo              # password / masked input tests
 └── test_usage.mojo                 # usage line customisation tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features

@@ -458,55 +458,76 @@ fn _correct_cjk_punctuation(token: String) -> String:
 # ── Terminal echo control (POSIX) ────────────────────────────────────────────
 # Used by .password() to suppress typed characters during interactive
 # prompting.  These wrap tcgetattr(3) / tcsetattr(3) via external_call.
-# The termios struct is represented as a flat UInt64 buffer; on both
-# macOS arm64 and Linux x86-64, sizeof(struct termios) ≤ 72 bytes
-# (9 × UInt64).  The c_lflag field is at word offset 3 on both
-# platforms.  ECHO is 0x8, TCSANOW is 0.  If stdin is not a terminal,
-# tcgetattr returns -1 and the helpers return False — callers should
-# fall back to normal (visible) input.
+# The termios struct is represented as a flat UInt32 buffer; on common
+# 64-bit Unix platforms (e.g. macOS arm64, Linux x86-64) tcflag_t is
+# 32 bits, and c_iflag/c_oflag/c_cflag/c_lflag are the first four
+# 32-bit fields in the struct.  The c_lflag field is therefore at
+# 32-bit word offset 3.  ECHO is 0x8, TCSANOW is 0.  If stdin is not
+# a terminal, tcgetattr returns -1 and the helpers return False —
+# callers should fall back to normal (visible) input.
 
-comptime _TERMIOS_BUF_LEN = 9  # 9 × UInt64 = 72 bytes ≥ sizeof(struct termios)
-comptime _LFLAG_OFFSET = 3  # offsetof(c_lflag) / sizeof(UInt64)
-comptime _ECHO: UInt64 = 0x00000008
+comptime _TERMIOS_BUF_LEN = 24  # 24 × UInt32 = 96 bytes ≥ sizeof(struct termios)
+# c_lflag UInt32 offset varies by platform:
+#   macOS arm64: tcflag_t = unsigned long (8 bytes) → c_lflag at byte 24 → UInt32[6]
+#   Linux x86-64: tcflag_t = unsigned int (4 bytes) → c_lflag at byte 12 → UInt32[3]
+# Detected at runtime: on a normal terminal, ECHO (0x8) is set in c_lflag.
+comptime _ECHO: UInt32 = 0x00000008
 comptime _TCSANOW = 0
 
 
-fn _disable_echo() -> Bool:
+@always_inline
+fn _lflag_offset(buf: List[UInt32]) -> Int:
+    """Returns the UInt32 index of c_lflag in a tcgetattr buffer.
+
+    On macOS (tcflag_t = 8 bytes), c_lflag is at UInt32 offset 6.
+    On Linux (tcflag_t = 4 bytes), c_lflag is at UInt32 offset 3.
+    Detects the layout by checking which word has the ECHO bit set.
+    """
+    if buf[6] & _ECHO != 0:
+        return 6
+    return 3
+
+
+fn _disable_echo() -> List[UInt32]:
     """Disables terminal echo on stdin.
 
     Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
-    bit in ``c_lflag``.  Returns ``True`` on success, ``False`` if
+    bit in ``c_lflag``.  Returns the original termios settings (so
+    ``_restore_echo`` can restore them exactly), or an empty list if
     stdin is not a terminal.
     """
-    var buf = List[UInt64](length=_TERMIOS_BUF_LEN, fill=0)
+    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
     var ptr = buf.unsafe_ptr()
     var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
     if rc != 0:
-        return False
-    buf[_LFLAG_OFFSET] = buf[_LFLAG_OFFSET] & ~_ECHO
+        return List[UInt32]()
+    # Save the original termios settings before modifying.
+    var saved = buf.copy()
+    var offset = _lflag_offset(buf)
+    buf[offset] = buf[offset] & ~_ECHO
     ptr = buf.unsafe_ptr()
     rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
     # Keep buf alive until tcsetattr has finished reading from it.
     # Without this, the compiler may destroy buf (freeing the heap
     # memory) before tcsetattr copies the data into kernel space.
     _ = buf^
-    return rc == 0
-
-
-fn _enable_echo() -> Bool:
-    """Re-enables terminal echo on stdin.
-
-    Uses POSIX ``tcgetattr`` / ``tcsetattr`` to set the ``ECHO``
-    bit in ``c_lflag``.  Returns ``True`` on success.
-    """
-    var buf = List[UInt64](length=_TERMIOS_BUF_LEN, fill=0)
-    var ptr = buf.unsafe_ptr()
-    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
     if rc != 0:
-        return False
-    buf[_LFLAG_OFFSET] = buf[_LFLAG_OFFSET] | _ECHO
-    ptr = buf.unsafe_ptr()
-    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
-    # Keep buf alive — see _disable_echo comment.
-    _ = buf^
+        return List[UInt32]()
+    return saved^
+
+
+fn _restore_echo(var saved: List[UInt32]) -> Bool:
+    """Restores terminal echo on stdin.
+
+    Restores the original termios settings saved by ``_disable_echo``.
+    Returns ``True`` on success.
+    """
+    if len(saved) == 0:
+        return True
+    var ptr = saved.unsafe_ptr()
+    var rc = external_call["tcsetattr", Int, Int, Int, Int](
+        0, _TCSANOW, Int(ptr)
+    )
+    # Keep saved alive — see _disable_echo comment.
+    _ = saved^
     return rc == 0
