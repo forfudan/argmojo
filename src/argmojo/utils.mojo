@@ -1,5 +1,7 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
+from sys.ffi import external_call
+
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
 comptime _BOLD_UL = "\x1b[1;4m"  # bold + underline (no colour)
@@ -451,3 +453,60 @@ fn _correct_cjk_punctuation(token: String) -> String:
         else:
             result += chr(val)
     return result
+
+
+# ── Terminal echo control (POSIX) ────────────────────────────────────────────
+# Used by .password() to suppress typed characters during interactive
+# prompting.  These wrap tcgetattr(3) / tcsetattr(3) via external_call.
+# The termios struct is represented as a flat UInt64 buffer; on both
+# macOS arm64 and Linux x86-64, sizeof(struct termios) ≤ 72 bytes
+# (9 × UInt64).  The c_lflag field is at word offset 3 on both
+# platforms.  ECHO is 0x8, TCSANOW is 0.  If stdin is not a terminal,
+# tcgetattr returns -1 and the helpers return False — callers should
+# fall back to normal (visible) input.
+
+comptime _TERMIOS_BUF_LEN = 9  # 9 × UInt64 = 72 bytes ≥ sizeof(struct termios)
+comptime _LFLAG_OFFSET = 3  # offsetof(c_lflag) / sizeof(UInt64)
+comptime _ECHO: UInt64 = 0x00000008
+comptime _TCSANOW = 0
+
+
+fn _disable_echo() -> Bool:
+    """Disables terminal echo on stdin.
+
+    Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
+    bit in ``c_lflag``.  Returns ``True`` on success, ``False`` if
+    stdin is not a terminal.
+    """
+    var buf = List[UInt64](length=_TERMIOS_BUF_LEN, fill=0)
+    var ptr = buf.unsafe_ptr()
+    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
+    if rc != 0:
+        return False
+    buf[_LFLAG_OFFSET] = buf[_LFLAG_OFFSET] & ~_ECHO
+    ptr = buf.unsafe_ptr()
+    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
+    # Keep buf alive until tcsetattr has finished reading from it.
+    # Without this, the compiler may destroy buf (freeing the heap
+    # memory) before tcsetattr copies the data into kernel space.
+    _ = buf^
+    return rc == 0
+
+
+fn _enable_echo() -> Bool:
+    """Re-enables terminal echo on stdin.
+
+    Uses POSIX ``tcgetattr`` / ``tcsetattr`` to set the ``ECHO``
+    bit in ``c_lflag``.  Returns ``True`` on success.
+    """
+    var buf = List[UInt64](length=_TERMIOS_BUF_LEN, fill=0)
+    var ptr = buf.unsafe_ptr()
+    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
+    if rc != 0:
+        return False
+    buf[_LFLAG_OFFSET] = buf[_LFLAG_OFFSET] | _ECHO
+    ptr = buf.unsafe_ptr()
+    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
+    # Keep buf alive — see _disable_echo comment.
+    _ = buf^
+    return rc == 0

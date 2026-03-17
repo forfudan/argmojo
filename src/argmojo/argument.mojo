@@ -147,6 +147,10 @@ struct Argument(Copyable, Movable, Stringable, Writable):
     var _prompt_text: String
     """Custom prompt message.  When empty, a default message is built
     from the argument's help text or name."""
+    var _hide_input: Bool
+    """If True, the user's input is hidden (not echoed) when prompted.
+    Useful for passwords and other sensitive values.  Requires a
+    terminal; falls back to normal input on non-interactive stdin."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -195,6 +199,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._group = ""
         self._prompt = False
         self._prompt_text = ""
+        self._hide_input = False
 
     fn __copyinit__(out self, copy: Self):
         """Creates a copy of this argument.
@@ -242,6 +247,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._group = copy._group
         self._prompt = copy._prompt
         self._prompt_text = copy._prompt_text
+        self._hide_input = copy._hide_input
 
     fn __moveinit__(out self, deinit move: Self):
         """Moves the value from another Argument.
@@ -285,6 +291,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._group = move._group^
         self._prompt = move._prompt
         self._prompt_text = move._prompt_text^
+        self._hide_input = move._hide_input
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -934,6 +941,35 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         constrained[len(text) > 0, "prompt text must not be empty"]()
         self._prompt = True
         self._prompt_text = text
+        return self^
+
+    fn password(var self) -> Self:
+        """Marks this argument as a password / sensitive value.
+
+        When combined with ``.prompt()``, the user's input is hidden
+        (not echoed to the terminal).  This is equivalent to Click's
+        ``hide_input=True``.  Implies ``.prompt()`` if not already set.
+
+        On POSIX systems, terminal echo is disabled via ``tcsetattr(3)``
+        while the user types, then re-enabled afterwards.  If stdin is
+        not a terminal (e.g., piped input, ``/dev/null``), the call
+        falls back to regular ``input()`` — just as ``getpass.getpass``
+        does in Python.
+
+        Returns:
+            Self with hidden input enabled.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Argument
+        _ = Argument("token", help="API token").long["token"]().password()
+        _ = Argument("pass", help="Password").long["pass"]().prompt["Enter password"]().password()
+        ```
+        """
+        self._hide_input = True
+        if not self._prompt:
+            self._prompt = True
         return self^
 
     # ===------------------------------------------------------------------=== #

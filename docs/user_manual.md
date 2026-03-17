@@ -92,11 +92,16 @@ from argmojo import Argument, Command
   - [Multiple Parents](#multiple-parents)
   - [Using with Subcommands](#using-with-subcommands)
   - [Notes](#notes)
-- [Confirmation Option](#confirmation-option)
+- [Password / Masked Input](#password--masked-input)
   - [Basic Usage](#basic-usage)
   - [Custom Prompt Text](#custom-prompt-text)
-  - [Using with Subcommands](#using-with-subcommands-1)
+  - [Restrictions](#restrictions)
   - [Non-Interactive Use](#non-interactive-use)
+- [Confirmation Option](#confirmation-option)
+  - [Basic Usage](#basic-usage-1)
+  - [Custom Prompt Text](#custom-prompt-text-1)
+  - [Using with Subcommands](#using-with-subcommands-1)
+  - [Non-Interactive Use](#non-interactive-use-1)
 - [Usage Line Customisation](#usage-line-customisation)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
@@ -409,6 +414,7 @@ Argument("name", help="...")
 ║   .require_equals()                           force --key=value syntax  (named value only)
 ║   .prompt()                                   prompt interactively      (any)
 ║   .prompt["msg"]()                            custom prompt message     (any; implies .prompt())
+║   .password()                                 hide input during prompt  (value / positional only)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -486,6 +492,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.remainder()`                    |      —      |     —     |     —      |        ✓        |
 | `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.password()`                     |      ✓      |     —     |     —      |        ✓        |
 | `.require_equals()`               |      ✓      |     —     |     —      |        —        |
 | `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
 | `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
@@ -3209,6 +3216,80 @@ var result = app.parse()
 - Child arguments added via `add_argument()` coexist with inherited ones.
 - If you need different constraints for different children, apply them after `add_parent()` on each child individually.
 
+## Password / Masked Input
+
+For passwords, API tokens, and other sensitive values, you want to **hide the user's typed input** so it doesn't appear on screen. ArgMojo's `.password()` builder method does exactly this — equivalent to Click's `hide_input=True` or Python's `getpass.getpass()`.
+
+> **Naming note:** The method is named `.password()` following HTML's `<input type="password">` convention, where the word "password" universally signals "hide the typed characters". Click uses `hide_input=True` (describing the *behaviour*); ArgMojo uses `.password()` (describing the *use case*) for brevity and instant recognition.
+
+### Basic Usage
+
+```mojo
+from argmojo import Command, Argument
+
+fn main() raises:
+    var command = Command("login", "Authenticate with the server")
+    command.add_argument(
+        Argument("username", help="Your username").long["username"]().short["u"]().required()
+    )
+    command.add_argument(
+        Argument("password", help="Your password").long["password"]().short["p"]().password()
+    )
+
+    var result = command.parse()
+    var user = result.get_string("username")
+    var pass_ = result.get_string("password")
+```
+
+```console
+$ ./login --username alice
+Your password: ••••••••
+```
+
+The `.password()` builder method:
+
+1. **Implies `.prompt()`** — if prompting is not already enabled, `.password()` enables it automatically.
+2. **Disables terminal echo** — on POSIX systems (macOS, Linux), terminal echo is suppressed via `tcsetattr(3)` while the user types, then re-enabled afterwards.
+3. **Falls back gracefully** — if stdin is not a terminal (piped input, CI, `/dev/null`), echo control silently returns `False` and prompting stops via the normal EOF-handling path. Defaults are applied as usual.
+
+### Custom Prompt Text
+
+Combine `.password()` with `.prompt["text"]()` to customise the prompt message:
+
+```mojo
+command.add_argument(
+    Argument("token", help="API token")
+    .long["token"]()
+    .prompt["Enter your API token"]()
+    .password()
+)
+```
+
+```console
+Enter your API token: ••••••••
+```
+
+The order of `.prompt["text"]()` and `.password()` does not matter — both produce the same result.
+
+### Restrictions
+
+`.password()` can only be used on **value-taking arguments** (named options or positionals). It cannot be combined with:
+
+- **`.flag()`** — flags are boolean and don't read input.
+- **`.count()`** — count arguments are incremental and don't read input.
+
+Attempting to register a `.password()` argument on a flag or count raises a registration-time error.
+
+### Non-Interactive Use
+
+When stdin is not a terminal, the echo-control calls return `False` (harmless), and `input()` raises on EOF. ArgMojo catches the exception and stops prompting gracefully — exactly the same behaviour as regular `.prompt()` arguments.
+
+To bypass the prompt entirely, provide the value on the command line:
+
+```console
+$ ./login --username alice --password s3cret
+```
+
 ## Confirmation Option
 
 Some commands are destructive or irreversible — dropping databases, deleting files, deploying to production. The **confirmation option** adds a built-in `--yes` / `-y` flag that lets users skip an interactive confirmation prompt. This is equivalent to Click's `confirmation_option` decorator.
@@ -3597,6 +3678,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.allow_hyphen_values()`        | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
 | `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
 | `.prompt["msg"]()`              | —                                 | `prompt="msg"`                           | —                               | —                              |
+| `.password()`                   | —                                 | `hide_input=True`                        | —                               | —                              |
 
 ### Command-Level Constraint Methods
 

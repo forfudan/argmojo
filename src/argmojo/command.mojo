@@ -14,7 +14,9 @@ from .utils import (
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
     _correct_cjk_punctuation,
+    _disable_echo,
     _display_width,
+    _enable_echo,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _looks_like_number,
@@ -498,6 +500,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 " help_on_no_arguments() — when no arguments are"
                 " provided, help is shown and prompting never runs."
                 " Remove help_on_no_arguments() or .prompt()"
+            )
+        # Guard: .password() only makes sense on value-taking arguments.
+        if argument._hide_input and (argument._is_flag or argument._is_count):
+            self._error(
+                "Argument '"
+                + argument.name
+                + "': .password() cannot be used on a flag or count"
+                " argument — it only applies to value-taking arguments"
             )
         self.args.append(argument^)
 
@@ -2797,12 +2807,27 @@ struct Command(Copyable, Movable, Stringable, Writable):
 
             # ── Read input ───────────────────────────────────────────
             var value: String
-            try:
-                value = input(msg)
-            except e:
-                # EOF or stdin error — stop prompting entirely.
-                # This handles non-interactive / piped usage gracefully.
-                return
+            if a._hide_input:
+                # Password mode: disable echo, read, re-enable echo,
+                # then print a newline (since the user's Enter is not
+                # echoed either on some terminals).
+                _ = _disable_echo()
+                try:
+                    value = input(msg)
+                except e:
+                    _ = _enable_echo()
+                    return
+                _ = _enable_echo()
+                # Print newline to stderr so the cursor moves to the
+                # next line (the user's Enter was not echoed).
+                print(file=stderr)
+            else:
+                try:
+                    value = input(msg)
+                except e:
+                    # EOF or stdin error — stop prompting entirely.
+                    # This handles non-interactive / piped usage gracefully.
+                    return
 
             if len(value) == 0:
                 # Empty input — fall through to _apply_defaults.
