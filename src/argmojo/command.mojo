@@ -2812,6 +2812,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 # then print a newline (since the user's Enter is not
                 # echoed either on some terminals).
                 var saved = _disable_echo()
+                var echo_disabled = len(saved) > 0
                 try:
                     value = input(msg)
                 except e:
@@ -2819,8 +2820,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     return
                 _ = _restore_echo(saved^)
                 # Print a newline so the cursor moves to the next line
-                # (the user's Enter was not echoed).
-                print()
+                # (the user's Enter was not echoed) — only if echo was
+                # actually disabled.
+                if echo_disabled:
+                    print()
             else:
                 try:
                     value = input(msg)

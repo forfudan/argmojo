@@ -458,19 +458,25 @@ fn _correct_cjk_punctuation(token: String) -> String:
 # ── Terminal echo control (POSIX) ────────────────────────────────────────────
 # Used by .password() to suppress typed characters during interactive
 # prompting.  These wrap tcgetattr(3) / tcsetattr(3) via external_call.
-# The termios struct is represented as a flat UInt32 buffer; on common
-# 64-bit Unix platforms (e.g. macOS arm64, Linux x86-64) tcflag_t is
-# 32 bits, and c_iflag/c_oflag/c_cflag/c_lflag are the first four
-# 32-bit fields in the struct.  The c_lflag field is therefore at
-# 32-bit word offset 3.  ECHO is 0x8, TCSANOW is 0.  If stdin is not
-# a terminal, tcgetattr returns -1 and the helpers return False —
-# callers should fall back to normal (visible) input.
+#
+# The termios struct is represented as a flat List[UInt32] buffer large
+# enough to hold the platform's struct (see _TERMIOS_BUF_LEN below).  The
+# c_lflag field (type tcflag_t) does not have the same layout everywhere:
+#   - macOS arm64: tcflag_t = unsigned long (8 bytes) → c_lflag at byte 24
+#                  → UInt32 index 6
+#   - Linux x86-64: tcflag_t = unsigned int (4 bytes) → c_lflag at byte 12
+#                   → UInt32 index 3
+# The helper _lflag_offset() inspects the buffer and picks the correct
+# index by finding which word has the ECHO bit set.
+#
+# ECHO is 0x8, TCSANOW is 0.  If tcgetattr(3) fails (e.g. stdin is not a
+# terminal), _disable_echo() returns an empty List[UInt32] and no echo
+# changes are applied.  _restore_echo() returns False if it cannot restore
+# the saved settings.  Callers should treat these cases as "echo control
+# unavailable" and fall back to normal (visible) input.
 
 comptime _TERMIOS_BUF_LEN = 24  # 24 × UInt32 = 96 bytes ≥ sizeof(struct termios)
-# c_lflag UInt32 offset varies by platform:
-#   macOS arm64: tcflag_t = unsigned long (8 bytes) → c_lflag at byte 24 → UInt32[6]
-#   Linux x86-64: tcflag_t = unsigned int (4 bytes) → c_lflag at byte 12 → UInt32[3]
-# Detected at runtime: on a normal terminal, ECHO (0x8) is set in c_lflag.
+# c_lflag UInt32 offset varies by platform (see _lflag_offset below).
 comptime _ECHO: UInt32 = 0x00000008
 comptime _TCSANOW = 0
 
@@ -482,10 +488,17 @@ fn _lflag_offset(buf: List[UInt32]) -> Int:
     On macOS (tcflag_t = 8 bytes), c_lflag is at UInt32 offset 6.
     On Linux (tcflag_t = 4 bytes), c_lflag is at UInt32 offset 3.
     Detects the layout by checking which word has the ECHO bit set.
+    Returns -1 if the layout cannot be determined safely (e.g. ECHO
+    is already disabled in both candidate positions).
     """
-    if buf[6] & _ECHO != 0:
+    var has_echo_6 = (buf[6] & _ECHO) != 0
+    var has_echo_3 = (buf[3] & _ECHO) != 0
+    if has_echo_6 and not has_echo_3:
         return 6
-    return 3
+    if has_echo_3 and not has_echo_6:
+        return 3
+    # Both or neither have ECHO set — cannot reliably determine layout.
+    return -1
 
 
 fn _disable_echo() -> List[UInt32]:
@@ -494,7 +507,8 @@ fn _disable_echo() -> List[UInt32]:
     Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
     bit in ``c_lflag``.  Returns the original termios settings (so
     ``_restore_echo`` can restore them exactly), or an empty list if
-    stdin is not a terminal.
+    stdin is not a terminal or the termios layout cannot be determined
+    safely.
     """
     var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
     var ptr = buf.unsafe_ptr()
@@ -504,6 +518,9 @@ fn _disable_echo() -> List[UInt32]:
     # Save the original termios settings before modifying.
     var saved = buf.copy()
     var offset = _lflag_offset(buf)
+    if offset < 0:
+        # Cannot safely locate c_lflag — do not modify termios.
+        return List[UInt32]()
     buf[offset] = buf[offset] & ~_ECHO
     ptr = buf.unsafe_ptr()
     rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))

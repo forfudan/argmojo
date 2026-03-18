@@ -721,7 +721,7 @@ These features represent the "next generation" of CLI parser design, inspired by
 | Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
 | Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
 | Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
-| Password / masked input      | `.password()` + `_disable_echo()`/`_enable_echo()`                                                                                             | POSIX termios echo control; Click `hide_input`  |
+| Password / masked input      | `.password()` + `_disable_echo()`/`_restore_echo()`                                                                                            | POSIX termios echo control; Click `hide_input`  |
 
 ## 6. Parsing Algorithm
 
