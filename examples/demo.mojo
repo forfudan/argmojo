@@ -351,9 +351,10 @@ fn main() raises:
     run.help_on_no_arguments()
     app.add_subcommand(run^)
 
-    # ── Subcommand: login (interactive prompting) ────────────────────────
-    # Demonstrates .prompt() and .prompt["..."]() for interactive input.
-    # Missing arguments are prompted for interactively.
+    # ── Subcommand: login (interactive prompting + password) ─────────────
+    # Demonstrates .prompt(), .prompt["..."](), and .password() for
+    # interactive input.  Missing arguments are prompted for
+    # interactively; the token is masked (hidden input).
     var login = Command("login", "Authenticate with the service")
     login.add_argument(
         Argument("user", help="Username")
@@ -368,6 +369,7 @@ fn main() raises:
         .short["t"]()
         .required()
         .prompt["Enter your API token"]()
+        .password()
     )
     login.add_argument(
         Argument("region", help="Server region")

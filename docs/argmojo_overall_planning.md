@@ -68,7 +68,7 @@ These features appear across multiple libraries and depend only on string operat
 | Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | **Done**      |
 | Argument parents (shared args)     | ✓        | —     | —     | —    |                              | **Done**      |
 | Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
-| Password / masked input            | —        | ✓     | —     | —    |                              | Phase 5       |
+| Password / masked input            | —        | ✓     | —     | —    |                              | **Done**      |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | **Done**      |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
 | REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | **Done**      |
@@ -170,6 +170,7 @@ tests/
 ├── test_prompt.mojo                # interactive prompting tests
 ├── test_parents.mojo               # argument parents (shared definitions) tests
 ├── test_confirmation.mojo          # confirmation option (--yes / -y) tests
+├── test_password.mojo              # password / masked input tests
 └── test_usage.mojo                 # usage line customisation tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
@@ -243,6 +244,7 @@ examples/
 | Argument parents (`add_parent(parent)` → share args across commands)                                  | ✓      | ✓     |
 | Confirmation option (`confirmation_option()` → `--yes`/`-y` to skip confirmation)                     | ✓      | ✓     |
 | Usage line customisation (`command.usage("...")` → override auto-generated usage line)                | ✓      | ✓     |
+| Password / masked input (`.password()` → hide typed characters during prompt via POSIX termios)       | ✓      | ✓     |
 
 > ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
@@ -590,7 +592,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Temporarily disabled — Mojo compiler deadlock under `-D ASSERT=all`*
 - [x] **Argument parents** — `add_parent(parent)` copies all arguments and group constraints from a parent Command, sharing definitions across multiple commands (argparse `parents`) (PR #25)
 - [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
-- [ ] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
+- [x] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [x] **Confirmation option** — `confirmation_option()` or `confirmation_option["prompt"]()` auto-registers `--yes`/`-y` flag; prompts user for confirmation after parsing; aborts on decline or non-interactive stdin (Click `confirmation_option`) (PR #26)
 - [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
 - [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens (including `-` prefixed); at most one per command, must be last positional (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
@@ -719,6 +721,7 @@ These features represent the "next generation" of CLI parser design, inspired by
 | Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
 | Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
 | Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
+| Password / masked input      | `.password()` + `_disable_echo()`/`_restore_echo()`                                                                                            | POSIX termios echo control; Click `hide_input`  |
 
 ## 6. Parsing Algorithm
 

@@ -1,5 +1,7 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
+from sys.ffi import external_call
+
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
 comptime _BOLD_UL = "\x1b[1;4m"  # bold + underline (no colour)
@@ -451,3 +453,98 @@ fn _correct_cjk_punctuation(token: String) -> String:
         else:
             result += chr(val)
     return result
+
+
+# ── Terminal echo control (POSIX) ────────────────────────────────────────────
+# Used by .password() to suppress typed characters during interactive
+# prompting.  These wrap tcgetattr(3) / tcsetattr(3) via external_call.
+#
+# The termios struct is represented as a flat List[UInt32] buffer large
+# enough to hold the platform's struct (see _TERMIOS_BUF_LEN below).  The
+# c_lflag field (type tcflag_t) does not have the same layout everywhere:
+#   - macOS arm64: tcflag_t = unsigned long (8 bytes) → c_lflag at byte 24
+#                  → UInt32 index 6
+#   - Linux x86-64: tcflag_t = unsigned int (4 bytes) → c_lflag at byte 12
+#                   → UInt32 index 3
+# The helper _lflag_offset() inspects the buffer and picks the correct
+# index by finding which word has the ECHO bit set.
+#
+# ECHO is 0x8, TCSANOW is 0.  If tcgetattr(3) fails (e.g. stdin is not a
+# terminal), _disable_echo() returns an empty List[UInt32] and no echo
+# changes are applied.  _restore_echo() returns False if it cannot restore
+# the saved settings.  Callers should treat these cases as "echo control
+# unavailable" and fall back to normal (visible) input.
+
+comptime _TERMIOS_BUF_LEN = 24  # 24 × UInt32 = 96 bytes ≥ sizeof(struct termios)
+# c_lflag UInt32 offset varies by platform (see _lflag_offset below).
+comptime _ECHO: UInt32 = 0x00000008
+comptime _TCSANOW = 0
+
+
+@always_inline
+fn _lflag_offset(buf: List[UInt32]) -> Int:
+    """Returns the UInt32 index of c_lflag in a tcgetattr buffer.
+
+    On macOS (tcflag_t = 8 bytes), c_lflag is at UInt32 offset 6.
+    On Linux (tcflag_t = 4 bytes), c_lflag is at UInt32 offset 3.
+    Detects the layout by checking which word has the ECHO bit set.
+    Returns -1 if the layout cannot be determined safely (e.g. ECHO
+    is already disabled in both candidate positions).
+    """
+    var has_echo_6 = (buf[6] & _ECHO) != 0
+    var has_echo_3 = (buf[3] & _ECHO) != 0
+    if has_echo_6 and not has_echo_3:
+        return 6
+    if has_echo_3 and not has_echo_6:
+        return 3
+    # Both or neither have ECHO set — cannot reliably determine layout.
+    return -1
+
+
+fn _disable_echo() -> List[UInt32]:
+    """Disables terminal echo on stdin.
+
+    Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
+    bit in ``c_lflag``.  Returns the original termios settings (so
+    ``_restore_echo`` can restore them exactly), or an empty list if
+    stdin is not a terminal or the termios layout cannot be determined
+    safely.
+    """
+    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
+    var ptr = buf.unsafe_ptr()
+    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
+    if rc != 0:
+        return List[UInt32]()
+    # Save the original termios settings before modifying.
+    var saved = buf.copy()
+    var offset = _lflag_offset(buf)
+    if offset < 0:
+        # Cannot safely locate c_lflag — do not modify termios.
+        return List[UInt32]()
+    buf[offset] = buf[offset] & ~_ECHO
+    ptr = buf.unsafe_ptr()
+    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
+    # Keep buf alive until tcsetattr has finished reading from it.
+    # Without this, the compiler may destroy buf (freeing the heap
+    # memory) before tcsetattr copies the data into kernel space.
+    _ = buf^
+    if rc != 0:
+        return List[UInt32]()
+    return saved^
+
+
+fn _restore_echo(var saved: List[UInt32]) -> Bool:
+    """Restores terminal echo on stdin.
+
+    Restores the original termios settings saved by ``_disable_echo``.
+    Returns ``True`` on success.
+    """
+    if len(saved) == 0:
+        return True
+    var ptr = saved.unsafe_ptr()
+    var rc = external_call["tcsetattr", Int, Int, Int, Int](
+        0, _TCSANOW, Int(ptr)
+    )
+    # Keep saved alive — see _disable_echo comment.
+    _ = saved^
+    return rc == 0
