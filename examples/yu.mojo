@@ -185,7 +185,7 @@ def main() raises:
             seq_len = 3
         else:
             seq_len = 4
-        chars.append(String(input[i : i + seq_len]))
+        chars.append(String(input[byte = i : i + seq_len]))
         i += seq_len
 
     if show_all:
