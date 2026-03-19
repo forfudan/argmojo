@@ -4173,7 +4173,7 @@ struct Command(Copyable, Movable, Writable):
     def generate_completion[shell: StringLiteral](self) -> String:
         """Generates a shell completion script (compile-time validated).
 
-        The shell name is validated at compile time via ``constrained[]``.
+        The shell name is validated at compile time via ``comptime assert``.
         Use this overload when the shell is known at development time.
 
         Parameters:

@@ -7,7 +7,7 @@ Since interactive prompting reads from stdin, these tests focus on:
 4. Choices/defaults appear in the prompt (tested via field inspection)
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 

@@ -11,7 +11,7 @@ Covers:
   - Non-numeric '-x' tokens still raise "Unknown option" as expected.
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
