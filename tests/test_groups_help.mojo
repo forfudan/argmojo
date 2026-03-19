@@ -10,7 +10,7 @@ from argmojo import Argument, Command, ParseResult
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn test_group_basic() raises:
+def test_group_basic() raises:
     """Options with .group() appear under a group heading in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -43,7 +43,7 @@ fn test_group_basic() raises:
     )
 
 
-fn test_group_ungrouped_separate_from_grouped() raises:
+def test_group_ungrouped_separate_from_grouped() raises:
     """Ungrouped options appear under 'Options:' and grouped under their
     own heading — they don't mix."""
     var command = Command("test", "Test app")
@@ -75,7 +75,7 @@ fn test_group_ungrouped_separate_from_grouped() raises:
     )
 
 
-fn test_group_multiple_groups() raises:
+def test_group_multiple_groups() raises:
     """Multiple groups each get their own heading, in first-appearance order."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -124,7 +124,7 @@ fn test_group_multiple_groups() raises:
     )
 
 
-fn test_group_no_groups_unchanged() raises:
+def test_group_no_groups_unchanged() raises:
     """When no groups are used, help output is the same as before (only Options:).
     """
     var command = Command("test", "Test app")
@@ -148,7 +148,7 @@ fn test_group_no_groups_unchanged() raises:
     assert_true(output_pos > options_pos, msg="--output under Options:")
 
 
-fn test_group_builtin_options_ungrouped() raises:
+def test_group_builtin_options_ungrouped() raises:
     """Built-in --help and --version always appear under Options:, not in groups.
     """
     var command = Command("test", "Test app")
@@ -172,7 +172,7 @@ fn test_group_builtin_options_ungrouped() raises:
     )
 
 
-fn test_group_with_persistent() raises:
+def test_group_with_persistent() raises:
     """Persistent (global) args go under Global Options:, not under groups."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -204,7 +204,7 @@ fn test_group_with_persistent() raises:
     )
 
 
-fn test_group_independent_padding() raises:
+def test_group_independent_padding() raises:
     """Each group computes its own padding independently."""
     var command = Command("test", "Test app")
     # Group A: short names → small padding.
@@ -227,7 +227,7 @@ fn test_group_independent_padding() raises:
     assert_true("Beta" in help, msg="Beta help text missing")
 
 
-fn test_group_with_colored_output() raises:
+def test_group_with_colored_output() raises:
     """Group headings use the same header_color styling as Options:/Arguments:.
     """
     var command = Command("test", "Test app")
@@ -243,7 +243,7 @@ fn test_group_with_colored_output() raises:
     )
 
 
-fn test_group_hidden_arg_not_shown() raises:
+def test_group_hidden_arg_not_shown() raises:
     """Hidden args with a group are still excluded from help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -264,7 +264,7 @@ fn test_group_hidden_arg_not_shown() raises:
     assert_true("Internal:" in help, msg="Internal: heading should show")
 
 
-fn test_group_all_hidden_no_heading() raises:
+def test_group_all_hidden_no_heading() raises:
     """If all args in a group are hidden, the group heading should not appear.
     """
     var command = Command("test", "Test app")
@@ -291,7 +291,7 @@ fn test_group_all_hidden_no_heading() raises:
     )
 
 
-fn test_group_does_not_affect_parsing() raises:
+def test_group_does_not_affect_parsing() raises:
     """Groups are purely cosmetic — they don't change parsing behavior."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -307,7 +307,7 @@ fn test_group_does_not_affect_parsing() raises:
     assert_equal(result.get_string("port"), "8080")
 
 
-fn test_group_with_subcommand_help() raises:
+def test_group_with_subcommand_help() raises:
     """Group headings work correctly on subcommands too."""
     var app = Command("app", "App")
     var sub = Command("serve", "Start server")
@@ -335,7 +335,7 @@ fn test_group_with_subcommand_help() raises:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn test_value_name_wrapped_by_default() raises:
+def test_value_name_wrapped_by_default() raises:
     """The value_name is wrapped in <> by default."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -352,7 +352,7 @@ fn test_value_name_wrapped_by_default() raises:
     )
 
 
-fn test_value_name_unwrapped() raises:
+def test_value_name_unwrapped() raises:
     """The value_name[False] displays without angle brackets."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -373,7 +373,7 @@ fn test_value_name_unwrapped() raises:
     )
 
 
-fn test_value_name_wrapped_explicit() raises:
+def test_value_name_wrapped_explicit() raises:
     """The value_name[True] explicitly wraps in angle brackets."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -386,7 +386,7 @@ fn test_value_name_wrapped_explicit() raises:
     )
 
 
-fn test_value_name_wrapped_with_append() raises:
+def test_value_name_wrapped_with_append() raises:
     """Wrapped value_name shows <ENV>... for append args."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -403,7 +403,7 @@ fn test_value_name_wrapped_with_append() raises:
     )
 
 
-fn test_value_name_unwrapped_with_append() raises:
+def test_value_name_unwrapped_with_append() raises:
     """Unwrapped value_name shows ENV... for append args."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -424,7 +424,7 @@ fn test_value_name_unwrapped_with_append() raises:
     )
 
 
-fn test_value_name_wrapped_with_nargs() raises:
+def test_value_name_wrapped_with_nargs() raises:
     """Wrapped value_name with nargs repeats <N> <N>."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -441,7 +441,7 @@ fn test_value_name_wrapped_with_nargs() raises:
     )
 
 
-fn test_value_name_unwrapped_with_nargs() raises:
+def test_value_name_unwrapped_with_nargs() raises:
     """Unwrapped value_name with nargs repeats N N."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -462,7 +462,7 @@ fn test_value_name_unwrapped_with_nargs() raises:
     )
 
 
-fn test_value_name_wrapped_require_equals() raises:
+def test_value_name_wrapped_require_equals() raises:
     """Wrapped value_name with require_equals shows --output=<FILE>."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -479,7 +479,7 @@ fn test_value_name_wrapped_require_equals() raises:
     )
 
 
-fn test_value_name_wrapped_default_if_no_value() raises:
+def test_value_name_wrapped_default_if_no_value() raises:
     """Wrapped value_name with default_if_no_value shows --compress[=<ALGO>]."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -497,7 +497,7 @@ fn test_value_name_wrapped_default_if_no_value() raises:
     )
 
 
-fn test_value_name_no_wrapping_does_not_affect_default_placeholder() raises:
+def test_value_name_no_wrapping_does_not_affect_default_placeholder() raises:
     """When no value_name is set, the default placeholder <name> is always used.
     """
     var command = Command("test", "Test app")
@@ -512,7 +512,7 @@ fn test_value_name_no_wrapping_does_not_affect_default_placeholder() raises:
     )
 
 
-fn test_value_name_colored_output_wrapped() raises:
+def test_value_name_colored_output_wrapped() raises:
     """Wrapped value_name works correctly in coloured output."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -533,7 +533,7 @@ fn test_value_name_colored_output_wrapped() raises:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn test_group_with_value_name_wrapped() raises:
+def test_group_with_value_name_wrapped() raises:
     """Grouped option with wrapped value_name shows correctly."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -551,7 +551,7 @@ fn test_group_with_value_name_wrapped() raises:
     )
 
 
-fn test_group_with_value_name_unwrapped() raises:
+def test_group_with_value_name_unwrapped() raises:
     """Grouped option with unwrapped value_name shows bare text."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -578,5 +578,5 @@ fn test_group_with_value_name_unwrapped() raises:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

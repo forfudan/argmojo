@@ -8,7 +8,7 @@ from argmojo.utils import _display_width
 # ── Hidden arguments ──────────────────────────────────────────────────────────────
 
 
-fn test_hidden_not_in_help() raises:
+def test_hidden_not_in_help() raises:
     """Tests that hidden arguments are excluded from help output."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -30,7 +30,7 @@ fn test_hidden_not_in_help() raises:
     assert_false("debug" in help, msg="hidden arg should NOT be in help")
 
 
-fn test_hidden_still_works() raises:
+def test_hidden_still_works() raises:
     """Tests that hidden arguments can still be used at the command line."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -49,7 +49,7 @@ fn test_hidden_still_works() raises:
 # ── Metavar ──────────────────────────────────────────────────────────────────────
 
 
-fn test_value_name_in_help() raises:
+def test_value_name_in_help() raises:
     """Tests that value_name appears in help output."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -68,7 +68,7 @@ fn test_value_name_in_help() raises:
     )
 
 
-fn test_choices_in_help() raises:
+def test_choices_in_help() raises:
     """Tests that choices are displayed in help when no value_name."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -90,7 +90,7 @@ fn test_choices_in_help() raises:
 # ── Count action ──────────────────────────────────────────────────────────────────
 
 
-fn test_negatable_in_help() raises:
+def test_negatable_in_help() raises:
     """Test that negatable flags show --X / --no-X in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -109,7 +109,7 @@ fn test_negatable_in_help() raises:
     )
 
 
-fn test_append_in_help() raises:
+def test_append_in_help() raises:
     """Tests that append args show ... suffix in help output."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -138,7 +138,7 @@ fn test_append_in_help() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_help_question_mark_in_help_output() raises:
+def test_help_question_mark_in_help_output() raises:
     """Tests that -h, --help appears in the generated help text."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -152,7 +152,7 @@ fn test_help_question_mark_in_help_output() raises:
     )
 
 
-fn test_dynamic_padding_short_options() raises:
+def test_dynamic_padding_short_options() raises:
     """Tests that help padding adapts to short option names."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -173,7 +173,7 @@ fn test_dynamic_padding_short_options() raises:
             break
 
 
-fn test_dynamic_padding_long_options() raises:
+def test_dynamic_padding_long_options() raises:
     """Tests that padding grows when a very long option is present."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -211,7 +211,7 @@ fn test_dynamic_padding_long_options() raises:
     )
 
 
-fn test_help_and_version_aligned() raises:
+def test_help_and_version_aligned() raises:
     """Tests that built-in -h and -V lines align with user options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -247,7 +247,7 @@ fn test_help_and_version_aligned() raises:
     )
 
 
-fn test_help_on_no_arguments_disabled_by_default() raises:
+def test_help_on_no_arguments_disabled_by_default() raises:
     """Tests that parse_arguments works with no args when help_on_no_arguments is off.
     """
     var command = Command("test", "Test app")
@@ -264,7 +264,7 @@ fn test_help_on_no_arguments_disabled_by_default() raises:
     assert_false(result.get_flag("verbose"), msg="verbose should be False")
 
 
-fn test_positional_args_aligned_in_help() raises:
+def test_positional_args_aligned_in_help() raises:
     """Tests that positional arguments are dynamically aligned in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -294,7 +294,7 @@ fn test_positional_args_aligned_in_help() raises:
     )
 
 
-fn test_help_contains_ansi_colors() raises:
+def test_help_contains_ansi_colors() raises:
     """Tests that colored help output contains ANSI escape codes."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -326,7 +326,7 @@ fn test_help_contains_ansi_colors() raises:
     assert_true("Options:" in plain, msg="plain help should have 'Options:'")
 
 
-fn test_help_color_false_no_codes() raises:
+def test_help_color_false_no_codes() raises:
     """Tests that color=False produces identical output to pre-color era."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -341,7 +341,7 @@ fn test_help_color_false_no_codes() raises:
     assert_false("\x1b" in help, msg="No escape chars in plain mode")
 
 
-fn test_custom_header_color() raises:
+def test_custom_header_color() raises:
     """Setting header_color changes the header ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input file").long["file"]())
@@ -360,7 +360,7 @@ fn test_custom_header_color() raises:
     )
 
 
-fn test_custom_arg_color() raises:
+def test_custom_arg_color() raises:
     """Setting arg_color changes the arg-name ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(
@@ -381,7 +381,7 @@ fn test_custom_arg_color() raises:
     )
 
 
-fn test_custom_both_colors() raises:
+def test_custom_both_colors() raises:
     """Setting both header_color and arg_color at the same time."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input").long["file"]())
@@ -397,7 +397,7 @@ fn test_custom_both_colors() raises:
     )
 
 
-fn test_default_colors_unchanged() raises:
+def test_default_colors_unchanged() raises:
     """Without any setter, help uses default yellow headers + magenta args."""
     var command = Command("app", "My app")
     command.add_argument(Argument("name", help="Your name").long["name"]())
@@ -408,7 +408,7 @@ fn test_default_colors_unchanged() raises:
     assert_true("\x1b[95m" in help, msg="Default arg should be magenta (95)")
 
 
-fn test_color_uppercase_only() raises:
+def test_color_uppercase_only() raises:
     """Colour names must be uppercase: 'GREEN' works."""
     var command = Command("a", "A")
     command.add_argument(Argument("x", help="x").long["x"]())
@@ -417,7 +417,7 @@ fn test_color_uppercase_only() raises:
     assert_true("\x1b[92m" in h, msg="'GREEN' uppercase should resolve")
 
 
-fn test_pink_alias_for_magenta() raises:
+def test_pink_alias_for_magenta() raises:
     """'PINK' is an alias for MAGENTA (\\x1b[95m)."""
     var command = Command("app", "My app")
     command.add_argument(Argument("f", help="File").long["file"]())
@@ -430,7 +430,7 @@ fn test_pink_alias_for_magenta() raises:
     )
 
 
-fn test_invalid_color_caught_at_compile_time() raises:
+def test_invalid_color_caught_at_compile_time() raises:
     """Invalid colour names are caught at compile time via constrained[].
 
     This test simply verifies the valid path works.  An invalid name
@@ -465,7 +465,7 @@ fn test_invalid_color_caught_at_compile_time() raises:
     )
 
 
-fn test_custom_color_plain_mode_unaffected() raises:
+def test_custom_color_plain_mode_unaffected() raises:
     """Custom colours should not leak into plain (color=False) output."""
     var command = Command("app", "My app")
     command.add_argument(Argument("x", help="X option").long["x"]())
@@ -482,7 +482,7 @@ fn test_custom_color_plain_mode_unaffected() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_nargs_in_help() raises:
+def test_nargs_in_help() raises:
     """Tests that nargs options show repeated placeholders in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -515,7 +515,7 @@ fn test_nargs_in_help() raises:
     )
 
 
-fn test_nargs_with_value_name() raises:
+def test_nargs_with_value_name() raises:
     """Tests nargs with a custom value_name in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -535,7 +535,7 @@ fn test_nargs_with_value_name() raises:
 # ── Subcommand help UX ───────────────────────────────────────────────────────────
 
 
-fn test_root_help_shows_commands_section() raises:
+def test_root_help_shows_commands_section() raises:
     """Tests that root help includes a Commands: section when subcommands are registered.
     """
     var app = Command("app", "My CLI tool")
@@ -564,7 +564,7 @@ fn test_root_help_shows_commands_section() raises:
     )
 
 
-fn test_root_help_no_commands_when_no_subcommands() raises:
+def test_root_help_no_commands_when_no_subcommands() raises:
     """Tests that Commands: section is omitted when no subcommands are registered.
     """
     var command = Command("test", "Test app")
@@ -576,7 +576,7 @@ fn test_root_help_no_commands_when_no_subcommands() raises:
     assert_false("Commands:" in help, msg="No Commands: without subcommands")
 
 
-fn test_root_help_commands_excludes_help_sub() raises:
+def test_root_help_commands_excludes_help_sub() raises:
     """Tests that the auto-inserted 'help' subcommand is not listed in Commands.
     """
     var app = Command("app", "My app")
@@ -615,7 +615,7 @@ fn test_root_help_commands_excludes_help_sub() raises:
     )
 
 
-fn test_root_help_usage_shows_command_placeholder() raises:
+def test_root_help_usage_shows_command_placeholder() raises:
     """Tests that usage line includes <COMMAND> when subcommands are registered.
     """
     var app = Command("app", "My app")
@@ -628,7 +628,7 @@ fn test_root_help_usage_shows_command_placeholder() raises:
     )
 
 
-fn test_root_help_usage_no_command_placeholder_without_subs() raises:
+def test_root_help_usage_no_command_placeholder_without_subs() raises:
     """Tests that usage line does NOT include <COMMAND> when no subcommands."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -642,7 +642,7 @@ fn test_root_help_usage_no_command_placeholder_without_subs() raises:
     )
 
 
-fn test_persistent_args_under_global_options() raises:
+def test_persistent_args_under_global_options() raises:
     """Tests that persistent args appear under a 'Global Options:' heading."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -673,7 +673,7 @@ fn test_persistent_args_under_global_options() raises:
     )
 
 
-fn test_no_global_options_without_persistent() raises:
+def test_no_global_options_without_persistent() raises:
     """Tests that Global Options: section is absent when no persistent args."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -688,7 +688,7 @@ fn test_no_global_options_without_persistent() raises:
     )
 
 
-fn test_child_help_shows_full_command_path() raises:
+def test_child_help_shows_full_command_path() raises:
     """Tests that child help shows full command path (e.g. 'app search')."""
     var app = Command("app", "My app")
     var search = Command("search", "Search for patterns")
@@ -713,7 +713,7 @@ fn test_child_help_shows_full_command_path() raises:
     )
 
 
-fn test_child_help_shows_inherited_persistent_args() raises:
+def test_child_help_shows_inherited_persistent_args() raises:
     """Tests that child help includes inherited persistent args under Global Options.
     """
     var app = Command("app", "My app")
@@ -755,7 +755,7 @@ fn test_child_help_shows_inherited_persistent_args() raises:
     )
 
 
-fn test_add_tip_appears_in_help() raises:
+def test_add_tip_appears_in_help() raises:
     """Tests that custom tips appear in help output."""
     var command = Command("test", "Test app")
     command.add_tip("Set DEBUG=1 for debug logging.")
@@ -775,7 +775,7 @@ fn test_add_tip_appears_in_help() raises:
 # ── Alias in help output ──────────────────────────────────────────────────────
 
 
-fn test_alias_shown_inline_in_help() raises:
+def test_alias_shown_inline_in_help() raises:
     """Tests that subcommand aliases appear inline in help output."""
     var app = Command("app", "Test app")
     var clone = Command("clone", "Clone a repo")
@@ -790,7 +790,7 @@ fn test_alias_shown_inline_in_help() raises:
     )
 
 
-fn test_multiple_aliases_shown_in_help() raises:
+def test_multiple_aliases_shown_in_help() raises:
     """Tests that multiple aliases are all shown inline in help."""
     var app = Command("app", "Test app")
     var commit = Command("commit", "Record changes")
@@ -808,7 +808,7 @@ fn test_multiple_aliases_shown_in_help() raises:
 # ── Hidden subcommands ────────────────────────────────────────────────────────
 
 
-fn test_hidden_subcommand_not_in_help() raises:
+def test_hidden_subcommand_not_in_help() raises:
     """Tests that hidden subcommands are excluded from help output."""
     var app = Command("app", "Test app")
     var clone = Command("clone", "Clone a repository")
@@ -822,7 +822,7 @@ fn test_hidden_subcommand_not_in_help() raises:
     assert_false("debug" in help, msg="hidden sub should NOT be in help")
 
 
-fn test_hidden_subcommand_not_in_usage_line() raises:
+def test_hidden_subcommand_not_in_usage_line() raises:
     """Tests that usage line omits [command] if all subs are hidden."""
     var app = Command("app", "Test app")
     var debug = Command("debug", "Internal debug command")
@@ -836,7 +836,7 @@ fn test_hidden_subcommand_not_in_usage_line() raises:
     )
 
 
-fn test_hidden_subcommand_usage_line_with_visible() raises:
+def test_hidden_subcommand_usage_line_with_visible() raises:
     """Tests that usage line shows [command] when visible subs remain."""
     var app = Command("app", "Test app")
     var clone = Command("clone", "Clone a repository")
@@ -855,7 +855,7 @@ fn test_hidden_subcommand_usage_line_with_visible() raises:
 # ── NO_COLOR ──────────────────────────────────────────────────────────────────
 
 
-fn test_no_color_env_static_method() raises:
+def test_no_color_env_static_method() raises:
     """Tests _no_color_env() returns the correct value based on environment."""
     # We can't set env vars from Mojo easily, so just verify the method
     # exists and returns a Bool without crashing.
@@ -871,7 +871,7 @@ fn test_no_color_env_static_method() raises:
 # ── CJK-aware help alignment ────────────────────────────────────────────────
 
 
-fn test_cjk_options_aligned() raises:
+def test_cjk_options_aligned() raises:
     """Tests that CJK help text doesn't break column alignment."""
     var command = Command("test", "測試應用")
     command.add_argument(
@@ -902,7 +902,7 @@ fn test_cjk_options_aligned() raises:
     )
 
 
-fn test_cjk_subcommands_aligned() raises:
+def test_cjk_subcommands_aligned() raises:
     """Tests that CJK subcommand descriptions align correctly."""
     var app = Command("工具", "一個命令行工具")
     var init = Command("初始化", "建立新項目")
@@ -930,7 +930,7 @@ fn test_cjk_subcommands_aligned() raises:
     )
 
 
-fn test_cjk_positionals_aligned() raises:
+def test_cjk_positionals_aligned() raises:
     """Tests that CJK positional argument help aligns correctly."""
     var command = Command("test", "測試")
     command.add_argument(Argument("檔案", help="輸入檔案路徑"))
@@ -956,7 +956,7 @@ fn test_cjk_positionals_aligned() raises:
     )
 
 
-fn test_mixed_ascii_cjk_aligned() raises:
+def test_mixed_ascii_cjk_aligned() raises:
     """Tests alignment when mixing ASCII and CJK option names."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -984,5 +984,5 @@ fn test_mixed_ascii_cjk_aligned() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

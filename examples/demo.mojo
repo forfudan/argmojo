@@ -109,7 +109,7 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
 from argmojo import Argument, Command
 
 
-fn main() raises:
+def main() raises:
     var app = Command(
         "demo",
         (

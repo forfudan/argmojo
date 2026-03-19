@@ -17,14 +17,14 @@ from argmojo import Argument, Command, ParseResult
 # ── Builder method tests ─────────────────────────────────────────────────────
 
 
-fn test_password_builder_basic() raises:
+def test_password_builder_basic() raises:
     """Tests that .password() sets _hide_input and implies _prompt."""
     var arg = Argument("token", help="API token").long["token"]().password()
     assert_true(arg._hide_input, msg=".password() should set _hide_input")
     assert_true(arg._prompt, msg=".password() should imply .prompt()")
 
 
-fn test_password_builder_with_explicit_prompt() raises:
+def test_password_builder_with_explicit_prompt() raises:
     """Tests that .password() works alongside .prompt["text"]()."""
     var arg = (
         Argument("pass", help="Password")
@@ -41,7 +41,7 @@ fn test_password_builder_with_explicit_prompt() raises:
     )
 
 
-fn test_password_before_prompt() raises:
+def test_password_before_prompt() raises:
     """Tests that .password() before .prompt["text"]() works."""
     var arg = (
         Argument("secret", help="Secret key")
@@ -58,7 +58,7 @@ fn test_password_before_prompt() raises:
     )
 
 
-fn test_password_default_fields() raises:
+def test_password_default_fields() raises:
     """Tests that _hide_input is False by default."""
     var arg = Argument("name", help="Name").long["name"]()
     assert_false(arg._hide_input, msg="_hide_input should be False by default")
@@ -67,7 +67,7 @@ fn test_password_default_fields() raises:
 # ── Copy and move propagation ────────────────────────────────────────────────
 
 
-fn test_password_copy_preserves_field() raises:
+def test_password_copy_preserves_field() raises:
     """Tests that __copyinit__ preserves _hide_input."""
     var original = Argument("pass", help="Password").long["pass"]().password()
     var copy = original.copy()
@@ -78,7 +78,7 @@ fn test_password_copy_preserves_field() raises:
 # ── Validation guards ────────────────────────────────────────────────────────
 
 
-fn test_password_rejected_on_flag() raises:
+def test_password_rejected_on_flag() raises:
     """Tests that .password() on a flag raises at add_argument time."""
     var cmd = Command("test", "Test app")
     var caught = False
@@ -98,7 +98,7 @@ fn test_password_rejected_on_flag() raises:
     assert_true(caught, msg="add_argument should reject .password() on flag")
 
 
-fn test_password_rejected_on_count() raises:
+def test_password_rejected_on_count() raises:
     """Tests that .password() on a count arg raises at add_argument time."""
     var cmd = Command("test", "Test app")
     var caught = False
@@ -121,7 +121,7 @@ fn test_password_rejected_on_count() raises:
 # ── Prompting skipped when value provided on command line ─────────────────────
 
 
-fn test_password_skipped_when_value_provided() raises:
+def test_password_skipped_when_value_provided() raises:
     """Tests that password prompt is skipped when value is on command line."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -137,7 +137,7 @@ fn test_password_skipped_when_value_provided() raises:
     )
 
 
-fn test_password_with_default() raises:
+def test_password_with_default() raises:
     """Tests password arg with a default value."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -158,7 +158,7 @@ fn test_password_with_default() raises:
     )
 
 
-fn test_password_with_choices() raises:
+def test_password_with_choices() raises:
     """Tests password arg with choices (unusual but valid)."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -181,7 +181,7 @@ fn test_password_with_choices() raises:
 # ── Integration with other features ──────────────────────────────────────────
 
 
-fn test_password_with_required() raises:
+def test_password_with_required() raises:
     """Tests that required + password arg errors on missing value.
 
     When stdin is /dev/null, prompting stops → the required arg is
@@ -205,7 +205,7 @@ fn test_password_with_required() raises:
     assert_true(caught, msg="missing required password arg should error")
 
 
-fn test_password_arg_with_parent() raises:
+def test_password_arg_with_parent() raises:
     """Tests that password fields are inherited via add_parent."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -232,7 +232,7 @@ fn test_password_arg_with_parent() raises:
     assert_true(found, msg="token should be inherited from parent")
 
 
-fn test_password_with_subcommand() raises:
+def test_password_with_subcommand() raises:
     """Tests password arg on a subcommand."""
     var app = Command("app", "My app")
     var login = Command("login", "Login to service")
@@ -255,7 +255,7 @@ fn test_password_with_subcommand() raises:
     )
 
 
-fn test_password_not_set_on_normal_prompt() raises:
+def test_password_not_set_on_normal_prompt() raises:
     """Tests that a normal .prompt() arg does NOT have _hide_input."""
     var arg = Argument("name", help="Name").long["name"]().prompt()
     assert_false(
@@ -264,7 +264,7 @@ fn test_password_not_set_on_normal_prompt() raises:
     )
 
 
-fn test_password_positional() raises:
+def test_password_positional() raises:
     """Tests password on a positional argument."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -280,7 +280,7 @@ fn test_password_positional() raises:
     )
 
 
-fn test_password_graceful_on_non_interactive_stdin() raises:
+def test_password_graceful_on_non_interactive_stdin() raises:
     """Tests that password prompting stops gracefully on non-interactive stdin.
 
     When the test runs with stdin redirected from /dev/null, input()
@@ -308,5 +308,5 @@ fn test_password_graceful_on_non_interactive_stdin() raises:
 # ── Test runner ──────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

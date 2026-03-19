@@ -156,7 +156,7 @@ struct Argument(Copyable, Movable, Writable):
     # Life cycle methods
     # ===------------------------------------------------------------------=== #
 
-    fn __init__(out self, name: String, *, help: String = ""):
+    def __init__(out self, name: String, *, help: String = ""):
         """Creates a new argument definition.
 
         Args:
@@ -201,7 +201,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt_text = ""
         self._hide_input = False
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Creates a copy of this argument.
 
         Args:
@@ -249,7 +249,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt_text = copy._prompt_text
         self._hide_input = copy._hide_input
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Moves the value from another Argument.
 
         Args:
@@ -297,7 +297,7 @@ struct Argument(Copyable, Movable, Writable):
     # Builder methods for configuring the argument
     # ===------------------------------------------------------------------=== #
 
-    fn long[name: StringLiteral](var self) -> Self:
+    def long[name: StringLiteral](var self) -> Self:
         """Sets the long option name (e.g., 'verbose' for --verbose).
 
         Parameters:
@@ -323,7 +323,7 @@ struct Argument(Copyable, Movable, Writable):
         self._long_name = name
         return self^
 
-    fn short[name: StringLiteral](var self) -> Self:
+    def short[name: StringLiteral](var self) -> Self:
         """Sets the short option name (e.g., 'l' for -l).
 
         Parameters:
@@ -345,7 +345,7 @@ struct Argument(Copyable, Movable, Writable):
         self._short_name = name
         return self^
 
-    fn flag(var self) -> Self:
+    def flag(var self) -> Self:
         """Marks this argument as a boolean flag (no value needed).
 
         Returns:
@@ -359,7 +359,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_flag = True
         return self^
 
-    fn required(var self) -> Self:
+    def required(var self) -> Self:
         """Marks this argument as required.
 
         Returns:
@@ -372,7 +372,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_required = True
         return self^
 
-    fn positional(var self) -> Self:
+    def positional(var self) -> Self:
         """Marks this argument as a positional argument.
 
         Returns:
@@ -381,7 +381,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_positional = True
         return self^
 
-    fn takes_value(var self) -> Self:
+    def takes_value(var self) -> Self:
         """Marks this argument as taking a value (not a flag).
 
         This is the default behavior; use this for clarity when needed.
@@ -392,7 +392,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_flag = False
         return self^
 
-    fn default[value: StringLiteral](var self) -> Self:
+    def default[value: StringLiteral](var self) -> Self:
         """Sets a default value for this argument.
 
         Parameters:
@@ -405,7 +405,7 @@ struct Argument(Copyable, Movable, Writable):
         self._has_default = True
         return self^
 
-    fn choice[value: StringLiteral](var self) -> Self:
+    def choice[value: StringLiteral](var self) -> Self:
         """Adds an allowed value for this argument.
 
         Chain multiple calls to build the full set of choices:
@@ -423,7 +423,7 @@ struct Argument(Copyable, Movable, Writable):
         self._choice_values.append(value)
         return self^
 
-    fn value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
+    def value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
         """Sets the display name for the value in help text.
 
         When *wrapped* is True (default), the name is displayed inside angle
@@ -445,7 +445,7 @@ struct Argument(Copyable, Movable, Writable):
         self._value_name_wrapped = wrapped
         return self^
 
-    fn hidden(var self) -> Self:
+    def hidden(var self) -> Self:
         """Marks this argument as hidden (not shown in help output).
 
         Returns:
@@ -454,7 +454,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_hidden = True
         return self^
 
-    fn count(var self) -> Self:
+    def count(var self) -> Self:
         """Marks this argument as a counter flag.
 
         Each occurrence increments a counter. For example, ``-vvv`` sets
@@ -477,7 +477,7 @@ struct Argument(Copyable, Movable, Writable):
     # rather than developers, may encounter errors about a wrong ceiling value
     # in the terminal when they use the API, no matter they are using it
     # correctly or not. That would be catastrophic.
-    fn max[ceiling: Int](var self) -> Self where ceiling >= 1:
+    def max[ceiling: Int](var self) -> Self where ceiling >= 1:
         """Sets a ceiling for a counter flag.
 
         When a counter flag has a ceiling, the count is capped at the
@@ -505,7 +505,7 @@ struct Argument(Copyable, Movable, Writable):
         self._has_count_max = True
         return self^
 
-    fn negatable(var self) -> Self:
+    def negatable(var self) -> Self:
         """Marks this flag as negatable.
 
         A negatable flag accepts both ``--X`` (sets True) and ``--no-X``
@@ -518,7 +518,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_negatable = True
         return self^
 
-    fn append(var self) -> Self:
+    def append(var self) -> Self:
         """Marks this argument as an append/collect option.
 
         Each occurrence adds its value to a list. For example,
@@ -531,7 +531,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    fn delimiter[sep: StringLiteral](var self) -> Self:
+    def delimiter[sep: StringLiteral](var self) -> Self:
         """Sets a value delimiter for splitting a single value into multiple.
 
         When set, each provided value is split by the delimiter, and each
@@ -562,7 +562,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    fn number_of_values[n: Int](var self) -> Self where n >= 2:
+    def number_of_values[n: Int](var self) -> Self where n >= 2:
         """Sets the number of values consumed per occurrence.
 
         When set, each use of the option consumes exactly ``n``
@@ -581,7 +581,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    fn range[
+    def range[
         min_val: Int, max_val: Int
     ](var self) -> Self where max_val >= min_val:
         """Sets numeric range validation for this argument.
@@ -606,7 +606,7 @@ struct Argument(Copyable, Movable, Writable):
         self._has_range = True
         return self^
 
-    fn clamp(var self) -> Self:
+    def clamp(var self) -> Self:
         """Enables clamping for numeric range validation.
 
         When clamping is enabled (used after ``.range[min, max]()``),
@@ -625,7 +625,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_clamp = True
         return self^
 
-    fn map_option(var self) -> Self:
+    def map_option(var self) -> Self:
         """Marks this argument as a key-value map option.
 
         Each value must be in ``key=value`` format.  Values are
@@ -642,7 +642,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    fn alias_name[name: StringLiteral](var self) -> Self:
+    def alias_name[name: StringLiteral](var self) -> Self:
         """Sets an alternative long name for this argument.
 
         Any alias resolves to this argument during parsing.  For
@@ -673,7 +673,7 @@ struct Argument(Copyable, Movable, Writable):
         self._alias_names.append(name)
         return self^
 
-    fn deprecated[message: StringLiteral](var self) -> Self:
+    def deprecated[message: StringLiteral](var self) -> Self:
         """Marks this argument as deprecated.
 
         When the user provides a deprecated argument, a warning is
@@ -694,7 +694,7 @@ struct Argument(Copyable, Movable, Writable):
         self._deprecated_msg = message
         return self^
 
-    fn persistent(var self) -> Self:
+    def persistent(var self) -> Self:
         """Marks this argument as persistent (inherited by all subcommands).
 
         A persistent argument defined on a parent command is automatically
@@ -721,7 +721,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_persistent = True
         return self^
 
-    fn default_if_no_value[value: StringLiteral](var self) -> Self:
+    def default_if_no_value[value: StringLiteral](var self) -> Self:
         """Sets a default value for when the option appears without an explicit value.
 
         When set, the option may appear without a value.  If no value
@@ -764,7 +764,7 @@ struct Argument(Copyable, Movable, Writable):
         self._require_equals = True  # implied for long options
         return self^
 
-    fn require_equals(var self) -> Self:
+    def require_equals(var self) -> Self:
         """Requires that values be provided using ``=`` syntax.
 
         When set, ``--key value`` (space-separated) is rejected;
@@ -787,7 +787,7 @@ struct Argument(Copyable, Movable, Writable):
         self._require_equals = True
         return self^
 
-    fn remainder(var self) -> Self:
+    def remainder(var self) -> Self:
         """Marks this positional argument as a remainder collector.
 
         A remainder argument consumes **all** remaining tokens on the
@@ -820,7 +820,7 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    fn allow_hyphen_values(var self) -> Self:
+    def allow_hyphen_values(var self) -> Self:
         """Allows tokens starting with ``-`` as valid values.
 
         By default, tokens that start with ``-`` are interpreted as option
@@ -845,7 +845,7 @@ struct Argument(Copyable, Movable, Writable):
         self._allow_hyphen_values = True
         return self^
 
-    fn group[name: StringLiteral](var self) -> Self:
+    def group[name: StringLiteral](var self) -> Self:
         """Assigns this argument to a named help-output group.
 
         Arguments sharing the same group name are displayed together
@@ -866,7 +866,7 @@ struct Argument(Copyable, Movable, Writable):
         self._group = name
         return self^
 
-    fn prompt(var self) -> Self:
+    def prompt(var self) -> Self:
         """Enables interactive prompting for this argument.
 
         When prompting is enabled, the user is interactively asked to
@@ -896,7 +896,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt = True
         return self^
 
-    fn prompt[text: StringLiteral](var self) -> Self:
+    def prompt[text: StringLiteral](var self) -> Self:
         """Enables interactive prompting with custom text.
 
         When the argument is not supplied on the command line, the
@@ -924,7 +924,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt_text = text
         return self^
 
-    fn password(var self) -> Self:
+    def password(var self) -> Self:
         """Marks this argument as a password / sensitive value.
 
         When combined with ``.prompt()``, the user's input is hidden
@@ -957,7 +957,7 @@ struct Argument(Copyable, Movable, Writable):
     # String representation methods
     # ===------------------------------------------------------------------=== #
 
-    fn __str__(self) -> String:
+    def __str__(self) -> String:
         """Returns a string representation of this argument definition."""
         var s = String("Argument(name='") + self.name + "'"
         if self._long_name:
@@ -973,7 +973,7 @@ struct Argument(Copyable, Movable, Writable):
         s += ")"
         return s
 
-    fn write_to[W: Writer](self, mut writer: W):
+    def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 
         Parameters:

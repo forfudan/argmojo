@@ -41,7 +41,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Step 0: _apply_defaults() behavior ───────────────────────────────────────
 
 
-fn test_defaults_named_arg() raises:
+def test_defaults_named_arg() raises:
     """Tests that a named arg with a default gets filled when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -55,7 +55,7 @@ fn test_defaults_named_arg() raises:
     assert_equal(result.get_string("format"), "json")
 
 
-fn test_defaults_positional_arg() raises:
+def test_defaults_positional_arg() raises:
     """Tests that a positional arg with a default gets filled when not provided.
     """
     var command = Command("test", "Test app")
@@ -72,7 +72,7 @@ fn test_defaults_positional_arg() raises:
     assert_equal(result.get_string("path"), ".")
 
 
-fn test_defaults_not_applied_when_provided() raises:
+def test_defaults_not_applied_when_provided() raises:
     """Tests that defaults do not overwrite explicitly provided values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -86,7 +86,7 @@ fn test_defaults_not_applied_when_provided() raises:
     assert_equal(result.get_string("format"), "csv")
 
 
-fn test_defaults_multiple_positional() raises:
+def test_defaults_multiple_positional() raises:
     """Tests defaults with multiple positional args where some are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -106,7 +106,7 @@ fn test_defaults_multiple_positional() raises:
 # ── Step 0: _validate() — required args ──────────────────────────────────────
 
 
-fn test_validate_required_missing() raises:
+def test_validate_required_missing() raises:
     """Tests that a missing required arg raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -128,7 +128,7 @@ fn test_validate_required_missing() raises:
     assert_true(caught, msg="Should have raised for missing required arg")
 
 
-fn test_validate_required_provided() raises:
+def test_validate_required_provided() raises:
     """Tests that providing a required arg passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -143,7 +143,7 @@ fn test_validate_required_provided() raises:
 # ── Step 0: _validate() — positional count ───────────────────────────────────
 
 
-fn test_validate_too_many_positionals() raises:
+def test_validate_too_many_positionals() raises:
     """Tests that too many positional args fails validation."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("name", help="Name").positional())
@@ -165,7 +165,7 @@ fn test_validate_too_many_positionals() raises:
 # ── Step 0: _validate() — mutually exclusive ─────────────────────────────────
 
 
-fn test_validate_exclusive_conflict() raises:
+def test_validate_exclusive_conflict() raises:
     """Tests that mutually exclusive args in conflict raise an error."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("json", help="JSON").long["json"]().flag())
@@ -186,7 +186,7 @@ fn test_validate_exclusive_conflict() raises:
     assert_true(caught, msg="Should have raised for exclusive conflict")
 
 
-fn test_validate_exclusive_ok() raises:
+def test_validate_exclusive_ok() raises:
     """Tests that providing only one from exclusive group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("json", help="JSON").long["json"]().flag())
@@ -202,7 +202,7 @@ fn test_validate_exclusive_ok() raises:
 # ── Step 0: _validate() — required-together ──────────────────────────────────
 
 
-fn test_validate_together_partial() raises:
+def test_validate_together_partial() raises:
     """Tests that providing only some of a required-together group fails."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("user", help="User").long["user"]())
@@ -227,7 +227,7 @@ fn test_validate_together_partial() raises:
 # ── Step 0: _validate() — one-required ───────────────────────────────────────
 
 
-fn test_validate_one_required_none() raises:
+def test_validate_one_required_none() raises:
     """Tests that providing none from a one-required group fails."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("json", help="JSON").long["json"]().flag())
@@ -251,7 +251,7 @@ fn test_validate_one_required_none() raises:
 # ── Step 0: _validate() — conditional requirements ───────────────────────────
 
 
-fn test_validate_conditional_triggered() raises:
+def test_validate_conditional_triggered() raises:
     """Tests that conditional requirement fires when condition is present."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("save", help="Save").long["save"]().flag())
@@ -271,7 +271,7 @@ fn test_validate_conditional_triggered() raises:
     assert_true(caught, msg="Should have raised for conditional requirement")
 
 
-fn test_validate_conditional_satisfied() raises:
+def test_validate_conditional_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("save", help="Save").long["save"]().flag())
@@ -287,7 +287,7 @@ fn test_validate_conditional_satisfied() raises:
 # ── Step 0: _validate() — numeric range ──────────────────────────────────────
 
 
-fn test_validate_range_out_of_bounds() raises:
+def test_validate_range_out_of_bounds() raises:
     """Tests that a value outside numeric range fails validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -307,7 +307,7 @@ fn test_validate_range_out_of_bounds() raises:
     assert_true(caught, msg="Should have raised for out-of-range value")
 
 
-fn test_validate_range_in_bounds() raises:
+def test_validate_range_in_bounds() raises:
     """Tests that a value within numeric range passes validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -322,7 +322,7 @@ fn test_validate_range_in_bounds() raises:
 # ── Step 0: full round-trip (defaults + validation combined) ─────────────────
 
 
-fn test_defaults_then_validation_combined() raises:
+def test_defaults_then_validation_combined() raises:
     """Tests that defaults are applied BEFORE validation runs.
 
     A required-together group where one arg has a default: providing
@@ -342,7 +342,7 @@ fn test_defaults_then_validation_combined() raises:
     assert_false(result.has("pass"))
 
 
-fn test_full_parse_with_defaults_and_range() raises:
+def test_full_parse_with_defaults_and_range() raises:
     """Tests that default values also pass range validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -361,13 +361,13 @@ fn test_full_parse_with_defaults_and_range() raises:
 # ── Step 1: Data model — Command.subcommands field ───────────────────────────
 
 
-fn test_command_subcommands_empty_initially() raises:
+def test_command_subcommands_empty_initially() raises:
     """Tests that a fresh Command has no subcommands registered."""
     var app = Command("app", "My app")
     assert_equal(len(app.subcommands), 0)
 
 
-fn test_add_subcommand_single() raises:
+def test_add_subcommand_single() raises:
     """Tests that add_subcommand() appends one subcommand to the list.
 
     After the first add_subcommand() call the auto-added 'help' subcommand
@@ -384,7 +384,7 @@ fn test_add_subcommand_single() raises:
     assert_equal(app.subcommands[idx].description, "Search for patterns")
 
 
-fn test_add_subcommand_multiple() raises:
+def test_add_subcommand_multiple() raises:
     """Tests that multiple subcommands can be registered and are ordered.
 
     'help' is auto-inserted at index 0; user subcommands follow in
@@ -405,7 +405,7 @@ fn test_add_subcommand_multiple() raises:
     assert_equal(app.subcommands[3].name, "build")
 
 
-fn test_add_subcommand_preserves_child_args() raises:
+def test_add_subcommand_preserves_child_args() raises:
     """Tests that a subcommand's own arg definitions survive transfer.
 
     Total count is 2 (help at [0] + search at [1]).
@@ -426,7 +426,7 @@ fn test_add_subcommand_preserves_child_args() raises:
     assert_equal(app.subcommands[idx].args[1].name, "max-depth")
 
 
-fn test_subcommand_has_own_version() raises:
+def test_subcommand_has_own_version() raises:
     """Tests that a subcommand can have its own version string."""
     var app = Command("app", "My app", version="1.0.0")
     var sub = Command("serve", "Start server", version="2.0.0-beta")
@@ -439,27 +439,27 @@ fn test_subcommand_has_own_version() raises:
 # ── Step 1: Data model — ParseResult.subcommand field ────────────────────────
 
 
-fn test_parseresult_subcommand_defaults_empty() raises:
+def test_parseresult_subcommand_defaults_empty() raises:
     """Tests that ParseResult.subcommand defaults to empty string."""
     var result = ParseResult()
     assert_equal(result.subcommand, "")
 
 
-fn test_parseresult_subcommand_can_be_set() raises:
+def test_parseresult_subcommand_can_be_set() raises:
     """Tests that ParseResult.subcommand can be assigned a name."""
     var result = ParseResult()
     result.subcommand = "search"
     assert_equal(result.subcommand, "search")
 
 
-fn test_parseresult_no_subcommand_result_initially() raises:
+def test_parseresult_no_subcommand_result_initially() raises:
     """Tests that has_subcommand_result() returns False on a fresh ParseResult.
     """
     var result = ParseResult()
     assert_false(result.has_subcommand_result())
 
 
-fn test_parseresult_get_subcommand_result_raises_when_empty() raises:
+def test_parseresult_get_subcommand_result_raises_when_empty() raises:
     """Tests that get_subcommand_result() raises when no child result exists."""
     var result = ParseResult()
     var caught = False
@@ -474,7 +474,7 @@ fn test_parseresult_get_subcommand_result_raises_when_empty() raises:
     assert_true(caught, msg="Should have raised for empty subcommand result")
 
 
-fn test_parseresult_subcommand_result_stored_and_retrieved() raises:
+def test_parseresult_subcommand_result_stored_and_retrieved() raises:
     """Tests that a child ParseResult can be stored and retrieved."""
     var parent = ParseResult()
     var child = ParseResult()
@@ -486,7 +486,7 @@ fn test_parseresult_subcommand_result_stored_and_retrieved() raises:
     assert_equal(retrieved.get_string("pattern"), "hello")
 
 
-fn test_parseresult_str_includes_subcommand() raises:
+def test_parseresult_str_includes_subcommand() raises:
     """Tests that __str__ includes the subcommand name when set."""
     var result = ParseResult()
     result.subcommand = "build"
@@ -494,7 +494,7 @@ fn test_parseresult_str_includes_subcommand() raises:
     assert_true("build" in s, msg="__str__ should include the subcommand name")
 
 
-fn test_parseresult_str_no_subcommand_section_when_empty() raises:
+def test_parseresult_str_no_subcommand_section_when_empty() raises:
     """Tests that __str__ omits the subcommand when it is empty."""
     var result = ParseResult()
     var s = String(result)
@@ -504,7 +504,7 @@ fn test_parseresult_str_no_subcommand_section_when_empty() raises:
     )
 
 
-fn test_parseresult_copy_preserves_subcommand() raises:
+def test_parseresult_copy_preserves_subcommand() raises:
     """Tests that copying a ParseResult preserves subcommand and child result.
     """
     var original = ParseResult()
@@ -519,7 +519,7 @@ fn test_parseresult_copy_preserves_subcommand() raises:
     assert_equal(copy.get_subcommand_result().get_string("name"), "myproject")
 
 
-fn test_parse_without_subcommands_unaffected() raises:
+def test_parse_without_subcommands_unaffected() raises:
     """Tests that parse_arguments() results are unchanged when no subcommands exist.
     """
     var command = Command("app", "My app")
@@ -539,7 +539,7 @@ fn test_parse_without_subcommands_unaffected() raises:
 # ── Step 2: Parse routing ─────────────────────────────────────────────────────
 
 
-fn test_dispatch_basic() raises:
+def test_dispatch_basic() raises:
     """Tests basic subcommand dispatch: app search pattern."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -556,7 +556,7 @@ fn test_dispatch_basic() raises:
     assert_equal(sub.get_string("pattern"), "hello")
 
 
-fn test_dispatch_root_flag_before_subcommand() raises:
+def test_dispatch_root_flag_before_subcommand() raises:
     """Tests that root flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -579,7 +579,7 @@ fn test_dispatch_root_flag_before_subcommand() raises:
     assert_equal(sub.get_string("pattern"), "hello")
 
 
-fn test_dispatch_root_short_flag_before_subcommand() raises:
+def test_dispatch_root_short_flag_before_subcommand() raises:
     """Tests that root short flags before subcommand are parsed by root."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -602,7 +602,7 @@ fn test_dispatch_root_short_flag_before_subcommand() raises:
     assert_equal(sub.get_string("pattern"), "hello")
 
 
-fn test_dispatch_child_flag() raises:
+def test_dispatch_child_flag() raises:
     """Tests that child flags are parsed by the child command."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -622,7 +622,7 @@ fn test_dispatch_child_flag() raises:
     assert_equal(sub.get_string("pattern"), "hello")
 
 
-fn test_dispatch_child_flag_short() raises:
+def test_dispatch_child_flag_short() raises:
     """Tests that child short flags are parsed by the child command."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -642,7 +642,7 @@ fn test_dispatch_child_flag_short() raises:
     assert_equal(sub.get_string("pattern"), "hello")
 
 
-fn test_dispatch_double_dash_stops_dispatch() raises:
+def test_dispatch_double_dash_stops_dispatch() raises:
     """Tests that -- before subcommand name prevents dispatch."""
     var app = Command("app", "My app")
     app.allow_positional_with_subcommands()
@@ -659,7 +659,7 @@ fn test_dispatch_double_dash_stops_dispatch() raises:
     assert_equal(result.get_string("arg1"), "search")
 
 
-fn test_dispatch_unknown_token_is_positional() raises:
+def test_dispatch_unknown_token_is_positional() raises:
     """Tests that an unknown token (no subcommand match) is treated as positional.
     """
     var app = Command("app", "My app")
@@ -674,7 +674,7 @@ fn test_dispatch_unknown_token_is_positional() raises:
     assert_equal(result.get_string("name"), "hello")
 
 
-fn test_dispatch_two_subcommands_route_first() raises:
+def test_dispatch_two_subcommands_route_first() raises:
     """Tests routing to the first of two registered subcommands."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -692,7 +692,7 @@ fn test_dispatch_two_subcommands_route_first() raises:
     assert_equal(result.get_subcommand_result().get_string("pattern"), "foo")
 
 
-fn test_dispatch_two_subcommands_route_second() raises:
+def test_dispatch_two_subcommands_route_second() raises:
     """Tests routing to the second of two registered subcommands."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -710,7 +710,7 @@ fn test_dispatch_two_subcommands_route_second() raises:
     assert_equal(result.get_subcommand_result().get_string("name"), "myproject")
 
 
-fn test_dispatch_child_validation_error() raises:
+def test_dispatch_child_validation_error() raises:
     """Tests that missing required child arg raises an error."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -732,7 +732,7 @@ fn test_dispatch_child_validation_error() raises:
     assert_true(caught, msg="Should have raised for missing child required arg")
 
 
-fn test_dispatch_child_default_value() raises:
+def test_dispatch_child_default_value() raises:
     """Tests that child defaults are applied during child parse.
 
     Required positionals are declared first so the single token fills
@@ -755,7 +755,7 @@ fn test_dispatch_child_default_value() raises:
     assert_equal(sub.get_string("path"), ".")
 
 
-fn test_dispatch_no_subcommand_when_none_match() raises:
+def test_dispatch_no_subcommand_when_none_match() raises:
     """Tests that subcommand field stays empty when no token matches."""
     var app = Command("app", "My app")
     app.allow_positional_with_subcommands()
@@ -769,7 +769,7 @@ fn test_dispatch_no_subcommand_when_none_match() raises:
     assert_false(result.has_subcommand_result())
 
 
-fn test_dispatch_root_still_validates_own_required() raises:
+def test_dispatch_root_still_validates_own_required() raises:
     """Tests that root still validates its own required args after dispatch."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -792,7 +792,7 @@ fn test_dispatch_root_still_validates_own_required() raises:
     assert_true(caught, msg="Root required arg should still be validated")
 
 
-fn test_dispatch_child_receives_no_root_tokens() raises:
+def test_dispatch_child_receives_no_root_tokens() raises:
     """Tests tokens before subcommand are NOT forwarded to the child."""
     var app = Command("app", "My app")
     app.add_argument(
@@ -819,7 +819,7 @@ fn test_dispatch_child_receives_no_root_tokens() raises:
 # ── Step 2b: auto-registered 'help' subcommand ───────────────────────────────
 
 
-fn test_help_sub_auto_added() raises:
+def test_help_sub_auto_added() raises:
     """Tests that add_subcommand() automatically inserts a 'help' subcommand."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -832,7 +832,7 @@ fn test_help_sub_auto_added() raises:
     assert_true(app.subcommands[help_idx]._is_help_subcommand)
 
 
-fn test_help_sub_added_only_once() raises:
+def test_help_sub_added_only_once() raises:
     """Tests that 'help' is not duplicated on multiple add_subcommand() calls.
     """
     var app = Command("app", "My app")
@@ -849,7 +849,7 @@ fn test_help_sub_added_only_once() raises:
     assert_equal(count, 1)
 
 
-fn test_help_sub_appears_after_user_subs() raises:
+def test_help_sub_appears_after_user_subs() raises:
     """Tests that 'help' is at index 0 and user subs follow in order."""
     var app = Command("app", "My app")
     app.add_subcommand(Command("search", "Search"))
@@ -861,7 +861,7 @@ fn test_help_sub_appears_after_user_subs() raises:
     assert_equal(app.subcommands[2].name, "init")
 
 
-fn test_help_sub_flag_on_user_subs() raises:
+def test_help_sub_flag_on_user_subs() raises:
     """Tests that user-registered subcommands do NOT have the flag set."""
     var app = Command("app", "My app")
     app.add_subcommand(Command("search", "Search"))
@@ -871,7 +871,7 @@ fn test_help_sub_flag_on_user_subs() raises:
     assert_false(app.subcommands[search_idx]._is_help_subcommand)
 
 
-fn test_disable_help_sub_before_add() raises:
+def test_disable_help_sub_before_add() raises:
     """Tests that disable_help_subcommand() before add_subcommand() prevents insertion.
     """
     var app = Command("app", "My app")
@@ -883,7 +883,7 @@ fn test_disable_help_sub_before_add() raises:
     assert_equal(app._find_subcommand("help"), -1)
 
 
-fn test_disable_help_sub_after_add() raises:
+def test_disable_help_sub_after_add() raises:
     """Tests that disable_help_subcommand() after add_subcommand() removes it.
     """
     var app = Command("app", "My app")
@@ -898,7 +898,7 @@ fn test_disable_help_sub_after_add() raises:
     assert_equal(app._find_subcommand("help"), -1)
 
 
-fn test_dispatch_unaffected_by_help_sub() raises:
+def test_dispatch_unaffected_by_help_sub() raises:
     """Tests that normal dispatch still works when 'help' sub is auto-added."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -914,7 +914,7 @@ fn test_dispatch_unaffected_by_help_sub() raises:
     assert_equal(child.get_string("pattern"), "TODO")
 
 
-fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
+def test_help_sub_disabled_unknown_word_becomes_positional() raises:
     """Tests that with help disabled, 'help' token is treated as a positional.
     """
     var app = Command("app", "My app")
@@ -933,7 +933,7 @@ fn test_help_sub_disabled_unknown_word_becomes_positional() raises:
 # ── Error handling ───────────────────────────────────────────────────────────
 
 
-fn test_unknown_subcommand_error_no_positionals() raises:
+def test_unknown_subcommand_error_no_positionals() raises:
     """Tests that an unknown subcommand name gives an error when no positional args are defined.
     """
     var app = Command("app", "My app")
@@ -957,7 +957,7 @@ fn test_unknown_subcommand_error_no_positionals() raises:
     assert_true(caught, msg="Should have raised for unknown subcommand")
 
 
-fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
+def test_unknown_token_becomes_positional_when_positionals_defined() raises:
     """Tests that unknown token becomes positional when root has positional args.
     """
     var app = Command("app", "My app")
@@ -972,7 +972,7 @@ fn test_unknown_token_becomes_positional_when_positionals_defined() raises:
     assert_equal(result.get_string("query"), "foo")
 
 
-fn test_child_error_includes_command_path() raises:
+def test_child_error_includes_command_path() raises:
     """Tests that child parse errors include the full command path in stderr."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -997,7 +997,7 @@ fn test_child_error_includes_command_path() raises:
     assert_true(caught, msg="Should have raised for missing required in child")
 
 
-fn test_unknown_subcommand_error_excludes_help_sub() raises:
+def test_unknown_subcommand_error_excludes_help_sub() raises:
     """Tests that the error message for unknown subcommand does not list 'help'.
     """
     var app = Command("app", "My app")
@@ -1031,7 +1031,7 @@ fn test_unknown_subcommand_error_excludes_help_sub() raises:
 # ── Positional + subcommand guard ────────────────────────────────────────────
 
 
-fn test_add_positional_after_subcommand_raises() raises:
+def test_add_positional_after_subcommand_raises() raises:
     """Tests that adding a positional after a subcommand raises without opt-in.
     """
     var app = Command("app", "My app")
@@ -1054,7 +1054,7 @@ fn test_add_positional_after_subcommand_raises() raises:
     assert_true(caught, msg="Should have raised")
 
 
-fn test_add_subcommand_after_positional_raises() raises:
+def test_add_subcommand_after_positional_raises() raises:
     """Tests that adding a subcommand after a positional raises without opt-in.
     """
     var app = Command("app", "My app")
@@ -1077,7 +1077,7 @@ fn test_add_subcommand_after_positional_raises() raises:
     assert_true(caught, msg="Should have raised")
 
 
-fn test_allow_positional_with_subcommands_opt_in() raises:
+def test_allow_positional_with_subcommands_opt_in() raises:
     """Tests that with opt-in, both directions work without error."""
     # Direction 1: positional first, then subcommand.
     var app1 = Command("app", "My app")
@@ -1099,7 +1099,7 @@ fn test_allow_positional_with_subcommands_opt_in() raises:
     assert_equal(result.get_string("query"), "hello")
 
 
-fn test_non_positional_args_unaffected_by_guard() raises:
+def test_non_positional_args_unaffected_by_guard() raises:
     """Tests that adding non-positional (flags/options) with subcommands
     does not trigger the guard, even without opt-in."""
     var app = Command("app", "My app")
@@ -1115,13 +1115,13 @@ fn test_non_positional_args_unaffected_by_guard() raises:
 # ── Step 5: Subcommand aliases ───────────────────────────────────────────────
 
 
-fn test_command_aliases_empty_by_default() raises:
+def test_command_aliases_empty_by_default() raises:
     """Tests that a fresh Command has no aliases registered."""
     var sub = Command("clone", "Clone a repo")
     assert_equal(len(sub._command_aliases), 0)
 
 
-fn test_command_aliases_builder() raises:
+def test_command_aliases_builder() raises:
     """Tests that command_aliases() stores the provided names."""
     var sub = Command("clone", "Clone a repo")
     var names: List[String] = ["cl", "cln"]
@@ -1131,7 +1131,7 @@ fn test_command_aliases_builder() raises:
     assert_equal(sub._command_aliases[1], "cln")
 
 
-fn test_alias_dispatch_basic() raises:
+def test_alias_dispatch_basic() raises:
     """Tests that typing an alias dispatches to the correct subcommand."""
     var app = Command("app", "My app")
     var clone = Command("clone", "Clone a repo")
@@ -1149,7 +1149,7 @@ fn test_alias_dispatch_basic() raises:
     assert_equal(sub_result.get_string("url"), "https://example.com/repo.git")
 
 
-fn test_alias_stores_canonical_name() raises:
+def test_alias_stores_canonical_name() raises:
     """Tests that result.subcommand holds the canonical name, not the alias."""
     var app = Command("app", "My app")
     var commit = Command("commit", "Record changes")
@@ -1163,7 +1163,7 @@ fn test_alias_stores_canonical_name() raises:
     assert_equal(result.subcommand, "commit")
 
 
-fn test_alias_dispatch_with_child_flags() raises:
+def test_alias_dispatch_with_child_flags() raises:
     """Tests that child flags parse correctly when dispatched via alias."""
     var app = Command("app", "My app")
     var commit = Command("commit", "Record changes")
@@ -1183,7 +1183,7 @@ fn test_alias_dispatch_with_child_flags() raises:
     assert_true(sub.get_flag("amend"))
 
 
-fn test_alias_primary_name_still_works() raises:
+def test_alias_primary_name_still_works() raises:
     """Tests that the primary name still dispatches correctly alongside aliases.
     """
     var app = Command("app", "My app")
@@ -1197,7 +1197,7 @@ fn test_alias_primary_name_still_works() raises:
     assert_equal(result.subcommand, "clone")
 
 
-fn test_alias_find_subcommand() raises:
+def test_alias_find_subcommand() raises:
     """Tests that _find_subcommand() returns the correct index for aliases."""
     var app = Command("app", "My app")
     var search = Command("search", "Search")
@@ -1216,7 +1216,7 @@ fn test_alias_find_subcommand() raises:
     assert_equal(idx_none, -1)
 
 
-fn test_alias_copy_init() raises:
+def test_alias_copy_init() raises:
     """Tests that aliases survive Command copy."""
     var sub = Command("clone", "Clone")
     var aliases: List[String] = ["cl"]
@@ -1226,7 +1226,7 @@ fn test_alias_copy_init() raises:
     assert_equal(sub2._command_aliases[0], "cl")
 
 
-fn test_alias_multiple_subcommands() raises:
+def test_alias_multiple_subcommands() raises:
     """Tests aliases with multiple subcommands don't interfere."""
     var app = Command("app", "My app")
     var clone = Command("clone", "Clone")
@@ -1265,7 +1265,7 @@ fn test_alias_multiple_subcommands() raises:
 # ── Hidden subcommands — dispatch ─────────────────────────────────────────────
 
 
-fn test_hidden_subcommand_still_dispatchable() raises:
+def test_hidden_subcommand_still_dispatchable() raises:
     """Tests that a hidden subcommand can still be dispatched by exact name."""
     var app = Command("app", "Test app")
     var visible = Command("clone", "Clone")
@@ -1285,7 +1285,7 @@ fn test_hidden_subcommand_still_dispatchable() raises:
     assert_equal(sub.get_string("level"), "trace")
 
 
-fn test_hidden_subcommand_alias_dispatchable() raises:
+def test_hidden_subcommand_alias_dispatchable() raises:
     """Tests that a hidden subcommand can be dispatched via its alias."""
     var app = Command("app", "Test app")
     var debug = Command("debug", "Debug")
@@ -1302,7 +1302,7 @@ fn test_hidden_subcommand_alias_dispatchable() raises:
     assert_equal(result.subcommand, "debug")
 
 
-fn test_hidden_is_hidden_field() raises:
+def test_hidden_is_hidden_field() raises:
     """Tests that _is_hidden is False by default and True after hidden()."""
     var cmd = Command("test", "Test")
     assert_false(cmd._is_hidden, msg="_is_hidden should default to False")
@@ -1310,7 +1310,7 @@ fn test_hidden_is_hidden_field() raises:
     assert_true(cmd._is_hidden, msg="hidden() should set _is_hidden to True")
 
 
-fn test_hidden_subcommand_copy() raises:
+def test_hidden_subcommand_copy() raises:
     """Tests that _is_hidden survives Command copy."""
     var cmd = Command("debug", "Debug")
     cmd.hidden()
@@ -1318,5 +1318,5 @@ fn test_hidden_subcommand_copy() raises:
     assert_true(copy._is_hidden, msg="_is_hidden should survive copy")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

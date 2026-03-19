@@ -7,7 +7,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Basic implication ─────────────────────────────────────────────────────────
 
 
-fn test_implies_basic_flag() raises:
+def test_implies_basic_flag() raises:
     """Tests that --debug implies --verbose (both flags)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -26,7 +26,7 @@ fn test_implies_basic_flag() raises:
     )
 
 
-fn test_implies_no_trigger() raises:
+def test_implies_no_trigger() raises:
     """Tests that without --debug, --verbose is not auto-set."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -43,7 +43,7 @@ fn test_implies_no_trigger() raises:
     assert_false(result.has("verbose"), msg="verbose should not be set")
 
 
-fn test_implies_both_set_explicitly() raises:
+def test_implies_both_set_explicitly() raises:
     """Tests that both --debug --verbose works without conflict."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -60,7 +60,7 @@ fn test_implies_both_set_explicitly() raises:
     assert_true(result.get_flag("verbose"), msg="verbose should be True")
 
 
-fn test_implies_unidirectional() raises:
+def test_implies_unidirectional() raises:
     """Tests that implication is unidirectional: --verbose alone doesn't set --debug.
     """
     var command = Command("test", "Test app")
@@ -81,7 +81,7 @@ fn test_implies_unidirectional() raises:
 # ── Chained implication ──────────────────────────────────────────────────────
 
 
-fn test_implies_chain() raises:
+def test_implies_chain() raises:
     """Tests chained implication: --debug → --verbose → --log."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -107,7 +107,7 @@ fn test_implies_chain() raises:
     )
 
 
-fn test_implies_chain_middle() raises:
+def test_implies_chain_middle() raises:
     """Tests chain from middle: --verbose sets --log but not --debug."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -132,7 +132,7 @@ fn test_implies_chain_middle() raises:
 # ── Multiple implications from same trigger ──────────────────────────────────
 
 
-fn test_implies_multiple_from_same_trigger() raises:
+def test_implies_multiple_from_same_trigger() raises:
     """Tests that one trigger can imply multiple targets."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -157,7 +157,7 @@ fn test_implies_multiple_from_same_trigger() raises:
 # ── Count arguments ──────────────────────────────────────────────────────────
 
 
-fn test_implies_count_argument() raises:
+def test_implies_count_argument() raises:
     """Tests that implication works with count-type arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -181,7 +181,7 @@ fn test_implies_count_argument() raises:
     )
 
 
-fn test_implies_count_already_set() raises:
+def test_implies_count_already_set() raises:
     """Tests that explicit count is preserved when trigger is also set."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -208,7 +208,7 @@ fn test_implies_count_already_set() raises:
 # ── Cycle detection ──────────────────────────────────────────────────────────
 
 
-fn test_implies_self_cycle() raises:
+def test_implies_self_cycle() raises:
     """Tests that A implies A is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -228,7 +228,7 @@ fn test_implies_self_cycle() raises:
     assert_true(caught, msg="self-cycle should raise an error")
 
 
-fn test_implies_direct_cycle() raises:
+def test_implies_direct_cycle() raises:
     """Tests that A→B, B→A cycle is detected at registration."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("a", help="Flag A").long["a"]().flag())
@@ -248,7 +248,7 @@ fn test_implies_direct_cycle() raises:
     assert_true(caught, msg="direct cycle should raise an error")
 
 
-fn test_implies_indirect_cycle() raises:
+def test_implies_indirect_cycle() raises:
     """Tests that A→B→C, C→A cycle is detected at registration."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("a", help="Flag A").long["a"]().flag())
@@ -270,7 +270,7 @@ fn test_implies_indirect_cycle() raises:
     assert_true(caught, msg="indirect cycle should raise an error")
 
 
-fn test_implies_no_false_cycle() raises:
+def test_implies_no_false_cycle() raises:
     """Tests that non-cyclic diamond shape is allowed: A→B, A→C, B→D, C→D."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("a", help="A").long["a"]().flag())
@@ -293,7 +293,7 @@ fn test_implies_no_false_cycle() raises:
 # ── Integration with other constraints ───────────────────────────────────────
 
 
-fn test_implies_with_required_if() raises:
+def test_implies_with_required_if() raises:
     """Tests implies combined with required_if: debug implies verbose,
     verbose requires output."""
     var command = Command("test", "Test app")
@@ -325,7 +325,7 @@ fn test_implies_with_required_if() raises:
     )
 
 
-fn test_implies_with_required_if_satisfied() raises:
+def test_implies_with_required_if_satisfied() raises:
     """Tests implies + required_if when the requirement is satisfied."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -347,7 +347,7 @@ fn test_implies_with_required_if_satisfied() raises:
     assert_equal(result.get_string("output"), "/tmp/log")
 
 
-fn test_implies_with_mutually_exclusive() raises:
+def test_implies_with_mutually_exclusive() raises:
     """Tests that implies does not override mutual exclusion checks.
     If debug implies verbose, and verbose is exclusive with quiet,
     then --debug --quiet should fail."""
@@ -377,7 +377,7 @@ fn test_implies_with_mutually_exclusive() raises:
 # ── Registration validation ──────────────────────────────────────────────────
 
 
-fn test_implies_unknown_trigger() raises:
+def test_implies_unknown_trigger() raises:
     """Tests that implies() rejects unknown trigger argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -397,7 +397,7 @@ fn test_implies_unknown_trigger() raises:
     assert_true(caught, msg="unknown trigger should raise an error")
 
 
-fn test_implies_unknown_implied() raises:
+def test_implies_unknown_implied() raises:
     """Tests that implies() rejects unknown implied argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -417,7 +417,7 @@ fn test_implies_unknown_implied() raises:
     assert_true(caught, msg="unknown implied should raise an error")
 
 
-fn test_implies_rejects_value_taking_implied() raises:
+def test_implies_rejects_value_taking_implied() raises:
     """Tests that implies() rejects value-taking argument as implied target."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -440,5 +440,5 @@ fn test_implies_rejects_value_taking_implied() raises:
     assert_true(caught, msg="value-taking implied should raise an error")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

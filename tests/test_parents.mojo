@@ -7,7 +7,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Basic inheritance ────────────────────────────────────────────────────────
 
 
-fn test_parent_flag_inherited() raises:
+def test_parent_flag_inherited() raises:
     """Tests that a flag argument from a parent is inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -25,7 +25,7 @@ fn test_parent_flag_inherited() raises:
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
 
 
-fn test_parent_flag_short() raises:
+def test_parent_flag_short() raises:
     """Tests that short flags from a parent work."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -43,7 +43,7 @@ fn test_parent_flag_short() raises:
     assert_true(result.get_flag("verbose"), msg="-v should set verbose True")
 
 
-fn test_parent_value_arg_inherited() raises:
+def test_parent_value_arg_inherited() raises:
     """Tests that a value-taking argument from a parent is inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -62,7 +62,7 @@ fn test_parent_value_arg_inherited() raises:
     assert_equal(result.get_string("format"), "json")
 
 
-fn test_parent_default_inherited() raises:
+def test_parent_default_inherited() raises:
     """Tests that default values from parent arguments are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -79,7 +79,7 @@ fn test_parent_default_inherited() raises:
     assert_equal(result.get_string("format"), "json")
 
 
-fn test_parent_positional_inherited() raises:
+def test_parent_positional_inherited() raises:
     """Tests that positional arguments from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -97,7 +97,7 @@ fn test_parent_positional_inherited() raises:
 # ── Multiple parents ─────────────────────────────────────────────────────────
 
 
-fn test_multiple_parents() raises:
+def test_multiple_parents() raises:
     """Tests that arguments from multiple parents are all inherited."""
     var parent_a = Command("_shared_a")
     parent_a.add_argument(
@@ -125,7 +125,7 @@ fn test_multiple_parents() raises:
 # ── Parent with own arguments ────────────────────────────────────────────────
 
 
-fn test_parent_plus_child_args() raises:
+def test_parent_plus_child_args() raises:
     """Tests that parent args coexist with child's own arguments."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -150,7 +150,7 @@ fn test_parent_plus_child_args() raises:
 # ── Group constraint inheritance ─────────────────────────────────────────────
 
 
-fn test_parent_exclusive_group_inherited() raises:
+def test_parent_exclusive_group_inherited() raises:
     """Tests that mutually exclusive groups from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -180,7 +180,7 @@ fn test_parent_exclusive_group_inherited() raises:
     assert_true(caught, msg="exclusive group from parent should be enforced")
 
 
-fn test_parent_required_together_inherited() raises:
+def test_parent_required_together_inherited() raises:
     """Tests that required-together groups from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(Argument("user", help="Username").long["user"]())
@@ -206,7 +206,7 @@ fn test_parent_required_together_inherited() raises:
     assert_true(caught, msg="required-together from parent should be enforced")
 
 
-fn test_parent_one_required_inherited() raises:
+def test_parent_one_required_inherited() raises:
     """Tests that one-required groups from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -236,7 +236,7 @@ fn test_parent_one_required_inherited() raises:
     assert_true(caught, msg="one-required from parent should be enforced")
 
 
-fn test_parent_one_required_satisfied() raises:
+def test_parent_one_required_satisfied() raises:
     """Tests that one-required group from parent passes when satisfied."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -256,7 +256,7 @@ fn test_parent_one_required_satisfied() raises:
     assert_true(result.get_flag("json"), msg="--json should be True")
 
 
-fn test_parent_conditional_req_inherited() raises:
+def test_parent_conditional_req_inherited() raises:
     """Tests that conditional requirements from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -285,7 +285,7 @@ fn test_parent_conditional_req_inherited() raises:
     )
 
 
-fn test_parent_implies_inherited() raises:
+def test_parent_implies_inherited() raises:
     """Tests that implications from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -311,7 +311,7 @@ fn test_parent_implies_inherited() raises:
 # ── Parent shared across multiple children ───────────────────────────────────
 
 
-fn test_parent_shared_across_children() raises:
+def test_parent_shared_across_children() raises:
     """Tests that the same parent can be shared across multiple children."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -341,7 +341,7 @@ fn test_parent_shared_across_children() raises:
 # ── Parent with append/count/range ───────────────────────────────────────────
 
 
-fn test_parent_count_arg_inherited() raises:
+def test_parent_count_arg_inherited() raises:
     """Tests that count arguments from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -360,7 +360,7 @@ fn test_parent_count_arg_inherited() raises:
     assert_equal(result.get_count("verbose"), 3)
 
 
-fn test_parent_append_arg_inherited() raises:
+def test_parent_append_arg_inherited() raises:
     """Tests that append arguments from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -378,7 +378,7 @@ fn test_parent_append_arg_inherited() raises:
     assert_equal(tags[1], "b")
 
 
-fn test_parent_range_arg_inherited() raises:
+def test_parent_range_arg_inherited() raises:
     """Tests that range-validated arguments from a parent are inherited."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -396,7 +396,7 @@ fn test_parent_range_arg_inherited() raises:
 # ── Edge cases ───────────────────────────────────────────────────────────────
 
 
-fn test_parent_no_args() raises:
+def test_parent_no_args() raises:
     """Tests that inheriting from a parent with no arguments is a no-op."""
     var parent = Command("_empty")
 
@@ -408,7 +408,7 @@ fn test_parent_no_args() raises:
     assert_equal(result.subcommand, "")
 
 
-fn test_parent_does_not_modify_parent() raises:
+def test_parent_does_not_modify_parent() raises:
     """Tests that add_parent does not mutate the parent Command."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -425,7 +425,7 @@ fn test_parent_does_not_modify_parent() raises:
     assert_equal(len(child.args), 2)
 
 
-fn test_parent_with_subcommands() raises:
+def test_parent_with_subcommands() raises:
     """Tests that parent args work on a command with subcommands."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -451,5 +451,5 @@ fn test_parent_with_subcommands() raises:
     assert_equal(sub_result.get_string("target"), "main")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

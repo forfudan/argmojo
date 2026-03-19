@@ -27,7 +27,7 @@ Try these:
 from argmojo import Argument, Command
 
 
-fn main() raises:
+def main() raises:
     var app = Command(
         "mgit",
         "A git-like CLI to demonstrate argmojo with subcommands.",

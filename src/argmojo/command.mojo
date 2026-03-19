@@ -30,13 +30,13 @@ from .utils import (
 # Placing `open()` inside a method of a struct that contains `List[Self]` causes
 # the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
 # Moving the I/O into a free function avoids the trigger.
-fn _read_file_content(filepath: String) raises -> String:
+def _read_file_content(filepath: String) raises -> String:
     """Reads and returns the entire contents of *filepath*."""
     with open(filepath, "r") as f:
         return f.read()
 
 
-fn _expand_response_files(
+def _expand_response_files(
     raw_args: List[String],
     prefix: String,
     max_depth: Int,
@@ -78,7 +78,7 @@ fn _expand_response_files(
     return expanded^
 
 
-fn _read_response_file(
+def _read_response_file(
     filepath: String,
     mut out_args: List[String],
     depth: Int,
@@ -260,7 +260,7 @@ struct Command(Copyable, Movable, Writable):
     # Life cycle methods
     # ===------------------------------------------------------------------=== #
 
-    fn __init__(
+    def __init__(
         out self,
         name: String,
         description: String = "",
@@ -306,7 +306,7 @@ struct Command(Copyable, Movable, Writable):
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Moves a Command, transferring ownership of all fields.
 
         Args:
@@ -349,7 +349,7 @@ struct Command(Copyable, Movable, Writable):
         self._warn_color = take._warn_color^
         self._error_color = take._error_color^
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
 
         All field data — including registered args and subcommands — is
@@ -413,7 +413,7 @@ struct Command(Copyable, Movable, Writable):
     # Builder methods for configuring the command
     # ===------------------------------------------------------------------=== #
 
-    fn add_argument(mut self, var argument: Argument) raises:
+    def add_argument(mut self, var argument: Argument) raises:
         """Registers an argument definition.
 
         Raises:
@@ -511,7 +511,7 @@ struct Command(Copyable, Movable, Writable):
             )
         self.args.append(argument^)
 
-    fn add_subcommand(mut self, var sub: Command) raises:
+    def add_subcommand(mut self, var sub: Command) raises:
         """Registers a subcommand.
 
         A subcommand is a full ``Command`` instance that handles a specific verb
@@ -608,7 +608,7 @@ struct Command(Copyable, Movable, Writable):
             self.subcommands.append(h^)
         self.subcommands.append(sub^)
 
-    fn add_parent(mut self, parent: Command) raises:
+    def add_parent(mut self, parent: Command) raises:
         """Inherits argument definitions and group constraints from a parent.
 
         All arguments registered on ``parent`` are copied into this command,
@@ -682,7 +682,7 @@ struct Command(Copyable, Movable, Writable):
         for i in range(len(parent._implications)):
             self._implications.append(parent._implications[i].copy())
 
-    fn disable_help_subcommand(mut self):
+    def disable_help_subcommand(mut self):
         """Opts out of the auto-added ``help`` subcommand.
 
         By default, the first call to ``add_subcommand()`` automatically
@@ -713,7 +713,7 @@ struct Command(Copyable, Movable, Writable):
                 new_subs.append(self.subcommands[i].copy())
         self.subcommands = new_subs^
 
-    fn allow_negative_numbers(mut self):
+    def allow_negative_numbers(mut self):
         """Treats tokens that look like negative numbers as positional arguments.
 
         By default ArgMojo already auto-detects negative-number tokens
@@ -735,7 +735,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._allow_negative_numbers = True
 
-    fn allow_positional_with_subcommands(mut self):
+    def allow_positional_with_subcommands(mut self):
         """Allows a Command to have both positional args and subcommands.
 
         By default, ArgMojo follows the convention of cobra (Go) and clap
@@ -763,7 +763,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._allow_positional_with_subcommands = True
 
-    fn disable_default_completions(mut self):
+    def disable_default_completions(mut self):
         """Disables the built-in completion trigger entirely.
 
         By default, every ``Command`` has a built-in ``--completions bash``
@@ -785,7 +785,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._completions_enabled = False
 
-    fn completions_name(mut self, name: String):
+    def completions_name(mut self, name: String):
         """Sets the name used for the built-in completion trigger.
 
         Default is ``"completions"`` → ``--completions <shell>``.
@@ -813,7 +813,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._completions_name = name
 
-    fn completions_as_subcommand(mut self):
+    def completions_as_subcommand(mut self):
         """Switches the built-in completion trigger from an option to a subcommand.
 
         Default behaviour: ``myapp --completions bash``
@@ -836,7 +836,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._completions_is_subcommand = True
 
-    fn add_tip(mut self, tip: String):
+    def add_tip(mut self, tip: String):
         """Adds a custom tip line to the bottom of the help message.
 
         Each tip is printed on its own line below the built-in ``--``
@@ -859,7 +859,7 @@ struct Command(Copyable, Movable, Writable):
         self._tips.append(tip)
 
     # TODO: alias_name[name: StringLiteral](mut self) for compile-time checks
-    fn command_aliases(mut self, var names: List[String]):
+    def command_aliases(mut self, var names: List[String]):
         """Registers alternate names for this command when used as a subcommand.
 
         Aliases are matched during subcommand dispatch and included in
@@ -883,7 +883,7 @@ struct Command(Copyable, Movable, Writable):
         for i in range(len(names)):
             self._command_aliases.append(names[i])
 
-    fn hidden(mut self):
+    def hidden(mut self):
         """Marks this subcommand as hidden.
 
         A hidden subcommand is excluded from help output, shell completion
@@ -906,7 +906,7 @@ struct Command(Copyable, Movable, Writable):
         self._is_hidden = True
 
     # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
-    fn response_file_prefix(mut self, prefix: String = "@"):
+    def response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 
         Warning: **Temporarily disabled** — the underlying expansion
@@ -945,7 +945,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._response_file_prefix = prefix
 
-    fn response_file_max_depth[depth: Int](mut self) where depth > 0:
+    def response_file_max_depth[depth: Int](mut self) where depth > 0:
         """Sets the maximum nesting depth for response-file expansion.
 
         Warning: **Temporarily disabled** — see
@@ -957,7 +957,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._response_file_max_depth = depth
 
-    fn disable_fullwidth_correction(mut self):
+    def disable_fullwidth_correction(mut self):
         """Disables automatic full-width → half-width character correction.
 
         By default, ArgMojo detects fullwidth ASCII characters
@@ -980,7 +980,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._disable_fullwidth_correction = True
 
-    fn disable_punctuation_correction(mut self):
+    def disable_punctuation_correction(mut self):
         """Disables CJK punctuation detection in error recovery.
 
         By default, when an unknown option is encountered, ArgMojo tries
@@ -1002,7 +1002,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._disable_punctuation_correction = True
 
-    fn mutually_exclusive(mut self, var names: List[String]) raises:
+    def mutually_exclusive(mut self, var names: List[String]) raises:
         """Declares a group of mutually exclusive arguments.
 
         At most one argument from each group may be provided. Parsing
@@ -1052,7 +1052,7 @@ struct Command(Copyable, Movable, Writable):
             unique.append(names[ni])
         self._exclusive_groups.append(unique^)
 
-    fn required_together(mut self, var names: List[String]) raises:
+    def required_together(mut self, var names: List[String]) raises:
         """Declares a group of arguments that must be provided together.
 
         If any argument from the group is provided, all others in the
@@ -1102,7 +1102,7 @@ struct Command(Copyable, Movable, Writable):
             unique.append(names[ni])
         self._required_groups.append(unique^)
 
-    fn one_required(mut self, var names: List[String]) raises:
+    def one_required(mut self, var names: List[String]) raises:
         """Declares a group where at least one argument must be provided.
 
         Parsing will fail if none of the arguments in the group are
@@ -1152,7 +1152,7 @@ struct Command(Copyable, Movable, Writable):
             unique.append(names[ni])
         self._one_required_groups.append(unique^)
 
-    fn required_if(mut self, target: String, condition: String) raises:
+    def required_if(mut self, target: String, condition: String) raises:
         """Declares that an argument is required when another is present.
 
         When ``condition`` is provided on the command line, ``target``
@@ -1200,7 +1200,7 @@ struct Command(Copyable, Movable, Writable):
         var pair: List[String] = [target, condition]
         self._conditional_reqs.append(pair^)
 
-    fn implies(mut self, trigger: String, implied: String) raises:
+    def implies(mut self, trigger: String, implied: String) raises:
         """Declares that setting one argument automatically sets another.
 
         When ``trigger`` is present in the parse result, ``implied`` is
@@ -1299,7 +1299,7 @@ struct Command(Copyable, Movable, Writable):
         var imp_triple: List[String] = [trigger, implied, implied_kind]
         self._implications.append(imp_triple^)
 
-    fn usage(mut self, text: String):
+    def usage(mut self, text: String):
         """Sets a custom usage line, replacing the auto-generated one.
 
         By default, ArgMojo generates a usage line like::
@@ -1326,7 +1326,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._custom_usage = text
 
-    fn help_on_no_arguments(mut self) raises:
+    def help_on_no_arguments(mut self) raises:
         """Enables showing help when invoked with no arguments.
 
         When enabled, calling the command with no arguments (only the
@@ -1358,7 +1358,7 @@ struct Command(Copyable, Movable, Writable):
                 )
         self._help_on_no_arguments = True
 
-    fn confirmation_option(mut self) raises:
+    def confirmation_option(mut self) raises:
         """Adds a ``--yes`` / ``-y`` flag to skip a confirmation prompt.
 
         When enabled, the command will prompt the user with
@@ -1408,7 +1408,7 @@ struct Command(Copyable, Movable, Writable):
             .flag()
         )
 
-    fn confirmation_option[prompt: StringLiteral](mut self) raises:
+    def confirmation_option[prompt: StringLiteral](mut self) raises:
         """Adds a ``--yes`` / ``-y`` flag with a custom confirmation prompt.
 
         Behaves like ``confirmation_option()`` but uses the provided
@@ -1445,7 +1445,7 @@ struct Command(Copyable, Movable, Writable):
     # This ensures developers get a compiler error for invalid colour
     # names during development, instead of end users seeing runtime
     # failures caused by a misspelled or unsupported colour.
-    fn header_color[name: StringLiteral](mut self):
+    def header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
         Headers are always rendered in **bold + underline**; this method
@@ -1468,7 +1468,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._header_color = _resolve_color[name]()
 
-    fn arg_color[name: StringLiteral](mut self):
+    def arg_color[name: StringLiteral](mut self):
         """Sets the colour for option and argument names in help output.
 
         Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
@@ -1488,7 +1488,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._arg_color = _resolve_color[name]()
 
-    fn warn_color[name: StringLiteral](mut self):
+    def warn_color[name: StringLiteral](mut self):
         """Sets the colour for deprecation warning messages.
 
         Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
@@ -1508,7 +1508,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._warn_color = _resolve_color[name]()
 
-    fn error_color[name: StringLiteral](mut self):
+    def error_color[name: StringLiteral](mut self):
         """Sets the colour for parse error messages.
 
         Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
@@ -1533,7 +1533,7 @@ struct Command(Copyable, Movable, Writable):
     # ===------------------------------------------------------------------=== #
 
     @staticmethod
-    fn _no_color_env() -> Bool:
+    def _no_color_env() -> Bool:
         """Returns True when the ``NO_COLOR`` environment variable is set.
 
         Follows the `no-color.org <https://no-color.org/>`_ standard:
@@ -1553,14 +1553,14 @@ struct Command(Copyable, Movable, Writable):
         comptime _SENTINEL = "__ARGMOJO_NO_COLOR_UNSET_SENTINEL__"
         return getenv("NO_COLOR", _SENTINEL) != _SENTINEL
 
-    fn _warn(self, msg: String):
+    def _warn(self, msg: String):
         """Prints a coloured warning message to stderr."""
         if Self._no_color_env():
             print("warning: " + msg, file=stderr)
         else:
             print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
 
-    fn _preprocess_cjk_args(self, mut args: List[String]):
+    def _preprocess_cjk_args(self, mut args: List[String]):
         """Applies fullwidth and CJK punctuation auto-correction to *args*.
 
         Two passes:
@@ -1613,7 +1613,7 @@ struct Command(Copyable, Movable, Writable):
                     punc_args.append(token)
             args = punc_args^
 
-    fn _error(self, msg: String) raises:
+    def _error(self, msg: String) raises:
         """Prints a coloured error message to stderr then raises.
 
         All parse-time errors funnel through this method so that callers
@@ -1634,7 +1634,7 @@ struct Command(Copyable, Movable, Writable):
             )
         raise Error(msg)
 
-    fn _error_with_usage(self, msg: String) raises:
+    def _error_with_usage(self, msg: String) raises:
         """Prints a coloured error with a usage hint and help tip, then raises.
 
         Used for validation errors (missing required args, too many positionals)
@@ -1660,7 +1660,7 @@ struct Command(Copyable, Movable, Writable):
         )
         raise Error(msg)
 
-    fn _plain_usage(self) -> String:
+    def _plain_usage(self) -> String:
         """Returns a plain-text usage line (no ANSI colours).
 
         Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
@@ -1690,7 +1690,7 @@ struct Command(Copyable, Movable, Writable):
         s += " [OPTIONS]"
         return s
 
-    fn parse(self) raises -> ParseResult:
+    def parse(self) raises -> ParseResult:
         """Parses command-line arguments from ``sys.argv()``.
 
         Errors from parsing (missing/invalid arguments, validation failures)
@@ -1715,7 +1715,7 @@ struct Command(Copyable, Movable, Writable):
             # compiler does not model exit() as @noreturn yet.
             return ParseResult()
 
-    fn parse_arguments(self, raw_args: List[String]) raises -> ParseResult:
+    def parse_arguments(self, raw_args: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
         The first element, e.g., ``argv[0]``, is expected to be the program name
@@ -1983,7 +1983,7 @@ struct Command(Copyable, Movable, Writable):
 
         return result^
 
-    fn parse_known_arguments(
+    def parse_known_arguments(
         self, raw_args: List[String]
     ) raises -> ParseResult:
         """Parses known arguments, collecting unrecognised ones.
@@ -2206,7 +2206,7 @@ struct Command(Copyable, Movable, Writable):
     # Parsing sub-methods (extracted from parse_arguments for readability)
     # ===------------------------------------------------------------------=== #
 
-    fn _parse_long_option(
+    def _parse_long_option(
         self, raw_args: List[String], start: Int, mut result: ParseResult
     ) raises -> Int:
         """Parses a long option token (``--key``, ``--key=value``, ``--no-X``).
@@ -2350,7 +2350,7 @@ struct Command(Copyable, Movable, Writable):
         i += 1
         return i
 
-    fn _parse_short_single(
+    def _parse_short_single(
         self,
         key: String,
         raw_args: List[String],
@@ -2426,7 +2426,7 @@ struct Command(Copyable, Movable, Writable):
         i += 1
         return i
 
-    fn _parse_short_merged(
+    def _parse_short_merged(
         self,
         key: String,
         raw_args: List[String],
@@ -2561,7 +2561,7 @@ struct Command(Copyable, Movable, Writable):
         i += 1
         return i
 
-    fn _dispatch_subcommand(
+    def _dispatch_subcommand(
         self,
         arg: String,
         raw_args: List[String],
@@ -2703,7 +2703,7 @@ struct Command(Copyable, Movable, Writable):
     # Confirmation prompt
     # ===------------------------------------------------------------------=== #
 
-    fn _confirm(self, result: ParseResult) raises:
+    def _confirm(self, result: ParseResult) raises:
         """Prompts the user for confirmation if ``confirmation_option()`` is
         enabled and ``--yes`` / ``-y`` was not passed.
 
@@ -2736,7 +2736,7 @@ struct Command(Copyable, Movable, Writable):
     # Interactive prompting
     # ===------------------------------------------------------------------=== #
 
-    fn _prompt_missing_args(self, mut result: ParseResult) raises:
+    def _prompt_missing_args(self, mut result: ParseResult) raises:
         """Prompts the user interactively for arguments marked with ``.prompt()``
         that were not provided on the command line.
 
@@ -2887,7 +2887,7 @@ struct Command(Copyable, Movable, Writable):
     # Defaults & validation helpers (extracted for subcommand reuse)
     # ===------------------------------------------------------------------=== #
 
-    fn _apply_defaults(self, mut result: ParseResult):
+    def _apply_defaults(self, mut result: ParseResult):
         """Fills in default values for arguments not provided by the user.
 
         For positional arguments, defaults are placed into the correct slot.
@@ -2929,7 +2929,7 @@ struct Command(Copyable, Movable, Writable):
                     break
                 pos_slot += 1
 
-    fn _apply_implications(self, mut result: ParseResult):
+    def _apply_implications(self, mut result: ParseResult):
         """Propagates implication rules on the parse result.
 
         For each registered ``implies(trigger, implied)`` triple, if
@@ -2961,7 +2961,7 @@ struct Command(Copyable, Movable, Writable):
                         result._flags[implied] = True
                     changed = True
 
-    fn _validate(self, mut result: ParseResult) raises:
+    def _validate(self, mut result: ParseResult) raises:
         """Runs all post-parse validation checks on the result.
 
         Checks (in order):
@@ -3223,7 +3223,7 @@ struct Command(Copyable, Movable, Writable):
     # Argument lookup helpers
     # ===------------------------------------------------------------------=== #
 
-    fn _is_known_option(self, token: String) -> Bool:
+    def _is_known_option(self, token: String) -> Bool:
         """Check if a dash-prefixed token matches a defined option.
 
         Used by the ``allow_hyphen_values`` logic to decide whether a
@@ -3262,7 +3262,7 @@ struct Command(Copyable, Movable, Writable):
             return False
         return False
 
-    fn _find_by_long(self, name: String) raises -> Argument:
+    def _find_by_long(self, name: String) raises -> Argument:
         """Finds an argument definition by its long name, alias, or unambiguous prefix.
 
         Resolution order:
@@ -3375,7 +3375,7 @@ struct Command(Copyable, Movable, Writable):
             "unreachable"
         )  # _error() always raises; satisfies Mojo's return checker
 
-    fn _find_by_short(self, name: String) raises -> Argument:
+    def _find_by_short(self, name: String) raises -> Argument:
         """Finds an argument definition by its short name.
 
         Args:
@@ -3399,7 +3399,7 @@ struct Command(Copyable, Movable, Writable):
             "unreachable"
         )  # _error() always raises; satisfies Mojo's return checker
 
-    fn _find_subcommand(self, name: String) -> Int:
+    def _find_subcommand(self, name: String) -> Int:
         """Returns the index of the registered subcommand matching ``name``.
 
         Checks primary names first, then aliases.
@@ -3421,7 +3421,7 @@ struct Command(Copyable, Movable, Writable):
                     return i
         return -1
 
-    fn _display_name(self, name: String) -> String:
+    def _display_name(self, name: String) -> String:
         """Returns a user-facing display string for an argument.
 
         Checks long name first, then short name, then falls back to
@@ -3442,7 +3442,7 @@ struct Command(Copyable, Movable, Writable):
                 break
         return "'" + name + "'"
 
-    fn _validate_choices(self, arg: Argument, value: String) raises:
+    def _validate_choices(self, arg: Argument, value: String) raises:
         """Validates that the value is in the allowed choices.
 
         Args:
@@ -3472,7 +3472,7 @@ struct Command(Copyable, Movable, Writable):
             + ")"
         )
 
-    fn _store_append_value(
+    def _store_append_value(
         self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a value for an append-type argument, handling delimiter splitting.
@@ -3502,7 +3502,7 @@ struct Command(Copyable, Movable, Writable):
             self._validate_choices(arg, value)
             result._lists[arg.name].append(value)
 
-    fn _store_map_value(
+    def _store_map_value(
         self, arg: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a key=value pair for a map-type argument.
@@ -3558,7 +3558,7 @@ struct Command(Copyable, Movable, Writable):
             result._maps[arg.name][k] = v
             result._lists[arg.name].append(value)
 
-    fn _generate_help(self, color: Bool = True) -> String:
+    def _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
 
         Delegates to five sub-methods, one for each section of the help
@@ -3586,7 +3586,7 @@ struct Command(Copyable, Movable, Writable):
         s += self._help_tips_section(header_color, reset_code)
         return s
 
-    fn _help_usage_line(
+    def _help_usage_line(
         self,
         arg_color: String,
         header_color: String,
@@ -3640,7 +3640,7 @@ struct Command(Copyable, Movable, Writable):
         s += " " + arg_color + "[OPTIONS]" + reset_code + "\n\n"
         return s
 
-    fn _help_positionals_section(
+    def _help_positionals_section(
         self,
         arg_color: String,
         header_color: String,
@@ -3705,7 +3705,7 @@ struct Command(Copyable, Movable, Writable):
         s += "\n"
         return s
 
-    fn _help_options_section(
+    def _help_options_section(
         self,
         arg_color: String,
         header_color: String,
@@ -3948,7 +3948,7 @@ struct Command(Copyable, Movable, Writable):
                     group_names.append(opt_groups[k])
 
         # --- Helper: compute max display width for a subset of options ---
-        fn _section_pad(
+        def _section_pad(
             plains: List[String],
             persistent: List[Bool],
             groups: List[String],
@@ -4020,7 +4020,7 @@ struct Command(Copyable, Movable, Writable):
 
         return s
 
-    fn _help_commands_section(
+    def _help_commands_section(
         self,
         arg_color: String,
         header_color: String,
@@ -4097,7 +4097,7 @@ struct Command(Copyable, Movable, Writable):
 
         return s
 
-    fn _help_tips_section(
+    def _help_tips_section(
         self, header_color: String, reset_code: String
     ) -> String:
         """Generates the 'Tips:' section with hints and user-defined tips.
@@ -4170,7 +4170,7 @@ struct Command(Copyable, Movable, Writable):
     # Shell completion generation
     # ===------------------------------------------------------------------=== #
 
-    fn generate_completion[shell: StringLiteral](self) -> String:
+    def generate_completion[shell: StringLiteral](self) -> String:
         """Generates a shell completion script (compile-time validated).
 
         The shell name is validated at compile time via ``constrained[]``.
@@ -4203,7 +4203,7 @@ struct Command(Copyable, Movable, Writable):
         else:  # shell == "bash"
             return self._completion_bash()
 
-    fn generate_completion(self, shell: String) raises -> String:
+    def generate_completion(self, shell: String) raises -> String:
         """Generates a shell completion script (runtime dispatch).
 
         The shell name is validated at runtime.  Use this overload when
@@ -4230,7 +4230,7 @@ struct Command(Copyable, Movable, Writable):
             "Unknown shell '" + shell + "'. Choose from: bash, zsh, fish"
         )
 
-    fn _completion_fish(self) -> String:
+    def _completion_fish(self) -> String:
         """Generates a Fish shell completion script.
 
         Each option/subcommand becomes a single ``complete`` line.
@@ -4380,7 +4380,7 @@ struct Command(Copyable, Movable, Writable):
                 )
         return s
 
-    fn _fish_options_for(
+    def _fish_options_for(
         self, cmd_name: String, condition: String, persistent_only: Bool = False
     ) -> String:
         """Generates ``complete`` lines for this command's own arguments.
@@ -4421,7 +4421,7 @@ struct Command(Copyable, Movable, Writable):
             s += line + "\n"
         return s
 
-    fn _fish_escape(self, text: String) -> String:
+    def _fish_escape(self, text: String) -> String:
         """Escapes single quotes in text for Fish shell strings.
 
         Args:
@@ -4439,7 +4439,7 @@ struct Command(Copyable, Movable, Writable):
                 result += ch
         return result
 
-    fn _completion_zsh(self) -> String:
+    def _completion_zsh(self) -> String:
         """Generates a Zsh completion script using ``_arguments``.
 
         Returns:
@@ -4469,7 +4469,7 @@ struct Command(Copyable, Movable, Writable):
         s += "compdef _" + self.name + " " + self.name + "\n"
         return s
 
-    fn _zsh_simple(self) -> String:
+    def _zsh_simple(self) -> String:
         """Generates a simple Zsh completion function (no subcommands).
 
         Returns:
@@ -4499,7 +4499,7 @@ struct Command(Copyable, Movable, Writable):
         s += "}\n\n"
         return s
 
-    fn _zsh_with_subcommands(self) -> String:
+    def _zsh_with_subcommands(self) -> String:
         """Generates a Zsh completion function with subcommand dispatch.
 
         Returns:
@@ -4592,7 +4592,7 @@ struct Command(Copyable, Movable, Writable):
         s += "}\n\n"
         return s
 
-    fn _zsh_arg_spec(self, arg: Argument) -> String:
+    def _zsh_arg_spec(self, arg: Argument) -> String:
         """Builds a single ``_arguments`` spec string for an argument.
 
         Args:
@@ -4656,7 +4656,7 @@ struct Command(Copyable, Movable, Writable):
 
         return spec
 
-    fn _zsh_escape(self, text: String) -> String:
+    def _zsh_escape(self, text: String) -> String:
         """Escapes special characters in text for Zsh completion specs.
 
         Escapes ``[``, ``]``, ``'``, and ``:`` which have special meaning
@@ -4681,7 +4681,7 @@ struct Command(Copyable, Movable, Writable):
                 result += ch
         return result
 
-    fn _completion_bash(self) -> String:
+    def _completion_bash(self) -> String:
         """Generates a Bash completion script using ``complete -F``.
 
         Returns:
@@ -4715,7 +4715,7 @@ struct Command(Copyable, Movable, Writable):
         s += "complete -F " + fn_name + " " + self.name + "\n"
         return s
 
-    fn _bash_simple(self) -> String:
+    def _bash_simple(self) -> String:
         """Generates the body of a simple Bash completion function.
 
         Returns:
@@ -4739,7 +4739,7 @@ struct Command(Copyable, Movable, Writable):
         s += '  COMPREPLY=($(compgen -W "' + words + '" -- "$cur"))\n'
         return s
 
-    fn _bash_with_subcommands(self) -> String:
+    def _bash_with_subcommands(self) -> String:
         """Generates the body of a Bash completion function with subcommands.
 
         Uses ``COMP_WORDS`` scanning to detect which subcommand is active,
@@ -4841,7 +4841,7 @@ struct Command(Copyable, Movable, Writable):
         s += "  esac\n"
         return s
 
-    fn _bash_prev_cases(self) -> String:
+    def _bash_prev_cases(self) -> String:
         """Generates ``case $prev`` blocks for options with choices.
 
         When the previous word is an option that has a fixed set of
@@ -4899,7 +4899,7 @@ struct Command(Copyable, Movable, Writable):
         s += "  esac\n"
         return s
 
-    fn _bash_prev_cases_for_args(
+    def _bash_prev_cases_for_args(
         self, args: List[Argument], indent: String
     ) -> String:
         """Generates ``case $prev`` blocks for a given list of arguments.
@@ -4959,7 +4959,7 @@ struct Command(Copyable, Movable, Writable):
         s += indent + "esac\n"
         return s
 
-    fn __str__(self) -> String:
+    def __str__(self) -> String:
         """Returns a string representation of this command."""
         return (
             "Command(name='"
@@ -4969,7 +4969,7 @@ struct Command(Copyable, Movable, Writable):
             + ")"
         )
 
-    fn write_to[W: Writer](self, mut writer: W):
+    def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 
         Parameters:

@@ -41,7 +41,7 @@ Full-width auto-correction examples (CJK users may type these accidentally):
 from argmojo import Argument, Command
 
 
-fn _build_ling_table() -> Dict[String, String]:
+def _build_ling_table() -> Dict[String, String]:
     """Build 宇浩靈明 lookup table (20 high-frequency characters)."""
     var d: Dict[String, String] = {
         "的": "d",
@@ -70,7 +70,7 @@ fn _build_ling_table() -> Dict[String, String]:
     return d^
 
 
-fn _build_joy_table() -> Dict[String, String]:
+def _build_joy_table() -> Dict[String, String]:
     """Build 宇浩卿雲 lookup table (20 high-frequency characters)."""
     var d: Dict[String, String] = {
         "的": "d",
@@ -99,7 +99,7 @@ fn _build_joy_table() -> Dict[String, String]:
     return d^
 
 
-fn _build_star_table() -> Dict[String, String]:
+def _build_star_table() -> Dict[String, String]:
     """Build 宇浩星陳 lookup table (20 high-frequency characters)."""
     var d: Dict[String, String] = {
         "的": "d",
@@ -128,13 +128,13 @@ fn _build_star_table() -> Dict[String, String]:
     return d^
 
 
-fn _lookup(table: Dict[String, String], ch: String) raises -> String:
+def _lookup(table: Dict[String, String], ch: String) raises -> String:
     if ch in table:
         return table[ch]
     return "（未收錄）"
 
 
-fn main() raises:
+def main() raises:
     var app = Command(
         "yu",
         "宇浩輸入法單字編碼查詢。完整碼表請見 https://shurufa.app",

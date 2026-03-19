@@ -26,7 +26,7 @@ comptime _DEFAULT_ERROR_COLOR = _RED
 # ── Utility functions ────────────────────────────────────────────────────────
 
 
-fn _is_wide_codepoint(codepoint: Int) -> Bool:
+def _is_wide_codepoint(codepoint: Int) -> Bool:
     """Returns True if the Unicode codepoint occupies two terminal columns.
 
     Covers CJK Unified Ideographs, CJK Compatibility Ideographs,
@@ -150,7 +150,7 @@ fn _is_wide_codepoint(codepoint: Int) -> Bool:
     return False
 
 
-fn _display_width(s: String) -> Int:
+def _display_width(s: String) -> Int:
     """Returns the terminal display width of a string.
 
     CJK characters and fullwidth forms count as 2 columns each.  ANSI
@@ -190,7 +190,7 @@ fn _display_width(s: String) -> Int:
     return width
 
 
-fn _looks_like_number(token: String) -> Bool:
+def _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
     Recognises the forms ``-N``, ``-N.N``, ``-.N``, ``-NeX``, ``-N.NeX``,
@@ -243,12 +243,12 @@ fn _looks_like_number(token: String) -> Bool:
     return j == len(token)
 
 
-fn _is_ascii_digit(ch: String) -> Bool:
+def _is_ascii_digit(ch: String) -> Bool:
     """Returns True if *ch* is a single ASCII digit character ('0'-'9')."""
     return ch >= "0" and ch <= "9"
 
 
-fn _resolve_color[name: StringLiteral]() -> String:
+def _resolve_color[name: StringLiteral]() -> String:
     """Maps a user-facing colour name to its ANSI code at compile time.
 
     Accepted names (uppercase only): RED, GREEN, YELLOW, BLUE,
@@ -295,7 +295,7 @@ fn _resolve_color[name: StringLiteral]() -> String:
         return _ORANGE
 
 
-fn _levenshtein(a: String, b: String) -> Int:
+def _levenshtein(a: String, b: String) -> Int:
     """Returns the Levenshtein edit distance between two strings.
 
     The classic dynamic-programming algorithm, O(m*n) time and O(min(m,n))
@@ -339,7 +339,7 @@ fn _levenshtein(a: String, b: String) -> Int:
     return prev[n]
 
 
-fn _suggest_similar(input: String, candidates: List[String]) -> String:
+def _suggest_similar(input: String, candidates: List[String]) -> String:
     """Returns a 'Did you mean ...?' hint for the closest candidate.
 
     Uses Levenshtein distance with a threshold of ``max(len(input)/2, 2)``.
@@ -370,7 +370,7 @@ fn _suggest_similar(input: String, candidates: List[String]) -> String:
     return ""
 
 
-fn _has_fullwidth_chars(token: String) -> Bool:
+def _has_fullwidth_chars(token: String) -> Bool:
     """Returns True if *token* contains any fullwidth ASCII character.
 
     Checks for fullwidth ASCII ``U+FF01``–``U+FF5E`` and fullwidth space
@@ -383,7 +383,7 @@ fn _has_fullwidth_chars(token: String) -> Bool:
     return False
 
 
-fn _fullwidth_to_halfwidth(token: String) -> String:
+def _fullwidth_to_halfwidth(token: String) -> String:
     """Converts fullwidth ASCII characters to their halfwidth equivalents.
 
     Fullwidth ASCII range ``U+FF01``–``U+FF5E`` is mapped to
@@ -406,7 +406,7 @@ fn _fullwidth_to_halfwidth(token: String) -> String:
     return result
 
 
-fn _split_on_fullwidth_spaces(token: String) -> List[String]:
+def _split_on_fullwidth_spaces(token: String) -> List[String]:
     """Splits a token on fullwidth spaces (``U+3000``) after fullwidth correction.
 
     After converting fullwidth ASCII to halfwidth, embedded fullwidth
@@ -431,7 +431,7 @@ fn _split_on_fullwidth_spaces(token: String) -> List[String]:
     return result^
 
 
-fn _correct_cjk_punctuation(token: String) -> String:
+def _correct_cjk_punctuation(token: String) -> String:
     """Replaces common CJK punctuation with ASCII equivalents.
 
     This handles characters outside the fullwidth ASCII range
@@ -486,7 +486,7 @@ comptime _TCSANOW = 0
 
 
 @always_inline
-fn _lflag_offset(buf: List[UInt32]) -> Int:
+def _lflag_offset(buf: List[UInt32]) -> Int:
     """Returns the UInt32 index of c_lflag in a tcgetattr buffer.
 
     On macOS (tcflag_t = 8 bytes), c_lflag is at UInt32 offset 6.
@@ -505,7 +505,7 @@ fn _lflag_offset(buf: List[UInt32]) -> Int:
     return -1
 
 
-fn _disable_echo() -> List[UInt32]:
+def _disable_echo() -> List[UInt32]:
     """Disables terminal echo on stdin.
 
     Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
@@ -537,7 +537,7 @@ fn _disable_echo() -> List[UInt32]:
     return saved^
 
 
-fn _restore_echo(var saved: List[UInt32]) -> Bool:
+def _restore_echo(var saved: List[UInt32]) -> Bool:
     """Restores terminal echo on stdin.
 
     Restores the original termios settings saved by ``_disable_echo``.

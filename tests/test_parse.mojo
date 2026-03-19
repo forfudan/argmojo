@@ -5,7 +5,7 @@ import argmojo
 from argmojo import Argument, Command, ParseResult
 
 
-fn test_flag_long() raises:
+def test_flag_long() raises:
     """Tests parsing a long flag (--verbose)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -20,7 +20,7 @@ fn test_flag_long() raises:
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
 
 
-fn test_flag_short() raises:
+def test_flag_short() raises:
     """Tests parsing a short flag (-v)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -35,7 +35,7 @@ fn test_flag_short() raises:
     assert_true(result.get_flag("verbose"), msg="-v should be True")
 
 
-fn test_flag_default_false() raises:
+def test_flag_default_false() raises:
     """Tests that an unset flag defaults to False."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -50,7 +50,7 @@ fn test_flag_default_false() raises:
     assert_false(result.get_flag("verbose"), msg="unset flag should be False")
 
 
-fn test_key_value_long_space() raises:
+def test_key_value_long_space() raises:
     """Tests parsing --key value (space separated)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -62,7 +62,7 @@ fn test_key_value_long_space() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_key_value_long_equals() raises:
+def test_key_value_long_equals() raises:
     """Tests parsing --key=value (equals separated)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -74,7 +74,7 @@ fn test_key_value_long_equals() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_key_value_short() raises:
+def test_key_value_short() raises:
     """Tests parsing -o value (short option with value)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -86,7 +86,7 @@ fn test_key_value_short() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_positional_args() raises:
+def test_positional_args() raises:
     """Tests parsing positional arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -102,7 +102,7 @@ fn test_positional_args() raises:
     assert_equal(result.get_string("path"), "./src")
 
 
-fn test_positional_with_default() raises:
+def test_positional_with_default() raises:
     """Tests that positional arguments use defaults when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -118,7 +118,7 @@ fn test_positional_with_default() raises:
     assert_equal(result.get_string("path"), ".")
 
 
-fn test_mixed_args() raises:
+def test_mixed_args() raises:
     """Tests parsing a mix of positional args and options."""
     var command = Command("sou", "Search tool")
     command.add_argument(
@@ -162,7 +162,7 @@ fn test_mixed_args() raises:
     assert_equal(result.get_string("max-depth"), "3")
 
 
-fn test_double_dash_stop() raises:
+def test_double_dash_stop() raises:
     """Tests that '--' stops option parsing."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -179,7 +179,7 @@ fn test_double_dash_stop() raises:
     assert_equal(result._positionals[0], "--verbose")
 
 
-fn test_has() raises:
+def test_has() raises:
     """Tests the has() method."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("verbose").long["verbose"]().flag())
@@ -194,7 +194,7 @@ fn test_has() raises:
 # ── Short flag merging ────────────────────────────────────────────────────────────
 
 
-fn test_merged_short_flags() raises:
+def test_merged_short_flags() raises:
     """Tests that -abc is expanded to -a -b -c for flags."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("all", help="All").short["a"]().flag())
@@ -208,7 +208,7 @@ fn test_merged_short_flags() raises:
     assert_true(result.get_flag("color"), msg="-c should be True from -abc")
 
 
-fn test_merged_flags_partial() raises:
+def test_merged_flags_partial() raises:
     """Tests that -ab only sets those two flags, leaving -c unset."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("all", help="All").short["a"]().flag())
@@ -222,7 +222,7 @@ fn test_merged_flags_partial() raises:
     assert_false(result.get_flag("color"), msg="-c should be False (not given)")
 
 
-fn test_merged_flags_with_trailing_value() raises:
+def test_merged_flags_with_trailing_value() raises:
     """Tests -avo file.txt where -a and -v are flags, -o takes a value."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("all", help="All").short["a"]().flag())
@@ -241,7 +241,7 @@ fn test_merged_flags_with_trailing_value() raises:
 # ── Attached short value ─────────────────────────────────────────────────────────
 
 
-fn test_attached_short_value() raises:
+def test_attached_short_value() raises:
     """Tests -ofile.txt where -o takes 'file.txt' as attached value."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("output", help="Output").short["o"]())
@@ -251,7 +251,7 @@ fn test_attached_short_value() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_merged_flags_with_attached_value() raises:
+def test_merged_flags_with_attached_value() raises:
     """Tests -abofile.txt where -a,-b are flags, -o takes 'file.txt' inline."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("all", help="All").short["a"]().flag())
@@ -268,7 +268,7 @@ fn test_merged_flags_with_attached_value() raises:
 # ── Choices validation ───────────────────────────────────────────────────────────
 
 
-fn test_choices_valid() raises:
+def test_choices_valid() raises:
     """Tests that a valid choice is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -285,7 +285,7 @@ fn test_choices_valid() raises:
     assert_equal(result.get_string("format"), "json")
 
 
-fn test_choices_invalid() raises:
+def test_choices_invalid() raises:
     """Tests that an invalid choice raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -314,7 +314,7 @@ fn test_choices_invalid() raises:
     assert_true(caught, msg="Should have raised an error for invalid choice")
 
 
-fn test_choices_with_short_attached() raises:
+def test_choices_with_short_attached() raises:
     """Tests choices validation with attached short value like -fxml."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -334,7 +334,7 @@ fn test_choices_with_short_attached() raises:
 # ── Count action ─────────────────────────────────────────────────────────────────
 
 
-fn test_count_single() raises:
+def test_count_single() raises:
     """Tests that -v sets count to 1."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -349,7 +349,7 @@ fn test_count_single() raises:
     assert_equal(result.get_count("verbose"), 1)
 
 
-fn test_count_triple() raises:
+def test_count_triple() raises:
     """Tests that -vvv sets count to 3."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -364,7 +364,7 @@ fn test_count_triple() raises:
     assert_equal(result.get_count("verbose"), 3)
 
 
-fn test_count_long_repeated() raises:
+def test_count_long_repeated() raises:
     """Tests that --verbose --verbose sets count to 2."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -379,7 +379,7 @@ fn test_count_long_repeated() raises:
     assert_equal(result.get_count("verbose"), 2)
 
 
-fn test_count_mixed_short_long() raises:
+def test_count_mixed_short_long() raises:
     """Tests that -vv --verbose sets count to 3."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -394,7 +394,7 @@ fn test_count_mixed_short_long() raises:
     assert_equal(result.get_count("verbose"), 3)
 
 
-fn test_count_default_zero() raises:
+def test_count_default_zero() raises:
     """Tests that an unprovided count arg returns 0."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -412,7 +412,7 @@ fn test_count_default_zero() raises:
 # ── Count ceiling (.max()) ───────────────────────────────────────────────────────
 
 
-fn test_count_max_caps_merged_short() raises:
+def test_count_max_caps_merged_short() raises:
     """Tests that .count().max[3]() caps -vvvvv at 3."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -432,7 +432,7 @@ fn test_count_max_caps_merged_short() raises:
     )
 
 
-fn test_count_max_caps_repeated_long() raises:
+def test_count_max_caps_repeated_long() raises:
     """Tests that .max[2]() caps repeated --verbose at 2."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -458,7 +458,7 @@ fn test_count_max_caps_repeated_long() raises:
     )
 
 
-fn test_count_max_caps_mixed() raises:
+def test_count_max_caps_mixed() raises:
     """Tests that .max[3]() caps mixed -vv --verbose --verbose at 3."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -478,7 +478,7 @@ fn test_count_max_caps_mixed() raises:
     )
 
 
-fn test_count_max_below_ceiling() raises:
+def test_count_max_below_ceiling() raises:
     """Tests that .max[5]() does not affect -vv (below ceiling)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -498,7 +498,7 @@ fn test_count_max_below_ceiling() raises:
     )
 
 
-fn test_count_max_exact_ceiling() raises:
+def test_count_max_exact_ceiling() raises:
     """Tests that -vvv with .max[3]() returns exactly 3."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -518,7 +518,7 @@ fn test_count_max_exact_ceiling() raises:
     )
 
 
-fn test_count_max_single_short() raises:
+def test_count_max_single_short() raises:
     """Tests that .max[2]() caps -v -v -v via separate short flags at 2."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -538,7 +538,7 @@ fn test_count_max_single_short() raises:
     )
 
 
-fn test_count_without_max_no_ceiling() raises:
+def test_count_without_max_no_ceiling() raises:
     """Tests that .count() without .max() has no ceiling."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -557,7 +557,7 @@ fn test_count_without_max_no_ceiling() raises:
     )
 
 
-fn test_count_max_one() raises:
+def test_count_max_one() raises:
     """Tests that .max[1]() caps any number of flags at 1 (boolean-like)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -580,7 +580,7 @@ fn test_count_max_one() raises:
 # ── Positional arg count validation ──────────────────────────────────────────────
 
 
-fn test_too_many_positionals() raises:
+def test_too_many_positionals() raises:
     """Tests that extra positional args raise an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -603,7 +603,7 @@ fn test_too_many_positionals() raises:
     )
 
 
-fn test_exact_positionals_ok() raises:
+def test_exact_positionals_ok() raises:
     """Tests that the exact number of positional args is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -622,7 +622,7 @@ fn test_exact_positionals_ok() raises:
 # ── Negatable flags (--no-X) ─────────────────────────────────────────────────────
 
 
-fn test_negatable_positive() raises:
+def test_negatable_positive() raises:
     """Test that --color sets a negatable flag to True."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -637,7 +637,7 @@ fn test_negatable_positive() raises:
     assert_true(result.get_flag("color"), msg="--color should be True")
 
 
-fn test_negatable_negative() raises:
+def test_negatable_negative() raises:
     """Test that --no-color sets a negatable flag to False."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -655,7 +655,7 @@ fn test_negatable_negative() raises:
     )
 
 
-fn test_negatable_default() raises:
+def test_negatable_default() raises:
     """Test that an unset negatable flag defaults to False (not present)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -675,7 +675,7 @@ fn test_negatable_default() raises:
     )
 
 
-fn test_non_negatable_rejects_no_prefix() raises:
+def test_non_negatable_rejects_no_prefix() raises:
     """Test that --no-X fails for a non-negatable flag."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -698,7 +698,7 @@ fn test_non_negatable_rejects_no_prefix() raises:
     )
 
 
-fn test_prefix_match_unambiguous() raises:
+def test_prefix_match_unambiguous() raises:
     """Test that --verb resolves to --verbose when unambiguous."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -718,7 +718,7 @@ fn test_prefix_match_unambiguous() raises:
     )
 
 
-fn test_prefix_match_value() raises:
+def test_prefix_match_value() raises:
     """Test that prefix matching works for value-taking options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -730,7 +730,7 @@ fn test_prefix_match_value() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_prefix_match_equals() raises:
+def test_prefix_match_equals() raises:
     """Test that prefix matching works with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -742,7 +742,7 @@ fn test_prefix_match_equals() raises:
     assert_equal(result.get_string("output"), "file.txt")
 
 
-fn test_prefix_match_ambiguous() raises:
+def test_prefix_match_ambiguous() raises:
     """Test that ambiguous prefix raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -768,7 +768,7 @@ fn test_prefix_match_ambiguous() raises:
     assert_true(caught, msg="Should have raised error for ambiguous prefix")
 
 
-fn test_prefix_match_exact_preferred() raises:
+def test_prefix_match_exact_preferred() raises:
     """Test that exact match is preferred over prefix match."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -791,7 +791,7 @@ fn test_prefix_match_exact_preferred() raises:
     )
 
 
-fn test_prefix_match_negatable() raises:
+def test_prefix_match_negatable() raises:
     """Test that --no-col resolves to --no-color when unambiguous."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -809,5 +809,5 @@ fn test_prefix_match_negatable() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

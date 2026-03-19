@@ -7,7 +7,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Mutually exclusive groups ────────────────────────────────────────────────────
 
 
-fn test_exclusive_one_provided() raises:
+def test_exclusive_one_provided() raises:
     """Tests that providing one arg from an exclusive group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -28,7 +28,7 @@ fn test_exclusive_one_provided() raises:
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
 
 
-fn test_exclusive_none_provided() raises:
+def test_exclusive_none_provided() raises:
     """Tests that providing no arg from an exclusive group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -46,7 +46,7 @@ fn test_exclusive_none_provided() raises:
     assert_false(result.get_flag("yaml"), msg="--yaml should be False")
 
 
-fn test_exclusive_conflict() raises:
+def test_exclusive_conflict() raises:
     """Tests that providing two args from an exclusive group raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -83,7 +83,7 @@ fn test_exclusive_conflict() raises:
     assert_true(caught, msg="Should have raised error for exclusive conflict")
 
 
-fn test_exclusive_value_args() raises:
+def test_exclusive_value_args() raises:
     """Tests mutually exclusive with value-taking args."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("input", help="Input file").long["input"]())
@@ -110,7 +110,7 @@ fn test_exclusive_value_args() raises:
 # ── Required-together groups ─────────────────────────────────────────────────────
 
 
-fn test_required_together_all_provided() raises:
+def test_required_together_all_provided() raises:
     """Tests that providing all args from a required-together group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -134,7 +134,7 @@ fn test_required_together_all_provided() raises:
     assert_equal(result.get_string("password"), "secret")
 
 
-fn test_required_together_none_provided() raises:
+def test_required_together_none_provided() raises:
     """Tests that providing none from a required-together group is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -152,7 +152,7 @@ fn test_required_together_none_provided() raises:
     assert_false(result.has("password"), msg="password should not be set")
 
 
-fn test_required_together_partial() raises:
+def test_required_together_partial() raises:
     """Tests that providing only some from a required-together group raises an
     error."""
     var command = Command("test", "Test app")
@@ -183,7 +183,7 @@ fn test_required_together_partial() raises:
     assert_true(caught, msg="Should have raised error for partial group")
 
 
-fn test_required_together_three_args() raises:
+def test_required_together_three_args() raises:
     """Tests required-together with three arguments, only one provided."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("host", help="Host").long["host"]())
@@ -215,7 +215,7 @@ fn test_required_together_three_args() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_one_required_one_provided() raises:
+def test_one_required_one_provided() raises:
     """Tests one-required group when exactly one is provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -237,7 +237,7 @@ fn test_one_required_one_provided() raises:
     assert_false(result.get_flag("toml"), msg="--toml should be False")
 
 
-fn test_one_required_multiple_provided() raises:
+def test_one_required_multiple_provided() raises:
     """Tests one-required group when multiple from the group are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -255,7 +255,7 @@ fn test_one_required_multiple_provided() raises:
     assert_true(result.get_flag("yaml"), msg="--yaml should be True")
 
 
-fn test_one_required_none_provided() raises:
+def test_one_required_none_provided() raises:
     """Tests one-required group when none from the group are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -288,7 +288,7 @@ fn test_one_required_none_provided() raises:
     assert_true(caught, msg="Should have raised error for one-required group")
 
 
-fn test_one_required_with_value_args() raises:
+def test_one_required_with_value_args() raises:
     """Tests one-required group with value-taking arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -305,7 +305,7 @@ fn test_one_required_with_value_args() raises:
     assert_equal(result.get_string("input"), "data.txt")
 
 
-fn test_one_required_with_short_option() raises:
+def test_one_required_with_short_option() raises:
     """Tests one-required with a short option satisfying the group."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -322,7 +322,7 @@ fn test_one_required_with_short_option() raises:
     assert_true(result.get_flag("json"), msg="-j should satisfy one_required")
 
 
-fn test_one_required_error_shows_display_names() raises:
+def test_one_required_error_shows_display_names() raises:
     """Tests that the error message shows --long or -s names, not internal names.
     """
     var command = Command("test", "Test app")
@@ -348,7 +348,7 @@ fn test_one_required_error_shows_display_names() raises:
     assert_true(caught, msg="Should have raised error")
 
 
-fn test_one_required_combined_with_exclusive() raises:
+def test_one_required_combined_with_exclusive() raises:
     """Tests one-required combined with mutually exclusive (exactly one pattern).
     """
     var command = Command("test", "Test app")
@@ -388,7 +388,7 @@ fn test_one_required_combined_with_exclusive() raises:
     assert_true(caught_both, msg="Should error when both provided")
 
 
-fn test_one_required_multiple_groups() raises:
+def test_one_required_multiple_groups() raises:
     """Tests multiple one-required groups."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("json", help="JSON").long["json"]().flag())
@@ -423,7 +423,7 @@ fn test_one_required_multiple_groups() raises:
     assert_true(caught, msg="Should error when second group unsatisfied")
 
 
-fn test_one_required_with_append_arg() raises:
+def test_one_required_with_append_arg() raises:
     """Tests one-required group with an append-type argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -448,7 +448,7 @@ fn test_one_required_with_append_arg() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_conditional_req_satisfied() raises:
+def test_conditional_req_satisfied() raises:
     """Tests that conditional requirement passes when both are provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -465,7 +465,7 @@ fn test_conditional_req_satisfied() raises:
     assert_equal(result.get_string("output"), "out.txt")
 
 
-fn test_conditional_req_condition_absent() raises:
+def test_conditional_req_condition_absent() raises:
     """Tests that conditional requirement is skipped when condition is absent.
     """
     var command = Command("test", "Test app")
@@ -484,7 +484,7 @@ fn test_conditional_req_condition_absent() raises:
     assert_false(result.has("output"), msg="output should not be present")
 
 
-fn test_conditional_req_violated() raises:
+def test_conditional_req_violated() raises:
     """Tests that providing condition without target raises an error."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -518,7 +518,7 @@ fn test_conditional_req_violated() raises:
     assert_true(caught, msg="Should raise error for missing conditional arg")
 
 
-fn test_conditional_req_target_alone_ok() raises:
+def test_conditional_req_target_alone_ok() raises:
     """Tests that providing target without condition is fine."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -536,7 +536,7 @@ fn test_conditional_req_target_alone_ok() raises:
     assert_false(result.has("save"), msg="save should not be present")
 
 
-fn test_conditional_req_multiple_rules() raises:
+def test_conditional_req_multiple_rules() raises:
     """Tests multiple conditional requirements on the same command."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -604,7 +604,7 @@ fn test_conditional_req_multiple_rules() raises:
     assert_true(caught, msg="Should raise error for second conditional rule")
 
 
-fn test_conditional_req_with_short_option() raises:
+def test_conditional_req_with_short_option() raises:
     """Tests conditional requirement works with short options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -636,7 +636,7 @@ fn test_conditional_req_with_short_option() raises:
     assert_equal(result.get_string("output"), "out.txt")
 
 
-fn test_conditional_req_with_value_condition() raises:
+def test_conditional_req_with_value_condition() raises:
     """Tests conditional requirement where condition is a value arg."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -660,7 +660,7 @@ fn test_conditional_req_with_value_condition() raises:
     assert_true(caught, msg="Value condition should trigger requirement")
 
 
-fn test_conditional_req_error_uses_display_names() raises:
+def test_conditional_req_error_uses_display_names() raises:
     """Tests that error message uses --long names, not internal names."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -699,7 +699,7 @@ fn test_conditional_req_error_uses_display_names() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_mutually_exclusive_unknown_arg() raises:
+def test_mutually_exclusive_unknown_arg() raises:
     """Tests that mutually_exclusive() rejects unknown argument names."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -724,7 +724,7 @@ fn test_mutually_exclusive_unknown_arg() raises:
     assert_true(caught, msg="unknown arg should raise an error")
 
 
-fn test_required_together_unknown_arg() raises:
+def test_required_together_unknown_arg() raises:
     """Tests that required_together() rejects unknown argument names."""
     var command = Command("test", "Test app")
     command.add_argument(Argument("username", help="User").long["username"]())
@@ -747,7 +747,7 @@ fn test_required_together_unknown_arg() raises:
     assert_true(caught, msg="unknown arg should raise an error")
 
 
-fn test_one_required_unknown_arg() raises:
+def test_one_required_unknown_arg() raises:
     """Tests that one_required() rejects unknown argument names."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -771,7 +771,7 @@ fn test_one_required_unknown_arg() raises:
     assert_true(caught, msg="unknown arg should raise an error")
 
 
-fn test_required_if_unknown_target() raises:
+def test_required_if_unknown_target() raises:
     """Tests that required_if() rejects unknown target argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -795,7 +795,7 @@ fn test_required_if_unknown_target() raises:
     assert_true(caught, msg="unknown target should raise an error")
 
 
-fn test_required_if_unknown_condition() raises:
+def test_required_if_unknown_condition() raises:
     """Tests that required_if() rejects unknown condition argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -819,5 +819,5 @@ fn test_required_if_unknown_condition() raises:
     assert_true(caught, msg="unknown condition should raise an error")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

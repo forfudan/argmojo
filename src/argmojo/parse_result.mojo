@@ -35,7 +35,7 @@ struct ParseResult(Copyable, Movable, Writable):
     """Unrecognised arguments collected by ``parse_known_arguments()``.
     Empty when using the standard ``parse_arguments()`` method."""
 
-    fn __init__(out self):
+    def __init__(out self):
         """Creates an empty ParseResult."""
         self._flags = Dict[String, Bool]()
         self._values = Dict[String, String]()
@@ -48,7 +48,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._subcommand_results = List[ParseResult]()
         self._unknown_args = List[String]()
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Creates a deep copy of a ParseResult.
 
         Args:
@@ -69,7 +69,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._subcommand_results = copy._subcommand_results.copy()
         self._unknown_args = copy._unknown_args.copy()
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Moves a ParseResult, transferring all field ownership.
 
         Args:
@@ -86,7 +86,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._subcommand_results = take._subcommand_results^
         self._unknown_args = take._unknown_args^
 
-    fn get_flag(self, name: String) -> Bool:
+    def get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
 
         Args:
@@ -100,7 +100,7 @@ struct ParseResult(Copyable, Movable, Writable):
         except:
             return False
 
-    fn get_string(self, name: String) raises -> String:
+    def get_string(self, name: String) raises -> String:
         """Gets a string argument value.
 
         Args:
@@ -126,7 +126,7 @@ struct ParseResult(Copyable, Movable, Writable):
 
         raise Error("Argument '" + name + "' not found")
 
-    fn get_int(self, name: String) raises -> Int:
+    def get_int(self, name: String) raises -> Int:
         """Gets an integer argument value.
 
         Args:
@@ -141,7 +141,7 @@ struct ParseResult(Copyable, Movable, Writable):
         var s = self.get_string(name)
         return Int(atol(s))
 
-    fn get_count(self, name: String) -> Int:
+    def get_count(self, name: String) -> Int:
         """Gets the count for a counter-type argument. Returns 0 if not set.
 
         Args:
@@ -155,7 +155,7 @@ struct ParseResult(Copyable, Movable, Writable):
         except:
             return 0
 
-    fn get_list(self, name: String) -> List[String]:
+    def get_list(self, name: String) -> List[String]:
         """Gets the collected list for an append-type argument.
 
         Returns an empty list if the argument was never provided.
@@ -180,7 +180,7 @@ struct ParseResult(Copyable, Movable, Writable):
         except:
             return List[String]()
 
-    fn get_map(self, name: String) -> Dict[String, String]:
+    def get_map(self, name: String) -> Dict[String, String]:
         """Gets the key-value map for a map-type argument.
 
         Returns an empty Dict if the argument was never provided.
@@ -201,7 +201,7 @@ struct ParseResult(Copyable, Movable, Writable):
         except:
             return Dict[String, String]()
 
-    fn has(self, name: String) -> Bool:
+    def has(self, name: String) -> Bool:
         """Checks whether an argument was provided.
 
         Args:
@@ -225,7 +225,7 @@ struct ParseResult(Copyable, Movable, Writable):
                 return i < len(self._positionals)
         return False
 
-    fn has_subcommand_result(self) -> Bool:
+    def has_subcommand_result(self) -> Bool:
         """Checks whether a subcommand result is present.
 
         Returns:
@@ -234,7 +234,7 @@ struct ParseResult(Copyable, Movable, Writable):
         """
         return len(self._subcommand_results) > 0
 
-    fn get_subcommand_result(self) raises -> ParseResult:
+    def get_subcommand_result(self) raises -> ParseResult:
         """Returns the child ParseResult produced by subcommand parsing.
 
         Returns:
@@ -252,7 +252,7 @@ struct ParseResult(Copyable, Movable, Writable):
         var r: ParseResult = self._subcommand_results[0].copy()
         return r^
 
-    fn get_unknown_args(self) -> List[String]:
+    def get_unknown_args(self) -> List[String]:
         """Returns the list of unrecognised arguments.
 
         Only populated when the result comes from
@@ -264,7 +264,7 @@ struct ParseResult(Copyable, Movable, Writable):
         """
         return self._unknown_args.copy()
 
-    fn print_summary(self, indent: Int = 0):
+    def print_summary(self, indent: Int = 0):
         """Prints a human-readable summary of all parsed arguments.
 
         Displays positionals, flags, values, counts, lists, and maps
@@ -276,7 +276,7 @@ struct ParseResult(Copyable, Movable, Writable):
         """
         self._print_summary_impl(indent, String(""))
 
-    fn _print_summary_impl(self, indent: Int, name: String):
+    def _print_summary_impl(self, indent: Int, name: String):
         """Internal implementation that accepts a subcommand name.
 
         Args:
@@ -379,7 +379,7 @@ struct ParseResult(Copyable, Movable, Writable):
             var sub = self._subcommand_results[0].copy()
             sub._print_summary_impl(indent + 2, self.subcommand)
 
-    fn __str__(self) -> String:
+    def __str__(self) -> String:
         """Return a string representation of the parse result."""
         var s = String("ParseResult(")
         s += "flags=" + String(len(self._flags))
@@ -390,7 +390,7 @@ struct ParseResult(Copyable, Movable, Writable):
         s += ")"
         return s
 
-    fn write_to[W: Writer](self, mut writer: W):
+    def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 
         Parameters:
