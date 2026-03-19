@@ -68,7 +68,7 @@ def test_password_default_fields() raises:
 
 
 def test_password_copy_preserves_field() raises:
-    """Tests that __copyinit__ preserves _hide_input."""
+    """Tests that Argument.copy() preserves _hide_input and _prompt."""
     var original = Argument("pass", help="Password").long["pass"]().password()
     var copy = original.copy()
     assert_true(copy._hide_input, msg="copy should preserve _hide_input")

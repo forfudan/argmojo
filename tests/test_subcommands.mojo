@@ -9,7 +9,7 @@ Step 1: Validates the data model & API surface for subcommand support:
   - Command.subcommands field (List[Command]) and add_subcommand()
   - ParseResult.subcommand field (String, defaults to "")
   - ParseResult.has_subcommand_result() / get_subcommand_result()
-  - ParseResult.__copyinit__ preserves subcommand data
+  - ParseResult copy initializer preserves subcommand data
   - parse_arguments() unchanged when no subcommands are registered
 
 Step 2: Validates parse-time subcommand routing:
@@ -512,7 +512,7 @@ def test_parseresult_copy_preserves_subcommand() raises:
     var child = ParseResult()
     child._values["name"] = "myproject"
     original._subcommand_results.append(child^)
-    # Copy explicitly (triggers __copyinit__).
+    # Copy explicitly (triggers copy initializer).
     var copy = original.copy()
     assert_equal(copy.subcommand, "init")
     assert_true(copy.has_subcommand_result())
