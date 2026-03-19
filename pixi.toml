@@ -13,8 +13,7 @@ readme = "README.md"
 version = "0.3.0"
 
 [dependencies]
-mojo = "==0.26.1"
-python = ">=3.13,<3.14"
+mojo = "==0.26.2"
 
 [tasks]
 # format the code

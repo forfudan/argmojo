@@ -1,6 +1,6 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
-from sys.ffi import external_call
+from std.ffi import external_call
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
@@ -197,43 +197,47 @@ fn _looks_like_number(token: String) -> Bool:
     ``-N.NEX``, ``-.NE+X``, and the corresponding ``-Ne+X``, ``-Ne-X``,
     ``-NE+X``, ``-NE-X`` variants.
     """
-    if len(token) < 2 or token[0:1] != "-":
+    if len(token) < 2 or not token.startswith("-"):
         return False
     var j = 1
     # Optional leading '.' after minus (e.g. -.5).
-    if token[j : j + 1] == ".":
+    if token[byte = j : j + 1] == ".":
         j += 1
         if j >= len(token) or not (
-            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             return False
-    elif not (token[j : j + 1] >= "0" and token[j : j + 1] <= "9"):
+    elif not (
+        token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
+    ):
         return False
     # Integer digits.
     while j < len(token) and (
-        token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+        token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
     ):
         j += 1
     # Optional fractional part.
-    if j < len(token) and token[j : j + 1] == ".":
+    if j < len(token) and token[byte = j : j + 1] == ".":
         j += 1
         while j < len(token) and (
-            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             j += 1
     # Optional exponent.
-    if j < len(token) and (token[j : j + 1] == "e" or token[j : j + 1] == "E"):
+    if j < len(token) and (
+        token[byte = j : j + 1] == "e" or token[byte = j : j + 1] == "E"
+    ):
         j += 1
         if j < len(token) and (
-            token[j : j + 1] == "+" or token[j : j + 1] == "-"
+            token[byte = j : j + 1] == "+" or token[byte = j : j + 1] == "-"
         ):
             j += 1
         if j >= len(token) or not (
-            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             return False
         while j < len(token) and (
-            token[j : j + 1] >= "0" and token[j : j + 1] <= "9"
+            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             j += 1
     return j == len(token)
@@ -256,7 +260,7 @@ fn _resolve_color[name: StringLiteral]() -> String:
     Returns:
         The ANSI escape code for the colour.
     """
-    constrained[
+    comptime assert (
         name == "RED"
         or name == "GREEN"
         or name == "YELLOW"
@@ -265,15 +269,15 @@ fn _resolve_color[name: StringLiteral]() -> String:
         or name == "PINK"
         or name == "CYAN"
         or name == "WHITE"
-        or name == "ORANGE",
+        or name == "ORANGE"
+    ), (
         "Unknown colour '"
         + name
         + "'. Choose from: RED, GREEN, YELLOW, BLUE, MAGENTA, PINK,"
-        " CYAN, WHITE, ORANGE",
-    ]()
+        " CYAN, WHITE, ORANGE"
+    )
 
-    @parameter
-    if name == "RED":
+    comptime if name == "RED":
         return _RED
     elif name == "GREEN":
         return _GREEN
@@ -316,7 +320,7 @@ fn _levenshtein(a: String, b: String) -> Int:
     for i in range(1, m + 1):
         curr[0] = i
         for j in range(1, n + 1):
-            var cost = 0 if a[i - 1 : i] == b[j - 1 : j] else 1
+            var cost = 0 if a[byte = i - 1 : i] == b[byte = j - 1 : j] else 1
             var ins = prev[j] + 1
             var dele = curr[j - 1] + 1
             var sub = prev[j - 1] + cost

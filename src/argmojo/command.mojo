@@ -1,8 +1,8 @@
 """Defines a CLI command and performs argument parsing."""
 
-from os import getenv
-from os.path import exists as _path_exists
-from sys import argv, exit, stderr
+from std.os import getenv
+from std.os.path import exists as _path_exists
+from std.sys import argv, exit, stderr
 
 from .argument import Argument
 from .parse_result import ParseResult
@@ -63,13 +63,13 @@ fn _expand_response_files(
         # Check for escape: doubled prefix → literal.
         if (
             len(token) > plen * 2 - 1
-            and String(token[: plen * 2]) == prefix + prefix
+            and String(token[byte = : plen * 2]) == prefix + prefix
         ):
-            expanded.append(String(token[plen:]))
+            expanded.append(String(token[byte=plen:]))
             continue
 
-        if len(token) > plen and String(token[:plen]) == prefix:
-            var filepath = String(token[plen:])
+        if len(token) > plen and String(token[byte=:plen]) == prefix:
+            var filepath = String(token[byte=plen:])
             _read_response_file(
                 filepath, expanded, 0, prefix, max_depth, cmd_name
             )
@@ -119,14 +119,14 @@ fn _read_response_file(
         # Escape: doubled prefix → literal.
         if (
             len(line) > plen * 2 - 1
-            and String(line[: plen * 2]) == prefix + prefix
+            and String(line[byte = : plen * 2]) == prefix + prefix
         ):
-            out_args.append(String(line[plen:]))
+            out_args.append(String(line[byte=plen:]))
             continue
 
         # Recursive response file.
-        if len(line) > plen and String(line[:plen]) == prefix:
-            var nested_path = String(line[plen:])
+        if len(line) > plen and String(line[byte=:plen]) == prefix:
+            var nested_path = String(line[byte=plen:])
             _read_response_file(
                 nested_path, out_args, depth + 1, prefix, max_depth, cmd_name
             )
@@ -134,7 +134,7 @@ fn _read_response_file(
             out_args.append(line)
 
 
-struct Command(Copyable, Movable, Stringable, Writable):
+struct Command(Copyable, Movable, Writable):
     """Defines a CLI command prototype with its arguments and handles parsing.
 
     Example:
@@ -306,50 +306,50 @@ struct Command(Copyable, Movable, Stringable, Writable):
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
 
-    fn __moveinit__(out self, deinit move: Self):
+    fn __init__(out self, *, deinit take: Self):
         """Moves a Command, transferring ownership of all fields.
 
         Args:
-            move: The Command to move from.
+            take: The Command to move from.
         """
-        self.name = move.name^
-        self.description = move.description^
-        self.version = move.version^
-        self.args = move.args^
-        self.subcommands = move.subcommands^
-        self._exclusive_groups = move._exclusive_groups^
-        self._required_groups = move._required_groups^
-        self._one_required_groups = move._one_required_groups^
-        self._conditional_reqs = move._conditional_reqs^
-        self._implications = move._implications^
-        self._help_on_no_arguments = move._help_on_no_arguments
-        self._is_help_subcommand = move._is_help_subcommand
-        self._help_subcommand_enabled = move._help_subcommand_enabled
-        self._allow_negative_numbers = move._allow_negative_numbers
+        self.name = take.name^
+        self.description = take.description^
+        self.version = take.version^
+        self.args = take.args^
+        self.subcommands = take.subcommands^
+        self._exclusive_groups = take._exclusive_groups^
+        self._required_groups = take._required_groups^
+        self._one_required_groups = take._one_required_groups^
+        self._conditional_reqs = take._conditional_reqs^
+        self._implications = take._implications^
+        self._help_on_no_arguments = take._help_on_no_arguments
+        self._is_help_subcommand = take._is_help_subcommand
+        self._help_subcommand_enabled = take._help_subcommand_enabled
+        self._allow_negative_numbers = take._allow_negative_numbers
         self._allow_positional_with_subcommands = (
-            move._allow_positional_with_subcommands
+            take._allow_positional_with_subcommands
         )
-        self._completions_enabled = move._completions_enabled
-        self._completions_name = move._completions_name^
-        self._completions_is_subcommand = move._completions_is_subcommand
-        self._command_aliases = move._command_aliases^
-        self._tips = move._tips^
-        self._is_hidden = move._is_hidden
-        self._response_file_prefix = move._response_file_prefix^
-        self._response_file_max_depth = move._response_file_max_depth
-        self._disable_fullwidth_correction = move._disable_fullwidth_correction
+        self._completions_enabled = take._completions_enabled
+        self._completions_name = take._completions_name^
+        self._completions_is_subcommand = take._completions_is_subcommand
+        self._command_aliases = take._command_aliases^
+        self._tips = take._tips^
+        self._is_hidden = take._is_hidden
+        self._response_file_prefix = take._response_file_prefix^
+        self._response_file_max_depth = take._response_file_max_depth
+        self._disable_fullwidth_correction = take._disable_fullwidth_correction
         self._disable_punctuation_correction = (
-            move._disable_punctuation_correction
+            take._disable_punctuation_correction
         )
-        self._confirmation_enabled = move._confirmation_enabled
-        self._confirmation_prompt = move._confirmation_prompt^
-        self._custom_usage = move._custom_usage^
-        self._header_color = move._header_color^
-        self._arg_color = move._arg_color^
-        self._warn_color = move._warn_color^
-        self._error_color = move._error_color^
+        self._confirmation_enabled = take._confirmation_enabled
+        self._confirmation_prompt = take._confirmation_prompt^
+        self._custom_usage = take._custom_usage^
+        self._header_color = take._header_color^
+        self._arg_color = take._arg_color^
+        self._warn_color = take._warn_color^
+        self._error_color = take._error_color^
 
-    fn __copyinit__(out self, copy: Self):
+    fn __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
 
         All field data — including registered args and subcommands — is
@@ -1433,10 +1433,9 @@ struct Command(Copyable, Movable, Stringable, Writable):
         cmd.confirmation_option["Drop the database? This cannot be undone."]()
         ```
         """
-        constrained[
-            len(prompt) > 0,
-            "confirmation_option: prompt text must not be empty",
-        ]()
+        comptime assert (
+            len(prompt) > 0
+        ), "confirmation_option: prompt text must not be empty"
         self.confirmation_option()
         self._confirmation_prompt = String(prompt)
 
@@ -1932,7 +1931,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         i += 1
                         continue
                 # ────────────────────────────────────────────────────────────
-                var key = String(arg[1:])
+                var key = String(arg[byte=1:])
                 if len(key) == 1:
                     i = self._parse_short_single(key, args_to_parse, i, result)
                 else:
@@ -2149,7 +2148,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         i += 1
                         continue
                 try:
-                    var key = String(arg[1:])
+                    var key = String(arg[byte=1:])
                     if len(key) == 1:
                         i = self._parse_short_single(
                             key, args_to_parse, i, result
@@ -2227,7 +2226,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var i = start
         var arg = raw_args[i]
-        var key = String(arg[2:])  # strip leading "--"
+        var key = String(arg[byte=2:])  # strip leading "--"
         var value = String("")
         var has_eq = False
 
@@ -2235,14 +2234,14 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var eq_pos = key.find("=")
         if eq_pos >= 0:
             # Split into key and value parts.
-            value = String(key[eq_pos + 1 :])
-            key = String(key[:eq_pos])
+            value = String(key[byte = eq_pos + 1 :])
+            key = String(key[byte=:eq_pos])
             has_eq = True
 
         # Check for --no-X negation pattern (with prefix matching).
         var is_negation = False
         if key.startswith("no-") and not has_eq:
-            var base_key = String(key[3:])
+            var base_key = String(key[byte=3:])
             # Exact match first.
             for idx in range(len(self.args)):
                 if (
@@ -2454,7 +2453,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             The index of the next token to process.
         """
         var i = start
-        var first_char = String(key[0:1])
+        var first_char = String(key[byte=0:1])
         var first_match = self._find_by_short(first_char)
 
         if first_match._is_flag:
@@ -2462,7 +2461,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
             # flags, except the last char which may take a value.
             var j: Int = 0
             while j < len(key):
-                var ch = String(key[j : j + 1])
+                var ch = String(key[byte = j : j + 1])
                 var m = self._find_by_short(ch)
                 # Emit deprecation warning if applicable.
                 if m._deprecated_msg:
@@ -2501,7 +2500,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 else:
                     # This char takes a value — rest of string is
                     # the value.
-                    var val = String(key[j + 1 :])
+                    var val = String(key[byte = j + 1 :])
                     if len(val) == 0:
                         if m._has_default_if_no_value:
                             # No value given — use default-if-no-value,
@@ -2550,13 +2549,13 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     self._validate_choices(first_match, raw_args[i])
                     result._lists[first_match.name].append(raw_args[i])
             elif first_match._is_map:
-                var val = String(key[1:])
+                var val = String(key[byte=1:])
                 self._store_map_value(first_match, val, result)
             elif first_match._is_append:
-                var val = String(key[1:])
+                var val = String(key[byte=1:])
                 self._store_append_value(first_match, val, result)
             else:
-                var val = String(key[1:])
+                var val = String(key[byte=1:])
                 self._validate_choices(first_match, val)
                 result._values[first_match.name] = val
         i += 1
@@ -3238,10 +3237,10 @@ struct Command(Copyable, Movable, Stringable, Writable):
             True if the token matches a known long/short option.
         """
         if token.startswith("--"):
-            var key = String(token[2:])
+            var key = String(token[byte=2:])
             var eq = key.find("=")
             if eq >= 0:
-                key = String(key[:eq])
+                key = String(key[byte=:eq])
             for idx in range(len(self.args)):
                 if self.args[idx]._long_name == key:
                     return True
@@ -3256,7 +3255,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
                         return True
             return False
         elif token.startswith("-") and len(token) > 1:
-            var ch = String(token[1:2])
+            var ch = String(token[byte=1:2])
             for idx in range(len(self.args)):
                 if self.args[idx]._short_name == ch:
                     return True
@@ -3540,8 +3539,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                             + arg.name
                             + "'"
                         )
-                    var k = String(piece[:eq])
-                    var v = String(piece[eq + 1 :])
+                    var k = String(piece[byte=:eq])
+                    var v = String(piece[byte = eq + 1 :])
                     result._maps[arg.name][k] = v
                     result._lists[arg.name].append(piece)
         else:
@@ -3554,8 +3553,8 @@ struct Command(Copyable, Movable, Stringable, Writable):
                     + arg.name
                     + "'"
                 )
-            var k = String(value[:eq])
-            var v = String(value[eq + 1 :])
+            var k = String(value[byte=:eq])
+            var v = String(value[byte = eq + 1 :])
             result._maps[arg.name][k] = v
             result._lists[arg.name].append(value)
 
@@ -4132,7 +4131,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
                 var has_digit_short = False
                 for _ti in range(len(self.args)):
                     var sc = self.args[_ti]._short_name
-                    if len(sc) == 1 and sc[0:1] >= "0" and sc[0:1] <= "9":
+                    if (
+                        len(sc) == 1
+                        and sc[byte=0:1] >= "0"
+                        and sc[byte=0:1] <= "9"
+                    ):
                         has_digit_short = True
                         break
                 neg_auto = not has_digit_short
@@ -4189,15 +4192,11 @@ struct Command(Copyable, Movable, Stringable, Writable):
         var script = app.generate_completion["bash"]()
         ```
         """
-        constrained[
-            cond = (shell == "fish" or shell == "zsh" or shell == "bash"),
-            msg = (
-                "Unknown shell '" + shell + "'. Choose from: bash, zsh, fish"
-            ),
-        ]()
+        comptime assert shell == "fish" or shell == "zsh" or shell == "bash", (
+            "Unknown shell '" + shell + "'. Choose from: bash, zsh, fish"
+        )
 
-        @parameter
-        if shell == "fish":
+        comptime if shell == "fish":
             return self._completion_fish()
         elif shell == "zsh":
             return self._completion_zsh()
@@ -4433,7 +4432,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var result = String("")
         for i in range(len(text)):
-            var ch = text[i : i + 1]
+            var ch = text[byte = i : i + 1]
             if ch == "'":
                 result += "\\'"
             else:
@@ -4671,7 +4670,7 @@ struct Command(Copyable, Movable, Stringable, Writable):
         """
         var result = String("")
         for i in range(len(text)):
-            var ch = text[i : i + 1]
+            var ch = text[byte = i : i + 1]
             if ch == "[" or ch == "]":
                 result += "\\" + ch
             elif ch == "'":

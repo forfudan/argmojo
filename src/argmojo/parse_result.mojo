@@ -1,7 +1,7 @@
 """Stores parsed argument values."""
 
 
-struct ParseResult(Copyable, Movable, Stringable, Writable):
+struct ParseResult(Copyable, Movable, Writable):
     """Stores the results of parsing command-line arguments.
 
     Provides typed accessors to retrieve argument values by name.
@@ -48,7 +48,7 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         self._subcommand_results = List[ParseResult]()
         self._unknown_args = List[String]()
 
-    fn __copyinit__(out self, copy: Self):
+    fn __init__(out self, *, copy: Self):
         """Creates a deep copy of a ParseResult.
 
         Args:
@@ -69,22 +69,22 @@ struct ParseResult(Copyable, Movable, Stringable, Writable):
         self._subcommand_results = copy._subcommand_results.copy()
         self._unknown_args = copy._unknown_args.copy()
 
-    fn __moveinit__(out self, deinit move: Self):
+    fn __init__(out self, *, deinit take: Self):
         """Moves a ParseResult, transferring all field ownership.
 
         Args:
-            move: The ParseResult to move from.
+            take: The ParseResult to move from.
         """
-        self._flags = move._flags^
-        self._values = move._values^
-        self._positionals = move._positionals^
-        self._counts = move._counts^
-        self._lists = move._lists^
-        self._maps = move._maps^
-        self._positional_names = move._positional_names^
-        self.subcommand = move.subcommand^
-        self._subcommand_results = move._subcommand_results^
-        self._unknown_args = move._unknown_args^
+        self._flags = take._flags^
+        self._values = take._values^
+        self._positionals = take._positionals^
+        self._counts = take._counts^
+        self._lists = take._lists^
+        self._maps = take._maps^
+        self._positional_names = take._positional_names^
+        self.subcommand = take.subcommand^
+        self._subcommand_results = take._subcommand_results^
+        self._unknown_args = take._unknown_args^
 
     fn get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.

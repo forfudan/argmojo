@@ -1,6 +1,6 @@
 """Tests for argmojo — full-width → half-width auto-correction (Phase 6.2)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 from argmojo.utils import (
@@ -162,9 +162,9 @@ fn test_correct_cjk_punctuation_no_change() raises:
 fn test_correct_cjk_punctuation_em_dash() raises:
     """Tests em-dash (U+2014) → hyphen-minus conversion."""
     # Two em-dashes + "verbose" should become "--verbose".
-    var em_dash = chr(0x2014)
+    var double_em_dash = String(chr(0x2014)) + chr(0x2014)
     assert_equal(
-        _correct_cjk_punctuation(em_dash + em_dash + "verbose"),
+        _correct_cjk_punctuation(double_em_dash + "verbose"),
         "--verbose",
     )
 
@@ -437,8 +437,8 @@ fn test_fullwidth_punctuation_em_dash_correction() raises:
         .short["v"]()
         .flag()
     )
-    var em_dash = chr(0x2014)
-    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
     var result = command.parse_arguments(args)
     assert_true(
         result.get_flag("verbose"),
@@ -456,8 +456,8 @@ fn test_fullwidth_punctuation_disabled() raises:
         .flag()
     )
     command.disable_punctuation_correction()
-    var em_dash = chr(0x2014)
-    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
     var result = command.parse_arguments(args)
     assert_false(
         result.get_flag("verbose"),

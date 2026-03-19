@@ -1,13 +1,13 @@
 """Defines a single command-line argument."""
 
-from sys import exit, stderr
+from std.sys import exit, stderr
 
 
 comptime Arg = Argument
 """Shorthand alias for ``Argument``."""
 
 
-struct Argument(Copyable, Movable, Stringable, Writable):
+struct Argument(Copyable, Movable, Writable):
     """A command-line argument with its metadata and constraints.
 
     Use the builder pattern to configure the argument and add it to a Command.
@@ -201,7 +201,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._prompt_text = ""
         self._hide_input = False
 
-    fn __copyinit__(out self, copy: Self):
+    fn __init__(out self, *, copy: Self):
         """Creates a copy of this argument.
 
         Args:
@@ -249,49 +249,49 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         self._prompt_text = copy._prompt_text
         self._hide_input = copy._hide_input
 
-    fn __moveinit__(out self, deinit move: Self):
+    fn __init__(out self, *, deinit take: Self):
         """Moves the value from another Argument.
 
         Args:
-            move: The Argument to move from.
+            take: The Argument to move from.
         """
-        self.name = move.name^
-        self.help_text = move.help_text^
-        self._long_name = move._long_name^
-        self._short_name = move._short_name^
-        self._is_flag = move._is_flag
-        self._is_required = move._is_required
-        self._is_positional = move._is_positional
-        self._default_value = move._default_value^
-        self._has_default = move._has_default
-        self._choice_values = move._choice_values^
-        self._value_name = move._value_name^
-        self._is_hidden = move._is_hidden
-        self._is_count = move._is_count
-        self._is_negatable = move._is_negatable
-        self._is_append = move._is_append
-        self._delimiter_char = move._delimiter_char^
-        self._number_of_values = move._number_of_values
-        self._range_min = move._range_min
-        self._range_max = move._range_max
-        self._has_range = move._has_range
-        self._is_clamp = move._is_clamp
-        self._is_map = move._is_map
-        self._alias_names = move._alias_names^
-        self._deprecated_msg = move._deprecated_msg^
-        self._count_max = move._count_max
-        self._has_count_max = move._has_count_max
-        self._is_persistent = move._is_persistent
-        self._default_if_no_value = move._default_if_no_value^
-        self._has_default_if_no_value = move._has_default_if_no_value
-        self._require_equals = move._require_equals
-        self._is_remainder = move._is_remainder
-        self._allow_hyphen_values = move._allow_hyphen_values
-        self._value_name_wrapped = move._value_name_wrapped
-        self._group = move._group^
-        self._prompt = move._prompt
-        self._prompt_text = move._prompt_text^
-        self._hide_input = move._hide_input
+        self.name = take.name^
+        self.help_text = take.help_text^
+        self._long_name = take._long_name^
+        self._short_name = take._short_name^
+        self._is_flag = take._is_flag
+        self._is_required = take._is_required
+        self._is_positional = take._is_positional
+        self._default_value = take._default_value^
+        self._has_default = take._has_default
+        self._choice_values = take._choice_values^
+        self._value_name = take._value_name^
+        self._is_hidden = take._is_hidden
+        self._is_count = take._is_count
+        self._is_negatable = take._is_negatable
+        self._is_append = take._is_append
+        self._delimiter_char = take._delimiter_char^
+        self._number_of_values = take._number_of_values
+        self._range_min = take._range_min
+        self._range_max = take._range_max
+        self._has_range = take._has_range
+        self._is_clamp = take._is_clamp
+        self._is_map = take._is_map
+        self._alias_names = take._alias_names^
+        self._deprecated_msg = take._deprecated_msg^
+        self._count_max = take._count_max
+        self._has_count_max = take._has_count_max
+        self._is_persistent = take._is_persistent
+        self._default_if_no_value = take._default_if_no_value^
+        self._has_default_if_no_value = take._has_default_if_no_value
+        self._require_equals = take._require_equals
+        self._is_remainder = take._is_remainder
+        self._allow_hyphen_values = take._allow_hyphen_values
+        self._value_name_wrapped = take._value_name_wrapped
+        self._group = take._group^
+        self._prompt = take._prompt
+        self._prompt_text = take._prompt_text^
+        self._hide_input = take._hide_input
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -312,21 +312,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             - Must not start with ``-`` (the ``--`` prefix is added automatically).
             - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
         """
-        constrained[
-            len(name) > 0,
-            "long name must not be empty",
-        ]()
-        constrained[
-            not name.startswith("-"),
-            "long name must not start with '-'; omit the '--' prefix",
-        ]()
-        constrained[
-            name.find("=") == -1,
-            (
-                "long name must not contain '='; it conflicts with --key=value"
-                " syntax"
-            ),
-        ]()
+        comptime assert len(name) > 0, "long name must not be empty"
+        comptime assert not name.startswith(
+            "-"
+        ), "long name must not start with '-'; omit the '--' prefix"
+        comptime assert name.find("=") == -1, (
+            "long name must not contain '='; it conflicts with --key=value"
+            " syntax"
+        )
         self._long_name = name
         return self^
 
@@ -344,17 +337,11 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
             (which would conflict with the ``--`` end-of-options sentinel).
         """
-        constrained[
-            len(name) == 1,
-            "short name must be exactly 1 character",
-        ]()
-        constrained[
-            name != "-",
-            (
-                "short name must not be '-'; it conflicts with the"
-                " end-of-options sentinel '--'"
-            ),
-        ]()
+        comptime assert len(name) == 1, "short name must be exactly 1 character"
+        comptime assert name != "-", (
+            "short name must not be '-'; it conflicts with the"
+            " end-of-options sentinel '--'"
+        )
         self._short_name = name
         return self^
 
@@ -432,7 +419,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Constraints:
             The value must not be empty.
         """
-        constrained[len(value) > 0, "choice value must not be empty"]()
+        comptime assert len(value) > 0, "choice value must not be empty"
         self._choice_values.append(value)
         return self^
 
@@ -453,7 +440,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Constraints:
             The value name must be a non-empty string.
         """
-        constrained[len(name) > 0, "value name must be a non-empty string"]()
+        comptime assert len(name) > 0, "value name must be a non-empty string"
         self._value_name = name
         self._value_name_wrapped = wrapped
         return self^
@@ -567,10 +554,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             The separator is validated at compile time: it must be one of
             ``,`` | ``;`` | ``:`` | ``|``.
         """
-        constrained[
-            sep == "," or sep == ";" or sep == ":" or sep == "|",
-            "delimiter must be one of: , ; : |",
-        ]()
+        comptime assert (
+            sep == "," or sep == ";" or sep == ":" or sep == "|"
+        ), "delimiter must be one of: , ; : |"
 
         self._delimiter_char = sep
         self._is_append = True
@@ -676,21 +662,14 @@ struct Argument(Copyable, Movable, Stringable, Writable):
             ``.long[]``): must not be empty, must not start with ``-``,
             and must not contain ``=``.
         """
-        constrained[
-            len(name) > 0,
-            "alias name must not be empty",
-        ]()
-        constrained[
-            not name.startswith("-"),
-            "alias name must not start with '-'; omit the '--' prefix",
-        ]()
-        constrained[
-            name.find("=") == -1,
-            (
-                "alias name must not contain '='; it conflicts with"
-                " --key=value syntax"
-            ),
-        ]()
+        comptime assert len(name) > 0, "alias name must not be empty"
+        comptime assert not name.startswith(
+            "-"
+        ), "alias name must not start with '-'; omit the '--' prefix"
+        comptime assert name.find("=") == -1, (
+            "alias name must not contain '='; it conflicts with"
+            " --key=value syntax"
+        )
         self._alias_names.append(name)
         return self^
 
@@ -709,7 +688,9 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Constraints:
             The message must not be empty.
         """
-        constrained[len(message) > 0, "deprecation message must not be empty"]()
+        comptime assert (
+            len(message) > 0
+        ), "deprecation message must not be empty"
         self._deprecated_msg = message
         return self^
 
@@ -881,7 +862,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         Constraints:
             The group name must not be empty.
         """
-        constrained[len(name) > 0, "group name must not be empty"]()
+        comptime assert len(name) > 0, "group name must not be empty"
         self._group = name
         return self^
 
@@ -938,7 +919,7 @@ struct Argument(Copyable, Movable, Stringable, Writable):
         _ = Argument("token", help="API token").long["token"]().prompt["Enter your API token"]()
         ```
         """
-        constrained[len(text) > 0, "prompt text must not be empty"]()
+        comptime assert len(text) > 0, "prompt text must not be empty"
         self._prompt = True
         self._prompt_text = text
         return self^

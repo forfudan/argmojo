@@ -1,6 +1,6 @@
 """Tests for argmojo — help output formatting and colours."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 from argmojo.utils import _display_width
@@ -597,14 +597,16 @@ fn test_root_help_commands_excludes_help_sub() raises:
             continue
         if in_commands:
             # End of section if we hit a blank line or another heading.
-            if not lines[i] or (len(lines[i]) > 0 and lines[i][0:1] != " "):
+            if not lines[i] or (
+                len(lines[i]) > 0 and not lines[i].startswith(" ")
+            ):
                 in_commands = False
                 continue
             # Check for '  help' as a subcommand entry.
             var stripped = String("")
             for c in range(len(lines[i])):
-                if lines[i][c : c + 1] != " ":
-                    stripped = String(lines[i][c:])
+                if lines[i].as_bytes()[c] != 32:
+                    stripped = String(lines[i][byte=c:])
                     break
             if stripped.startswith("help"):
                 found_help_cmd = True
@@ -887,10 +889,10 @@ fn test_cjk_options_aligned() raises:
     for idx in range(len(lines)):
         if "--verbose" in lines[idx]:
             var bp = lines[idx].find("顯示詳細資訊")
-            col_verbose = _display_width(String(lines[idx][0:bp]))
+            col_verbose = _display_width(String(lines[idx][byte=0:bp]))
         if "--output" in lines[idx]:
             var bp = lines[idx].find("輸出路徑")
-            col_output = _display_width(String(lines[idx][0:bp]))
+            col_output = _display_width(String(lines[idx][byte=0:bp]))
     assert_true(col_verbose > 0, msg="verbose help should appear")
     assert_true(col_output > 0, msg="output help should appear")
     assert_equal(
@@ -915,10 +917,10 @@ fn test_cjk_subcommands_aligned() raises:
     for idx in range(len(lines)):
         if "初始化" in lines[idx] and "建立新項目" in lines[idx]:
             var bp = lines[idx].find("建立新項目")
-            col_init = _display_width(String(lines[idx][0:bp]))
+            col_init = _display_width(String(lines[idx][byte=0:bp]))
         if "構建" in lines[idx] and "編譯項目" in lines[idx]:
             var bp = lines[idx].find("編譯項目")
-            col_build = _display_width(String(lines[idx][0:bp]))
+            col_build = _display_width(String(lines[idx][byte=0:bp]))
     assert_true(col_init > 0, msg="init description should appear")
     assert_true(col_build > 0, msg="build description should appear")
     assert_equal(
@@ -941,10 +943,10 @@ fn test_cjk_positionals_aligned() raises:
     for idx in range(len(lines)):
         if "檔案" in lines[idx] and "輸入檔案路徑" in lines[idx]:
             var bp = lines[idx].find("輸入檔案路徑")
-            col_file = _display_width(String(lines[idx][0:bp]))
+            col_file = _display_width(String(lines[idx][byte=0:bp]))
         if "目標" in lines[idx] and "輸出目標位置" in lines[idx]:
             var bp = lines[idx].find("輸出目標位置")
-            col_target = _display_width(String(lines[idx][0:bp]))
+            col_target = _display_width(String(lines[idx][byte=0:bp]))
     assert_true(col_file > 0, msg="file help should appear")
     assert_true(col_target > 0, msg="target help should appear")
     assert_equal(
@@ -969,10 +971,10 @@ fn test_mixed_ascii_cjk_aligned() raises:
     for idx in range(len(lines)):
         if "--output" in lines[idx]:
             var bp = lines[idx].find("Output path")
-            col_output = _display_width(String(lines[idx][0:bp]))
+            col_output = _display_width(String(lines[idx][byte=0:bp]))
         if "--編碼" in lines[idx]:
             var bp = lines[idx].find("設定編碼")
-            col_enc = _display_width(String(lines[idx][0:bp]))
+            col_enc = _display_width(String(lines[idx][byte=0:bp]))
     assert_true(col_output > 0, msg="output help should appear")
     assert_true(col_enc > 0, msg="encoding help should appear")
     assert_equal(

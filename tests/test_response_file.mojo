@@ -8,8 +8,8 @@ still present in command.mojo and the tests here remain intact for when
 the compiler bug is fixed.
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
-from os import remove
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
+from std.os import remove
 import argmojo
 from argmojo import Argument, Command, ParseResult
 

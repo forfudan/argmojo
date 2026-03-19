@@ -34,7 +34,7 @@ Step 2b: Validates the auto-registered 'help' subcommand:
   - Normal dispatch is unaffected by the presence of help subcommand
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
@@ -1020,7 +1020,7 @@ fn test_unknown_subcommand_error_excludes_help_sub() raises:
         # Check the "Available commands:" part specifically.
         var avail_start = msg.find("Available commands: ")
         if avail_start >= 0:
-            var avail_part = String(msg[avail_start:])
+            var avail_part = String(msg[byte=avail_start:])
             assert_false(
                 "help" in avail_part,
                 msg="'help' sub should not appear in available commands",
