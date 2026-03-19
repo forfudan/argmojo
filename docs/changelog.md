@@ -8,6 +8,8 @@ Comment out unreleased changes here. This file will be edited just before each r
 
 ## Unreleased (v0.4.0)
 
+ArgMojo v0.4.0 targets Mojo v0.26.2.
+
 ### ⭐️ New features in v0.4.0
 
 1. Add `.default_if_no_value["value"]()` builder method for default-if-no-value semantics. When an option has a default-if-no-value, it may appear without an explicit value: `--compress` uses the default-if-no-value, while `--compress=bzip2` uses the explicit value. For long options, `.default_if_no_value()` implies `.require_equals()`. For short options, `-c` uses the default-if-no-value while `-cbzip2` uses the attached value (PR #12).
@@ -26,8 +28,22 @@ Comment out unreleased changes here. This file will be edited just before each r
 14. **Interactive prompting.** Add `.prompt()` and `.prompt["text"]()` builder methods on `Argument`. When an argument marked with `.prompt()` is not provided on the command line, the user is interactively prompted for its value before validation runs. Use `.prompt()` to prompt with the argument's help text, or `.prompt["Custom text"]()` to set a custom message. Works on both required and optional arguments. Prompts show valid choices for `.choice[]()` arguments and show default values in parentheses. For flag arguments, `y`/`n` input is accepted. When stdin is not a terminal (e.g., piped input, CI environments, `/dev/null`), or when `input()` otherwise raises, the exception is caught, prompting stops gracefully, and any values collected so far are preserved (PR #23).
 15. **Argument parents.** Add `add_parent(parent)` method on `Command`. Copies all argument definitions and group constraints (mutually exclusive, required together, one-required, conditional requirements, implications) from a parent `Command` into the current command. This lets you share a common set of arguments across multiple commands without repeating them — equivalent to Python argparse's `parents` parameter. The parent is not modified. All registration-time validation guards run on each inherited argument as usual (PR #25).
 16. **Confirmation option.** Add `confirmation_option()` and `confirmation_option["prompt"]()` builder methods on `Command`. When enabled, the command automatically registers a `--yes` / `-y` flag and prompts the user for confirmation after parsing (and after interactive prompting, if any). If the user does not confirm (`y`/`yes`), the command aborts with an error. Passing `--yes` or `-y` on the command line skips the prompt entirely. When stdin is not interactive (piped input, `/dev/null`), the command aborts gracefully. This is equivalent to Click's `confirmation_option` decorator (PR #26).
-17. **Usage line customisation.** Add `usage(text)` method on `Command`. When set, the given text replaces the auto-generated `Usage: myapp [OPTIONS] ...` line in both `--help` output and error messages. This lets you write git-style usage strings like `git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]`. When not set, the default auto-generated usage line is used.
+17. **Usage line customisation.** Add `usage(text)` method on `Command`. When set, the given text replaces the auto-generated `Usage: myapp [OPTIONS] ...` line in both `--help` output and error messages. This lets you write git-style usage strings like `git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]`. When not set, the default auto-generated usage line is used (PR #29).
 18. **Password / masked input.** Add `.password()` builder method on `Argument`. When combined with `.prompt()` (implied automatically), the user's typed input is hidden — terminal echo is disabled via POSIX `tcsetattr(3)` while the user types, then re-enabled afterwards. This is equivalent to Click's `hide_input=True` / Python's `getpass.getpass()`. If stdin is not a terminal (piped input, CI, `/dev/null`), the call falls back gracefully — prompting stops and defaults are applied as usual. `.password()` cannot be used on flag or count arguments (rejected at `add_argument()` time) (PR #28).
+
+### 🔄 Mojo v0.26.2 migration in v0.4.0
+
+ArgMojo v0.4.0 targets **Mojo v0.26.2** (previously v0.26.1). The following codebase-wide changes were made to adapt to the new language semantics (PR #29):
+
+- **Bump Mojo dependency** from `==0.26.1` to `==0.26.2` in `pixi.toml` and regenerate `pixi.lock`.
+- **Migrate stdlib imports** to the new `std.*` namespace: `from sys` → `from std.sys`, `from os` → `from std.os`, `from os.path` → `from std.os.path`, `from sys.ffi` → `from std.ffi`, `from testing` → `from std.testing` (21 test files).
+- **Replace `constrained[]` with `comptime assert`** across all compile-time validation sites (argument builder methods, colour resolution, shell completion dispatch).
+- **Replace `@parameter if` with `comptime if`** in `_resolve_color[]` and `generate_completion[]`.
+- **Unify move/copy initialisers** to the new `__init__` forms: `__copyinit__` → `__init__(out self, *, copy: Self)`, `__moveinit__` → `__init__(out self, *, deinit take: Self)` for `Argument`, `Command`, and `ParseResult`.
+- **Remove `Stringable` from trait lists**: `Argument`, `Command`, and `ParseResult` now conform to `Copyable, Movable, Writable` only (`Stringable` was removed from the stdlib).
+- **Add `byte=` keyword to all string slicing** operations (`token[i:j]` → `token[byte=i:j]`) in `command.mojo`, `utils.mojo`, and `examples/yu.mojo`.
+- **Fix aliasing violation**: `em_dash + em_dash` → `chr(0x2014) + chr(0x2014)` to avoid the new same-variable borrowing alias check.
+- **Replace `fn` with `def`** across all 30 `.mojo` files (754 declarations). In Mojo v0.26.2, `def` has the same semantics as the old `fn` (non-raising by default, requires explicit `raises`), and `fn` is deprecated.
 
 ### 🦋 Changed in v0.4.0
 
@@ -66,6 +82,7 @@ Comment out unreleased changes here. This file will be edited just before each r
 - Add `tests/test_parents.mojo` with 20 tests covering argument parents: basic flag/value/positional/default inheritance, short flags, multiple parents, child-own args coexistence, group constraint inheritance (mutually exclusive, required together, one-required, conditional, implications), parent shared across children, count/append/range argument inheritance, empty parent, parent immutability, and parent with subcommands (PR #25).
 - Add `tests/test_confirmation.mojo` with 13 tests covering confirmation option: `--yes`/`-y` flag skips, non-interactive stdin abort, custom prompt text, coexistence with other arguments, no-confirmation normal behavior, subcommand integration, copy preservation, prompt argument integration, and parent argument integration (PR #26).
 - Add `tests/test_password.mojo` with 16 tests covering password / masked input: builder method correctness (`.password()` standalone, with `.prompt["text"]()`, ordering), default field values, copy propagation, validation guards (flag and count rejection), prompting skipped when value provided, defaults and choices integration, required argument error, parent inheritance, subcommand integration, positional usage, and graceful fallback on non-interactive stdin (PR #28).
+- Add `tests/test_usage.mojo` with 11 tests covering custom usage line: plain and coloured help output, replacement of auto-generated usage, default usage for various argument configurations (optional positional, subcommands), copy preservation, coexistence with subcommands, description display, parsing correctness, and usage hint in error messages (PR #29).
 
 ---
 
