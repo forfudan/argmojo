@@ -1,11 +1,28 @@
-"""Tests for argmojo — help output formatting and colours."""
+"""Tests for argmojo help and display features:
+  • Help output formatting (hidden args, metavar, padding, alignment)
+  • ANSI colour customisation (header_color, arg_color, etc.)
+  • Subcommand help (Commands section, aliases, hidden subs, tips)
+  • CJK-aware help alignment (_display_width)
+  • NO_COLOR environment variable
+  • Custom usage line
+  • Full-width → half-width auto-correction (CJK/Unicode)
+"""
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
-from argmojo.utils import _display_width
+from argmojo.utils import (
+    _display_width,
+    _correct_cjk_punctuation,
+    _has_fullwidth_chars,
+    _fullwidth_to_halfwidth,
+    _split_on_fullwidth_spaces,
+)
 
-# ── Hidden arguments ──────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Hidden arguments
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_hidden_not_in_help() raises:
@@ -46,7 +63,9 @@ def test_hidden_still_works() raises:
     assert_true(result.get_flag("debug"), msg="hidden --debug should work")
 
 
-# ── Metavar ──────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Metavar
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_value_name_in_help() raises:
@@ -87,7 +106,9 @@ def test_choices_in_help() raises:
     )
 
 
-# ── Count action ──────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Negatable / append in help
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_negatable_in_help() raises:
@@ -133,9 +154,9 @@ def test_append_in_help() raises:
     )
 
 
-# ===------------------------------------------------------------------=== #
+# ═══════════════════════════════════════════════════════════════════════════════
 # Help system improvements
-# ===------------------------------------------------------------------=== #
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_help_question_mark_in_help_output() raises:
@@ -477,9 +498,9 @@ def test_custom_color_plain_mode_unaffected() raises:
     assert_true("Options:" in help, msg="Plain mode should still have content")
 
 
-# ===------------------------------------------------------------------=== #
-# Nargs (multi-value per option) tests
-# ===------------------------------------------------------------------=== #
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nargs (multi-value per option) in help
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_nargs_in_help() raises:
@@ -532,7 +553,9 @@ def test_nargs_with_value_name() raises:
     )
 
 
-# ── Subcommand help UX ───────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Subcommand help UX
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_root_help_shows_commands_section() raises:
@@ -772,7 +795,9 @@ def test_add_tip_appears_in_help() raises:
     )
 
 
-# ── Alias in help output ──────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Alias in help output
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_alias_shown_inline_in_help() raises:
@@ -805,7 +830,9 @@ def test_multiple_aliases_shown_in_help() raises:
     )
 
 
-# ── Hidden subcommands ────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Hidden subcommands
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_hidden_subcommand_not_in_help() raises:
@@ -852,7 +879,9 @@ def test_hidden_subcommand_usage_line_with_visible() raises:
     )
 
 
-# ── NO_COLOR ──────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# NO_COLOR
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_no_color_env_static_method() raises:
@@ -868,7 +897,9 @@ def test_no_color_env_static_method() raises:
         print("  ✓ test_no_color_env_static_method (NO_COLOR is not set)")
 
 
-# ── CJK-aware help alignment ────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# CJK-aware help alignment
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_cjk_options_aligned() raises:
@@ -982,6 +1013,644 @@ def test_mixed_ascii_cjk_aligned() raises:
         col_enc,
         msg="Mixed ASCII/CJK option help should be aligned",
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Custom usage line
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_custom_usage_in_plain_help() raises:
+    """Tests that custom usage appears in plain help output."""
+    var cmd = Command("git", "The stupid content tracker")
+    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+
+    var help = cmd._generate_help(color=False)
+    assert_true(
+        "Usage: git [-v | --version] [-C <path>] <command> [<args>]" in help,
+        msg="Custom usage should appear in plain help: " + help,
+    )
+
+
+def test_custom_usage_in_colored_help() raises:
+    """Tests that custom usage appears in colored help output."""
+    var cmd = Command("git", "The stupid content tracker")
+    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+
+    var help = cmd._generate_help(color=True)
+    # The custom text should appear (wrapped in ANSI codes for "Usage:")
+    assert_true(
+        "git [-v | --version]" in help,
+        msg="Custom usage text should appear in colored help: " + help,
+    )
+
+
+def test_custom_usage_replaces_auto_generated() raises:
+    """Tests that custom usage replaces the auto-generated positionals."""
+    var cmd = Command("myapp", "My app")
+    cmd.add_argument(
+        Argument("file", help="Input file").positional().required()
+    )
+    cmd.add_argument(Argument("output", help="Output file").long["output"]())
+    cmd.usage("myapp FILE [--output FILE]")
+
+    var help = cmd._generate_help(color=False)
+    assert_true(
+        "Usage: myapp FILE [--output FILE]" in help,
+        msg="Custom usage should replace auto-generated: " + help,
+    )
+    # The auto-generated "<file> [OPTIONS]" should NOT appear in usage line
+    var lines = help.split("\n")
+    for i in range(len(lines)):
+        if "Usage:" in lines[i]:
+            assert_false(
+                "<file>" in lines[i],
+                msg="Auto-generated positional should not appear in usage line",
+            )
+            break
+
+
+def test_default_usage_when_no_custom() raises:
+    """Tests that auto-generated usage is used when no custom is set."""
+    var cmd = Command("test", "Test app")
+    cmd.add_argument(
+        Argument("file", help="Input file").positional().required()
+    )
+
+    var help = cmd._generate_help(color=False)
+    assert_true(
+        "Usage: test <file> [OPTIONS]" in help,
+        msg="Default usage should show auto-generated format: " + help,
+    )
+
+
+def test_default_usage_with_optional_positional() raises:
+    """Tests auto-generated usage for optional positional."""
+    var cmd = Command("test", "Test app")
+    cmd.add_argument(
+        Argument("path", help="Search path").positional().default["."]()
+    )
+
+    var help = cmd._generate_help(color=False)
+    assert_true(
+        "Usage: test [path] [OPTIONS]" in help,
+        msg="Optional positional should be in brackets: " + help,
+    )
+
+
+def test_default_usage_with_subcommands() raises:
+    """Tests auto-generated usage with subcommands."""
+    var app = Command("app", "My app")
+    var sub = Command("deploy", "Deploy something")
+    app.add_subcommand(sub^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "Usage: app <COMMAND> [OPTIONS]" in help,
+        msg="Subcommand usage should show <COMMAND>: " + help,
+    )
+
+
+def test_custom_usage_preserved_in_copy() raises:
+    """Tests that custom usage is preserved when copying a Command."""
+    var original = Command("git", "Git")
+    original.usage("git [options] <command> [<args>]")
+
+    var copied = original.copy()
+    var help = copied._generate_help(color=False)
+    assert_true(
+        "Usage: git [options] <command> [<args>]" in help,
+        msg="Custom usage should be preserved in copy: " + help,
+    )
+
+
+def test_custom_usage_with_subcommands() raises:
+    """Tests custom usage with subcommands registered."""
+    var app = Command("app", "My app")
+    app.usage("app [-v] <command>")
+    var sub = Command("deploy", "Deploy something")
+    app.add_subcommand(sub^)
+
+    var help = app._generate_help(color=False)
+    assert_true(
+        "Usage: app [-v] <command>" in help,
+        msg="Custom usage should override even with subcommands: " + help,
+    )
+    # Auto-generated <COMMAND> should NOT appear
+    assert_false(
+        "<COMMAND>" in help,
+        msg="Auto-generated <COMMAND> should not appear with custom usage",
+    )
+
+
+def test_custom_usage_description_still_shown() raises:
+    """Tests that description is still shown above custom usage."""
+    var cmd = Command("myapp", "A great application")
+    cmd.usage("myapp [options]")
+
+    var help = cmd._generate_help(color=False)
+    assert_true(
+        "A great application" in help,
+        msg="Description should still appear: " + help,
+    )
+    assert_true(
+        "Usage: myapp [options]" in help,
+        msg="Custom usage should appear after description: " + help,
+    )
+
+
+def test_custom_usage_parsing_still_works() raises:
+    """Tests that custom usage doesn't affect parsing behavior."""
+    var cmd = Command("test", "Test app")
+    cmd.add_argument(
+        Argument("file", help="Input file").positional().required()
+    )
+    cmd.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+    cmd.usage("test FILE [--verbose]")
+
+    var args: List[String] = ["test", "input.txt", "--verbose"]
+    var result = cmd.parse_arguments(args)
+    assert_equal(result.get_string("file"), "input.txt")
+    assert_true(result.get_flag("verbose"), msg="--verbose should work")
+
+
+def test_custom_usage_in_plain_usage_hint() raises:
+    """Tests that custom usage appears in the plain usage hint (_plain_usage).
+    """
+    var cmd = Command("git", "The stupid content tracker")
+    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+
+    # _plain_usage is used for error/usage hints; ensure it reflects custom usage.
+    var usage = cmd._plain_usage()
+    assert_true(
+        "git [-v | --version] [-C <path>] <command> [<args>]" in usage,
+        msg="Custom usage should appear in plain usage hint: " + usage,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Full-width → half-width auto-correction (CJK/Unicode)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# U+3000 = IDEOGRAPHIC SPACE (fullwidth space)
+# U+2003 = EM SPACE
+
+
+# ── Unit tests for utility functions ─────────────────────────────────────────
+
+
+def test_has_fullwidth_chars_ascii() raises:
+    """Tests that plain ASCII strings have no fullwidth characters."""
+    assert_false(
+        _has_fullwidth_chars("--verbose"),
+        msg="plain ASCII should not have fullwidth chars",
+    )
+    assert_false(
+        _has_fullwidth_chars("-v"),
+        msg="short option should not have fullwidth chars",
+    )
+    assert_false(
+        _has_fullwidth_chars("hello world"),
+        msg="regular text should not have fullwidth chars",
+    )
+
+
+def test_has_fullwidth_chars_cjk() raises:
+    """Tests that CJK ideographs are NOT detected as fullwidth ASCII."""
+    # CJK ideographs are NOT in the fullwidth ASCII range FF01-FF5E.
+    assert_false(
+        _has_fullwidth_chars("漢字"),
+        msg="CJK ideographs are not fullwidth ASCII",
+    )
+
+
+def test_has_fullwidth_chars_fullwidth_ascii() raises:
+    """Tests that fullwidth ASCII characters are detected."""
+    # U+FF0D = fullwidth hyphen-minus ＝ －
+    assert_true(
+        _has_fullwidth_chars("－－ｖｅｒｂｏｓｅ"),
+        msg="fullwidth ASCII should be detected",
+    )
+    assert_true(
+        _has_fullwidth_chars("ｈｅｌｌｏ"),
+        msg="fullwidth Latin should be detected",
+    )
+
+
+def test_has_fullwidth_chars_fullwidth_space() raises:
+    """Tests that fullwidth space U+3000 is detected."""
+    var fw_space = chr(0x3000)
+    assert_true(
+        _has_fullwidth_chars("hello" + fw_space + "world"),
+        msg="fullwidth space should be detected",
+    )
+
+
+def test_has_fullwidth_chars_fullwidth_equals() raises:
+    """Tests that fullwidth equals sign U+FF1D is detected."""
+    assert_true(
+        _has_fullwidth_chars("--key＝value"),
+        msg="fullwidth equals should be detected",
+    )
+
+
+def test_fullwidth_to_halfwidth_no_change() raises:
+    """Tests that strings without fullwidth chars are unchanged."""
+    assert_equal(
+        _fullwidth_to_halfwidth("--verbose"),
+        "--verbose",
+    )
+    assert_equal(
+        _fullwidth_to_halfwidth("hello"),
+        "hello",
+    )
+
+
+def test_fullwidth_to_halfwidth_option() raises:
+    """Tests fullwidth option name correction."""
+    assert_equal(
+        _fullwidth_to_halfwidth("－－ｖｅｒｂｏｓｅ"),
+        "--verbose",
+    )
+
+
+def test_fullwidth_to_halfwidth_short_option() raises:
+    """Tests fullwidth short option correction."""
+    assert_equal(
+        _fullwidth_to_halfwidth("－ｖ"),
+        "-v",
+    )
+
+
+def test_fullwidth_to_halfwidth_equals() raises:
+    """Tests fullwidth equals sign in --key=value."""
+    assert_equal(
+        _fullwidth_to_halfwidth("－－ｋｅｙ＝ｖａｌｕｅ"),
+        "--key=value",
+    )
+
+
+def test_fullwidth_to_halfwidth_space() raises:
+    """Tests fullwidth space U+3000 conversion."""
+    var fw_space = chr(0x3000)
+    assert_equal(
+        _fullwidth_to_halfwidth("hello" + fw_space + "world"),
+        "hello world",
+    )
+
+
+def test_fullwidth_to_halfwidth_mixed() raises:
+    """Tests mixed fullwidth ASCII with CJK characters."""
+    # CJK characters should be preserved, only fullwidth ASCII converted.
+    var result = _fullwidth_to_halfwidth("－－ｎａｍｅ＝宇浩")
+    assert_true(
+        result.startswith("--name="),
+        msg="fullwidth ASCII prefix should convert: got '" + result + "'",
+    )
+    assert_true(
+        "宇浩" in result,
+        msg="CJK characters should be preserved: got '" + result + "'",
+    )
+
+
+def test_split_on_fullwidth_spaces_no_spaces() raises:
+    """Tests that tokens without fullwidth spaces return a single element."""
+    var parts = _split_on_fullwidth_spaces("--verbose")
+    assert_equal(len(parts), 1)
+    assert_equal(parts[0], "--verbose")
+
+
+def test_split_on_fullwidth_spaces_with_spaces() raises:
+    """Tests splitting on fullwidth spaces."""
+    var fw_space = chr(0x3000)
+    var token = "－－ｎａｍｅ" + fw_space + "ｙｕｈａｏ" + fw_space + "－－ｖｅｒｂｏｓｅ"
+    var parts = _split_on_fullwidth_spaces(token)
+    assert_equal(len(parts), 3)
+    assert_equal(parts[0], "--name")
+    assert_equal(parts[1], "yuhao")
+    assert_equal(parts[2], "--verbose")
+
+
+# ── Unit tests for CJK punctuation correction ──────────────────────────────────
+
+
+def test_correct_cjk_punctuation_no_change() raises:
+    """Tests that strings without CJK punctuation are unchanged."""
+    assert_equal(_correct_cjk_punctuation("--verbose"), "--verbose")
+    assert_equal(_correct_cjk_punctuation("hello"), "hello")
+
+
+def test_correct_cjk_punctuation_em_dash() raises:
+    """Tests em-dash (U+2014) → hyphen-minus conversion."""
+    # Two em-dashes + "verbose" should become "--verbose".
+    var double_em_dash = String(chr(0x2014)) + chr(0x2014)
+    assert_equal(
+        _correct_cjk_punctuation(double_em_dash + "verbose"),
+        "--verbose",
+    )
+
+
+def test_correct_cjk_punctuation_preserves_cjk() raises:
+    """Tests that CJK ideographs are preserved."""
+    assert_equal(_correct_cjk_punctuation("宇浩"), "宇浩")
+
+
+# ── Integration tests: parsing with fullwidth correction ─────────────────────
+
+
+def test_fullwidth_long_flag() raises:
+    """Tests that a fullwidth --verbose flag is auto-corrected and parsed."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var args: List[String] = ["test", "－－ｖｅｒｂｏｓｅ"]
+    var result = command.parse_arguments(args)
+    assert_true(
+        result.get_flag("verbose"),
+        msg="fullwidth --verbose should be corrected and parsed",
+    )
+
+
+def test_fullwidth_short_flag() raises:
+    """Tests that a fullwidth -v flag is auto-corrected and parsed."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var args: List[String] = ["test", "－ｖ"]
+    var result = command.parse_arguments(args)
+    assert_true(
+        result.get_flag("verbose"),
+        msg="fullwidth -v should be corrected and parsed",
+    )
+
+
+def test_fullwidth_key_value_equals() raises:
+    """Tests fullwidth --key＝value auto-correction."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output file")
+        .long["output"]()
+        .short["o"]()
+        .takes_value()
+    )
+
+    var args: List[String] = ["test", "－－ｏｕｔｐｕｔ＝ｆｉｌｅ．ｔｘｔ"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("output"),
+        "file.txt",
+        msg="fullwidth = syntax should be corrected",
+    )
+
+
+def test_fullwidth_key_space_value() raises:
+    """Tests fullwidth --key with space-separated value."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Output file")
+        .long["output"]()
+        .short["o"]()
+        .takes_value()
+    )
+
+    var args: List[String] = ["test", "－－ｏｕｔｐｕｔ", "file.txt"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("output"),
+        "file.txt",
+        msg="fullwidth option name with halfwidth value should work",
+    )
+
+
+def test_fullwidth_embedded_space() raises:
+    """Tests that fullwidth spaces in a single token cause splitting."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("name", help="Name").long["name"]().short["n"]().takes_value()
+    )
+
+    var fw_space = chr(0x3000)
+    var token = "－－ｎａｍｅ" + fw_space + "ｙｕｈａｏ" + fw_space + "－－ｖｅｒｂｏｓｅ"
+    var args: List[String] = ["test", token]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("name"),
+        "yuhao",
+        msg="embedded fullwidth space should split: name",
+    )
+    assert_true(
+        result.get_flag("verbose"),
+        msg="embedded fullwidth space should split: verbose",
+    )
+
+
+def test_positional_fullwidth_converted() raises:
+    """Tests that fullwidth positional values are converted but stay positional.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("query", help="Search query").positional().required()
+    )
+
+    # Fullwidth text as a positional is still converted to halfwidth,
+    # but since it doesn't start with `-` after conversion, no warning
+    # is shown and it goes through as a positional.
+    var args: List[String] = ["test", "ｈｅｌｌｏ"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("query"),
+        "hello",
+        msg="fullwidth positional should be converted to halfwidth",
+    )
+
+
+def test_disable_fullwidth_correction() raises:
+    """Tests that disable_fullwidth_correction() prevents auto-correction."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.disable_fullwidth_correction()
+
+    # With correction disabled, fullwidth "--verbose" is not recognised.
+    var args: List[String] = ["test", "－－ｖｅｒｂｏｓｅ"]
+    # It should be treated as a positional (or cause an error for unknown option).
+    # Since the command has no positional args defined, it becomes a positional.
+    var result = command.parse_arguments(args)
+    assert_false(
+        result.get_flag("verbose"),
+        msg="with correction disabled, fullwidth should NOT parse as --verbose",
+    )
+
+
+def test_fullwidth_with_choices() raises:
+    """Tests fullwidth correction combined with choices validation."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Output format")
+        .long["format"]()
+        .short["f"]()
+        .takes_value()
+        .choice["json"]()
+        .choice["yaml"]()
+        .choice["csv"]()
+    )
+
+    var args: List[String] = ["test", "－－ｆｏｒｍａｔ＝ｊｓｏｎ"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("format"),
+        "json",
+        msg="fullwidth --format=json should be corrected and validated",
+    )
+
+
+def test_fullwidth_merged_short_flags() raises:
+    """Tests fullwidth merged short flags like -abc."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("all", help="Show all").long["all"]().short["a"]().flag()
+    )
+    command.add_argument(
+        Argument("brief", help="Brief output")
+        .long["brief"]()
+        .short["b"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("color", help="Colorize").long["color"]().short["c"]().flag()
+    )
+
+    var args: List[String] = ["test", "－ａｂｃ"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("all"), msg="fullwidth -a should work")
+    assert_true(result.get_flag("brief"), msg="fullwidth -b should work")
+    assert_true(result.get_flag("color"), msg="fullwidth -c should work")
+
+
+def test_fullwidth_with_subcommand() raises:
+    """Tests fullwidth option correction with subcommand dispatch."""
+    var app = Command("test", "Test app")
+    app.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+
+    var sub = Command("build", "Build project")
+    sub.add_argument(
+        Argument("target", help="Build target").positional().required()
+    )
+    app.add_subcommand(sub^)
+
+    var args: List[String] = ["test", "－－ｖｅｒｂｏｓｅ", "build", "release"]
+    var result = app.parse_arguments(args)
+    assert_true(
+        result.get_flag("verbose"),
+        msg="fullwidth --verbose before subcommand should work",
+    )
+    assert_equal(result.subcommand, "build")
+    var sub_result = result.get_subcommand_result()
+    assert_equal(sub_result.get_string("target"), "release")
+
+
+def test_fullwidth_parse_known_arguments() raises:
+    """Tests fullwidth correction works with parse_known_arguments."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var args: List[String] = ["test", "－－ｖｅｒｂｏｓｅ"]
+    var result = command.parse_known_arguments(args)
+    assert_true(
+        result.get_flag("verbose"),
+        msg="fullwidth should work with parse_known_arguments",
+    )
+
+
+def test_fullwidth_cjk_positional_preserved() raises:
+    """Tests that CJK characters in positional values are preserved."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("query", help="Search query").positional().required()
+    )
+
+    var args: List[String] = ["test", "宇浩輸入法"]
+    var result = command.parse_arguments(args)
+    assert_equal(
+        result.get_string("query"),
+        "宇浩輸入法",
+        msg="CJK positional values should be untouched",
+    )
+
+
+def test_fullwidth_punctuation_em_dash_correction() raises:
+    """Tests that em-dash is auto-corrected to hyphen-minus in pre-parse."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
+    var result = command.parse_arguments(args)
+    assert_true(
+        result.get_flag("verbose"),
+        msg="em-dash '——verbose' should be corrected to '--verbose'",
+    )
+
+
+def test_fullwidth_punctuation_disabled() raises:
+    """Tests that disable_punctuation_correction() prevents correction."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.disable_punctuation_correction()
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
+    var result = command.parse_arguments(args)
+    assert_false(
+        result.get_flag("verbose"),
+        msg="With correction disabled, em-dash should NOT be corrected",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Test runner
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def main() raises:

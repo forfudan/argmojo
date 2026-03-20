@@ -1,4 +1,22 @@
-"""Tests for argmojo — core parsing (flags, values, positionals, shorts, count, negatable, prefix)."""
+"""Tests for argmojo — core parsing (flags, values, positionals, shorts, count,
+negatable, prefix) and negative number passthrough.
+
+Core parsing covers:
+  - Long/short flags, key-value (space & equals), positional arguments,
+    short flag merging, attached short values, choices validation,
+    count action with ceiling, positional count validation,
+    negatable flags (--no-X), and prefix matching.
+
+Negative number handling covers:
+  - Auto-detect: numeric-looking tokens bypass option parsing when no digit
+    short option is registered.
+  - Explicit opt-in: allow_negative_numbers() forces bypass unconditionally.
+  - Digit short option conflict: auto-detect is suppressed; the token is
+    consumed as the registered short flag/value.
+  - Explicit opt-in overrides the digit-short conflict.
+  - '--' separator still works regardless of these settings.
+  - Non-numeric '-x' tokens still raise "Unknown option" as expected.
+"""
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
@@ -807,6 +825,242 @@ def test_prefix_match_negatable() raises:
     assert_true(
         result.has("color"), msg="color should be present after --no-col"
     )
+
+
+# ── Negative numbers ─────────────────────────────────────────────────────────────
+
+
+# ── Auto-detect tests (no digit short options registered) ───────────────────
+
+
+def test_negative_integer_auto_detect() raises:
+    """A negative integer token is treated as a positional when no digit
+    short option is registered (auto-detect mode)."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    var args: List[String] = ["test", "-9876543"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-9876543")
+
+
+def test_negative_float_auto_detect() raises:
+    """A negative float token (-3.14) is treated as a positional."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A float").positional().required()
+    )
+
+    var args: List[String] = ["test", "-3.14"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-3.14")
+
+
+def test_negative_leading_dot_auto_detect() raises:
+    """A negative leading-dot float (-.5) is treated as a positional."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A float").positional().required()
+    )
+
+    var args: List[String] = ["test", "-.5"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-.5")
+
+
+def test_negative_scientific_auto_detect() raises:
+    """A negative scientific notation token (-1.5e10) is treated as a positional.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1.5e10"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-1.5e10")
+
+
+def test_negative_scientific_negative_exp_auto_detect() raises:
+    """A token with negative exponent (-2.0e-3) is treated as a positional."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    var args: List[String] = ["test", "-2.0e-3"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-2.0e-3")
+
+
+def test_multiple_negative_positionals() raises:
+    """Two negative number tokens are both collected as positionals."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("a", help="First number").positional().required()
+    )
+    command.add_argument(
+        Argument("b", help="Second number").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1", "-2.5"]
+    var result = command.parse_arguments(args)
+    assert_true(result.has("a"))
+    assert_true(result.has("b"))
+    assert_equal(result.get_string("a"), "-1")
+    assert_equal(result.get_string("b"), "-2.5")
+
+
+def test_mixed_negative_and_options() raises:
+    """Negative positionals coexist with normal named options."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    var args: List[String] = ["test", "--verbose", "-10.18"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.get_string("value"), "-10.18")
+
+
+# ── Explicit allow_negative_numbers() tests ─────────────────────────────────
+
+
+def test_explicit_allow_negative_numbers() raises:
+    """The allow_negative_numbers() method forces negative-number tokens to positional
+    even when a digit short option is registered."""
+    var command = Command("test", "Test app")
+    command.allow_negative_numbers()
+    # Register a digit short option — without allow_negative_numbers() this
+    # would suppress auto-detect.
+    command.add_argument(
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    # "-3.14" should still pass through as a positional.
+    var args: List[String] = ["test", "-3.14"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-3.14")
+
+
+def test_explicit_allow_keeps_digit_short_option() raises:
+    """With allow_negative_numbers(), an exact digit flag (-3 with no
+    fractional part) that has a registered short option is still ambiguous —
+    here we verify the exact integer form goes through as a positional too,
+    not silently consumed as the flag, because the override is unconditional."""
+    var command = Command("test", "Test app")
+    command.allow_negative_numbers()
+    command.add_argument(
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    # With allow_negative_numbers set, even bare "-3" becomes a positional.
+    var args: List[String] = ["test", "-3"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-3")
+
+
+# ── Digit short option blocks auto-detect ───────────────────────────────────
+
+
+def test_digit_short_suppresses_auto_detect() raises:
+    """When a digit short option is registered and allow_negative_numbers()
+    has NOT been called, the auto-detect is suppressed and the '-3' token
+    is consumed as the flag."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
+    )
+
+    var args: List[String] = ["test", "-3"]
+    var result = command.parse_arguments(args)
+    # The flag should be set; no positionals.
+    assert_true(result.get_flag("triple"))
+    assert_equal(len(result._positionals), 0)
+
+
+# ── '--' separator ───────────────────────────────────────────────────────────
+
+
+def test_double_dash_passes_negative_number() raises:
+    """'-- -10.18' always passes -10.18 as a positional (pre-existing behaviour).
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="A number").positional().required()
+    )
+
+    var args: List[String] = ["test", "--", "-10.18"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "-10.18")
+
+
+def test_double_dash_passes_option_like_string() raises:
+    """'-- --foo' passes '--foo' as a positional via the '--' separator."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("value", help="Value").positional().required()
+    )
+
+    var args: List[String] = ["test", "--", "--foo"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("value"), "--foo")
+
+
+# ── Non-numeric dash tokens still error ─────────────────────────────────────
+
+
+def test_unknown_short_option_still_errors() raises:
+    """A non-numeric short option that is not registered still raises an error.
+    """
+    var command = Command("test", "Test app")
+    # No '-x' registered.
+
+    var args: List[String] = ["test", "-x"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="'-x' should raise Unknown option error")
+
+
+def test_invalid_numeric_form_still_errors() raises:
+    """Tokens like '-1-2' or '-1abc' are NOT valid numbers, so they are
+    still treated as short-option strings and raise an error."""
+    var command = Command("test", "Test app")
+
+    var args: List[String] = ["test", "-1abc"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="'-1abc' is not a number and should raise an error")
 
 
 def main() raises:

@@ -1,37 +1,27 @@
-"""Tests for argmojo subcommand support.
+"""Tests for argmojo subcommand support, persistent flags, and parent inheritance.
 
-Step 0: Validates that the _apply_defaults() and _validate() extraction
-from parse_arguments() preserves all existing behavior. These tests exercise
-the defaults and validation paths directly through parse_arguments(), ensuring
-no regression from the refactor.
+Subcommands:
+  Step 0: Validates that the _apply_defaults() and _validate() extraction
+  from parse_arguments() preserves all existing behavior.
+  Step 1: Validates the data model & API surface for subcommand support.
+  Step 2: Validates parse-time subcommand routing.
+  Step 2b: Validates the auto-registered 'help' subcommand.
+  Step 5: Subcommand aliases.
+  Hidden subcommands — dispatch.
+  Positional + subcommand guard.
 
-Step 1: Validates the data model & API surface for subcommand support:
-  - Command.subcommands field (List[Command]) and add_subcommand()
-  - ParseResult.subcommand field (String, defaults to "")
-  - ParseResult.has_subcommand_result() / get_subcommand_result()
-  - ParseResult copy initializer preserves subcommand data
-  - parse_arguments() unchanged when no subcommands are registered
+Persistent flags:
+  Persistent flag works on the root command (no subcommands).
+  Persistent flag placed BEFORE/AFTER the subcommand token.
+  Short-name persistent flags, persistent value-taking options.
+  Non-persistent root flags are NOT injected into child parsers.
+  Conflict detection at add_subcommand() time.
 
-Step 2: Validates parse-time subcommand routing:
-  - Basic dispatch: subcommand token → child parse_arguments()
-  - Root flags before subcommand parsed by root
-  - Child flags/positionals parsed by child
-  - ``--`` stops dispatch; subsequent tokens are root positionals
-  - Unknown token with subcommands registered → root positional
-  - Routing to first / second of multiple subcommands
-  - Child validation errors propagate
-  - Child default values applied
-  - Root still validates its own required args after dispatch
-  - Root tokens not forwarded to child
-
-Step 2b: Validates the auto-registered 'help' subcommand:
-  - help subcommand auto-added on first add_subcommand() call
-  - Only added once even with multiple add_subcommand() calls
-  - help appears after user subcommands in the list
-  - _is_help_subcommand flag is set correctly
-  - disable_help_subcommand() before add_subcommand() prevents insertion
-  - disable_help_subcommand() after add_subcommand() removes it
-  - Normal dispatch is unaffected by the presence of help subcommand
+Parent argument inheritance:
+  Basic inheritance, multiple parents, group constraint inheritance.
+  Parent shared across multiple children.
+  Parent with append/count/range args.
+  Edge cases.
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
@@ -1259,9 +1249,6 @@ def test_alias_multiple_subcommands() raises:
     assert_equal(r4.subcommand, "commit")
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
-
-
 # ── Hidden subcommands — dispatch ─────────────────────────────────────────────
 
 
@@ -1316,6 +1303,752 @@ def test_hidden_subcommand_copy() raises:
     cmd.hidden()
     var copy = cmd.copy()
     assert_true(copy._is_hidden, msg="_is_hidden should survive copy")
+
+
+# ── Persistent flags ─────────────────────────────────────────────────────────
+
+
+# ── Persistent flag on root without any subcommand ─────────────────────────
+
+
+def test_persistent_flag_on_root_no_subcommand() raises:
+    """A persistent flag still works as a plain root flag when no subcommand
+    is involved."""
+    var command = Command("app", "")
+    command.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var r = command.parse_arguments(["app", "--verbose"])
+    assert_true(r.get_flag("verbose"), msg="root verbose should be True")
+
+
+def test_persistent_flag_absent_on_root() raises:
+    """Absent persistent flag defaults to False on root."""
+    var command = Command("app", "")
+    command.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var r = command.parse_arguments(["app"])
+    assert_false(r.get_flag("verbose"), msg="absent verbose should be False")
+
+
+# ── Persistent flag BEFORE the subcommand token ────────────────────────────
+
+
+def test_persistent_flag_before_subcommand_in_root_result() raises:
+    """Persistent flag placed before the subcommand token is stored in the root
+    result."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "--verbose", "search", "pattern"])
+    assert_true(r.get_flag("verbose"), msg="root verbose should be True")
+    assert_equal(r.subcommand, "search")
+
+
+def test_persistent_flag_before_subcommand_pushed_to_child() raises:
+    """Persistent flag placed before the subcommand token is pushed down into
+    the child result so sub_result.get_flag() also works."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "--verbose", "search", "pattern"])
+    var sub = r.get_subcommand_result()
+    assert_true(
+        sub.get_flag("verbose"),
+        msg="child result should also have verbose=True via push-down",
+    )
+
+
+# ── Persistent flag AFTER the subcommand token ─────────────────────────────
+
+
+def test_persistent_flag_after_subcommand_in_child_result() raises:
+    """Persistent flag placed after the subcommand token is parsed by the child
+    (injected) and stored in the child result."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "search", "--verbose", "pattern"])
+    var sub = r.get_subcommand_result()
+    assert_true(
+        sub.get_flag("verbose"), msg="child result should have verbose=True"
+    )
+
+
+def test_persistent_flag_after_subcommand_bubbles_to_root() raises:
+    """Persistent flag placed after the subcommand token is also bubbled up to
+    the root result so root_result.get_flag() always works."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "search", "--verbose", "pattern"])
+    assert_true(
+        r.get_flag("verbose"),
+        msg="root result should have verbose=True via bubble-up",
+    )
+
+
+def test_persistent_short_flag_after_subcommand() raises:
+    """The short form of a persistent flag also bubbles up from after-subcommand
+    position."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "search", "-v", "pattern"])
+    assert_true(
+        r.get_flag("verbose"), msg="root verbose via short form should be True"
+    )
+    assert_true(
+        r.get_subcommand_result().get_flag("verbose"),
+        msg="child verbose via short form should be True",
+    )
+
+
+# ── Persistent value-taking option ─────────────────────────────────────────
+
+
+def test_persistent_value_option_after_subcommand() raises:
+    """A persistent value-taking option placed after the subcommand token is
+    injected into the child, parsed, and synced both ways."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("output", help="").long["output"]().short["o"]().persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(
+        ["app", "search", "--output", "json", "pattern"]
+    )
+    assert_equal(r.get_string("output"), "json")
+    assert_equal(r.get_subcommand_result().get_string("output"), "json")
+
+
+def test_persistent_flag_absent_defaults_false_in_both() raises:
+    """When a persistent flag is not provided at all, both root and child
+    results return False."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var r = app.parse_arguments(["app", "search", "pattern"])
+    assert_false(
+        r.get_flag("verbose"), msg="root verbose should default to False"
+    )
+    assert_false(
+        r.get_subcommand_result().get_flag("verbose"),
+        msg="child verbose should default to False",
+    )
+
+
+# ── Non-persistent flag isolation ──────────────────────────────────────────
+
+
+def test_non_persistent_root_flag_not_injected_into_child() raises:
+    """A non-persistent root flag placed after the subcommand token is NOT
+    recognised by the child and causes an unknown-option error."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("root-only", help="").long["root-only"]().flag()
+    )  # NOT persistent
+    var search = Command("search", "")
+    search.add_argument(Argument("pattern", help="").positional().required())
+    app.add_subcommand(search^)
+
+    var raised = False
+    try:
+        _ = app.parse_arguments(["app", "search", "--root-only", "pattern"])
+    except:
+        raised = True
+    assert_true(
+        raised,
+        msg="Non-persistent flag after subcommand should cause an error",
+    )
+
+
+# ── Conflict detection ──────────────────────────────────────────────────────
+
+
+def test_persistent_conflict_long_name_raises() raises:
+    """Tests add_subcommand() raises when a persistent parent long_name conflicts
+    with a child long_name."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="").long["verbose"]().flag().persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(
+        Argument("verbose", help="").long["verbose"]().flag()
+    )  # same long name!
+
+    var raised = False
+    try:
+        app.add_subcommand(search^)
+    except:
+        raised = True
+    assert_true(
+        raised,
+        msg="Persistent long_name conflict should raise at add_subcommand time",
+    )
+
+
+def test_persistent_conflict_short_name_raises() raises:
+    """Tests add_subcommand() raises when a persistent parent short_name conflicts
+    with a child short_name."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "")
+    search.add_argument(
+        Argument("version", help="").long["ver"]().short["v"]().flag()
+    )  # same short -v!
+
+    var raised = False
+    try:
+        app.add_subcommand(search^)
+    except:
+        raised = True
+    assert_true(
+        raised,
+        msg=(
+            "Persistent short_name conflict should raise at add_subcommand time"
+        ),
+    )
+
+
+def test_no_conflict_for_non_persistent_same_name() raises:
+    """No conflict is raised when a non-persistent root arg shares a name with
+    a child arg (only persistent args are checked)."""
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="").long["verbose"]().short["v"]().flag()
+    )  # NOT persistent
+    var search = Command("search", "")
+    search.add_argument(
+        Argument("verbose", help="").long["verbose"]().flag()
+    )  # same name, OK
+
+    app.add_subcommand(search^)  # must not raise
+    assert_true(
+        True, msg="No conflict should be detected for non-persistent args"
+    )
+
+
+# ── Parent argument inheritance ───────────────────────────────────────────────
+
+# ── Basic inheritance ────────────────────────────────────────────────────────
+
+
+def test_parent_flag_inherited() raises:
+    """Tests that a flag argument from a parent is inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Enable verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--verbose"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="--verbose should be True")
+
+
+def test_parent_flag_short() raises:
+    """Tests that short flags from a parent work."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Enable verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "-v"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="-v should set verbose True")
+
+
+def test_parent_value_arg_inherited() raises:
+    """Tests that a value-taking argument from a parent is inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("format", help="Output format")
+        .long["format"]()
+        .short["f"]()
+        .choice["json"]()
+        .choice["yaml"]()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--format", "json"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.get_string("format"), "json")
+
+
+def test_parent_default_inherited() raises:
+    """Tests that default values from parent arguments are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("format", help="Output format")
+        .long["format"]()
+        .default["json"]()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.get_string("format"), "json")
+
+
+def test_parent_positional_inherited() raises:
+    """Tests that positional arguments from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("input", help="Input file").positional().required()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "myfile.txt"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.get_string("input"), "myfile.txt")
+
+
+# ── Multiple parents ─────────────────────────────────────────────────────────
+
+
+def test_multiple_parents() raises:
+    """Tests that arguments from multiple parents are all inherited."""
+    var parent_a = Command("_shared_a")
+    parent_a.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var parent_b = Command("_shared_b")
+    parent_b.add_argument(
+        Argument("output", help="Output file").long["output"]().short["o"]()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent_a)
+    child.add_parent(parent_b)
+
+    var args: List[String] = ["child", "-v", "-o", "out.txt"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="-v should be True")
+    assert_equal(result.get_string("output"), "out.txt")
+
+
+# ── Parent with own arguments ────────────────────────────────────────────────
+
+
+def test_parent_plus_child_args() raises:
+    """Tests that parent args coexist with child's own arguments."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+    child.add_argument(
+        Argument("output", help="Output file").long["output"]().short["o"]()
+    )
+
+    var args: List[String] = ["child", "-v", "--output", "out.txt"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="-v should be True")
+    assert_equal(result.get_string("output"), "out.txt")
+
+
+# ── Group constraint inheritance ─────────────────────────────────────────────
+
+
+def test_parent_exclusive_group_inherited() raises:
+    """Tests that mutually exclusive groups from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("json", help="JSON output").long["json"]().flag()
+    )
+    parent.add_argument(
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
+    )
+    var excl: List[String] = ["json", "yaml"]
+    parent.mutually_exclusive(excl^)
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    # Should fail — exclusive group inherited.
+    var args: List[String] = ["child", "--json", "--yaml"]
+    var caught = False
+    try:
+        _ = child.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "mutually exclusive" in msg,
+            msg="Error should mention mutually exclusive",
+        )
+    assert_true(caught, msg="exclusive group from parent should be enforced")
+
+
+def test_parent_required_together_inherited() raises:
+    """Tests that required-together groups from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(Argument("user", help="Username").long["user"]())
+    parent.add_argument(Argument("pass", help="Password").long["pass"]())
+    var together: List[String] = ["user", "pass"]
+    parent.required_together(together^)
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    # Providing only --user should fail.
+    var args: List[String] = ["child", "--user", "admin"]
+    var caught = False
+    try:
+        _ = child.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "required together" in msg or "must be provided together" in msg,
+            msg="Error should mention required together",
+        )
+    assert_true(caught, msg="required-together from parent should be enforced")
+
+
+def test_parent_one_required_inherited() raises:
+    """Tests that one-required groups from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("json", help="JSON output").long["json"]().flag()
+    )
+    parent.add_argument(
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
+    )
+    var one_req: List[String] = ["json", "yaml"]
+    parent.one_required(one_req^)
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    # Providing neither should fail.
+    var args: List[String] = ["child"]
+    var caught = False
+    try:
+        _ = child.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "At least one" in msg,
+            msg="Error should mention At least one",
+        )
+    assert_true(caught, msg="one-required from parent should be enforced")
+
+
+def test_parent_one_required_satisfied() raises:
+    """Tests that one-required group from parent passes when satisfied."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("json", help="JSON output").long["json"]().flag()
+    )
+    parent.add_argument(
+        Argument("yaml", help="YAML output").long["yaml"]().flag()
+    )
+    var one_req: List[String] = ["json", "yaml"]
+    parent.one_required(one_req^)
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--json"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("json"), msg="--json should be True")
+
+
+def test_parent_conditional_req_inherited() raises:
+    """Tests that conditional requirements from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("save", help="Save results").long["save"]().flag()
+    )
+    parent.add_argument(Argument("output", help="Output path").long["output"]())
+    parent.required_if("output", "save")
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    # --save without --output should fail.
+    var args: List[String] = ["child", "--save"]
+    var caught = False
+    try:
+        _ = child.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true(
+            "output" in msg and "save" in msg,
+            msg="Error should mention output and save",
+        )
+    assert_true(
+        caught, msg="conditional requirement from parent should be enforced"
+    )
+
+
+def test_parent_implies_inherited() raises:
+    """Tests that implications from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("debug", help="Debug mode").long["debug"]().flag()
+    )
+    parent.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+    parent.implies("debug", "verbose")
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--debug"]
+    var result = child.parse_arguments(args)
+    assert_true(result.get_flag("debug"), msg="--debug should be True")
+    assert_true(
+        result.get_flag("verbose"),
+        msg="--verbose should be True via implication",
+    )
+
+
+# ── Parent shared across multiple children ───────────────────────────────────
+
+
+def test_parent_shared_across_children() raises:
+    """Tests that the same parent can be shared across multiple children."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var child_a = Command("cmd_a", "First command")
+    child_a.add_parent(parent)
+
+    var child_b = Command("cmd_b", "Second command")
+    child_b.add_parent(parent)
+
+    # child_a parses independently.
+    var args_a: List[String] = ["cmd_a", "-v"]
+    var result_a = child_a.parse_arguments(args_a)
+    assert_true(result_a.get_flag("verbose"), msg="cmd_a -v should work")
+
+    # child_b parses independently.
+    var args_b: List[String] = ["cmd_b", "--verbose"]
+    var result_b = child_b.parse_arguments(args_b)
+    assert_true(result_b.get_flag("verbose"), msg="cmd_b --verbose should work")
+
+
+# ── Parent with append/count/range ───────────────────────────────────────────
+
+
+def test_parent_count_arg_inherited() raises:
+    """Tests that count arguments from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Verbosity level")
+        .long["verbose"]()
+        .short["v"]()
+        .count()
+        .max[3]()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "-vvv"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.get_count("verbose"), 3)
+
+
+def test_parent_append_arg_inherited() raises:
+    """Tests that append arguments from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("tag", help="Tags").long["tag"]().short["t"]().append()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--tag", "a", "--tag", "b"]
+    var result = child.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 2)
+    assert_equal(tags[0], "a")
+    assert_equal(tags[1], "b")
+
+
+def test_parent_range_arg_inherited() raises:
+    """Tests that range-validated arguments from a parent are inherited."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("port", help="Port number").long["port"]().range[1, 65535]()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child", "--port", "8080"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.get_int("port"), 8080)
+
+
+# ── Edge cases ───────────────────────────────────────────────────────────────
+
+
+def test_parent_no_args() raises:
+    """Tests that inheriting from a parent with no arguments is a no-op."""
+    var parent = Command("_empty")
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+
+    var args: List[String] = ["child"]
+    var result = child.parse_arguments(args)
+    assert_equal(result.subcommand, "")
+
+
+def test_parent_does_not_modify_parent() raises:
+    """Tests that add_parent does not mutate the parent Command."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+
+    var child = Command("child", "Child command")
+    child.add_parent(parent)
+    child.add_argument(Argument("output", help="Output").long["output"]())
+
+    # Parent should still have only 1 arg.
+    assert_equal(len(parent.args), 1)
+    # Child should have 2 args (1 inherited + 1 own).
+    assert_equal(len(child.args), 2)
+
+
+def test_parent_with_subcommands() raises:
+    """Tests that parent args work on a command with subcommands."""
+    var parent = Command("_shared")
+    parent.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+
+    var app = Command("app", "App")
+    app.add_parent(parent)
+
+    var sub = Command("run", "Run something")
+    sub.add_argument(Argument("target", help="Target").positional().required())
+    app.add_subcommand(sub^)
+
+    var args: List[String] = ["app", "-v", "run", "main"]
+    var result = app.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="global -v should be True")
+    assert_equal(result.subcommand, "run")
+    var sub_result = result.get_subcommand_result()
+    assert_equal(sub_result.get_string("target"), "main")
 
 
 def main() raises:
