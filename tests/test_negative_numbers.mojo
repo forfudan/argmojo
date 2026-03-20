@@ -11,7 +11,7 @@ Covers:
   - Non-numeric '-x' tokens still raise "Unknown option" as expected.
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
@@ -19,7 +19,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Auto-detect tests (no digit short options registered) ───────────────────
 
 
-fn test_negative_integer_auto_detect() raises:
+def test_negative_integer_auto_detect() raises:
     """A negative integer token is treated as a positional when no digit
     short option is registered (auto-detect mode)."""
     var command = Command("test", "Test app")
@@ -32,7 +32,7 @@ fn test_negative_integer_auto_detect() raises:
     assert_equal(result.get_string("value"), "-9876543")
 
 
-fn test_negative_float_auto_detect() raises:
+def test_negative_float_auto_detect() raises:
     """A negative float token (-3.14) is treated as a positional."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -44,7 +44,7 @@ fn test_negative_float_auto_detect() raises:
     assert_equal(result.get_string("value"), "-3.14")
 
 
-fn test_negative_leading_dot_auto_detect() raises:
+def test_negative_leading_dot_auto_detect() raises:
     """A negative leading-dot float (-.5) is treated as a positional."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -56,7 +56,7 @@ fn test_negative_leading_dot_auto_detect() raises:
     assert_equal(result.get_string("value"), "-.5")
 
 
-fn test_negative_scientific_auto_detect() raises:
+def test_negative_scientific_auto_detect() raises:
     """A negative scientific notation token (-1.5e10) is treated as a positional.
     """
     var command = Command("test", "Test app")
@@ -69,7 +69,7 @@ fn test_negative_scientific_auto_detect() raises:
     assert_equal(result.get_string("value"), "-1.5e10")
 
 
-fn test_negative_scientific_negative_exp_auto_detect() raises:
+def test_negative_scientific_negative_exp_auto_detect() raises:
     """A token with negative exponent (-2.0e-3) is treated as a positional."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -81,7 +81,7 @@ fn test_negative_scientific_negative_exp_auto_detect() raises:
     assert_equal(result.get_string("value"), "-2.0e-3")
 
 
-fn test_multiple_negative_positionals() raises:
+def test_multiple_negative_positionals() raises:
     """Two negative number tokens are both collected as positionals."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -99,7 +99,7 @@ fn test_multiple_negative_positionals() raises:
     assert_equal(result.get_string("b"), "-2.5")
 
 
-fn test_mixed_negative_and_options() raises:
+def test_mixed_negative_and_options() raises:
     """Negative positionals coexist with normal named options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -121,7 +121,7 @@ fn test_mixed_negative_and_options() raises:
 # ── Explicit allow_negative_numbers() tests ─────────────────────────────────
 
 
-fn test_explicit_allow_negative_numbers() raises:
+def test_explicit_allow_negative_numbers() raises:
     """The allow_negative_numbers() method forces negative-number tokens to positional
     even when a digit short option is registered."""
     var command = Command("test", "Test app")
@@ -144,7 +144,7 @@ fn test_explicit_allow_negative_numbers() raises:
     assert_equal(result.get_string("value"), "-3.14")
 
 
-fn test_explicit_allow_keeps_digit_short_option() raises:
+def test_explicit_allow_keeps_digit_short_option() raises:
     """With allow_negative_numbers(), an exact digit flag (-3 with no
     fractional part) that has a registered short option is still ambiguous —
     here we verify the exact integer form goes through as a positional too,
@@ -170,7 +170,7 @@ fn test_explicit_allow_keeps_digit_short_option() raises:
 # ── Digit short option blocks auto-detect ───────────────────────────────────
 
 
-fn test_digit_short_suppresses_auto_detect() raises:
+def test_digit_short_suppresses_auto_detect() raises:
     """When a digit short option is registered and allow_negative_numbers()
     has NOT been called, the auto-detect is suppressed and the '-3' token
     is consumed as the flag."""
@@ -192,7 +192,7 @@ fn test_digit_short_suppresses_auto_detect() raises:
 # ── '--' separator ───────────────────────────────────────────────────────────
 
 
-fn test_double_dash_passes_negative_number() raises:
+def test_double_dash_passes_negative_number() raises:
     """'-- -10.18' always passes -10.18 as a positional (pre-existing behaviour).
     """
     var command = Command("test", "Test app")
@@ -205,7 +205,7 @@ fn test_double_dash_passes_negative_number() raises:
     assert_equal(result.get_string("value"), "-10.18")
 
 
-fn test_double_dash_passes_option_like_string() raises:
+def test_double_dash_passes_option_like_string() raises:
     """'-- --foo' passes '--foo' as a positional via the '--' separator."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -220,7 +220,7 @@ fn test_double_dash_passes_option_like_string() raises:
 # ── Non-numeric dash tokens still error ─────────────────────────────────────
 
 
-fn test_unknown_short_option_still_errors() raises:
+def test_unknown_short_option_still_errors() raises:
     """A non-numeric short option that is not registered still raises an error.
     """
     var command = Command("test", "Test app")
@@ -235,7 +235,7 @@ fn test_unknown_short_option_still_errors() raises:
     assert_true(raised, msg="'-x' should raise Unknown option error")
 
 
-fn test_invalid_numeric_form_still_errors() raises:
+def test_invalid_numeric_form_still_errors() raises:
     """Tokens like '-1-2' or '-1abc' are NOT valid numbers, so they are
     still treated as short-option strings and raise an error."""
     var command = Command("test", "Test app")
@@ -249,5 +249,5 @@ fn test_invalid_numeric_form_still_errors() raises:
     assert_true(raised, msg="'-1abc' is not a number and should raise an error")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

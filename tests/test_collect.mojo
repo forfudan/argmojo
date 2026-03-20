@@ -1,13 +1,13 @@
 """Tests for argmojo — collection features (append, delimiter, nargs)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
 # ── Append / collect action ──────────────────────────────────────────────────────
 
 
-fn test_append_single() raises:
+def test_append_single() raises:
     """Tests that a single --tag x produces a list with one element."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -22,7 +22,7 @@ fn test_append_single() raises:
     assert_true(result.has("tag"), msg="tag should be present")
 
 
-fn test_append_multiple() raises:
+def test_append_multiple() raises:
     """Tests that --tag x --tag y --tag z collects all values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -46,7 +46,7 @@ fn test_append_multiple() raises:
     assert_equal(tags[2], "gamma")
 
 
-fn test_append_short_option() raises:
+def test_append_short_option() raises:
     """Tests that -t x -t y collects values via short option."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -61,7 +61,7 @@ fn test_append_short_option() raises:
     assert_equal(tags[1], "beta")
 
 
-fn test_append_equals_syntax() raises:
+def test_append_equals_syntax() raises:
     """Tests that --tag=x --tag=y collects values with equals syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -76,7 +76,7 @@ fn test_append_equals_syntax() raises:
     assert_equal(tags[1], "beta")
 
 
-fn test_append_attached_short() raises:
+def test_append_attached_short() raises:
     """Tests that -talpha -tbeta collects values with attached short syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -91,7 +91,7 @@ fn test_append_attached_short() raises:
     assert_equal(tags[1], "beta")
 
 
-fn test_append_mixed_syntax() raises:
+def test_append_mixed_syntax() raises:
     """Tests mixing long, short, equals, and attached syntax for append."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -108,7 +108,7 @@ fn test_append_mixed_syntax() raises:
     assert_equal(tags[3], "d")
 
 
-fn test_append_empty() raises:
+def test_append_empty() raises:
     """Tests that get_list returns empty list when option never provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -122,7 +122,7 @@ fn test_append_empty() raises:
     assert_false(result.has("tag"), msg="tag should not be present")
 
 
-fn test_append_with_choices() raises:
+def test_append_with_choices() raises:
     """Tests that append respects choices validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -166,7 +166,7 @@ fn test_append_with_choices() raises:
     assert_true(caught, msg="Should have raised error for invalid choice")
 
 
-fn test_append_with_other_args() raises:
+def test_append_with_other_args() raises:
     """Tests that append args work alongside regular flags and values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -204,7 +204,7 @@ fn test_append_with_other_args() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_delimiter_comma() raises:
+def test_delimiter_comma() raises:
     """Tests basic comma delimiter splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -220,7 +220,7 @@ fn test_delimiter_comma() raises:
     assert_equal(tags[2], "c")
 
 
-fn test_delimiter_equals_syntax() raises:
+def test_delimiter_equals_syntax() raises:
     """Tests delimiter with --key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -236,7 +236,7 @@ fn test_delimiter_equals_syntax() raises:
     assert_equal(tags[2], "z")
 
 
-fn test_delimiter_short_option() raises:
+def test_delimiter_short_option() raises:
     """Tests delimiter with short option."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -251,7 +251,7 @@ fn test_delimiter_short_option() raises:
     assert_equal(tags[1], "bar")
 
 
-fn test_delimiter_attached_short() raises:
+def test_delimiter_attached_short() raises:
     """Tests delimiter with attached short value (-tfoo,bar)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -274,7 +274,7 @@ fn test_delimiter_attached_short() raises:
     assert_equal(tags[1], "b")
 
 
-fn test_delimiter_repeated() raises:
+def test_delimiter_repeated() raises:
     """Tests delimiter with multiple uses — values accumulate."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -291,7 +291,7 @@ fn test_delimiter_repeated() raises:
     assert_equal(tags[3], "d")
 
 
-fn test_delimiter_single_value() raises:
+def test_delimiter_single_value() raises:
     """Tests delimiter with a single value (no delimiter present)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -305,7 +305,7 @@ fn test_delimiter_single_value() raises:
     assert_equal(tags[0], "single")
 
 
-fn test_delimiter_with_choices() raises:
+def test_delimiter_with_choices() raises:
     """Tests that choices are validated per-piece after splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -340,7 +340,7 @@ fn test_delimiter_with_choices() raises:
     )
 
 
-fn test_delimiter_semicolon() raises:
+def test_delimiter_semicolon() raises:
     """Tests using a non-comma delimiter (semicolon)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -356,7 +356,7 @@ fn test_delimiter_semicolon() raises:
     assert_equal(paths[2], "/home/lib")
 
 
-fn test_delimiter_implies_append() raises:
+def test_delimiter_implies_append() raises:
     """Tests that .delimiter() implies .append() — get_list works."""
     var command = Command("test", "Test app")
     # Note: no explicit .append() call — delimiter() implies it.
@@ -373,7 +373,7 @@ fn test_delimiter_implies_append() raises:
     assert_equal(tags[1], "y")
 
 
-fn test_delimiter_empty_not_provided() raises:
+def test_delimiter_empty_not_provided() raises:
     """Tests delimiter arg not provided returns empty list."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -386,7 +386,7 @@ fn test_delimiter_empty_not_provided() raises:
     assert_equal(len(tags), 0)
 
 
-fn test_delimiter_trailing_comma() raises:
+def test_delimiter_trailing_comma() raises:
     """Tests that trailing delimiter does not create empty entry."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -406,7 +406,7 @@ fn test_delimiter_trailing_comma() raises:
 # ===------------------------------------------------------------------=== #
 
 
-fn test_nargs_basic() raises:
+def test_nargs_basic() raises:
     """Tests that number_of_values(2) consumes exactly 2 values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -423,7 +423,7 @@ fn test_nargs_basic() raises:
     assert_equal(lst[1], "20", msg="Second value should be '20'")
 
 
-fn test_nargs_three() raises:
+def test_nargs_three() raises:
     """Tests that number_of_values(3) consumes exactly 3 values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -439,7 +439,7 @@ fn test_nargs_three() raises:
     assert_equal(lst[2], "0", msg="Third = 0")
 
 
-fn test_nargs_short_option() raises:
+def test_nargs_short_option() raises:
     """Tests nargs with a short option (-p 1 2)."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -459,7 +459,7 @@ fn test_nargs_short_option() raises:
     assert_equal(lst[1], "4", msg="Second = 4")
 
 
-fn test_nargs_repeated() raises:
+def test_nargs_repeated() raises:
     """Tests that nargs collects across repeated occurrences."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -486,7 +486,7 @@ fn test_nargs_repeated() raises:
     assert_equal(lst[3], "4", msg="4th = 4")
 
 
-fn test_nargs_too_few_values() raises:
+def test_nargs_too_few_values() raises:
     """Tests that nargs raises when not enough values are available."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -507,7 +507,7 @@ fn test_nargs_too_few_values() raises:
     assert_true(caught, msg="Should raise when not enough values for nargs")
 
 
-fn test_nargs_too_few_short() raises:
+def test_nargs_too_few_short() raises:
     """Tests that nargs raises with short option when not enough values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -528,7 +528,7 @@ fn test_nargs_too_few_short() raises:
     assert_true(caught, msg="Should raise when not enough values for nargs")
 
 
-fn test_nargs_with_choices() raises:
+def test_nargs_with_choices() raises:
     """Tests that choices validation applies to each nargs value."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -560,7 +560,7 @@ fn test_nargs_with_choices() raises:
     assert_true(caught, msg="Bad choice in nargs should raise")
 
 
-fn test_nargs_with_other_args() raises:
+def test_nargs_with_other_args() raises:
     """Tests nargs coexisting with flags and regular value args."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -596,7 +596,7 @@ fn test_nargs_with_other_args() raises:
     )
 
 
-fn test_nargs_equals_syntax_rejected() raises:
+def test_nargs_equals_syntax_rejected() raises:
     """Tests that = syntax is rejected for nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -617,7 +617,7 @@ fn test_nargs_equals_syntax_rejected() raises:
     assert_true(caught, msg="nargs with = should raise")
 
 
-fn test_nargs_prefix_match() raises:
+def test_nargs_prefix_match() raises:
     """Tests that prefix matching works with nargs options."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -637,7 +637,7 @@ fn test_nargs_prefix_match() raises:
 # ── Fullwidth delimiter tests ────────────────────────────────────────────────────
 
 
-fn test_delimiter_fullwidth_comma() raises:
+def test_delimiter_fullwidth_comma() raises:
     """Fullwidth comma ，(U+FF0C) is normalized to , before splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -654,7 +654,7 @@ fn test_delimiter_fullwidth_comma() raises:
     assert_equal(tags[2], "c")
 
 
-fn test_delimiter_fullwidth_semicolon() raises:
+def test_delimiter_fullwidth_semicolon() raises:
     """Fullwidth semicolon ；(U+FF1B) is normalized to ; before splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -670,7 +670,7 @@ fn test_delimiter_fullwidth_semicolon() raises:
     assert_equal(paths[2], "z")
 
 
-fn test_delimiter_fullwidth_disabled() raises:
+def test_delimiter_fullwidth_disabled() raises:
     """Fullwidth commas are NOT normalized when correction is disabled."""
     var command = Command("test", "Test app")
     command.disable_fullwidth_correction()
@@ -690,7 +690,7 @@ fn test_delimiter_fullwidth_disabled() raises:
     assert_equal(tags[0], "a，b，c")
 
 
-fn test_delimiter_fullwidth_mixed() raises:
+def test_delimiter_fullwidth_mixed() raises:
     """Mix of halfwidth and fullwidth commas both split correctly."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -707,5 +707,5 @@ fn test_delimiter_fullwidth_mixed() raises:
     assert_equal(tags[2], "c")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

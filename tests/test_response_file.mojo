@@ -8,8 +8,8 @@ still present in command.mojo and the tests here remain intact for when
 the compiler bug is fixed.
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
-from os import remove
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
+from std.os import remove
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
@@ -17,13 +17,13 @@ from argmojo import Argument, Command, ParseResult
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _write_file(path: String, content: String) raises:
+def _write_file(path: String, content: String) raises:
     """Write a string to a file (overwrite)."""
     with open(path, "w") as f:
         f.write(content)
 
 
-fn _remove_file(path: String):
+def _remove_file(path: String):
     """Remove a file, ignoring errors."""
     try:
         remove(path)
@@ -31,7 +31,7 @@ fn _remove_file(path: String):
         pass
 
 
-fn _make_command() -> Command:
+def _make_command() -> Command:
     """Create a simple command with response_file_prefix enabled."""
     var command = Command("test", "Test app")
     command.response_file_prefix()  # default '@'
@@ -41,7 +41,7 @@ fn _make_command() -> Command:
 # ── Basic expansion ──────────────────────────────────────────────────────────
 
 
-fn test_response_file_basic() raises:
+def test_response_file_basic() raises:
     """@args.txt expands file lines as arguments."""
     var path = "/tmp/_argmojo_test_rf_basic.txt"
     _write_file(path, "--verbose\n--output=file.txt\n")
@@ -59,7 +59,7 @@ fn test_response_file_basic() raises:
     _remove_file(path)
 
 
-fn test_response_file_mixed_with_direct_args() raises:
+def test_response_file_mixed_with_direct_args() raises:
     """Response file args are mixed with direct CLI args."""
     var path = "/tmp/_argmojo_test_rf_mixed.txt"
     _write_file(path, "--output=file.txt\n")
@@ -77,7 +77,7 @@ fn test_response_file_mixed_with_direct_args() raises:
     _remove_file(path)
 
 
-fn test_response_file_positional_args() raises:
+def test_response_file_positional_args() raises:
     """Response file can contain positional arguments."""
     var path = "/tmp/_argmojo_test_rf_pos.txt"
     _write_file(path, "hello\nworld\n")
@@ -96,7 +96,7 @@ fn test_response_file_positional_args() raises:
 # ── Comments and blank lines ────────────────────────────────────────────────
 
 
-fn test_response_file_comments_and_blanks() raises:
+def test_response_file_comments_and_blanks() raises:
     """Lines starting with # and blank lines are skipped."""
     var path = "/tmp/_argmojo_test_rf_comments.txt"
     _write_file(
@@ -122,7 +122,7 @@ fn test_response_file_comments_and_blanks() raises:
     _remove_file(path)
 
 
-fn test_response_file_whitespace_stripped() raises:
+def test_response_file_whitespace_stripped() raises:
     """Leading/trailing whitespace per line is stripped."""
     var path = "/tmp/_argmojo_test_rf_ws.txt"
     _write_file(path, "  --verbose  \n  --output=file.txt  \n")
@@ -143,7 +143,7 @@ fn test_response_file_whitespace_stripped() raises:
 # ── Escape doubled prefix ───────────────────────────────────────────────────
 
 
-fn test_response_file_escape_cli() raises:
+def test_response_file_escape_cli() raises:
     """@@literal on the CLI is treated as @literal (not a file)."""
     var command = _make_command()
     command.add_argument(Argument("user", help="User").positional())
@@ -153,7 +153,7 @@ fn test_response_file_escape_cli() raises:
     assert_equal(result.get_string("user"), "@admin")
 
 
-fn test_response_file_escape_in_file() raises:
+def test_response_file_escape_in_file() raises:
     """@@literal inside a response file is treated as @literal."""
     var path = "/tmp/_argmojo_test_rf_escape.txt"
     _write_file(path, "@@admin\n")
@@ -170,7 +170,7 @@ fn test_response_file_escape_in_file() raises:
 # ── Recursive (nested) response files ───────────────────────────────────────
 
 
-fn test_response_file_recursive() raises:
+def test_response_file_recursive() raises:
     """Response files can reference other response files."""
     var path1 = "/tmp/_argmojo_test_rf_r1.txt"
     var path2 = "/tmp/_argmojo_test_rf_r2.txt"
@@ -194,7 +194,7 @@ fn test_response_file_recursive() raises:
 # ── Error cases ──────────────────────────────────────────────────────────────
 
 
-fn test_response_file_not_found() raises:
+def test_response_file_not_found() raises:
     """Error when response file does not exist."""
     var command = _make_command()
 
@@ -212,7 +212,7 @@ fn test_response_file_not_found() raises:
     assert_true(caught, msg="Should have raised for missing response file")
 
 
-fn test_response_file_max_depth() raises:
+def test_response_file_max_depth() raises:
     """Error when nesting depth exceeds the limit."""
     var path = "/tmp/_argmojo_test_rf_loop.txt"
     # File references itself — would loop forever without depth limit.
@@ -239,7 +239,7 @@ fn test_response_file_max_depth() raises:
 # ── Disabled by default ─────────────────────────────────────────────────────
 
 
-fn test_response_file_disabled_by_default() raises:
+def test_response_file_disabled_by_default() raises:
     """Without response_file_prefix(), @token is treated as a regular positional.
     """
     var command = Command("test", "Test app")
@@ -253,7 +253,7 @@ fn test_response_file_disabled_by_default() raises:
 # ── Custom prefix ────────────────────────────────────────────────────────────
 
 
-fn test_response_file_custom_prefix() raises:
+def test_response_file_custom_prefix() raises:
     """A custom prefix (e.g. '+') can be used instead of '@'."""
     var path = "/tmp/_argmojo_test_rf_custom.txt"
     _write_file(path, "--verbose\n")
@@ -273,7 +273,7 @@ fn test_response_file_custom_prefix() raises:
 # ── Multiple response files ─────────────────────────────────────────────────
 
 
-fn test_response_file_multiple() raises:
+def test_response_file_multiple() raises:
     """Multiple @file arguments are all expanded."""
     var path1 = "/tmp/_argmojo_test_rf_m1.txt"
     var path2 = "/tmp/_argmojo_test_rf_m2.txt"
@@ -297,7 +297,7 @@ fn test_response_file_multiple() raises:
 # ── Response file with short options ─────────────────────────────────────────
 
 
-fn test_response_file_short_options() raises:
+def test_response_file_short_options() raises:
     """Response file can contain short options."""
     var path = "/tmp/_argmojo_test_rf_short.txt"
     _write_file(path, "-v\n-o\nfile.txt\n")
@@ -323,7 +323,7 @@ fn test_response_file_short_options() raises:
 # ── Response file with values containing spaces ─────────────────────────────
 
 
-fn test_response_file_value_one_per_line() raises:
+def test_response_file_value_one_per_line() raises:
     """Each line becomes one argument, allowing values with spaces within the line.
     """
     var path = "/tmp/_argmojo_test_rf_oneline.txt"
@@ -341,7 +341,7 @@ fn test_response_file_value_one_per_line() raises:
 # ── Empty response file ─────────────────────────────────────────────────────
 
 
-fn test_response_file_empty() raises:
+def test_response_file_empty() raises:
     """Empty response file contributes no arguments."""
     var path = "/tmp/_argmojo_test_rf_empty.txt"
     _write_file(path, "")
@@ -360,7 +360,7 @@ fn test_response_file_empty() raises:
 # ── Response file preserves argv[0] ─────────────────────────────────────────
 
 
-fn test_response_file_preserves_argv0() raises:
+def test_response_file_preserves_argv0() raises:
     """Tests argv[0] (program name) is never expanded even if it starts with @.
     """
     var path = "/tmp/_argmojo_test_rf_argv0.txt"
@@ -383,5 +383,5 @@ fn test_response_file_preserves_argv0() raises:
     _remove_file(path)
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

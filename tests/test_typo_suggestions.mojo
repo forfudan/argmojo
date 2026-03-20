@@ -1,13 +1,13 @@
 """Tests for argmojo — typo suggestions (Levenshtein distance)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
 # ── Long option typo suggestions ─────────────────────────────────────────────
 
 
-fn test_typo_long_option_suggests() raises:
+def test_typo_long_option_suggests() raises:
     """Tests that a typo like --verbos suggests --verbose."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -38,7 +38,7 @@ fn test_typo_long_option_suggests() raises:
     assert_true(caught, msg="Should have raised error for --vrebose")
 
 
-fn test_typo_long_option_no_suggestion() raises:
+def test_typo_long_option_no_suggestion() raises:
     """Tests that a completely unrelated option doesn't produce a suggestion."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -59,7 +59,7 @@ fn test_typo_long_option_no_suggestion() raises:
     assert_true(caught, msg="Should have raised error for --zzzzzzz")
 
 
-fn test_typo_long_option_single_char_diff() raises:
+def test_typo_long_option_single_char_diff() raises:
     """Tests that a single character difference triggers a suggestion."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -87,7 +87,7 @@ fn test_typo_long_option_single_char_diff() raises:
 # ── Subcommand typo suggestions ──────────────────────────────────────────────
 
 
-fn test_typo_subcommand_suggests() raises:
+def test_typo_subcommand_suggests() raises:
     """Tests that a typo subcommand like 'serach' suggests 'search'."""
     var root = Command("app", "Test app")
     var search = Command("search", "Search items")
@@ -113,7 +113,7 @@ fn test_typo_subcommand_suggests() raises:
     assert_true(caught, msg="Should have raised error for 'serach'")
 
 
-fn test_typo_subcommand_no_suggestion() raises:
+def test_typo_subcommand_no_suggestion() raises:
     """Tests that a completely unrelated subcommand doesn't produce a suggestion.
     """
     var root = Command("app", "Test app")
@@ -137,7 +137,7 @@ fn test_typo_subcommand_no_suggestion() raises:
 # ── Alias typo suggestions ──────────────────────────────────────────────────
 
 
-fn test_typo_alias_suggests() raises:
+def test_typo_alias_suggests() raises:
     """Tests that a typo close to an alias triggers a suggestion."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -161,7 +161,7 @@ fn test_typo_alias_suggests() raises:
     assert_true(caught, msg="Should have raised error for --colro")
 
 
-fn test_typo_subcommand_alias_suggests() raises:
+def test_typo_subcommand_alias_suggests() raises:
     """Tests that a typo near a subcommand alias triggers a suggestion."""
     var root = Command("app", "Test app")
     var clone = Command("clone", "Clone a repo")
@@ -188,7 +188,7 @@ fn test_typo_subcommand_alias_suggests() raises:
     assert_true(caught, msg="Should have raised error for 'clon'")
 
 
-fn test_typo_hidden_subcommand_not_suggested() raises:
+def test_typo_hidden_subcommand_not_suggested() raises:
     """Tests that hidden subcommands are NOT included in typo suggestions."""
     var app = Command("app", "Test app")
     var clone = Command("clone", "Clone a repository")
@@ -218,5 +218,5 @@ fn test_typo_hidden_subcommand_not_suggested() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

@@ -1,6 +1,6 @@
 """Tests for argmojo — full-width → half-width auto-correction (Phase 6.2)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 from argmojo.utils import (
@@ -18,7 +18,7 @@ from argmojo.utils import (
 # ── Unit tests for utility functions ─────────────────────────────────────────
 
 
-fn test_has_fullwidth_chars_ascii() raises:
+def test_has_fullwidth_chars_ascii() raises:
     """Tests that plain ASCII strings have no fullwidth characters."""
     assert_false(
         _has_fullwidth_chars("--verbose"),
@@ -34,7 +34,7 @@ fn test_has_fullwidth_chars_ascii() raises:
     )
 
 
-fn test_has_fullwidth_chars_cjk() raises:
+def test_has_fullwidth_chars_cjk() raises:
     """Tests that CJK ideographs are NOT detected as fullwidth ASCII."""
     # CJK ideographs are NOT in the fullwidth ASCII range FF01-FF5E.
     assert_false(
@@ -43,7 +43,7 @@ fn test_has_fullwidth_chars_cjk() raises:
     )
 
 
-fn test_has_fullwidth_chars_fullwidth_ascii() raises:
+def test_has_fullwidth_chars_fullwidth_ascii() raises:
     """Tests that fullwidth ASCII characters are detected."""
     # U+FF0D = fullwidth hyphen-minus ＝ －
     assert_true(
@@ -56,7 +56,7 @@ fn test_has_fullwidth_chars_fullwidth_ascii() raises:
     )
 
 
-fn test_has_fullwidth_chars_fullwidth_space() raises:
+def test_has_fullwidth_chars_fullwidth_space() raises:
     """Tests that fullwidth space U+3000 is detected."""
     var fw_space = chr(0x3000)
     assert_true(
@@ -65,7 +65,7 @@ fn test_has_fullwidth_chars_fullwidth_space() raises:
     )
 
 
-fn test_has_fullwidth_chars_fullwidth_equals() raises:
+def test_has_fullwidth_chars_fullwidth_equals() raises:
     """Tests that fullwidth equals sign U+FF1D is detected."""
     assert_true(
         _has_fullwidth_chars("--key＝value"),
@@ -73,7 +73,7 @@ fn test_has_fullwidth_chars_fullwidth_equals() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_no_change() raises:
+def test_fullwidth_to_halfwidth_no_change() raises:
     """Tests that strings without fullwidth chars are unchanged."""
     assert_equal(
         _fullwidth_to_halfwidth("--verbose"),
@@ -85,7 +85,7 @@ fn test_fullwidth_to_halfwidth_no_change() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_option() raises:
+def test_fullwidth_to_halfwidth_option() raises:
     """Tests fullwidth option name correction."""
     assert_equal(
         _fullwidth_to_halfwidth("－－ｖｅｒｂｏｓｅ"),
@@ -93,7 +93,7 @@ fn test_fullwidth_to_halfwidth_option() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_short_option() raises:
+def test_fullwidth_to_halfwidth_short_option() raises:
     """Tests fullwidth short option correction."""
     assert_equal(
         _fullwidth_to_halfwidth("－ｖ"),
@@ -101,7 +101,7 @@ fn test_fullwidth_to_halfwidth_short_option() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_equals() raises:
+def test_fullwidth_to_halfwidth_equals() raises:
     """Tests fullwidth equals sign in --key=value."""
     assert_equal(
         _fullwidth_to_halfwidth("－－ｋｅｙ＝ｖａｌｕｅ"),
@@ -109,7 +109,7 @@ fn test_fullwidth_to_halfwidth_equals() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_space() raises:
+def test_fullwidth_to_halfwidth_space() raises:
     """Tests fullwidth space U+3000 conversion."""
     var fw_space = chr(0x3000)
     assert_equal(
@@ -118,7 +118,7 @@ fn test_fullwidth_to_halfwidth_space() raises:
     )
 
 
-fn test_fullwidth_to_halfwidth_mixed() raises:
+def test_fullwidth_to_halfwidth_mixed() raises:
     """Tests mixed fullwidth ASCII with CJK characters."""
     # CJK characters should be preserved, only fullwidth ASCII converted.
     var result = _fullwidth_to_halfwidth("－－ｎａｍｅ＝宇浩")
@@ -132,14 +132,14 @@ fn test_fullwidth_to_halfwidth_mixed() raises:
     )
 
 
-fn test_split_on_fullwidth_spaces_no_spaces() raises:
+def test_split_on_fullwidth_spaces_no_spaces() raises:
     """Tests that tokens without fullwidth spaces return a single element."""
     var parts = _split_on_fullwidth_spaces("--verbose")
     assert_equal(len(parts), 1)
     assert_equal(parts[0], "--verbose")
 
 
-fn test_split_on_fullwidth_spaces_with_spaces() raises:
+def test_split_on_fullwidth_spaces_with_spaces() raises:
     """Tests splitting on fullwidth spaces."""
     var fw_space = chr(0x3000)
     var token = "－－ｎａｍｅ" + fw_space + "ｙｕｈａｏ" + fw_space + "－－ｖｅｒｂｏｓｅ"
@@ -153,23 +153,23 @@ fn test_split_on_fullwidth_spaces_with_spaces() raises:
 # ── Unit tests for CJK punctuation correction ──────────────────────────────────
 
 
-fn test_correct_cjk_punctuation_no_change() raises:
+def test_correct_cjk_punctuation_no_change() raises:
     """Tests that strings without CJK punctuation are unchanged."""
     assert_equal(_correct_cjk_punctuation("--verbose"), "--verbose")
     assert_equal(_correct_cjk_punctuation("hello"), "hello")
 
 
-fn test_correct_cjk_punctuation_em_dash() raises:
+def test_correct_cjk_punctuation_em_dash() raises:
     """Tests em-dash (U+2014) → hyphen-minus conversion."""
     # Two em-dashes + "verbose" should become "--verbose".
-    var em_dash = chr(0x2014)
+    var double_em_dash = String(chr(0x2014)) + chr(0x2014)
     assert_equal(
-        _correct_cjk_punctuation(em_dash + em_dash + "verbose"),
+        _correct_cjk_punctuation(double_em_dash + "verbose"),
         "--verbose",
     )
 
 
-fn test_correct_cjk_punctuation_preserves_cjk() raises:
+def test_correct_cjk_punctuation_preserves_cjk() raises:
     """Tests that CJK ideographs are preserved."""
     assert_equal(_correct_cjk_punctuation("宇浩"), "宇浩")
 
@@ -177,7 +177,7 @@ fn test_correct_cjk_punctuation_preserves_cjk() raises:
 # ── Integration tests: parsing with fullwidth correction ─────────────────────
 
 
-fn test_fullwidth_long_flag() raises:
+def test_fullwidth_long_flag() raises:
     """Tests that a fullwidth --verbose flag is auto-corrected and parsed."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -195,7 +195,7 @@ fn test_fullwidth_long_flag() raises:
     )
 
 
-fn test_fullwidth_short_flag() raises:
+def test_fullwidth_short_flag() raises:
     """Tests that a fullwidth -v flag is auto-corrected and parsed."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -213,7 +213,7 @@ fn test_fullwidth_short_flag() raises:
     )
 
 
-fn test_fullwidth_key_value_equals() raises:
+def test_fullwidth_key_value_equals() raises:
     """Tests fullwidth --key＝value auto-correction."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -232,7 +232,7 @@ fn test_fullwidth_key_value_equals() raises:
     )
 
 
-fn test_fullwidth_key_space_value() raises:
+def test_fullwidth_key_space_value() raises:
     """Tests fullwidth --key with space-separated value."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -251,7 +251,7 @@ fn test_fullwidth_key_space_value() raises:
     )
 
 
-fn test_fullwidth_embedded_space() raises:
+def test_fullwidth_embedded_space() raises:
     """Tests that fullwidth spaces in a single token cause splitting."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -279,7 +279,7 @@ fn test_fullwidth_embedded_space() raises:
     )
 
 
-fn test_positional_fullwidth_converted() raises:
+def test_positional_fullwidth_converted() raises:
     """Tests that fullwidth positional values are converted but stay positional.
     """
     var command = Command("test", "Test app")
@@ -299,7 +299,7 @@ fn test_positional_fullwidth_converted() raises:
     )
 
 
-fn test_disable_fullwidth_correction() raises:
+def test_disable_fullwidth_correction() raises:
     """Tests that disable_fullwidth_correction() prevents auto-correction."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -321,7 +321,7 @@ fn test_disable_fullwidth_correction() raises:
     )
 
 
-fn test_fullwidth_with_choices() raises:
+def test_fullwidth_with_choices() raises:
     """Tests fullwidth correction combined with choices validation."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -343,7 +343,7 @@ fn test_fullwidth_with_choices() raises:
     )
 
 
-fn test_fullwidth_merged_short_flags() raises:
+def test_fullwidth_merged_short_flags() raises:
     """Tests fullwidth merged short flags like -abc."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -366,7 +366,7 @@ fn test_fullwidth_merged_short_flags() raises:
     assert_true(result.get_flag("color"), msg="fullwidth -c should work")
 
 
-fn test_fullwidth_with_subcommand() raises:
+def test_fullwidth_with_subcommand() raises:
     """Tests fullwidth option correction with subcommand dispatch."""
     var app = Command("test", "Test app")
     app.add_argument(
@@ -394,7 +394,7 @@ fn test_fullwidth_with_subcommand() raises:
     assert_equal(sub_result.get_string("target"), "release")
 
 
-fn test_fullwidth_parse_known_arguments() raises:
+def test_fullwidth_parse_known_arguments() raises:
     """Tests fullwidth correction works with parse_known_arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -412,7 +412,7 @@ fn test_fullwidth_parse_known_arguments() raises:
     )
 
 
-fn test_fullwidth_cjk_positional_preserved() raises:
+def test_fullwidth_cjk_positional_preserved() raises:
     """Tests that CJK characters in positional values are preserved."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -428,7 +428,7 @@ fn test_fullwidth_cjk_positional_preserved() raises:
     )
 
 
-fn test_fullwidth_punctuation_em_dash_correction() raises:
+def test_fullwidth_punctuation_em_dash_correction() raises:
     """Tests that em-dash is auto-corrected to hyphen-minus in pre-parse."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -437,8 +437,8 @@ fn test_fullwidth_punctuation_em_dash_correction() raises:
         .short["v"]()
         .flag()
     )
-    var em_dash = chr(0x2014)
-    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
     var result = command.parse_arguments(args)
     assert_true(
         result.get_flag("verbose"),
@@ -446,7 +446,7 @@ fn test_fullwidth_punctuation_em_dash_correction() raises:
     )
 
 
-fn test_fullwidth_punctuation_disabled() raises:
+def test_fullwidth_punctuation_disabled() raises:
     """Tests that disable_punctuation_correction() prevents correction."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -456,8 +456,8 @@ fn test_fullwidth_punctuation_disabled() raises:
         .flag()
     )
     command.disable_punctuation_correction()
-    var em_dash = chr(0x2014)
-    var args: List[String] = ["test", em_dash + em_dash + "verbose"]
+    var double_em_dash = chr(0x2014) + chr(0x2014)
+    var args: List[String] = ["test", double_em_dash + "verbose"]
     var result = command.parse_arguments(args)
     assert_false(
         result.get_flag("verbose"),
@@ -465,5 +465,5 @@ fn test_fullwidth_punctuation_disabled() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

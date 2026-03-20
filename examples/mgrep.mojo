@@ -15,7 +15,7 @@ and custom tips.
 Try these:
   grep --help
   grep --version
-  grep "fn main" ./src
+  grep "def main" ./src
   grep -rnic "TODO" ./src --max-depth 5
   grep "pattern" --format json --tag fixme --tag urgent
   grep -E "foo|bar" ./src --color --max-depth 3
@@ -25,7 +25,7 @@ Try these:
 from argmojo import Argument, Command
 
 
-fn main() raises:
+def main() raises:
     var app = Command(
         "mgrep",
         "Search for PATTERN in each FILE.",
@@ -243,7 +243,7 @@ fn main() raises:
     app.allow_negative_numbers()
 
     # ── Custom tips ──────────────────────────────────────────────────────
-    app.add_tip('Use quotes for patterns with spaces: grep "fn main" ./src')
+    app.add_tip('Use quotes for patterns with spaces: grep "def main" ./src')
 
     # ── Show help when invoked with no arguments ─────────────────────────
     app.help_on_no_arguments()

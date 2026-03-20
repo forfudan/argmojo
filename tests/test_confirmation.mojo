@@ -1,13 +1,13 @@
 """Tests for argmojo — confirmation option (--yes / -y)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
 # ── --yes flag skips confirmation ─────────────────────────────────────────────
 
 
-fn test_confirmation_yes_flag_skips() raises:
+def test_confirmation_yes_flag_skips() raises:
     """Tests that --yes skips the confirmation prompt."""
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
@@ -21,7 +21,7 @@ fn test_confirmation_yes_flag_skips() raises:
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
-fn test_confirmation_y_short_flag_skips() raises:
+def test_confirmation_y_short_flag_skips() raises:
     """Tests that -y skips the confirmation prompt."""
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
@@ -35,7 +35,7 @@ fn test_confirmation_y_short_flag_skips() raises:
     assert_true(result.get_flag("yes"), msg="-y should be True")
 
 
-fn test_confirmation_yes_before_positional() raises:
+def test_confirmation_yes_before_positional() raises:
     """Tests that --yes can appear before the positional argument."""
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
@@ -52,7 +52,7 @@ fn test_confirmation_yes_before_positional() raises:
 # ── Non-interactive stdin aborts ──────────────────────────────────────────────
 
 
-fn test_confirmation_aborts_on_no_stdin() raises:
+def test_confirmation_aborts_on_no_stdin() raises:
     """Tests that confirmation aborts when stdin is unavailable.
 
     When tests run without a terminal (stdin is /dev/null or piped),
@@ -84,7 +84,7 @@ fn test_confirmation_aborts_on_no_stdin() raises:
 # ── Custom prompt text ────────────────────────────────────────────────────────
 
 
-fn test_confirmation_custom_prompt_with_yes() raises:
+def test_confirmation_custom_prompt_with_yes() raises:
     """Tests that custom prompt works and --yes still skips it."""
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
@@ -98,7 +98,7 @@ fn test_confirmation_custom_prompt_with_yes() raises:
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
-fn test_confirmation_custom_prompt_aborts_no_stdin() raises:
+def test_confirmation_custom_prompt_aborts_no_stdin() raises:
     """Tests that custom prompt aborts when stdin is unavailable."""
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
@@ -123,7 +123,7 @@ fn test_confirmation_custom_prompt_aborts_no_stdin() raises:
 # ── Works with other arguments ────────────────────────────────────────────────
 
 
-fn test_confirmation_with_flag_and_option() raises:
+def test_confirmation_with_flag_and_option() raises:
     """Tests that confirmation works alongside other flags and options."""
     var cmd = Command("deploy", "Deploy the application")
     cmd.add_argument(
@@ -144,7 +144,7 @@ fn test_confirmation_with_flag_and_option() raises:
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
-fn test_confirmation_yes_is_false_by_default() raises:
+def test_confirmation_yes_is_false_by_default() raises:
     """Tests that --yes works alongside defaulted options."""
     var cmd = Command("deploy", "Deploy the application")
     cmd.add_argument(
@@ -163,7 +163,7 @@ fn test_confirmation_yes_is_false_by_default() raises:
 # ── No confirmation → normal behavior ────────────────────────────────────────
 
 
-fn test_no_confirmation_option_normal_parse() raises:
+def test_no_confirmation_option_normal_parse() raises:
     """Tests that without confirmation_option(), parsing works normally."""
     var cmd = Command("list", "List items")
     cmd.add_argument(
@@ -178,7 +178,7 @@ fn test_no_confirmation_option_normal_parse() raises:
 # ── Confirmation with subcommands ─────────────────────────────────────────────
 
 
-fn test_confirmation_on_parent_with_subcommand() raises:
+def test_confirmation_on_parent_with_subcommand() raises:
     """Tests that confirmation on parent command works with subcommands."""
     var app = Command("app", "My app")
     app.confirmation_option()
@@ -201,7 +201,7 @@ fn test_confirmation_on_parent_with_subcommand() raises:
 # ── Confirmation field copy ──────────────────────────────────────────────────
 
 
-fn test_confirmation_preserved_in_copy() raises:
+def test_confirmation_preserved_in_copy() raises:
     """Tests that confirmation settings are preserved when copying a Command."""
     var original = Command("drop", "Drop something")
     original.confirmation_option["Really drop?"]()
@@ -216,7 +216,7 @@ fn test_confirmation_preserved_in_copy() raises:
 # ── Confirmation with prompt arguments ────────────────────────────────────────
 
 
-fn test_confirmation_with_prompt_arg_uses_yes() raises:
+def test_confirmation_with_prompt_arg_uses_yes() raises:
     """Tests that confirmation works alongside .prompt() arguments when --yes is passed.
     """
     var cmd = Command("setup", "Setup the project")
@@ -235,7 +235,7 @@ fn test_confirmation_with_prompt_arg_uses_yes() raises:
 # ── Confirmation with parent args ─────────────────────────────────────────────
 
 
-fn test_confirmation_with_parent_args() raises:
+def test_confirmation_with_parent_args() raises:
     """Tests that confirmation works alongside inherited parent arguments."""
     var parent = Command("_shared")
     parent.add_argument(
@@ -255,5 +255,5 @@ fn test_confirmation_with_parent_args() raises:
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

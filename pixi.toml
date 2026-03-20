@@ -13,8 +13,7 @@ readme = "README.md"
 version = "0.3.0"
 
 [dependencies]
-mojo = "==0.26.1"
-python = ">=3.13,<3.14"
+mojo = "==0.26.2"
 
 [tasks]
 # format the code
@@ -51,12 +50,43 @@ test = """\
 # is temporarily disabled to work around a Mojo compiler deadlock
 # with -D ASSERT=all.  Re-enable when the compiler bug is fixed.
 
-# build example binaries
-build = """pixi run package \
-&& mojo build -I src examples/mgrep.mojo -o mgrep \
-&& mojo build -I src examples/mgit.mojo -o mgit \
-&& mojo build -I src examples/demo.mojo -o demo \
-&& mojo build -I src examples/yu.mojo -o yu \
+# run tests (parallel, fail if any test fails)
+t = """\
+  pixi run format \
+  && pixi run package \
+  && bash -c '\
+  pids=(); \
+  mojo run -I src -D ASSERT=all tests/test_parse.mojo &              pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_groups.mojo &             pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_collect.mojo &            pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_help.mojo &               pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_extras.mojo &             pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_subcommands.mojo &        pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_negative_numbers.mojo &   pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_persistent.mojo &         pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_typo_suggestions.mojo &   pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_completion.mojo &         pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_implies.mojo &            pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_const_require_equals.mojo & pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_remainder_known.mojo &    pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_fullwidth.mojo &          pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_groups_help.mojo &        pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_prompt.mojo < /dev/null & pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_parents.mojo &            pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_usage.mojo &              pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_confirmation.mojo < /dev/null & pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_password.mojo < /dev/null & pids+=($!); \
+  rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
+"""
+
+# build example binaries (parallel, fail if any build fails)
+build = """pixi run package && bash -c '\
+  pids=(); \
+  mojo build -I src examples/mgrep.mojo -o mgrep & pids+=($!); \
+  mojo build -I src examples/mgit.mojo  -o mgit  & pids+=($!); \
+  mojo build -I src examples/demo.mojo  -o demo  & pids+=($!); \
+  mojo build -I src examples/yu.mojo    -o yu    & pids+=($!); \
+  rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
 # run (debug mode) example binaries
@@ -68,6 +98,19 @@ debug = """pixi run package \
 && mojo run -I src -D ASSERT=all examples/mgit.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/demo.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/yu.mojo -- --help \
+"""
+
+# run (debug mode) example binaries (parallel, fail if any run fails)
+# Uses --help so examples with required positional args exit cleanly.
+# The purpose is to exercise command construction (registration-time
+# validation), not argument parsing.
+d = """pixi run package && bash -c '\
+  pids=(); \
+  mojo run -I src -D ASSERT=all examples/mgrep.mojo -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/mgit.mojo  -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/demo.mojo  -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/yu.mojo    -- --help & pids+=($!); \
+  rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
 # clean build artifacts

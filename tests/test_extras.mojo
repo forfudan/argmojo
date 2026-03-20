@@ -1,13 +1,13 @@
 """Tests for argmojo — range validation, key-value map, aliases, deprecated arguments."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
 # ── Numeric range validation ─────────────────────────────────────────────────
 
 
-fn test_range_valid_value() raises:
+def test_range_valid_value() raises:
     """Tests that a value within range is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -19,7 +19,7 @@ fn test_range_valid_value() raises:
     assert_equal(result.get_string("port"), "8080")
 
 
-fn test_range_boundary_min() raises:
+def test_range_boundary_min() raises:
     """Tests that the exact minimum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -31,7 +31,7 @@ fn test_range_boundary_min() raises:
     assert_equal(result.get_string("port"), "1")
 
 
-fn test_range_boundary_max() raises:
+def test_range_boundary_max() raises:
     """Tests that the exact maximum boundary value is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -43,7 +43,7 @@ fn test_range_boundary_max() raises:
     assert_equal(result.get_string("port"), "65535")
 
 
-fn test_range_below_min() raises:
+def test_range_below_min() raises:
     """Tests that a value below the minimum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -64,7 +64,7 @@ fn test_range_below_min() raises:
     assert_true(caught, msg="Should have raised for value below min")
 
 
-fn test_range_above_max() raises:
+def test_range_above_max() raises:
     """Tests that a value above the maximum is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -84,7 +84,7 @@ fn test_range_above_max() raises:
     assert_true(caught, msg="Should have raised for value above max")
 
 
-fn test_range_not_provided_ok() raises:
+def test_range_not_provided_ok() raises:
     """Tests that an optional range arg is fine when not provided."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -96,7 +96,7 @@ fn test_range_not_provided_ok() raises:
     assert_false(result.has("port"), msg="port should not be set")
 
 
-fn test_range_with_append() raises:
+def test_range_with_append() raises:
     """Tests range validation on appended values."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -117,7 +117,7 @@ fn test_range_with_append() raises:
     assert_true(caught, msg="Should have raised for one value out of range")
 
 
-fn test_range_with_short_option() raises:
+def test_range_with_short_option() raises:
     """Tests range validation with a short option."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -135,7 +135,7 @@ fn test_range_with_short_option() raises:
 # ── Range clamping (.clamp()) ────────────────────────────────────────────────
 
 
-fn test_clamp_above_max() raises:
+def test_clamp_above_max() raises:
     """Tests that .clamp() adjusts a value above max to max."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -151,7 +151,7 @@ fn test_clamp_above_max() raises:
     )
 
 
-fn test_clamp_below_min() raises:
+def test_clamp_below_min() raises:
     """Tests that .clamp() adjusts a value below min to min."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -167,7 +167,7 @@ fn test_clamp_below_min() raises:
     )
 
 
-fn test_clamp_within_range_no_change() raises:
+def test_clamp_within_range_no_change() raises:
     """Tests that .clamp() does not affect a value within range."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -183,7 +183,7 @@ fn test_clamp_within_range_no_change() raises:
     )
 
 
-fn test_clamp_at_boundary() raises:
+def test_clamp_at_boundary() raises:
     """Tests that .clamp() does not trigger at exact boundaries."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -201,7 +201,7 @@ fn test_clamp_at_boundary() raises:
     )
 
 
-fn test_clamp_with_short_option() raises:
+def test_clamp_with_short_option() raises:
     """Tests that .clamp() works with short option syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -221,7 +221,7 @@ fn test_clamp_with_short_option() raises:
     )
 
 
-fn test_clamp_with_append() raises:
+def test_clamp_with_append() raises:
     """Tests that .clamp() adjusts individual values in append mode."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -248,7 +248,7 @@ fn test_clamp_with_append() raises:
     assert_equal(lst[2], "1", msg="0 should clamp to 1")
 
 
-fn test_range_without_clamp_still_errors() raises:
+def test_range_without_clamp_still_errors() raises:
     """Tests that .range() without .clamp() still raises errors."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -269,7 +269,7 @@ fn test_range_without_clamp_still_errors() raises:
 # ── Key-value map option ─────────────────────────────────────────────────────
 
 
-fn test_map_single_pair() raises:
+def test_map_single_pair() raises:
     """Tests parsing a single key=value map entry."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -285,7 +285,7 @@ fn test_map_single_pair() raises:
     assert_equal(m["CC"], "gcc")
 
 
-fn test_map_multiple_pairs() raises:
+def test_map_multiple_pairs() raises:
     """Tests parsing multiple key=value pairs via repeated option."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -302,7 +302,7 @@ fn test_map_multiple_pairs() raises:
     assert_equal(m["CXX"], "g++")
 
 
-fn test_map_equals_syntax() raises:
+def test_map_equals_syntax() raises:
     """Tests parsing key=value with --define=key=value syntax."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -315,7 +315,7 @@ fn test_map_equals_syntax() raises:
     assert_equal(m["CC"], "gcc")
 
 
-fn test_map_with_delimiter() raises:
+def test_map_with_delimiter() raises:
     """Tests parsing multiple key=value pairs from one value using a delimiter.
     """
     var command = Command("test", "Test app")
@@ -333,7 +333,7 @@ fn test_map_with_delimiter() raises:
     assert_equal(m["CXX"], "g++")
 
 
-fn test_map_invalid_no_equals() raises:
+def test_map_invalid_no_equals() raises:
     """Tests that a map value without '=' is rejected."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -351,7 +351,7 @@ fn test_map_invalid_no_equals() raises:
     assert_true(caught, msg="Should have raised for missing '='")
 
 
-fn test_map_has_check() raises:
+def test_map_has_check() raises:
     """Tests that has() returns True for a map arg after providing it."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -363,7 +363,7 @@ fn test_map_has_check() raises:
     assert_true(result.has("define"), msg="has() should be True for map arg")
 
 
-fn test_map_empty_value() raises:
+def test_map_empty_value() raises:
     """Tests that key= (empty value) is accepted."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -376,7 +376,7 @@ fn test_map_empty_value() raises:
     assert_equal(m["KEY"], "")
 
 
-fn test_map_value_with_equals() raises:
+def test_map_value_with_equals() raises:
     """Tests that key=val=ue keeps everything after first '=' as the value."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -392,7 +392,7 @@ fn test_map_value_with_equals() raises:
 # ── Aliases ──────────────────────────────────────────────────────────────────
 
 
-fn test_alias_basic() raises:
+def test_alias_basic() raises:
     """Tests that an alias resolves to the primary argument."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -406,7 +406,7 @@ fn test_alias_basic() raises:
     assert_equal(result.get_string("colour"), "red")
 
 
-fn test_alias_primary_still_works() raises:
+def test_alias_primary_still_works() raises:
     """Tests that using the primary long name still works alongside aliases."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -420,7 +420,7 @@ fn test_alias_primary_still_works() raises:
     assert_equal(result.get_string("colour"), "blue")
 
 
-fn test_alias_multiple() raises:
+def test_alias_multiple() raises:
     """Tests that multiple aliases all resolve correctly."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -439,7 +439,7 @@ fn test_alias_multiple() raises:
     assert_equal(result2.get_string("output"), "yaml")
 
 
-fn test_alias_prefix_match() raises:
+def test_alias_prefix_match() raises:
     """Tests that prefix matching works with aliases."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -453,7 +453,7 @@ fn test_alias_prefix_match() raises:
     assert_equal(result.get_string("colour"), "green")
 
 
-fn test_alias_with_flag() raises:
+def test_alias_with_flag() raises:
     """Tests that aliases work with flags."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -473,7 +473,7 @@ fn test_alias_with_flag() raises:
 # ── Deprecated arguments ─────────────────────────────────────────────────────
 
 
-fn test_deprecated_still_parses() raises:
+def test_deprecated_still_parses() raises:
     """Tests that a deprecated argument is still parsed successfully."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -487,7 +487,7 @@ fn test_deprecated_still_parses() raises:
     assert_equal(result.get_string("format_old"), "csv")
 
 
-fn test_deprecated_short_option() raises:
+def test_deprecated_short_option() raises:
     """Tests that a deprecated short option still parses."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -503,7 +503,7 @@ fn test_deprecated_short_option() raises:
     assert_true(result.get_flag("compat"), msg="-C should still set the flag")
 
 
-fn test_deprecated_not_provided_ok() raises:
+def test_deprecated_not_provided_ok() raises:
     """Tests that not providing a deprecated arg produces no errors."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -519,7 +519,7 @@ fn test_deprecated_not_provided_ok() raises:
     assert_equal(result.get_string("new"), "val")
 
 
-fn test_deprecated_with_alias() raises:
+def test_deprecated_with_alias() raises:
     """Tests that deprecation works when accessed via an alias."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -537,7 +537,7 @@ fn test_deprecated_with_alias() raises:
 # ── Help display: deprecated tag and map placeholder ─────────────────────────
 
 
-fn test_help_deprecated_tag() raises:
+def test_help_deprecated_tag() raises:
     """Tests that deprecated arguments show [deprecated] in help text."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -554,7 +554,7 @@ fn test_help_deprecated_tag() raises:
     )
 
 
-fn test_help_map_placeholder() raises:
+def test_help_map_placeholder() raises:
     """Tests that map options show <key=value> placeholder in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -571,7 +571,7 @@ fn test_help_map_placeholder() raises:
     )
 
 
-fn test_help_alias_shown() raises:
+def test_help_alias_shown() raises:
     """Tests that aliases are shown alongside the primary name in help."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -588,5 +588,5 @@ fn test_help_alias_shown() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

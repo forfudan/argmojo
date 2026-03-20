@@ -1,6 +1,6 @@
 """Tests for argmojo — shell completion script generation (bash, zsh, fish)."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command
 
@@ -8,7 +8,7 @@ from argmojo import Argument, Command
 # ── generate_completion[] dispatch (compile-time) ────────────────────────────
 
 
-fn test_fish_dispatch() raises:
+def test_fish_dispatch() raises:
     """Tests that generate_completion["fish"]() returns Fish syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -24,7 +24,7 @@ fn test_fish_dispatch() raises:
     )
 
 
-fn test_zsh_dispatch() raises:
+def test_zsh_dispatch() raises:
     """Tests that generate_completion["zsh"]() returns Zsh syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -44,7 +44,7 @@ fn test_zsh_dispatch() raises:
     )
 
 
-fn test_bash_dispatch() raises:
+def test_bash_dispatch() raises:
     """Tests that generate_completion["bash"]() returns Bash syntax."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -60,7 +60,7 @@ fn test_bash_dispatch() raises:
     )
 
 
-fn test_case_insensitive_shell_runtime() raises:
+def test_case_insensitive_shell_runtime() raises:
     """Runtime overload accepts case-insensitive shell names."""
     var command = Command("myapp", "A test app")
     var fish_upper = command.generate_completion("FISH")
@@ -80,7 +80,7 @@ fn test_case_insensitive_shell_runtime() raises:
     )
 
 
-fn test_unknown_shell_raises_runtime() raises:
+def test_unknown_shell_raises_runtime() raises:
     """Runtime overload raises for unknown shell names."""
     var command = Command("myapp", "A test app")
     var raised = False
@@ -91,7 +91,7 @@ fn test_unknown_shell_raises_runtime() raises:
     assert_true(raised, msg="Unknown shell should raise an error")
 
 
-fn test_invalid_shell_caught_at_compile_time() raises:
+def test_invalid_shell_caught_at_compile_time() raises:
     """Invalid shell names are caught at compile time via constrained[].
 
     This test verifies the valid paths work.  An invalid name
@@ -111,7 +111,7 @@ fn test_invalid_shell_caught_at_compile_time() raises:
 # ── Fish completion details ──────────────────────────────────────────────────
 
 
-fn test_fish_long_option() raises:
+def test_fish_long_option() raises:
     """Tests that Fish script includes long options."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -128,7 +128,7 @@ fn test_fish_long_option() raises:
     )
 
 
-fn test_fish_flag_no_require_value() raises:
+def test_fish_flag_no_require_value() raises:
     """Tests that Fish flags do NOT have -r (require value)."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -148,7 +148,7 @@ fn test_fish_flag_no_require_value() raises:
     assert_true(False, msg="Should have found --verbose in Fish output")
 
 
-fn test_fish_value_option_has_require() raises:
+def test_fish_value_option_has_require() raises:
     """Tests that Fish value-taking options have -r (require value)."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -167,7 +167,7 @@ fn test_fish_value_option_has_require() raises:
     assert_true(False, msg="Should have found --output in Fish output")
 
 
-fn test_fish_choices() raises:
+def test_fish_choices() raises:
     """Tests that Fish script includes choices with -a."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -184,7 +184,7 @@ fn test_fish_choices() raises:
     )
 
 
-fn test_fish_help_text() raises:
+def test_fish_help_text() raises:
     """Tests that Fish script includes description with -d."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -197,7 +197,7 @@ fn test_fish_help_text() raises:
     )
 
 
-fn test_fish_hidden_excluded() raises:
+def test_fish_hidden_excluded() raises:
     """Tests that hidden args are excluded from Fish completion."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -220,7 +220,7 @@ fn test_fish_hidden_excluded() raises:
     )
 
 
-fn test_fish_builtin_help_version() raises:
+def test_fish_builtin_help_version() raises:
     """Tests that Fish script includes built-in --help and --version."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["fish"]()
@@ -234,7 +234,7 @@ fn test_fish_builtin_help_version() raises:
     )
 
 
-fn test_fish_subcommands() raises:
+def test_fish_subcommands() raises:
     """Tests that Fish script registers subcommand completions."""
     var app = Command("myapp", "A test app")
     var sub = Command("search", "Search for patterns")
@@ -262,7 +262,7 @@ fn test_fish_subcommands() raises:
     )
 
 
-fn test_fish_escape_single_quote() raises:
+def test_fish_escape_single_quote() raises:
     """Tests that single quotes in help text are escaped for Fish."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -278,7 +278,7 @@ fn test_fish_escape_single_quote() raises:
 # ── Zsh completion details ───────────────────────────────────────────────────
 
 
-fn test_zsh_simple_flag() raises:
+def test_zsh_simple_flag() raises:
     """Tests that Zsh script includes flag specs."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -298,7 +298,7 @@ fn test_zsh_simple_flag() raises:
     )
 
 
-fn test_zsh_choices() raises:
+def test_zsh_choices() raises:
     """Tests that Zsh script includes choices in value spec."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -314,7 +314,7 @@ fn test_zsh_choices() raises:
     )
 
 
-fn test_zsh_subcommands() raises:
+def test_zsh_subcommands() raises:
     """Tests that Zsh script handles subcommand dispatch."""
     var app = Command("myapp", "A test app")
     var sub = Command("build", "Build the project")
@@ -337,7 +337,7 @@ fn test_zsh_subcommands() raises:
     )
 
 
-fn test_zsh_escape_brackets() raises:
+def test_zsh_escape_brackets() raises:
     """Tests that brackets in help text are escaped for Zsh specs."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -350,7 +350,7 @@ fn test_zsh_escape_brackets() raises:
     )
 
 
-fn test_zsh_escape_colon() raises:
+def test_zsh_escape_colon() raises:
     """Tests that colons in help text are escaped for Zsh specs."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -363,7 +363,7 @@ fn test_zsh_escape_colon() raises:
     )
 
 
-fn test_zsh_builtin_help() raises:
+def test_zsh_builtin_help() raises:
     """Tests that Zsh script includes built-in help/version."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["zsh"]()
@@ -380,7 +380,7 @@ fn test_zsh_builtin_help() raises:
 # ── Bash completion details ──────────────────────────────────────────────────
 
 
-fn test_bash_simple_options() raises:
+def test_bash_simple_options() raises:
     """Tests that Bash script includes all options in COMPREPLY."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -411,7 +411,7 @@ fn test_bash_simple_options() raises:
     )
 
 
-fn test_bash_subcommands() raises:
+def test_bash_subcommands() raises:
     """Tests that Bash script handles subcommand detection."""
     var app = Command("myapp", "A test app")
     var sub = Command("deploy", "Deploy the app")
@@ -432,7 +432,7 @@ fn test_bash_subcommands() raises:
     )
 
 
-fn test_bash_choices_prev() raises:
+def test_bash_choices_prev() raises:
     """Tests that Bash script completes choices based on $prev."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -453,7 +453,7 @@ fn test_bash_choices_prev() raises:
     )
 
 
-fn test_bash_hidden_excluded() raises:
+def test_bash_hidden_excluded() raises:
     """Tests that hidden args are excluded from Bash completion."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -473,7 +473,7 @@ fn test_bash_hidden_excluded() raises:
     )
 
 
-fn test_bash_builtin_help_version() raises:
+def test_bash_builtin_help_version() raises:
     """Tests that Bash script includes --help and --version."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["bash"]()
@@ -490,7 +490,7 @@ fn test_bash_builtin_help_version() raises:
 # ── Cross-shell consistency ──────────────────────────────────────────────────
 
 
-fn test_all_shells_include_same_options() raises:
+def test_all_shells_include_same_options() raises:
     """Tests that all three shells list the same user-defined options."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -527,7 +527,7 @@ fn test_all_shells_include_same_options() raises:
     assert_true("--format" in bash, msg="bash should include --format")
 
 
-fn test_count_option_no_value() raises:
+def test_count_option_no_value() raises:
     """Tests that count options are treated like flags (no value required)."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -551,7 +551,7 @@ fn test_count_option_no_value() raises:
     assert_true(found, msg="Fish script should contain '-l verbose' line")
 
 
-fn test_persistent_flags_in_root() raises:
+def test_persistent_flags_in_root() raises:
     """Tests that persistent flags appear in root-level completion."""
     var app = Command("myapp", "A test app")
     app.add_argument(
@@ -567,7 +567,7 @@ fn test_persistent_flags_in_root() raises:
     )
 
 
-fn test_positional_excluded() raises:
+def test_positional_excluded() raises:
     """Tests that positional args are NOT listed as completable options."""
     var command = Command("myapp", "A test app")
     command.add_argument(
@@ -590,7 +590,7 @@ fn test_positional_excluded() raises:
     )
 
 
-fn test_generated_by_comment() raises:
+def test_generated_by_comment() raises:
     """Tests that all scripts have 'Generated by ArgMojo' comment."""
     var command = Command("myapp", "A test app")
     var fish = command.generate_completion["fish"]()
@@ -613,7 +613,7 @@ fn test_generated_by_comment() raises:
 # ── Built-in --completions flag ───────────────────────────────────────────────
 
 
-fn test_fish_builtin_completions() raises:
+def test_fish_builtin_completions() raises:
     """Tests that Fish script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["fish"]()
@@ -627,7 +627,7 @@ fn test_fish_builtin_completions() raises:
     )
 
 
-fn test_zsh_builtin_completions() raises:
+def test_zsh_builtin_completions() raises:
     """Tests that Zsh script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["zsh"]()
@@ -641,7 +641,7 @@ fn test_zsh_builtin_completions() raises:
     )
 
 
-fn test_bash_builtin_completions() raises:
+def test_bash_builtin_completions() raises:
     """Tests that Bash script includes the built-in --completions option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["bash"]()
@@ -655,7 +655,7 @@ fn test_bash_builtin_completions() raises:
     )
 
 
-fn test_disable_default_completions_not_in_script() raises:
+def test_disable_default_completions_not_in_script() raises:
     """Tests that disable_default_completions() removes --completions from all scripts.
     """
     var command = Command("myapp", "A test app")
@@ -686,7 +686,7 @@ fn test_disable_default_completions_not_in_script() raises:
     )
 
 
-fn test_disable_default_completions_not_in_help() raises:
+def test_disable_default_completions_not_in_help() raises:
     """Tests that disable_default_completions() hides --completions from help.
     """
     var command = Command("myapp", "A test app")
@@ -701,7 +701,7 @@ fn test_disable_default_completions_not_in_help() raises:
     )
 
 
-fn test_completions_in_help_by_default() raises:
+def test_completions_in_help_by_default() raises:
     """Tests that --completions appears in the Options section of help by default.
     """
     var command = Command("myapp", "A test app")
@@ -719,7 +719,7 @@ fn test_completions_in_help_by_default() raises:
 # ── completions_name() ──────────────────────────────────────────────────────
 
 
-fn test_completions_custom_name_in_scripts() raises:
+def test_completions_custom_name_in_scripts() raises:
     """Tests that completions_name() changes the trigger in all scripts."""
     var command = Command("myapp", "A test app")
     command.completions_name("autocomp")
@@ -748,7 +748,7 @@ fn test_completions_custom_name_in_scripts() raises:
     )
 
 
-fn test_completions_custom_name_in_help() raises:
+def test_completions_custom_name_in_help() raises:
     """Tests that completions_name() changes the trigger shown in help."""
     var command = Command("myapp", "A test app")
     command.completions_name("autocomp")
@@ -763,7 +763,7 @@ fn test_completions_custom_name_in_help() raises:
     )
 
 
-fn test_completions_custom_name_in_bash_prev() raises:
+def test_completions_custom_name_in_bash_prev() raises:
     """Tests that completions_name() updates bash prev-case pattern."""
     var command = Command("myapp", "A test app")
     command.completions_name("gen-comp")
@@ -781,7 +781,7 @@ fn test_completions_custom_name_in_bash_prev() raises:
 # ── completions_as_subcommand() ─────────────────────────────────────────────
 
 
-fn test_completions_as_subcommand_in_help() raises:
+def test_completions_as_subcommand_in_help() raises:
     """Tests that completions_as_subcommand() shows it in Commands, not Options.
     """
     var command = Command("myapp", "A test app")
@@ -807,7 +807,7 @@ fn test_completions_as_subcommand_in_help() raises:
     )
 
 
-fn test_completions_as_subcommand_in_fish() raises:
+def test_completions_as_subcommand_in_fish() raises:
     """Tests that completions_as_subcommand() appears as subcommand in Fish."""
     var command = Command("myapp", "A test app")
     var sub = Command("serve", "Start the server")
@@ -832,7 +832,7 @@ fn test_completions_as_subcommand_in_fish() raises:
     )
 
 
-fn test_completions_as_subcommand_in_zsh() raises:
+def test_completions_as_subcommand_in_zsh() raises:
     """Tests that completions_as_subcommand() appears as subcommand in Zsh."""
     var command = Command("myapp", "A test app")
     var sub = Command("serve", "Start the server")
@@ -856,7 +856,7 @@ fn test_completions_as_subcommand_in_zsh() raises:
     )
 
 
-fn test_completions_as_subcommand_in_bash() raises:
+def test_completions_as_subcommand_in_bash() raises:
     """Tests that completions_as_subcommand() appears as subcommand in Bash."""
     var command = Command("myapp", "A test app")
     var sub = Command("serve", "Start the server")
@@ -881,7 +881,7 @@ fn test_completions_as_subcommand_in_bash() raises:
     )
 
 
-fn test_completions_custom_name_with_subcommand() raises:
+def test_completions_custom_name_with_subcommand() raises:
     """Tests combining completions_name() with completions_as_subcommand()."""
     var command = Command("myapp", "A test app")
     var sub = Command("serve", "Start the server")
@@ -921,7 +921,7 @@ fn test_completions_custom_name_with_subcommand() raises:
 # ── Alias in completion scripts ──────────────────────────────────────────────
 
 
-fn test_fish_completion_includes_alias() raises:
+def test_fish_completion_includes_alias() raises:
     """Tests that Fish completion lists alias as a completable name."""
     var app = Command("myapp", "A test app")
     var clone = Command("clone", "Clone a repository")
@@ -944,7 +944,7 @@ fn test_fish_completion_includes_alias() raises:
     )
 
 
-fn test_zsh_completion_includes_alias() raises:
+def test_zsh_completion_includes_alias() raises:
     """Tests that Zsh completion lists alias entries."""
     var app = Command("myapp", "A test app")
     var clone = Command("clone", "Clone a repository")
@@ -962,7 +962,7 @@ fn test_zsh_completion_includes_alias() raises:
     )
 
 
-fn test_bash_completion_includes_alias() raises:
+def test_bash_completion_includes_alias() raises:
     """Tests that Bash completion includes alias in dispatch pattern."""
     var app = Command("myapp", "A test app")
     var clone = Command("clone", "Clone a repository")
@@ -984,7 +984,7 @@ fn test_bash_completion_includes_alias() raises:
 # ── Hidden subcommands in completions ─────────────────────────────────────────
 
 
-fn _make_app_with_hidden_sub() raises -> Command:
+def _make_app_with_hidden_sub() raises -> Command:
     """Helper: app with 'clone' visible and 'debug' hidden."""
     var app = Command("myapp", "A test app")
     var clone = Command("clone", "Clone a repository")
@@ -997,7 +997,7 @@ fn _make_app_with_hidden_sub() raises -> Command:
     return app^
 
 
-fn test_fish_hidden_sub_excluded() raises:
+def test_fish_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Fish completion."""
     var app = _make_app_with_hidden_sub()
     var script = app.generate_completion["fish"]()
@@ -1011,7 +1011,7 @@ fn test_fish_hidden_sub_excluded() raises:
     )
 
 
-fn test_zsh_hidden_sub_excluded() raises:
+def test_zsh_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Zsh completion."""
     var app = _make_app_with_hidden_sub()
     var script = app.generate_completion["zsh"]()
@@ -1025,7 +1025,7 @@ fn test_zsh_hidden_sub_excluded() raises:
     )
 
 
-fn test_bash_hidden_sub_excluded() raises:
+def test_bash_hidden_sub_excluded() raises:
     """Tests that hidden subcommands are absent from Bash completion."""
     var app = _make_app_with_hidden_sub()
     var script = app.generate_completion["bash"]()
@@ -1039,7 +1039,7 @@ fn test_bash_hidden_sub_excluded() raises:
     )
 
 
-fn test_all_hidden_no_subcommand_completion() raises:
+def test_all_hidden_no_subcommand_completion() raises:
     """Tests that when all subs are hidden, completion is simple (no subs)."""
     var app = Command("myapp", "A test app")
     app.add_argument(
@@ -1064,5 +1064,5 @@ fn test_all_hidden_no_subcommand_completion() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

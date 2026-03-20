@@ -17,7 +17,7 @@ Covers:
   - Absent persistent flag defaults to False / raises as usual.
 """
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
@@ -25,7 +25,7 @@ from argmojo import Argument, Command, ParseResult
 # ── Persistent flag on root without any subcommand ─────────────────────────
 
 
-fn test_persistent_flag_on_root_no_subcommand() raises:
+def test_persistent_flag_on_root_no_subcommand() raises:
     """A persistent flag still works as a plain root flag when no subcommand
     is involved."""
     var command = Command("app", "")
@@ -40,7 +40,7 @@ fn test_persistent_flag_on_root_no_subcommand() raises:
     assert_true(r.get_flag("verbose"), msg="root verbose should be True")
 
 
-fn test_persistent_flag_absent_on_root() raises:
+def test_persistent_flag_absent_on_root() raises:
     """Absent persistent flag defaults to False on root."""
     var command = Command("app", "")
     command.add_argument(
@@ -57,7 +57,7 @@ fn test_persistent_flag_absent_on_root() raises:
 # ── Persistent flag BEFORE the subcommand token ────────────────────────────
 
 
-fn test_persistent_flag_before_subcommand_in_root_result() raises:
+def test_persistent_flag_before_subcommand_in_root_result() raises:
     """Persistent flag placed before the subcommand token is stored in the root
     result."""
     var app = Command("app", "")
@@ -77,7 +77,7 @@ fn test_persistent_flag_before_subcommand_in_root_result() raises:
     assert_equal(r.subcommand, "search")
 
 
-fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
+def test_persistent_flag_before_subcommand_pushed_to_child() raises:
     """Persistent flag placed before the subcommand token is pushed down into
     the child result so sub_result.get_flag() also works."""
     var app = Command("app", "")
@@ -103,7 +103,7 @@ fn test_persistent_flag_before_subcommand_pushed_to_child() raises:
 # ── Persistent flag AFTER the subcommand token ─────────────────────────────
 
 
-fn test_persistent_flag_after_subcommand_in_child_result() raises:
+def test_persistent_flag_after_subcommand_in_child_result() raises:
     """Persistent flag placed after the subcommand token is parsed by the child
     (injected) and stored in the child result."""
     var app = Command("app", "")
@@ -125,7 +125,7 @@ fn test_persistent_flag_after_subcommand_in_child_result() raises:
     )
 
 
-fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
+def test_persistent_flag_after_subcommand_bubbles_to_root() raises:
     """Persistent flag placed after the subcommand token is also bubbled up to
     the root result so root_result.get_flag() always works."""
     var app = Command("app", "")
@@ -147,7 +147,7 @@ fn test_persistent_flag_after_subcommand_bubbles_to_root() raises:
     )
 
 
-fn test_persistent_short_flag_after_subcommand() raises:
+def test_persistent_short_flag_after_subcommand() raises:
     """The short form of a persistent flag also bubbles up from after-subcommand
     position."""
     var app = Command("app", "")
@@ -175,7 +175,7 @@ fn test_persistent_short_flag_after_subcommand() raises:
 # ── Persistent value-taking option ─────────────────────────────────────────
 
 
-fn test_persistent_value_option_after_subcommand() raises:
+def test_persistent_value_option_after_subcommand() raises:
     """A persistent value-taking option placed after the subcommand token is
     injected into the child, parsed, and synced both ways."""
     var app = Command("app", "")
@@ -193,7 +193,7 @@ fn test_persistent_value_option_after_subcommand() raises:
     assert_equal(r.get_subcommand_result().get_string("output"), "json")
 
 
-fn test_persistent_flag_absent_defaults_false_in_both() raises:
+def test_persistent_flag_absent_defaults_false_in_both() raises:
     """When a persistent flag is not provided at all, both root and child
     results return False."""
     var app = Command("app", "")
@@ -221,7 +221,7 @@ fn test_persistent_flag_absent_defaults_false_in_both() raises:
 # ── Non-persistent flag isolation ──────────────────────────────────────────
 
 
-fn test_non_persistent_root_flag_not_injected_into_child() raises:
+def test_non_persistent_root_flag_not_injected_into_child() raises:
     """A non-persistent root flag placed after the subcommand token is NOT
     recognised by the child and causes an unknown-option error."""
     var app = Command("app", "")
@@ -246,7 +246,7 @@ fn test_non_persistent_root_flag_not_injected_into_child() raises:
 # ── Conflict detection ──────────────────────────────────────────────────────
 
 
-fn test_persistent_conflict_long_name_raises() raises:
+def test_persistent_conflict_long_name_raises() raises:
     """Tests add_subcommand() raises when a persistent parent long_name conflicts
     with a child long_name."""
     var app = Command("app", "")
@@ -269,7 +269,7 @@ fn test_persistent_conflict_long_name_raises() raises:
     )
 
 
-fn test_persistent_conflict_short_name_raises() raises:
+def test_persistent_conflict_short_name_raises() raises:
     """Tests add_subcommand() raises when a persistent parent short_name conflicts
     with a child short_name."""
     var app = Command("app", "")
@@ -298,7 +298,7 @@ fn test_persistent_conflict_short_name_raises() raises:
     )
 
 
-fn test_no_conflict_for_non_persistent_same_name() raises:
+def test_no_conflict_for_non_persistent_same_name() raises:
     """No conflict is raised when a non-persistent root arg shares a name with
     a child arg (only persistent args are checked)."""
     var app = Command("app", "")
@@ -319,5 +319,5 @@ fn test_no_conflict_for_non_persistent_same_name() raises:
 # ── Main ───────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

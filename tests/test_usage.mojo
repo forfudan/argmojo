@@ -1,13 +1,13 @@
 """Tests for argmojo — custom usage line."""
 
-from testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
 import argmojo
 from argmojo import Argument, Command, ParseResult
 
 # ── Custom usage in help ─────────────────────────────────────────────────────────
 
 
-fn test_custom_usage_in_plain_help() raises:
+def test_custom_usage_in_plain_help() raises:
     """Tests that custom usage appears in plain help output."""
     var cmd = Command("git", "The stupid content tracker")
     cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
@@ -19,7 +19,7 @@ fn test_custom_usage_in_plain_help() raises:
     )
 
 
-fn test_custom_usage_in_colored_help() raises:
+def test_custom_usage_in_colored_help() raises:
     """Tests that custom usage appears in colored help output."""
     var cmd = Command("git", "The stupid content tracker")
     cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
@@ -32,7 +32,7 @@ fn test_custom_usage_in_colored_help() raises:
     )
 
 
-fn test_custom_usage_replaces_auto_generated() raises:
+def test_custom_usage_replaces_auto_generated() raises:
     """Tests that custom usage replaces the auto-generated positionals."""
     var cmd = Command("myapp", "My app")
     cmd.add_argument(
@@ -60,7 +60,7 @@ fn test_custom_usage_replaces_auto_generated() raises:
 # ── Default usage still works ────────────────────────────────────────────────────
 
 
-fn test_default_usage_when_no_custom() raises:
+def test_default_usage_when_no_custom() raises:
     """Tests that auto-generated usage is used when no custom is set."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -74,7 +74,7 @@ fn test_default_usage_when_no_custom() raises:
     )
 
 
-fn test_default_usage_with_optional_positional() raises:
+def test_default_usage_with_optional_positional() raises:
     """Tests auto-generated usage for optional positional."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -88,7 +88,7 @@ fn test_default_usage_with_optional_positional() raises:
     )
 
 
-fn test_default_usage_with_subcommands() raises:
+def test_default_usage_with_subcommands() raises:
     """Tests auto-generated usage with subcommands."""
     var app = Command("app", "My app")
     var sub = Command("deploy", "Deploy something")
@@ -104,7 +104,7 @@ fn test_default_usage_with_subcommands() raises:
 # ── Custom usage preserved in copy ───────────────────────────────────────────────
 
 
-fn test_custom_usage_preserved_in_copy() raises:
+def test_custom_usage_preserved_in_copy() raises:
     """Tests that custom usage is preserved when copying a Command."""
     var original = Command("git", "Git")
     original.usage("git [options] <command> [<args>]")
@@ -120,7 +120,7 @@ fn test_custom_usage_preserved_in_copy() raises:
 # ── Custom usage with other features ─────────────────────────────────────────────
 
 
-fn test_custom_usage_with_subcommands() raises:
+def test_custom_usage_with_subcommands() raises:
     """Tests custom usage with subcommands registered."""
     var app = Command("app", "My app")
     app.usage("app [-v] <command>")
@@ -139,7 +139,7 @@ fn test_custom_usage_with_subcommands() raises:
     )
 
 
-fn test_custom_usage_description_still_shown() raises:
+def test_custom_usage_description_still_shown() raises:
     """Tests that description is still shown above custom usage."""
     var cmd = Command("myapp", "A great application")
     cmd.usage("myapp [options]")
@@ -155,7 +155,7 @@ fn test_custom_usage_description_still_shown() raises:
     )
 
 
-fn test_custom_usage_parsing_still_works() raises:
+def test_custom_usage_parsing_still_works() raises:
     """Tests that custom usage doesn't affect parsing behavior."""
     var cmd = Command("test", "Test app")
     cmd.add_argument(
@@ -172,7 +172,7 @@ fn test_custom_usage_parsing_still_works() raises:
     assert_true(result.get_flag("verbose"), msg="--verbose should work")
 
 
-fn test_custom_usage_in_plain_usage_hint() raises:
+def test_custom_usage_in_plain_usage_hint() raises:
     """Tests that custom usage appears in the plain usage hint (_plain_usage).
     """
     var cmd = Command("git", "The stupid content tracker")
@@ -186,5 +186,5 @@ fn test_custom_usage_in_plain_usage_hint() raises:
     )
 
 
-fn main() raises:
+def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
