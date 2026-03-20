@@ -1108,8 +1108,6 @@ def test_typo_long_option_suggests() raises:
         Argument("version", help="Show version").long["version"]().flag()
     )
 
-    var _args: List[String] = ["test", "--verbos"]
-    # --verbos is a prefix match for --verbose, so it should resolve.
     # Use a more distant typo to test suggestion path.
     var args2: List[String] = ["test", "--vrebose"]
     var caught = False

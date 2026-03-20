@@ -1,5 +1,5 @@
 """Tests for argmojo help and display features:
-  • Help output formatting (hidden args, metavar, padding, alignment)
+  • Help output formatting (hidden args, value_name, padding, alignment)
   • ANSI colour customisation (header_color, arg_color, etc.)
   • Subcommand help (Commands section, aliases, hidden subs, tips)
   • CJK-aware help alignment (_display_width)
@@ -64,7 +64,7 @@ def test_hidden_still_works() raises:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Metavar
+# Value Name
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
