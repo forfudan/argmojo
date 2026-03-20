@@ -70,19 +70,17 @@ ArgMojo v0.4.0 targets **Mojo v0.26.2** (previously v0.26.1). The following code
 
 ### 📚 Documentation and testing in v0.4.0
 
-- Add `tests/test_const_require_equals.mojo` with 30 tests covering default_if_no_value, require_equals, and their interactions with choices, append, prefix matching, merged short flags, persistent flags, and help formatting (PR #12).
-- Add `tests/test_response_file.mojo` with 17 tests covering basic expansion, comments, whitespace stripping, escape, recursive nesting, depth limit, custom prefix, disabled-by-default, and error handling (PR #12).
-- Add `tests/test_remainder_known.mojo` with 18 tests covering remainder positionals, `parse_known_arguments()`, `allow_hyphen_values()`, and the `value_name` rename (PR #13).
-- Add `tests/test_fullwidth.mojo` with 30 tests covering full-width → half-width auto-correction and CJK punctuation correction, including utility functions, fullwidth flags, equals syntax, embedded fullwidth spaces, opt-out, choices validation, merged short flags, subcommand dispatch, parse_known_arguments, and CJK punctuation em-dash correction (PR #15, #16).
-- Add `tests/test_groups_help.mojo` with 25 tests covering argument groups in help output and value-name wrapping control, including basic grouping, multiple groups, independent padding, hidden arguments in groups, groups with subcommands, wrapped/unwrapped value names with append/nargs/require_equals/default_if_no_value, and coloured output (PR #17).
-- Add 5 tests to `tests/test_groups.mojo` covering registration-time validation: unknown argument detection for `mutually_exclusive`, `required_together`, `one_required`, and `required_if` (both target and condition) (PR #22).
 - Add Developer Validation section to user manual documenting the two-layer validation model (compile-time `StringLiteral` + runtime registration-time `raises`) with recommended workflow (PR #22).
 - Add `pixi run debug` task that runs all examples under `-D ASSERT=all` with `--help` to exercise registration-time validation in CI (PR #22).
-- Add `tests/test_prompt.mojo` with tests covering interactive prompting builder methods, optional/required prompt arguments, prompting skipped when values are provided, choices and defaults integration, field propagation through copy, and combined features (PR #23).
-- Add `tests/test_parents.mojo` with 20 tests covering argument parents: basic flag/value/positional/default inheritance, short flags, multiple parents, child-own args coexistence, group constraint inheritance (mutually exclusive, required together, one-required, conditional, implications), parent shared across children, count/append/range argument inheritance, empty parent, parent immutability, and parent with subcommands (PR #25).
-- Add `tests/test_confirmation.mojo` with 13 tests covering confirmation option: `--yes`/`-y` flag skips, non-interactive stdin abort, custom prompt text, coexistence with other arguments, no-confirmation normal behavior, subcommand integration, copy preservation, prompt argument integration, and parent argument integration (PR #26).
-- Add `tests/test_password.mojo` with 16 tests covering password / masked input: builder method correctness (`.password()` standalone, with `.prompt["text"]()`, ordering), default field values, copy propagation, validation guards (flag and count rejection), prompting skipped when value provided, defaults and choices integration, required argument error, parent inheritance, subcommand integration, positional usage, and graceful fallback on non-interactive stdin (PR #28).
-- Add `tests/test_usage.mojo` with 11 tests covering custom usage line: plain and coloured help output, replacement of auto-generated usage, default usage for various argument configurations (optional positional, subcommands), copy preservation, coexistence with subcommands, description display, parsing correctness, and usage hint in error messages (PR #29).
+- **Consolidate test suite into 8 focused modules** (PR #30):
+  - `tests/test_parse.mojo` — core parsing (long/short flags, key-value pairs, positional args, short flag merging, choices, count, negatable flags, prefix matching, negative numbers).
+  - `tests/test_options.mojo` — option features (default_if_no_value, require_equals, range/clamp, key-value mapping, aliases, deprecated args, remainder, parse_known_arguments, value_name, allow_hyphen_values, append, delimiter splitting, number_of_values).
+  - `tests/test_help.mojo` — help and display (hidden args, value_name, padding, alignment, ANSI colours, subcommand help, CJK-aware alignment, NO_COLOR, custom usage, full-width → half-width auto-correction).
+  - `tests/test_groups.mojo` — argument groups (mutually exclusive, required together, one-required, required_if, registration-time validation, groups in help output, value_name wrapping, implies with cycle detection).
+  - `tests/test_completion.mojo` — shell completions (Fish, Zsh, Bash script generation, built-in flag, aliases, hidden subcommands) and typo suggestions (Levenshtein distance for options and subcommands).
+  - `tests/test_subcommands.mojo` — subcommand support, persistent flags, parent inheritance (data model, parse-time routing, auto-registered help, aliases, hidden dispatch, positional guards).
+  - `tests/test_interactive.mojo` — interactive prompting, password/masked input, confirmation option (builder methods, field propagation, validation guards, skip-when-provided).
+  - `tests/test_response_file.mojo` — response-file (@args.txt) expansion (currently excluded from CI due to Mojo compiler deadlock).
 
 ---
 
