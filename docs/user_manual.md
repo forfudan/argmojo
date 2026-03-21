@@ -167,7 +167,7 @@ After calling `command.parse()` or `command.parse_arguments()`, you get a `Parse
 | `result.get_list("name")`   | `List[String]`         | Returns collected values (empty list if none).        |
 | `result.get_map("name")`    | `Dict[String, String]` | Returns key-value pairs (empty dict if none).         |
 | `result.has("name")`        | `Bool`                 | Returns `True` if the argument was provided.          |
-| `result.print_summary()`    |                        | Prints a human-readable summary of all parsed values. |
+| `result.print_summary()`    | `None`                 | Prints a human-readable summary of all parsed values. |
 
 **`get_string()`** works for both named options and positional arguments — positional values are looked up by the name given in `Argument("name", ...)`.
 

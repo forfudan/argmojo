@@ -23,7 +23,7 @@ format = "mojo format ./src ./tests ./examples"
 package = "mojo package src/argmojo -o argmojo.mojopkg"
 
 # doc
-doc = """pixi run mojo doc \
+doc = """mojo doc \
 --diagnose-missing-doc-strings --Werror src/argmojo"""
 
 # run tests
@@ -95,8 +95,10 @@ d = """pixi run package && bash -c '\
 clean = "rm -f argmojo.mojopkg mgrep mgit demo yu"
 
 # Run all
-all = """pixi run package \
-&&pixi run doc \
-&&pixi run t \
-&&pixi run d \
-&&pixi run clean"""
+all = """
+pixi run format \
+&& pixi run package \
+&& pixi run doc \
+&& pixi run t \
+&& pixi run d \
+&& pixi run clean"""

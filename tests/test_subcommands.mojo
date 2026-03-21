@@ -476,7 +476,7 @@ def test_parseresult_subcommand_result_stored_and_retrieved() raises:
     assert_equal(retrieved.get_string("pattern"), "hello")
 
 
-def test_parseresult_str_includes_subcommand() raises:
+def test_parseresult_write_to_includes_subcommand() raises:
     """Tests that write_to includes the subcommand name when set."""
     var result = ParseResult()
     result.subcommand = "build"
@@ -484,7 +484,7 @@ def test_parseresult_str_includes_subcommand() raises:
     assert_true("build" in s, msg="write_to should include the subcommand name")
 
 
-def test_parseresult_str_no_subcommand_section_when_empty() raises:
+def test_parseresult_write_to_omits_subcommand_when_empty() raises:
     """Tests that write_to omits the subcommand when it is empty."""
     var result = ParseResult()
     var s = String(result)
