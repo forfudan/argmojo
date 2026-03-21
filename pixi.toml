@@ -93,3 +93,10 @@ d = """pixi run package && bash -c '\
 
 # clean build artifacts
 clean = "rm -f argmojo.mojopkg mgrep mgit demo yu"
+
+# Run all
+all = """pixi run package \
+&&pixi run doc \
+&&pixi run t \
+&&pixi run d \
+&&pixi run clean"""

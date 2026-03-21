@@ -4959,20 +4959,6 @@ struct Command(Copyable, Movable, Writable):
         s += indent + "esac\n"
         return s
 
-    def __str__(self) -> String:
-        """Returns a string representation of this command.
-
-        Returns:
-            A human-readable string describing the command.
-        """
-        return (
-            "Command(name='"
-            + self.name
-            + "', args="
-            + String(len(self.args))
-            + ")"
-        )
-
     def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 

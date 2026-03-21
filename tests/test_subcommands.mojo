@@ -477,20 +477,20 @@ def test_parseresult_subcommand_result_stored_and_retrieved() raises:
 
 
 def test_parseresult_str_includes_subcommand() raises:
-    """Tests that __str__ includes the subcommand name when set."""
+    """Tests that write_to includes the subcommand name when set."""
     var result = ParseResult()
     result.subcommand = "build"
     var s = String(result)
-    assert_true("build" in s, msg="__str__ should include the subcommand name")
+    assert_true("build" in s, msg="write_to should include the subcommand name")
 
 
 def test_parseresult_str_no_subcommand_section_when_empty() raises:
-    """Tests that __str__ omits the subcommand when it is empty."""
+    """Tests that write_to omits the subcommand when it is empty."""
     var result = ParseResult()
     var s = String(result)
     assert_false(
         "subcommand" in s,
-        msg="__str__ should not include 'subcommand' when empty",
+        msg="write_to should not include 'subcommand' when empty",
     )
 
 
