@@ -10,7 +10,7 @@ license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]
 readme = "README.md"
-version = "0.3.0"
+version = "0.4.0"
 
 [dependencies]
 mojo = "==0.26.2.0"
@@ -21,6 +21,10 @@ format = "mojo format ./src ./tests ./examples"
 
 # compile the package
 package = "mojo package src/argmojo -o argmojo.mojopkg"
+
+# doc
+doc = """pixi run mojo doc \
+--diagnose-missing-doc-strings --Werror src/argmojo"""
 
 # run tests
 test = """\

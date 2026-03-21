@@ -10,7 +10,7 @@ At the moment, Mojo does not have a mature command-line argument parsing library
 
 ## 2. Cross-Language Research Summary
 
-This section summarises the key design patterns and features from well-known arg parsers across multiple languages. The goal is to extract **universally useful ideas** that are feasible in Mojo 0.26.1, and to exclude features that depend on language-specific capabilities (macros, decorators, reflection, closures-as-first-class) that Mojo does not yet provide.
+This section summarises the key design patterns and features from well-known arg parsers across multiple languages. The goal is to extract **universally useful ideas** that are feasible in Mojo 0.26.2, and to exclude features that depend on language-specific capabilities (macros, decorators, reflection, closures-as-first-class) that Mojo does not yet provide.
 
 ### 2.1 Libraries Surveyed
 
@@ -109,9 +109,9 @@ These features appear across multiple libraries and depend only on string operat
 Mojo provides `sys.argv()` to access command-line arguments:
 
 ```mojo
-from sys import argv
+from std.sys import argv
 
-fn main():
+def main():
     var args = argv()
     for i in range(len(args)):
         print("arg[", i, "] =", args[i])
