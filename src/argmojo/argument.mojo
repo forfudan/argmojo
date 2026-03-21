@@ -957,22 +957,6 @@ struct Argument(Copyable, Movable, Writable):
     # String representation methods
     # ===------------------------------------------------------------------=== #
 
-    def __str__(self) -> String:
-        """Returns a string representation of this argument definition."""
-        var s = String("Argument(name='") + self.name + "'"
-        if self._long_name:
-            s += ", long='--" + self._long_name + "'"
-        if self._short_name:
-            s += ", short='-" + self._short_name + "'"
-        if self._is_flag:
-            s += ", flag"
-        if self._is_positional:
-            s += ", positional"
-        if self._is_required:
-            s += ", required"
-        s += ")"
-        return s
-
     def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 

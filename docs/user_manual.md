@@ -135,7 +135,7 @@ from argmojo import Argument, Command
 A **Command** is the top-level object that holds argument definitions and runs the parser.
 
 ```mojo
-fn main() raises:
+def main() raises:
     var command = Command("myapp", "A short description of the program", version="1.0.0")
     # ... add arguments ...
     var result = command.parse()
@@ -158,14 +158,16 @@ fn main() raises:
 
 After calling `command.parse()` or `command.parse_arguments()`, you get a `ParseResult` with these typed accessors:
 
-| Method                      | Returns        | Description                                       |
-| --------------------------- | -------------- | ------------------------------------------------- |
-| `result.get_flag("name")`   | `Bool`         | Returns `True` if the flag was set, else `False`. |
-| `result.get_string("name")` | `String`       | Returns the string value. Raises if not found.    |
-| `result.get_int("name")`    | `Int`          | Parses the value as an integer. Raises on error.  |
-| `result.get_count("name")`  | `Int`          | Returns the count (0 if never provided).          |
-| `result.get_list("name")`   | `List[String]` | Returns collected values (empty list if none).    |
-| `result.has("name")`        | `Bool`         | Returns `True` if the argument was provided.      |
+| Method                      | Returns                | Description                                           |
+| --------------------------- | ---------------------- | ----------------------------------------------------- |
+| `result.get_flag("name")`   | `Bool`                 | Returns `True` if the flag was set, else `False`.     |
+| `result.get_string("name")` | `String`               | Returns the string value. Raises if not found.        |
+| `result.get_int("name")`    | `Int`                  | Parses the value as an integer. Raises on error.      |
+| `result.get_count("name")`  | `Int`                  | Returns the count (0 if never provided).              |
+| `result.get_list("name")`   | `List[String]`         | Returns collected values (empty list if none).        |
+| `result.get_map("name")`    | `Dict[String, String]` | Returns key-value pairs (empty dict if none).         |
+| `result.has("name")`        | `Bool`                 | Returns `True` if the argument was provided.          |
+| `result.print_summary()`    | `None`                 | Prints a human-readable summary of all parsed values. |
 
 **`get_string()`** works for both named options and positional arguments — positional values are looked up by the name given in `Argument("name", ...)`.
 
@@ -2942,7 +2944,7 @@ The examples below use this `login` command:
 ```mojo
 from argmojo import Argument, Command
 
-fn main() raises:
+def main() raises:
     var command = Command("login", "Authenticate with the service")
     command.add_argument(
         Argument("user", help="Username")
@@ -3123,7 +3125,7 @@ When multiple commands share the same set of arguments (e.g., `--verbose`, `--fo
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     # Define shared arguments in a "parent" command.
     # The name is arbitrary — it is never shown to users.
     var shared = Command("_shared")
@@ -3227,7 +3229,7 @@ For passwords, API tokens, and other sensitive values, you want to **hide the us
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     var command = Command("login", "Authenticate with the server")
     command.add_argument(
         Argument("username", help="Your username").long["username"]().short["u"]().required()
@@ -3299,7 +3301,7 @@ Some commands are destructive or irreversible — dropping databases, deleting f
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     var cmd = Command("drop", "Drop the database")
     cmd.add_argument(
         Argument("name", help="Database name").positional().required()
@@ -3378,7 +3380,7 @@ For some programs you may want a hand-written usage string — for example, git'
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     var cmd = Command("git", "The stupid content tracker", version="2.45.0")
     cmd.usage("git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]")
 
@@ -3576,7 +3578,7 @@ All `Argument` builder methods that accept fixed, known values use **compile-tim
 Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag()
 
 # ✗ Compile error — "REED" is not a valid colour name
-command.header_color["REED"]()   # caught by constrained[] at compile time
+command.header_color["REED"]()   # caught by comptime assert at compile time
 ```
 
 Methods validated at compile time include:

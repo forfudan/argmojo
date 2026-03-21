@@ -379,17 +379,6 @@ struct ParseResult(Copyable, Movable, Writable):
             var sub = self._subcommand_results[0].copy()
             sub._print_summary_impl(indent + 2, self.subcommand)
 
-    def __str__(self) -> String:
-        """Return a string representation of the parse result."""
-        var s = String("ParseResult(")
-        s += "flags=" + String(len(self._flags))
-        s += ", values=" + String(len(self._values))
-        s += ", positionals=" + String(len(self._positionals))
-        if self.subcommand != "":
-            s += ", subcommand='" + self.subcommand + "'"
-        s += ")"
-        return s
-
     def write_to[W: Writer](self, mut writer: W):
         """Writes the string representation to a writer.
 
@@ -399,4 +388,15 @@ struct ParseResult(Copyable, Movable, Writable):
         Args:
             writer: The writer to write to.
         """
-        writer.write(self.__str__())
+        writer.write("ParseResult(")
+        writer.write("flags=")
+        writer.write(String(len(self._flags)))
+        writer.write(", values=")
+        writer.write(String(len(self._values)))
+        writer.write(", positionals=")
+        writer.write(String(len(self._positionals)))
+        if self.subcommand != "":
+            writer.write(", subcommand='")
+            writer.write(self.subcommand)
+            writer.write("'")
+        writer.write(")")

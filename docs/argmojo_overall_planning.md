@@ -10,7 +10,7 @@ At the moment, Mojo does not have a mature command-line argument parsing library
 
 ## 2. Cross-Language Research Summary
 
-This section summarises the key design patterns and features from well-known arg parsers across multiple languages. The goal is to extract **universally useful ideas** that are feasible in Mojo 0.26.1, and to exclude features that depend on language-specific capabilities (macros, decorators, reflection, closures-as-first-class) that Mojo does not yet provide.
+This section summarises the key design patterns and features from well-known arg parsers across multiple languages. The goal is to extract **universally useful ideas** that are feasible in Mojo 0.26.2, and to exclude features that depend on language-specific capabilities (macros, decorators, reflection, closures-as-first-class) that Mojo does not yet provide.
 
 ### 2.1 Libraries Surveyed
 
@@ -55,7 +55,7 @@ These features appear across multiple libraries and depend only on string operat
 | Key-value map (`-Dkey=val`)        | —        | —     | —     | —    | Java `-D`, Docker `-e`       | **Done**      |
 | Aliases for long names             | —        | —     | ✓     | ✓    |                              | **Done**      |
 | Deprecated arguments               | ✓ (3.13) | —     | ✓     | —    |                              | **Done**      |
-| Negative number passthrough        | ✓        | —     | —     | ✓    | Essential for `decimo`       | **Done**      |
+| Negative number / stdin `−`        | ✓        | —     | ✓     | ✓    | `allow_hyphen_values()`      | **Done**      |
 | Subcommands                        | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
 | Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl          | **Done**      |
 | Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.        | **Done**      |
@@ -70,13 +70,11 @@ These features appear across multiple libraries and depend only on string operat
 | Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
 | Password / masked input            | —        | ✓     | —     | —    |                              | **Done**      |
 | Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | **Done**      |
-| Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase 5       |
 | REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | **Done**      |
 | Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Require equals syntax              | —        | —     | —     | ✓    |                              | **Done**      |
 | Default-if-no-value                | ✓        | —     | —     | ✓    |                              | **Done**      |
 | Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
-| Stdin value (`-` convention)       | —        | —     | ✓     | —    | Unix convention              | Phase 5       |
 | Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
 | Argument groups in help            | ✓        | —     | ✓     | ✓    |                              | **Done**      |
 | Value-name wrapping control        | —        | —     | —     | ✓    | clap, cargo, pixi, git       | **Done**      |
@@ -86,6 +84,7 @@ These features appear across multiple libraries and depend only on string operat
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
 | Comptime `StringLiteral` params    | —        | —     | —     | ✓    | clap derive macros           | **Done**      |
 | Registration-time name validation  | —        | —     | —     | ✓    | clap panic on unknown ID     | **Done**      |
+| Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase unknown |
 | `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase unknown |
 | Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros         | Phase unknown |
 | Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection          | Phase unknown |
@@ -110,9 +109,9 @@ These features appear across multiple libraries and depend only on string operat
 Mojo provides `sys.argv()` to access command-line arguments:
 
 ```mojo
-from sys import argv
+from std.sys import argv
 
-fn main():
+def main():
     var args = argv()
     for i in range(len(args)):
         print("arg[", i, "] =", args[i])
@@ -151,27 +150,14 @@ src/argmojo/
 ├── parse_result.mojo               # ParseResult struct — parsed values
 └── utils.mojo                      # Internal utilities — ANSI colours, display helpers
 tests/
-├── test_parse.mojo                 # Core parsing tests (flags, values, shorts, etc.)
-├── test_groups.mojo                # Group constraint tests (exclusive, conditional, etc.)
-├── test_collect.mojo               # Collection feature tests (append, delimiter, number_of_values)
-├── test_help.mojo                  # Help output tests (formatting, colours, alignment)
-├── test_extras.mojo                # Range, map, alias, deprecated tests
-├── test_subcommands.mojo           # Subcommand tests (dispatch, help sub, unknown sub, etc.)
-├── test_negative_numbers.mojo      # Negative number passthrough tests
-├── test_persistent.mojo            # Persistent (global) flag tests
-├── test_typo_suggestions.mojo      # Levenshtein typo suggestion tests
-├── test_completion.mojo            # Shell completion script generation tests
-├── test_implies.mojo               # Mutual implication and cycle detection tests
-├── test_const_require_equals.mojo  # default_if_no_value and require_equals tests
-├── test_response_file.mojo         # response file (@args.txt) expansion tests
-├── test_remainder_known.mojo       # remainder, parse_known_arguments, allow_hyphen_values tests
-├── test_fullwidth.mojo             # full-width → half-width auto-correction tests
-├── test_groups_help.mojo           # argument groups in help + value_name wrapping tests
-├── test_prompt.mojo                # interactive prompting tests
-├── test_parents.mojo               # argument parents (shared definitions) tests
-├── test_confirmation.mojo          # confirmation option (--yes / -y) tests
-├── test_password.mojo              # password / masked input tests
-└── test_usage.mojo                 # usage line customisation tests
+├── test_parse.mojo                 # Core parsing + negative number passthrough tests
+├── test_options.mojo               # default_if_no_value, require_equals, range, clamp, map, aliases, deprecated, remainder, parse_known, collection tests
+├── test_groups.mojo                # Mutually exclusive, required-together, one-required, conditional, implies, argument groups in help, value_name wrapping tests
+├── test_help.mojo                  # Help formatting, ANSI colours, CJK alignment, NO_COLOR, custom usage, fullwidth correction tests
+├── test_subcommands.mojo           # Subcommand dispatch, persistent/global flags, argument parents tests
+├── test_completion.mojo            # Shell completion (bash/zsh/fish) + Levenshtein typo suggestion tests
+├── test_interactive.mojo           # Interactive prompting, password/masked input, confirmation tests
+└── test_response_file.mojo         # Response file (@args.txt) expansion tests (⚠ disabled due to compiler bug)
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -253,7 +239,7 @@ examples/
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     var command = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
 
     # Positional arguments

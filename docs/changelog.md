@@ -6,81 +6,64 @@ This document tracks all notable changes to ArgMojo, including new features, API
 Comment out unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
 -->
 
-## Unreleased (v0.4.0)
+## 20260321 (v0.4.0)
+
+ArgMojo v0.4.0 adds interactive prompting, password input, confirmation, argument parents, custom usage lines, response files, CJK-aware help formatting, and full-width auto-correction. The builder API is fully parameterised with compile-time `StringLiteral` parameters. The codebase is migrated to Mojo v0.26.2 and the test suite consolidated from 20 files into 8 modules.
 
 ArgMojo v0.4.0 targets Mojo v0.26.2.
 
-### ⭐️ New features in v0.4.0
+### ⭐️ New in v0.4.0
 
-1. Add `.default_if_no_value["value"]()` builder method for default-if-no-value semantics. When an option has a default-if-no-value, it may appear without an explicit value: `--compress` uses the default-if-no-value, while `--compress=bzip2` uses the explicit value. For long options, `.default_if_no_value()` implies `.require_equals()`. For short options, `-c` uses the default-if-no-value while `-cbzip2` uses the attached value (PR #12).
-2. Add `.require_equals()` builder method. When set, long options reject space-separated syntax (`--key value`) and require `--key=value`. Can be used standalone (the value is mandatory via `=`) or combined with `.default_if_no_value()` (the value is optional; omitting it uses default-if-no-value) (PR #12).
-3. Help output adapts to the new modifiers: `--key=<value>` for require_equals, `--key[=<value>]` for default_if_no_value (PR #12).
-4. ~~Add `response_file_prefix()` builder method on `Command` for response-file support. When enabled, tokens starting with the prefix (default `@`) are expanded by reading the referenced file — each non-empty, non-comment line becomes a separate argument. Supports comments (`#`), escape (`@@literal`), recursive nesting (configurable depth), and custom prefix characters (PR #12).~~ *(Temporarily disabled — triggers a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved as module-level functions and will be re-enabled when the Mojo compiler bug is fixed.)*
-5. Add `.remainder()` builder method on `Argument`. A remainder positional consumes **all** remaining tokens (including ones starting with `-`), similar to argparse `nargs=REMAINDER` or clap `trailing_var_arg`. At most one remainder positional is allowed per command and it must be the last positional (PR #13).
-6. Add `parse_known_arguments()` method on `Command`. Like `parse_arguments()`, but unrecognised options are collected into the result instead of raising an error. Access them via `result.get_unknown_args()`. Useful for forwarding unknown flags to another program (PR #13).
-7. Add `.allow_hyphen_values()` builder method on `Argument`. When set on a positional, values starting with `-` are accepted without requiring `--` (e.g., `-` for stdin). Remainder positionals have this enabled automatically (PR #13).
-8. **CJK-aware help alignment.** Help output now computes column padding using terminal display width instead of byte length. CJK ideographs and fullwidth characters are correctly treated as 2-column-wide, so help descriptions stay aligned when option names, positional names, or subcommand names contain Chinese, Japanese, or Korean characters. ANSI escape sequences are skipped during width calculation. No API changes — this is automatic (PR #14).
-9. **Full-width → half-width auto-correction.** When CJK users forget to switch input methods and type fullwidth ASCII (e.g., `－－ｖｅｒｂｏｓｅ` instead of `--verbose`, or `＝` instead of `=`), ArgMojo auto-detects and corrects these characters with a coloured warning. Fullwidth spaces (`U+3000`) embedded in a token cause it to be split into multiple arguments. All tokens containing fullwidth ASCII are normalized; only option tokens (starting with `-` after correction) trigger a warning. Disabled via `disable_fullwidth_correction()` (PR #15).
-10. **CJK punctuation auto-correction.** Common CJK punctuation outside the fullwidth ASCII range is also corrected — for example, em-dash (`——verbose`) is converted to `--verbose`. This runs as a separate pass after fullwidth correction. Disabled via `disable_punctuation_correction()` (PR #16).
-11. **Argument groups in help.** Add `.group["name"]()` builder method on `Argument`. Arguments assigned to the same group are displayed under a dedicated heading in `--help` output, in first-appearance order. Ungrouped arguments remain under the default "Options:" heading. Persistent arguments are collected under "Global Options:" as before (PR #17).
-12. **Value-name wrapping control.** Change `.value_name()` to accept compile-time parameters: `.value_name["NAME"]()` or `.value_name["NAME", False]()`. When `wrapped` is `True` (the default), the custom value name is displayed in angle brackets (`<NAME>`) in help output — matching the convention used by clap, cargo, pixi, and git. When `wrapped` is `False`, the value name is displayed bare (`NAME`). The auto-generated default placeholder (`<arg_name>`) is not affected (PR #17).
-13. **Registration-time validation for group constraints.** `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` now validate argument names against `self.args` at the moment they are called. An `Error` is raised immediately if any name is unknown, empty lists are rejected, and duplicates are silently deduplicated. `required_if()` additionally rejects self-referential rules (`target == condition`). This catches developer typos on the very first `mojo run`, without waiting for end-user input (PR #22).
-14. **Interactive prompting.** Add `.prompt()` and `.prompt["text"]()` builder methods on `Argument`. When an argument marked with `.prompt()` is not provided on the command line, the user is interactively prompted for its value before validation runs. Use `.prompt()` to prompt with the argument's help text, or `.prompt["Custom text"]()` to set a custom message. Works on both required and optional arguments. Prompts show valid choices for `.choice[]()` arguments and show default values in parentheses. For flag arguments, `y`/`n` input is accepted. When stdin is not a terminal (e.g., piped input, CI environments, `/dev/null`), or when `input()` otherwise raises, the exception is caught, prompting stops gracefully, and any values collected so far are preserved (PR #23).
-15. **Argument parents.** Add `add_parent(parent)` method on `Command`. Copies all argument definitions and group constraints (mutually exclusive, required together, one-required, conditional requirements, implications) from a parent `Command` into the current command. This lets you share a common set of arguments across multiple commands without repeating them — equivalent to Python argparse's `parents` parameter. The parent is not modified. All registration-time validation guards run on each inherited argument as usual (PR #25).
-16. **Confirmation option.** Add `confirmation_option()` and `confirmation_option["prompt"]()` builder methods on `Command`. When enabled, the command automatically registers a `--yes` / `-y` flag and prompts the user for confirmation after parsing (and after interactive prompting, if any). If the user does not confirm (`y`/`yes`), the command aborts with an error. Passing `--yes` or `-y` on the command line skips the prompt entirely. When stdin is not interactive (piped input, `/dev/null`), the command aborts gracefully. This is equivalent to Click's `confirmation_option` decorator (PR #26).
-17. **Usage line customisation.** Add `usage(text)` method on `Command`. When set, the given text replaces the auto-generated `Usage: myapp [OPTIONS] ...` line in both `--help` output and error messages. This lets you write git-style usage strings like `git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]`. When not set, the default auto-generated usage line is used (PR #29).
-18. **Password / masked input.** Add `.password()` builder method on `Argument`. When combined with `.prompt()` (implied automatically), the user's typed input is hidden — terminal echo is disabled via POSIX `tcsetattr(3)` while the user types, then re-enabled afterwards. This is equivalent to Click's `hide_input=True` / Python's `getpass.getpass()`. If stdin is not a terminal (piped input, CI, `/dev/null`), the call falls back gracefully — prompting stops and defaults are applied as usual. `.password()` cannot be used on flag or count arguments (rejected at `add_argument()` time) (PR #28).
+1. Add `.default_if_no_value["value"]()` — option appears without a value to use the fallback; with `=value` to override. For long options, implies `.require_equals()` (PR #12).
+2. Add `.require_equals()` — long options reject space-separated values and require `--key=value` syntax. Help output adapts: `--key=<value>` for require-equals, `--key[=<value>]` for default-if-no-value (PR #12).
+3. Add `response_file_prefix()` on `Command` for `@args.txt` expansion with comments, escaping, and recursive nesting. *(Temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`.)* (PR #12).
+4. Add `.remainder()` on `Argument` — consume all remaining tokens (including dash-prefixed) as a single positional, similar to argparse `nargs=REMAINDER` (PR #13).
+5. Add `parse_known_arguments()` on `Command` — unrecognised options are collected via `result.get_unknown_args()` instead of raising an error (PR #13).
+6. Add `.allow_hyphen_values()` on `Argument` — accept tokens starting with `-` as values without requiring `--` first; covers the stdin `-` convention (PR #13).
+7. CJK-aware help alignment using terminal display width; CJK characters treated as 2-column-wide. No API changes — automatic (PR #14).
+8. Full-width → half-width auto-correction with a coloured warning when CJK users type fullwidth ASCII (e.g., `－－ｖｅｒｂｏｓｅ` → `--verbose`). Disabled via `disable_fullwidth_correction()` (PR #15).
+9. CJK punctuation auto-correction — em-dash `——verbose` corrected to `--verbose`. Disabled via `disable_punctuation_correction()` (PR #16).
+10. Add `.group["name"]()` on `Argument` — group arguments under dedicated headings in `--help` output (PR #17).
+11. Value-name wrapping control: `.value_name["NAME"]()` renders as `<NAME>` by default; `.value_name["NAME", False]()` renders bare (PR #17).
+12. Add runtime `generate_completion("shell")` overload alongside the existing compile-time `generate_completion["shell"]()` (PR #19).
+13. Registration-time validation for `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` — catches typos, empty lists, and self-referential rules immediately at `add_argument()` time (PR #22).
+14. Add `.prompt()` / `.prompt["text"]()` on `Argument` — interactively prompt for missing values before validation. Shows choices and defaults; handles non-interactive stdin gracefully (PR #23).
+15. Add `add_parent(parent)` on `Command` — share argument definitions and group constraints across commands, equivalent to argparse `parents` (PR #25).
+16. Add `confirmation_option()` on `Command` — register `--yes`/`-y` and prompt for confirmation after parsing; `--yes` skips the prompt (PR #26).
+17. Add `usage(text)` on `Command` — replace the auto-generated usage line with a custom string (PR #27).
+18. Add `.password()` on `Argument` — hide typed input via POSIX `tcsetattr(3)` during prompts, equivalent to Click `hide_input=True` (PR #28).
 
-### 🔄 Mojo v0.26.2 migration in v0.4.0
+### 🔄 Mojo v0.26.2 migration (PR #29)
 
-ArgMojo v0.4.0 targets **Mojo v0.26.2** (previously v0.26.1). The following codebase-wide changes were made to adapt to the new language semantics (PR #29):
-
-- **Bump Mojo dependency** from `==0.26.1` to `==0.26.2` in `pixi.toml` and regenerate `pixi.lock`.
-- **Migrate stdlib imports** to the new `std.*` namespace: `from sys` → `from std.sys`, `from os` → `from std.os`, `from os.path` → `from std.os.path`, `from sys.ffi` → `from std.ffi`, `from testing` → `from std.testing` (21 test files).
-- **Replace `constrained[]` with `comptime assert`** across all compile-time validation sites (argument builder methods, colour resolution, shell completion dispatch).
-- **Replace `@parameter if` with `comptime if`** in `_resolve_color[]` and `generate_completion[]`.
-- **Unify move/copy initialisers** to the new `__init__` forms: `__copyinit__` → `__init__(out self, *, copy: Self)`, `__moveinit__` → `__init__(out self, *, deinit take: Self)` for `Argument`, `Command`, and `ParseResult`.
-- **Remove `Stringable` from trait lists**: `Argument`, `Command`, and `ParseResult` now conform to `Copyable, Movable, Writable` only (`Stringable` was removed from the stdlib).
-- **Add `byte=` keyword to all string slicing** operations (`token[i:j]` → `token[byte=i:j]`) in `command.mojo`, `utils.mojo`, and `examples/yu.mojo`.
-- **Fix aliasing violation**: `em_dash + em_dash` → `chr(0x2014) + chr(0x2014)` to avoid the new same-variable borrowing alias check.
-- **Replace `fn` with `def`** across all 30 `.mojo` files (754 declarations). In Mojo v0.26.2, `def` has the same semantics as the old `fn` (non-raising by default, requires explicit `raises`), and `fn` is deprecated.
+- Bump Mojo dependency to `==0.26.2` in `pixi.toml`.
+- Migrate stdlib imports to `std.*` namespace (`from sys` → `from std.sys`, etc.).
+- Replace `constrained[]` with `comptime assert` and `@parameter if` with `comptime if`.
+- Unify `__copyinit__`/`__moveinit__` to new `__init__(out self, *, copy/take: Self)` forms.
+- Remove `Stringable` from trait lists (removed from stdlib).
+- Add `byte=` keyword to all string slicing operations.
+- Replace `fn` with `def` across all 30 files (754 declarations).
+- Remove `__str__` methods; consolidate string output into `write_to` (Mojo v0.26.2 convention).
 
 ### 🦋 Changed in v0.4.0
 
-- **Rename `.metavar()` to `.value_name()`** across the entire API and documentation. The internal field is now `_value_name`. This follows clap's naming convention and better describes the purpose. There is no backward-compatible alias — all call sites must use `.value_name()` (PR #13).
-- **Value-name display now uses angle brackets by default.** Custom value names set via `.value_name["FOO"]()` are now rendered as `<FOO>` in help output. To preserve the old behaviour (bare `FOO`), use `.value_name["FOO", False]()`. This only affects custom value names — the auto-generated placeholder was already wrapped in `<>` (PR #17).
-- **Parameterise `.alias_name[]()` as a compile-time parameter.** Changed from `.aliases(["color"])` (runtime `List[String]`) to `.alias_name["color"]()` (compile-time `StringLiteral`). Alias names are validated at compile time (same rules as `.long[]`). For multiple aliases, chain calls: `.alias_name["out"]().alias_name["fmt"]()` (PR #18).
-- **Parameterise `.delimiter[]()` as a compile-time parameter.** Changed from `.delimiter(",")` (runtime `String`) to `.delimiter[","]()` (compile-time `StringLiteral`). Only `,`, `;`, `:`, `|` are accepted; validated at compile time (PR #18).
-- **Parameterise `.default[]()` as a compile-time parameter.** Changed from `.default("val")` (runtime `String`) to `.default["val"]()` (compile-time `StringLiteral`). No additional compile-time validation beyond the type change.
-- **Parameterise `.deprecated[]()` as a compile-time parameter.** Changed from `.deprecated("msg")` (runtime `String`) to `.deprecated["msg"]()` (compile-time `StringLiteral`). Message must be non-empty (validated at compile time).
-- **Parameterise `.default_if_no_value[]()` as a compile-time parameter.** Changed from `.default_if_no_value("val")` (runtime `String`) to `.default_if_no_value["val"]()` (compile-time `StringLiteral`). No additional compile-time validation beyond the type change.
-- **Parameterise `.group[]()` as a compile-time parameter.** Changed from `.group("name")` (runtime `String`) to `.group["name"]()` (compile-time `StringLiteral`). Group name must be non-empty (validated at compile time).
-- **Replace `.choices()` with chained `.choice[]()`.** Changed from `.choices(list^)` (runtime `List[String]`) to chained `.choice["a"]().choice["b"]()` (compile-time `StringLiteral`). Each choice value must be non-empty (validated at compile time). This uses the same singular-parameter + chaining pattern as `.alias_name[]()`, since Mojo's `StringLiteral` embeds its value in the type and variadic parameters require homogeneous types.
+1. Rename `.metavar()` to `.value_name()` across the entire API (PR #13).
+2. Parameterise `.long[]()` and `.short[]()` as compile-time `StringLiteral` parameters (PR #20).
+3. Parameterise `.alias_name[]()`, `.delimiter[]()`, `.default[]()`, `.deprecated[]()`, `.default_if_no_value[]()`, `.group[]()`, `.prompt[]()`, and colour setters (`header_color[]`, `arg_color[]`, `warn_color[]`, `error_color[]`) as compile-time parameters (PR #18, #21).
+4. Replace `.choices(list)` with chained `.choice["a"]().choice["b"]()` compile-time parameters (PR #18).
+5. Value-name display uses angle brackets by default; `.value_name["FOO", False]()` for bare display (PR #17).
+6. Move `print_summary()` from `Command` to `ParseResult` (PR #24).
 
 ### 🔧 Fixes in v0.4.0
 
-- Clarify documentation and docstrings: `default_if_no_value` does not "reject" `--key value`; it simply does not consume the next token as a value (PR #12, review feedback).
-- Fix cross-library comparison: click is described as "Python CLI framework" instead of incorrectly saying "built on top of argparse" (PR #12, review feedback).
-- Reject `.require_equals()` / `.default_if_no_value()` combined with `.number_of_values[N]()` at `add_argument()` time with a clear error (PR #12, review feedback).
-
-### 🛡️ Validation improvements in v0.4.0
-
-- **Compile-time `StringLiteral` parameters.** Builder methods that accept fixed, known values (`.long[]`, `.short[]`, `.choice[]`, `.default[]`, `.delimiter[]`, `.deprecated[]`, `.default_if_no_value[]`, `.group[]`, `.alias_name[]`, `.value_name[]`, `header_color[]`, `arg_color[]`, `warn_color[]`, `error_color[]`, `.max[]`, `.range[]`, `.number_of_values[]`, `response_file_max_depth[]`) now use compile-time `StringLiteral` or `Int` parameters. Invalid values are rejected by the compiler before a binary is produced (PR #18, and earlier PRs).
-- **Registration-time name validation.** `mutually_exclusive()`, `required_together()`, `one_required()`, and `required_if()` now raise an `Error` immediately if any referenced argument name is not registered. Empty lists are rejected and duplicates are deduplicated. `required_if()` rejects self-referential rules. This matches the existing pattern in `implies()` (PR #22).
+- Clarify that `default_if_no_value` does not "reject" `--key value` — it simply does not consume the next token (PR #12).
+- Fix Click description: "Python CLI framework", not "built on top of argparse" (PR #12).
+- Reject `.require_equals()` / `.default_if_no_value()` combined with `.number_of_values[N]()` at `add_argument()` time (PR #12).
 
 ### 📚 Documentation and testing in v0.4.0
 
-- Add Developer Validation section to user manual documenting the two-layer validation model (compile-time `StringLiteral` + runtime registration-time `raises`) with recommended workflow (PR #22).
-- Add `pixi run debug` task that runs all examples under `-D ASSERT=all` with `--help` to exercise registration-time validation in CI (PR #22).
-- **Consolidate test suite into 8 focused modules** (PR #30):
-  - `tests/test_parse.mojo` — core parsing (long/short flags, key-value pairs, positional args, short flag merging, choices, count, negatable flags, prefix matching, negative numbers).
-  - `tests/test_options.mojo` — option features (default_if_no_value, require_equals, range/clamp, key-value mapping, aliases, deprecated args, remainder, parse_known_arguments, value_name, allow_hyphen_values, append, delimiter splitting, number_of_values).
-  - `tests/test_help.mojo` — help and display (hidden args, value_name, padding, alignment, ANSI colours, subcommand help, CJK-aware alignment, NO_COLOR, custom usage, full-width → half-width auto-correction).
-  - `tests/test_groups.mojo` — argument groups (mutually exclusive, required together, one-required, required_if, registration-time validation, groups in help output, value_name wrapping, implies with cycle detection).
-  - `tests/test_completion.mojo` — shell completions (Fish, Zsh, Bash script generation, built-in flag, aliases, hidden subcommands) and typo suggestions (Levenshtein distance for options and subcommands).
-  - `tests/test_subcommands.mojo` — subcommand support, persistent flags, parent inheritance (data model, parse-time routing, auto-registered help, aliases, hidden dispatch, positional guards).
-  - `tests/test_interactive.mojo` — interactive prompting, password/masked input, confirmation option (builder methods, field propagation, validation guards, skip-when-provided).
-  - `tests/test_response_file.mojo` — response-file (@args.txt) expansion (currently excluded from CI due to Mojo compiler deadlock).
+- Consolidate test suite from 20 files into 8 focused modules (PR #30).
+- Add Developer Validation section to user manual with two-layer validation model (compile-time + registration-time) (PR #22).
+- Add `pixi run debug` task for `-D ASSERT=all` regression testing (PR #22).
 
 ---
 
