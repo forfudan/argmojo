@@ -42,6 +42,7 @@ ArgMojo v0.4.0 targets Mojo v0.26.2.
 - Remove `Stringable` from trait lists (removed from stdlib).
 - Add `byte=` keyword to all string slicing operations.
 - Replace `fn` with `def` across all 30 files (754 declarations).
+- Remove `__str__` methods; consolidate string output into `write_to` (Mojo v0.26.2 convention).
 
 ### 🦋 Changed in v0.4.0
 

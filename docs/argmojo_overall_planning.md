@@ -239,7 +239,7 @@ examples/
 ```mojo
 from argmojo import Command, Argument
 
-fn main() raises:
+def main() raises:
     var command = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
 
     # Positional arguments
