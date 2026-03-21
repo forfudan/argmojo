@@ -958,7 +958,11 @@ struct Argument(Copyable, Movable, Writable):
     # ===------------------------------------------------------------------=== #
 
     def __str__(self) -> String:
-        """Returns a string representation of this argument definition."""
+        """Returns a string representation of this argument definition.
+
+        Returns:
+            A human-readable string describing the argument.
+        """
         var s = String("Argument(name='") + self.name + "'"
         if self._long_name:
             s += ", long='--" + self._long_name + "'"

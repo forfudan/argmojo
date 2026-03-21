@@ -380,7 +380,11 @@ struct ParseResult(Copyable, Movable, Writable):
             sub._print_summary_impl(indent + 2, self.subcommand)
 
     def __str__(self) -> String:
-        """Return a string representation of the parse result."""
+        """Return a string representation of the parse result.
+
+        Returns:
+            A human-readable summary string.
+        """
         var s = String("ParseResult(")
         s += "flags=" + String(len(self._flags))
         s += ", values=" + String(len(self._values))

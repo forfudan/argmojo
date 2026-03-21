@@ -4960,7 +4960,11 @@ struct Command(Copyable, Movable, Writable):
         return s
 
     def __str__(self) -> String:
-        """Returns a string representation of this command."""
+        """Returns a string representation of this command.
+
+        Returns:
+            A human-readable string describing the command.
+        """
         return (
             "Command(name='"
             + self.name
