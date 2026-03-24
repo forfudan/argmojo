@@ -552,3 +552,148 @@ def _restore_echo(var saved: List[UInt32]) -> Bool:
     # Keep saved alive — see _disable_echo comment.
     _ = saved^
     return rc == 0
+
+
+# ── ICANON bitmask (platform-dependent) ─────────────────────────────────────
+# macOS: ICANON = 0x100 (bit 8 of c_lflag)
+# Linux: ICANON = 0x002 (bit 1 of c_lflag)
+# We pick the right constant at runtime based on the c_lflag offset
+# detected by _lflag_offset().
+comptime _ICANON_MACOS: UInt32 = 0x00000100
+comptime _ICANON_LINUX: UInt32 = 0x00000002
+
+# ── ISIG bitmask (platform-dependent) ───────────────────────────────────────
+# macOS: ISIG = 0x080 (bit 7 of c_lflag)
+# Linux: ISIG = 0x001 (bit 0 of c_lflag)
+comptime _ISIG_MACOS: UInt32 = 0x00000080
+comptime _ISIG_LINUX: UInt32 = 0x00000001
+
+
+def _read_password_asterisk(msg: String) raises -> String:
+    """Reads a password interactively, echoing ``*`` for each keystroke.
+
+    Disables ECHO, ICANON, and ISIG in terminal settings so that each
+    byte is delivered immediately and without echo, and interrupt
+    signals (such as Ctrl-C) are read as raw bytes rather than
+    generating signals.  For every printable byte, a ``*`` is written
+    to stderr.  Backspace erases the last ``*``.  Enter (LF/CR)
+    finishes input.
+
+    Prompt and feedback are written to stderr (unbuffered), following
+    the convention used by ``sudo``, ``ssh``, and similar tools.
+
+    Falls back to plain ``input()`` (visible) when stdin is not a
+    terminal or the termios layout cannot be determined.
+
+    Raises on Ctrl-C, Ctrl-D (EOF), or read error after restoring
+    the terminal to its original settings.  The exception message
+    distinguishes the cause:
+    - ``"password input cancelled"`` for Ctrl-C
+    - ``"password input EOF"`` for Ctrl-D / EOF
+    - ``"password input read error"`` for a read(2) failure
+
+    Note: passwords are assumed to be ASCII (the overwhelmingly common
+    case).  Non-ASCII / UTF-8 multi-byte input will produce one ``*``
+    per byte rather than per character, and backspace operates on bytes.
+    The plain ``.password()`` mode (using ``input()``) handles UTF-8
+    correctly and should be preferred when Unicode passphrases are
+    expected.
+    """
+    from std.sys import stderr
+
+    # ── Print prompt ─────────────────────────────────────────────
+    print(msg, end="", file=stderr)
+
+    # ── tcgetattr — save original terminal settings ──────────────
+    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
+    var ptr = buf.unsafe_ptr()
+    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
+    if rc != 0:
+        # Not a terminal — fall back to regular input.
+        # Let input() raise on EOF so the caller can stop prompting.
+        return input()
+
+    var saved = buf.copy()
+    var offset = _lflag_offset(buf)
+    if offset < 0:
+        return input()
+
+    # ── Disable ECHO + ICANON + ISIG ─────────────────────────────
+    var icanon: UInt32
+    var isig: UInt32
+    if offset == 6:  # macOS
+        icanon = _ICANON_MACOS
+        isig = _ISIG_MACOS
+    else:  # Linux
+        icanon = _ICANON_LINUX
+        isig = _ISIG_LINUX
+    buf[offset] = buf[offset] & ~_ECHO & ~icanon & ~isig
+    ptr = buf.unsafe_ptr()
+    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
+    _ = buf^
+    if rc != 0:
+        _ = _restore_echo(saved^)
+        return input()
+
+    # ── Read one byte at a time ──────────────────────────────────
+    var password = List[UInt8]()
+    var one = List[UInt8](length=1, fill=0)
+    var cancelled = False
+    var cancel_reason = String()
+
+    while True:
+        var one_ptr = one.unsafe_ptr()
+        var n = external_call["read", Int, Int, Int, Int](0, Int(one_ptr), 1)
+        if n <= 0:
+            cancelled = True
+            cancel_reason = "password input read error"
+            break  # EOF or error
+        var ch = one[0]
+        if ch == 10 or ch == 13:  # Enter (LF / CR)
+            break
+        elif ch == 127 or ch == 8:  # Backspace / Delete
+            if len(password) > 0:
+                _ = password.pop()
+                # Erase one asterisk: cursor back, overwrite space, cursor back.
+                print("\x08 \x08", end="", file=stderr)
+        elif ch == 3:  # Ctrl-C — cancel
+            cancelled = True
+            cancel_reason = "password input cancelled"
+            break
+        elif ch == 4:  # Ctrl-D — EOF
+            cancelled = True
+            cancel_reason = "password input EOF"
+            break
+        elif ch == 27:  # ESC — start of escape sequence (e.g. arrow keys)
+            # Consume remaining bytes of the sequence so they don't
+            # pollute the password buffer.  Typical sequences are
+            # 2-3 bytes (e.g. ESC [ A), but we read up to 8 to be safe.
+            var discard_count = 0
+            while discard_count < 8:
+                var esc_ptr = one.unsafe_ptr()
+                var n2 = external_call["read", Int, Int, Int, Int](
+                    0, Int(esc_ptr), 1
+                )
+                if n2 <= 0:
+                    break
+                # Stop after the terminating letter of a CSI sequence.
+                var esc_ch = one[0]
+                discard_count += 1
+                if esc_ch >= 64 and esc_ch <= 126:  # '@' .. '~'
+                    break
+            continue
+        elif ch >= 32:  # Printable byte
+            password.append(ch)
+            print("*", end="", file=stderr)
+
+    # ── Always restore terminal before returning or raising ──────
+    print(file=stderr)
+    _ = _restore_echo(saved^)
+
+    if cancelled:
+        raise cancel_reason
+
+    var result = String()
+    for i in range(len(password)):
+        result += chr(Int(password[i]))
+    return result^

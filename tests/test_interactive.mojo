@@ -583,6 +583,95 @@ def test_password_not_set_on_normal_prompt() raises:
     )
 
 
+# ── password[asterisk] builder tests ─────────────────────────────────────────
+
+
+def test_password_asterisk_true_sets_fields() raises:
+    """Tests that .password[True]() sets both _hide_input and _show_asterisk."""
+    var arg = Argument("pin", help="PIN").long["pin"]().password[True]()
+    assert_true(arg._hide_input, msg="_hide_input should be True")
+    assert_true(arg._show_asterisk, msg="_show_asterisk should be True")
+    assert_true(arg._prompt, msg="_prompt should be implied")
+
+
+def test_password_asterisk_false_sets_fields() raises:
+    """Tests that .password[False]() sets _hide_input but not _show_asterisk."""
+    var arg = Argument("pass", help="Password").long["pass"]().password[False]()
+    assert_true(arg._hide_input, msg="_hide_input should be True")
+    assert_false(arg._show_asterisk, msg="_show_asterisk should be False")
+    assert_true(arg._prompt, msg="_prompt should be implied")
+
+
+def test_password_plain_resets_asterisk() raises:
+    """Tests that .password() after .password[True]() resets _show_asterisk.
+
+    The last builder call should win — .password() means fully hidden.
+    """
+    var arg = (
+        Argument("pass", help="Password")
+        .long["pass"]()
+        .password[True]()
+        .password()
+    )
+    assert_true(arg._hide_input, msg="_hide_input should be True")
+    assert_false(
+        arg._show_asterisk,
+        msg="_show_asterisk should be reset by .password()",
+    )
+
+
+def test_password_asterisk_copy_preserves() raises:
+    """Tests that copy preserves _show_asterisk."""
+    var original = Argument("pin", help="PIN").long["pin"]().password[True]()
+    var copy = original.copy()
+    assert_true(copy._show_asterisk, msg="copy should preserve _show_asterisk")
+    assert_true(copy._hide_input, msg="copy should preserve _hide_input")
+
+
+def test_password_asterisk_default_is_false() raises:
+    """Tests that _show_asterisk is False by default."""
+    var arg = Argument("name", help="Name").long["name"]()
+    assert_false(
+        arg._show_asterisk, msg="_show_asterisk should be False by default"
+    )
+
+
+def test_password_asterisk_skipped_when_value_provided() raises:
+    """Tests that asterisk password prompt is skipped when value is on CLI."""
+    var cmd = Command("test", "Test app")
+    cmd.add_argument(Argument("pin", help="PIN").long["pin"]().password[True]())
+
+    var args: List[String] = ["test", "--pin", "1234"]
+    var result = cmd.parse_arguments(args)
+    assert_equal(
+        result.get_string("pin"),
+        "1234",
+        msg="provided value should be used",
+    )
+
+
+def test_password_asterisk_with_default() raises:
+    """Tests asterisk password arg with a default.
+
+    When stdin is /dev/null, prompting stops and default is applied.
+    """
+    var cmd = Command("test", "Test app")
+    cmd.add_argument(
+        Argument("pin", help="PIN")
+        .long["pin"]()
+        .default["0000"]()
+        .password[True]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = cmd.parse_arguments(args)
+    assert_equal(
+        result.get_string("pin"),
+        "0000",
+        msg="default should be used when stdin is not interactive",
+    )
+
+
 def test_password_positional() raises:
     """Tests password on a positional argument."""
     var cmd = Command("test", "Test app")

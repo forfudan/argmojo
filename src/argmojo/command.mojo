@@ -16,6 +16,7 @@ from .utils import (
     _correct_cjk_punctuation,
     _disable_echo,
     _display_width,
+    _read_password_asterisk,
     _restore_echo,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
@@ -2807,22 +2808,29 @@ struct Command(Copyable, Movable, Writable):
             # ── Read input ───────────────────────────────────────────
             var value: String
             if a._hide_input:
-                # Password mode: disable echo, read, re-enable echo,
-                # then print a newline (since the user's Enter is not
-                # echoed either on some terminals).
-                var saved = _disable_echo()
-                var echo_disabled = len(saved) > 0
-                try:
-                    value = input(msg)
-                except e:
+                if a._show_asterisk:
+                    # Asterisk mode: echo '*' for each keystroke.
+                    try:
+                        value = _read_password_asterisk(msg)
+                    except e:
+                        return
+                else:
+                    # Password mode: disable echo, read, re-enable echo,
+                    # then print a newline (since the user's Enter is not
+                    # echoed either on some terminals).
+                    var saved = _disable_echo()
+                    var echo_disabled = len(saved) > 0
+                    try:
+                        value = input(msg)
+                    except e:
+                        _ = _restore_echo(saved^)
+                        return
                     _ = _restore_echo(saved^)
-                    return
-                _ = _restore_echo(saved^)
-                # Print a newline so the cursor moves to the next line
-                # (the user's Enter was not echoed) — only if echo was
-                # actually disabled.
-                if echo_disabled:
-                    print()
+                    # Print a newline so the cursor moves to the next line
+                    # (the user's Enter was not echoed) — only if echo was
+                    # actually disabled.
+                    if echo_disabled:
+                        print()
             else:
                 try:
                     value = input(msg)
