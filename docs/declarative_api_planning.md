@@ -69,48 +69,48 @@ Direct mapping to argmojo declarative API:
 | `ExpressibleByArgument` protocol | Planned `Parseable` trait                   |
 | `CommandGroup`                   | `SubApp[...]`                               |
 | `mutating func run()`            | Separate: `App[T].parse()` returns T        |
-| `mutating func validate()`       | `fn validate(self) raises` on `ArgStruct`   |
+| `mutating func validate()`       | `def validate(self) raises` on `ArgStruct`  |
 
 **What argmojo adds beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level customisation — Swift's `ParsableCommand` is a sealed box with no escape hatch to builder-level features like mutually exclusive groups, implications, or custom help formatting. (2) `parse_split()` returns both typed struct + `ParseResult` — Swift requires all fields to live in the struct. (3) Declarative is optional — Swift has no builder alternative; you must use the struct-based approach.
 
-**Lesson — `validate()`**: An optional `fn validate(self) raises` method on `ArgStruct` (mirroring Swift's `validate()`) could complement `to_command()` for post-parse cross-field validation without requiring the builder API.
+**Lesson — `validate()`**: An optional `def validate(self) raises` method on `ArgStruct` (mirroring Swift's `validate()`) could complement `to_command()` for post-parse cross-field validation without requiring the builder API.
 
 ## 3. Architecture
 
 ```txt
-┌──────────────────────────────────────────────────────────────────┐
-│  User Code                                                       │
-│                                                                  │
-│  @fieldwise_init                                                 │
-│  struct MyArgs(ArgStruct):                                       │
-│      var name: Argument[String, help="Name", required=True]      │
-│      var verbose: Flag[short="v", help="Verbose"]                │
-│      var output: Option[String, long="output", short="o"]        │
-│      fn __init__(out self): self = arg_defaults[Self]()          │
-│                                                                  │
-│  var app = App[MyArgs]()                                         │
-│  var cmd = app.to_command()                                      │
-│  cmd.mutually_exclusive([...])                                   │
-│  var args = app.parse()  →  MyArgs (typed struct)                │
-│                                                                  │
-├──────────────────────────────────────────────────────────────────┤
-│  declarative.mojo  (NEW — ~400-600 lines)                        │
-│                                                                  │
-│  App[T].to_command()    → Command    (reflect T → builder calls) │
-│  App[T].parse()         → T          (parse + write-back)        │
-│  App[T].from_result()   → T          (ParseResult → struct)      │
-│  arg_defaults[T]()      → T          (default-initialized)       │
+┌──────────────────────────────────────────────────────────────────────────┐
+│  User Code                                                               │
+│                                                                          │
+│  @fieldwise_init                                                         │
+│  struct MyArgs(ArgStruct):                                               │
+│      var name: Argument[String, help="Name", required=True]              │
+│      var verbose: Flag[short="v", help="Verbose"]                        │
+│      var output: Option[String, long="output", short="o"]                │
+│      def __init__(out self): self = arg_defaults[Self]()                 │
+│                                                                          │
+│  var app = App[MyArgs]()                                                 │
+│  var cmd = app.to_command()                                              │
+│  cmd.mutually_exclusive([...])                                           │
+│  var args = app.parse()  →  MyArgs (typed struct)                        │
+│                                                                          │
+├──────────────────────────────────────────────────────────────────────────┤
+│  declarative.mojo  (NEW — ~400-600 lines)                                │
+│                                                                          │
+│  App[T].to_command()    → Command    (reflect T → builder calls)         │
+│  App[T].parse()         → T          (parse + write-back)                │
+│  App[T].from_result()   → T          (ParseResult → struct)              │
+│  arg_defaults[T]()      → T          (default-initialized)               │
 │                                                                          │
 │  Wrapper types: Option[T, ...], Flag[...], Argument[T, ...], Count[...]  │
 │  Trait: ArgStruct                                                        │
 │                                                                          │
-├──────────────────────────────────────────────────────────────────┤
-│  argument.mojo + command.mojo + parse_result.mojo  (UNCHANGED)   │
-│                                                                  │
-│  Argument(...).long["x"]().short["y"]().flag()                   │
-│  Command("app").add_argument(...).parse() → ParseResult          │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+├──────────────────────────────────────────────────────────────────────────┤
+│  argument.mojo + command.mojo + parse_result.mojo  (UNCHANGED)           │
+│                                                                          │
+│  Argument(...).long["x"]().short["y"]().flag()                           │
+│  Command("app").add_argument(...).parse() → ParseResult                  │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Files Changed
@@ -160,10 +160,10 @@ struct Option[
 ](Copyable, Movable, Defaultable):
     var value: T
 
-    fn __init__(out self):
+    def __init__(out self):
         self.value = T()
 
-    fn __init__(out self, val: T):
+    def __init__(out self, val: T):
         self.value = val
 ```
 
@@ -186,14 +186,14 @@ struct Flag[
 ](Copyable, Movable, Defaultable):
     var value: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.value = False
 
-    fn __init__(out self, val: Bool):
+    def __init__(out self, val: Bool):
         self.value = val
 
     # Implicit conversion to Bool for convenience
-    fn __bool__(self) -> Bool:
+    def __bool__(self) -> Bool:
         return self.value
 ```
 
@@ -211,10 +211,10 @@ struct Argument[
 ](Copyable, Movable, Defaultable):
     var value: T
 
-    fn __init__(out self):
+    def __init__(out self):
         self.value = T()
 
-    fn __init__(out self, val: T):
+    def __init__(out self, val: T):
         self.value = val
 ```
 
@@ -231,10 +231,10 @@ struct Count[
 ](Copyable, Movable, Defaultable):
     var value: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.value = 0
 
-    fn __init__(out self, val: Int):
+    def __init__(out self, val: Int):
         self.value = val
 ```
 
@@ -247,10 +247,12 @@ struct Count[
 Users can also use **bare types** (like `String`, `Int`, `Bool`) for fields without metadata — they become options named after the field, following Swift's convention for fields without property wrappers.
 
 **Naming note — `Argument` builder vs declarative**: The builder API already has an `Argument` struct (in `argument.mojo`) for defining individual arguments. The declarative module introduces `Argument[T, ...]` (in `declarative.mojo`) as the positional argument wrapper, matching Swift's `@Argument`. They live in separate modules:
+
 - `from argmojo import Argument` — builder struct, constructed at runtime: `Argument("name", help="...")`
 - `from argmojo.declarative import Argument` — parametric wrapper, used as a field type: `var name: Argument[String, help="..."]`
 
 In **pure declarative** mode, no conflict. In **hybrid** mode where both are needed, use aliased imports:
+
 ```mojo
 from argmojo import Command, Argument as BuilderArgument
 from argmojo.declarative import App, Option, Flag, Argument, ArgStruct
@@ -263,17 +265,17 @@ trait ArgStruct(Defaultable, Movable):
     """Marker trait for structs that can be parsed from CLI arguments."""
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         """Return the command description for --help."""
         ...
 
     @staticmethod
-    fn version() -> String:
+    def version() -> String:
         """Return the version string for --version. Default "0.1.0"."""
         ...
 
     @staticmethod
-    fn name() -> String:
+    def name() -> String:
         """Return the command name. Default: lowercased struct name."""
         ...
 ```
@@ -285,10 +287,10 @@ Minimal implementation by users:
 struct MyArgs(ArgStruct):
     var input: Argument[String, help="Input file", required=True]
 
-    fn __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "My awesome tool"
 ```
 
@@ -303,13 +305,13 @@ struct App[T: ArgStruct]:
     var _command: Command
     var _built: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self._command = Command(T.name(), T.description(), version=T.version())
         self._built = False
 
     # ── Core methods ──
 
-    fn to_command(mut self) raises -> ref Command:
+    def to_command(mut self) raises -> ref Command:
         """Build and return the underlying Command.
         Users can modify it with builder methods before parsing."""
         if not self._built:
@@ -317,7 +319,7 @@ struct App[T: ArgStruct]:
             self._built = True
         return self._command
 
-    fn parse(mut self) raises -> T:
+    def parse(mut self) raises -> T:
         """Parse sys.argv() and return a populated T instance."""
         if not self._built:
             self._build()
@@ -325,7 +327,7 @@ struct App[T: ArgStruct]:
         var result = self._command.parse()
         return self._from_result(result)
 
-    fn parse_args(mut self, raw_args: List[String]) raises -> T:
+    def parse_args(mut self, raw_args: List[String]) raises -> T:
         """Parse explicit arg list and return a populated T instance."""
         if not self._built:
             self._build()
@@ -343,10 +345,10 @@ struct App[T: ArgStruct]:
     # ── configure() with non-capturing callback ──
     # Works in Mojo 0.26.2 as long as the callback does NOT capture external state.
     # This is fine for configure() because all operations target the `mut Command` parameter.
-    # NOTE: Capturing closures (unified {mut x}) cannot be passed as fn() arguments
-    #       due to type mismatch (nonescaping closure ≠ bare fn). Non-capturing is sufficient here.
+    # NOTE: Capturing closures (unified {mut x}) cannot be passed as def() arguments
+    #       due to type mismatch (nonescaping closure ≠ bare def). Non-capturing is sufficient here.
 
-    fn configure(mut self, callback: fn(mut Command) raises -> None) raises -> ref Self:
+    def configure(mut self, callback: def(mut Command) raises -> None) raises -> ref Self:
         """Apply builder-level customizations via callback."""
         if not self._built:
             self._build()
@@ -356,7 +358,7 @@ struct App[T: ArgStruct]:
 
     # ── Innovation #2: parse_split (see §6.2) ──
 
-    fn parse_split(mut self) raises -> (T, ParseResult):
+    def parse_split(mut self) raises -> (T, ParseResult):
         """Parse and return BOTH a typed struct AND the raw ParseResult.
         The struct contains declarative-registered fields.
         The ParseResult contains everything (including builder-added fields)."""
@@ -369,7 +371,7 @@ struct App[T: ArgStruct]:
 
     # ── Internal ──
 
-    fn _build(mut self) raises:
+    def _build(mut self) raises:
         """Reflect over T's fields and register Arguments."""
         comptime field_count = struct_field_count[T]()
         comptime field_names = struct_field_names[T]()
@@ -392,7 +394,7 @@ struct App[T: ArgStruct]:
                 # Bare type: treat as named option with field name as long name
                 self._register_bare(fname, ftype)
 
-    fn _from_result(self, result: ParseResult) raises -> T:
+    def _from_result(self, result: ParseResult) raises -> T:
         """Write ParseResult values back into a T instance."""
         var out = T()
         comptime field_count = struct_field_count[T]()
@@ -432,7 +434,7 @@ struct App[T: ArgStruct]:
 Initialises all wrapper fields to their defaults (inspired by Swift's default property initialization):
 
 ```mojo
-fn arg_defaults[T: ArgStruct]() -> T:
+def arg_defaults[T: ArgStruct]() -> T:
     """Create a default-initialized instance of T.
     Wrapper types (Option, Flag, Argument, Count) are initialized to their defaults.
     Bare types use their Defaultable implementation."""
@@ -488,15 +490,15 @@ struct Grep(ArgStruct):
     var verbose: Count[short="v", help="Increase verbosity", max=3]
     var ext: Option[List[String], short="e", long="ext", help="File extensions", append=True]
 
-    fn __init__(out self):
+    def __init__(out self):
         self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "Search for patterns in files."
 
     @staticmethod
-    fn version() -> String:
+    def version() -> String:
         return "1.0.0"
 
 def main() raises:
@@ -527,10 +529,10 @@ struct Deploy(ArgStruct):
     var replicas: Option[Int, long="replicas", short="r", help="Number of replicas",
                       default="3", has_range=True, range_min=1, range_max=100]
 
-    fn __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "Deploy application to target environment."
 
 def main() raises:
@@ -562,10 +564,10 @@ struct Convert(ArgStruct):
     var input: Argument[String, help="Input file", required=True]
     var output: Option[String, long="output", short="o", help="Output file"]
 
-    fn __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "File format converter."
 
 def main() raises:
@@ -608,14 +610,14 @@ struct Clone(ArgStruct):
     var depth: Option[Int, long="depth", help="Clone depth", default="0"]
     var branch: Option[String, short="b", long="branch", help="Branch to clone"]
 
-    fn __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "Clone a repository."
 
     @staticmethod
-    fn name() -> String:
+    def name() -> String:
         return "clone"
 
 @fieldwise_init
@@ -624,14 +626,14 @@ struct Push(ArgStruct):
     var force: Flag[short="f", help="Force push"]
     var tags: Flag[long="tags", help="Push all tags"]
 
-    fn __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    fn description() -> String:
+    def description() -> String:
         return "Push commits to remote."
 
     @staticmethod
-    fn name() -> String:
+    def name() -> String:
         return "push"
 
 def main() raises:
@@ -669,7 +671,7 @@ var args = app.parse()
 
 This creates a **smooth gradient** between simplicity and power:
 
-```
+```txt
 Pure declarative     Declarative + to_command()    Pure builder
 (3 lines)            (10 lines)                    (30 lines)
 Simple tools    →    Medium complexity tools   →    Maximum control
@@ -688,12 +690,12 @@ to_command() + new arguments        →  parse_split()  →  (T, ParseResult) (p
 
 ```mojo
 var args = App[MyArgs]()
-    .configure(fn(mut cmd) raises: cmd.mutually_exclusive([...]))
-    .configure(fn(mut cmd) raises: cmd.implies("a", "b"))
+    .configure(def(mut cmd) raises: cmd.mutually_exclusive([...]))
+    .configure(def(mut cmd) raises: cmd.implies("a", "b"))
     .parse()
 ```
 
-**Limitation**: Mojo's capturing closures (`unified {mut x}`) produce a `nonescaping closure` type that cannot be passed as a bare `fn()` argument. This doesn't affect `configure()` since its callbacks don't need captures — the `mut Command` parameter provides all necessary state.
+**Limitation**: Mojo's capturing closures (`unified {mut x}`) produce a `nonescaping closure` type that cannot be passed as a bare `def()` argument. This doesn't affect `configure()` since its callbacks don't need captures — the `mut Command` parameter provides all necessary state.
 
 `to_command()` remains the primary bridge for multi-step customization; `configure()` is syntactic sugar for one-liner tweaks.
 
@@ -708,7 +710,7 @@ var args = App[MyArgs]()
 **ArgMojo's approach**: `parse_split()` returns a **tuple of both**:
 
 ```mojo
-fn parse_split(mut self) raises -> (T, ParseResult):
+def parse_split(mut self) raises -> (T, ParseResult):
 ```
 
 - The first element is the user's struct `T` with all declarative-registered fields populated & typed.
@@ -809,10 +811,10 @@ struct SubApp[
 ]:
     var _command: Command
 
-    fn __init__(out self):
+    def __init__(out self):
         self._command = Command(String(app_name), String(app_description))
 
-    fn parse(mut self) raises -> SubResult[*Ts]:
+    def parse(mut self) raises -> SubResult[*Ts]:
         # For each type in Ts, build a sub-Command and register via add_subcommand
         @parameter
         for i in range(len(Ts)):
@@ -860,7 +862,7 @@ This is the right approach — these features describe *relationships between* a
 | Builder fallback                | ❌ no builder API                | ✅ full builder API as alternative           |
 | Declarative ↔ builder bridge    | ❌ no escape hatch               | ✅ `to_command()` exposes `Command`          |
 | Dual-return parse               | ❌ struct-only return            | ✅ `parse_split()` → (T, ParseResult)        |
-| Post-parse validation           | `mutating func validate()`      | `fn validate(self) raises` (planned)        |
+| Post-parse validation           | `mutating func validate()`      | `def validate(self) raises` (planned)       |
 | Mutually exclusive groups       | ❌ not in struct schema          | ✅ via `to_command()`                        |
 | Interactive prompt              | ❌ not supported                 | ✅ `prompt=True` in wrapper                  |
 | Password / masked input         | ❌ not supported                 | ✅ `password=True` in wrapper                |

@@ -690,7 +690,7 @@ These features use capabilities already available in Mojo 0.26.2 and can be expe
 - **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level tweaks (groups, implications, coloured help); (2) `parse_split()` returns both typed struct + `ParseResult` for hybrid workflows.
 - **Optional** — Users who prefer the builder API are completely unaffected. Zero change to existing code.
 
-**Pre/Post run hooks** — Straightforward callback mechanism (`fn(ParseResult) raises`). No special language features needed; just needs API design and a decision on execution order with subcommands.
+**Pre/Post run hooks** — Straightforward callback mechanism (`def(ParseResult) raises`). No special language features needed; just needs API design and a decision on execution order with subcommands.
 
 #### Phase 7b: Blocked on Mojo Language Features
 
