@@ -586,7 +586,18 @@ def _read_password_asterisk(msg: String) raises -> String:
     terminal or the termios layout cannot be determined.
 
     Raises on Ctrl-C, Ctrl-D (EOF), or read error after restoring
-    the terminal to its original settings.
+    the terminal to its original settings.  The exception message
+    distinguishes the cause:
+    - ``"password input cancelled"`` for Ctrl-C
+    - ``"password input EOF"`` for Ctrl-D / EOF
+    - ``"password input read error"`` for a read(2) failure
+
+    Note: passwords are assumed to be ASCII (the overwhelmingly common
+    case).  Non-ASCII / UTF-8 multi-byte input will produce one ``*``
+    per byte rather than per character, and backspace operates on bytes.
+    The plain ``.password()`` mode (using ``input()``) handles UTF-8
+    correctly and should be preferred when Unicode passphrases are
+    expected.
     """
     from std.sys import stderr
 
@@ -628,12 +639,14 @@ def _read_password_asterisk(msg: String) raises -> String:
     var password = List[UInt8]()
     var one = List[UInt8](length=1, fill=0)
     var cancelled = False
+    var cancel_reason = String()
 
     while True:
         var one_ptr = one.unsafe_ptr()
         var n = external_call["read", Int, Int, Int, Int](0, Int(one_ptr), 1)
         if n <= 0:
             cancelled = True
+            cancel_reason = "password input read error"
             break  # EOF or error
         var ch = one[0]
         if ch == 10 or ch == 13:  # Enter (LF / CR)
@@ -645,10 +658,30 @@ def _read_password_asterisk(msg: String) raises -> String:
                 print("\x08 \x08", end="", file=stderr)
         elif ch == 3:  # Ctrl-C — cancel
             cancelled = True
+            cancel_reason = "password input cancelled"
             break
         elif ch == 4:  # Ctrl-D — EOF
             cancelled = True
+            cancel_reason = "password input EOF"
             break
+        elif ch == 27:  # ESC — start of escape sequence (e.g. arrow keys)
+            # Consume remaining bytes of the sequence so they don't
+            # pollute the password buffer.  Typical sequences are
+            # 2-3 bytes (e.g. ESC [ A), but we read up to 8 to be safe.
+            var discard_count = 0
+            while discard_count < 8:
+                var esc_ptr = one.unsafe_ptr()
+                var n2 = external_call["read", Int, Int, Int, Int](
+                    0, Int(esc_ptr), 1
+                )
+                if n2 <= 0:
+                    break
+                # Stop after the terminating letter of a CSI sequence.
+                var esc_ch = one[0]
+                discard_count += 1
+                if esc_ch >= 64 and esc_ch <= 126:  # '@' .. '~'
+                    break
+            continue
         elif ch >= 32:  # Printable byte
             password.append(ch)
             print("*", end="", file=stderr)
@@ -658,7 +691,7 @@ def _read_password_asterisk(msg: String) raises -> String:
     _ = _restore_echo(saved^)
 
     if cancelled:
-        raise "password input cancelled"
+        raise cancel_reason
 
     var result = String()
     for i in range(len(password)):
