@@ -14,93 +14,82 @@ This section summarises the key design patterns and features from well-known arg
 
 ### 2.1 Libraries Surveyed
 
-| Library               | Language     | Style                  | Key Insight for ArgMojo                                                                                                                                                                                                  |
-| --------------------- | ------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **argparse** (stdlib) | Python       | Builder (add_argument) | Comprehensive feature set; nargs, choices, type conversion, subcommands, argument groups, mutually exclusive groups, metavar, suggest_on_error, BooleanOptionalAction                                                    |
-| **Click**             | Python       | Decorator-based        | Composable commands, lazy-loaded subcommands, context passing — decorator approach not applicable                                                                                                                        |
-| **cobra** + pflag     | Go           | Struct-based builder   | Subcommands with persistent/local flags, flag groups (mutually exclusive, required together, one required), command aliases, Levenshtein-distance suggestions, positional arg validators (ExactArgs, MinimumNArgs, etc.) |
-| **clap**              | Rust         | Builder + Derive       | Builder API is the reference model; Derive API uses macros (not available in Mojo)                                                                                                                                       |
-| **docopt**            | Python/multi | Usage-string-driven    | Generates parser from help text — elegant but too implicit for a typed language                                                                                                                                          |
+| Library                   | Language     | Style                        | Key Insight for ArgMojo                                                                                                                                                                                                  |
+| ------------------------- | ------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **argparse** (stdlib)     | Python       | Builder (add_argument)       | Comprehensive feature set; nargs, choices, type conversion, subcommands, argument groups, mutually exclusive groups, metavar, suggest_on_error, BooleanOptionalAction                                                    |
+| **Click**                 | Python       | Decorator-based              | Composable commands, lazy-loaded subcommands, context passing — decorator approach not applicable                                                                                                                        |
+| **cobra** + pflag         | Go           | Struct-based builder         | Subcommands with persistent/local flags, flag groups (mutually exclusive, required together, one required), command aliases, Levenshtein-distance suggestions, positional arg validators (ExactArgs, MinimumNArgs, etc.) |
+| **clap**                  | Rust         | Builder + Derive             | Builder API is the reference model; Derive API uses macros (not available in Mojo)                                                                                                                                       |
+| **swift-argument-parser** | Swift        | Protocol + Property Wrappers | Struct-based derive via `@Argument`/`@Option`/`@Flag` property wrappers + `ParsableCommand` protocol; closest model to Mojo's parametric wrapper types                                                                   |
+| **docopt**                | Python/multi | Usage-string-driven          | Generates parser from help text — elegant but too implicit for a typed language                                                                                                                                          |
 
 ### 2.2 Universal Features Worth Adopting
 
 These features appear across multiple libraries and depend only on string operations and basic data structures.
 
-| Feature                            | argparse | Click | cobra | clap | Other                        | Planned phase |
-| ---------------------------------- | -------- | ----- | ----- | ---- | ---------------------------- | ------------- |
-| Long/short options with values     | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Positional arguments               | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Boolean flags                      | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Default values                     | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Required argument validation       | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| `--` stop marker                   | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Auto `--help` / `-h` / `-?`        | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Auto `--version` / `-V`            | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Short flag merging (`-abc`)        | ✓        | —     | ✓     | ✓    |                              | **Done**      |
-| Display name for value             | ✓        | —     | —     | ✓    |                              | **Done**      |
-| Positional arg count validation    | —        | —     | ✓     | ✓    |                              | **Done**      |
-| Choices / enum validation          | ✓        | ✓     | —     | ✓    |                              | **Done**      |
-| Mutually exclusive flags           | ✓        | —     | ✓     | ✓    |                              | **Done**      |
-| Flags required together            | —        | —     | ✓     | —    |                              | **Done**      |
-| `--no-X` negation flags            | ✓ (3.9)  | —     | —     | ✓    |                              | **Done**      |
-| Long option prefix matching        | ✓        | —     | —     | —    |                              | **Done**      |
-| Append / collect action            | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| One-required group                 | —        | —     | ✓     | ✓    |                              | **Done**      |
-| Value delimiter (`--tag a,b,c`)    | —        | —     | ✓     | ✓    |                              | **Done**      |
-| Colored help (customisable)        | —        | ✓     | —     | ✓    | pixi                         | **Done**      |
-| Colored warning and error messages | -        | ✓     | -     | ✓    |                              | **Done**      |
-| Number of values per option        | ✓        | ✓     | —     | ✓    |                              | **Done**      |
-| Conditional requirement            | —        | —     | ✓     | ✓    |                              | **Done**      |
-| Numeric range validation           | —        | —     | —     | —    |                              | **Done**      |
-| Key-value map (`-Dkey=val`)        | —        | —     | —     | —    | Java `-D`, Docker `-e`       | **Done**      |
-| Aliases for long names             | —        | —     | ✓     | ✓    |                              | **Done**      |
-| Deprecated arguments               | ✓ (3.13) | —     | ✓     | —    |                              | **Done**      |
-| Negative number / stdin `−`        | ✓        | —     | ✓     | ✓    | `allow_hyphen_values()`      | **Done**      |
-| Subcommands                        | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | git, cargo, kubectl          | **Done**      |
-| Persistent (global) flags          | —        | —     | ✓     | ✓    | git `--no-pager` etc.        | **Done**      |
-| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    |                              | **Done**      |
-| Subcommand aliases                 | —        | —     | ✓     | ✓    | cobra, clap                  | **Done**      |
-| Count with ceiling                 | -        | —     | —     | -    |                              | **Done**      |
-| Cap and floor (clamp) for ranges   | -        | ✓     | —     | —    | Click `IntRange(clamp=True)` | **Done**      |
-| Hidden subcommands                 | —        | —     | ✓     | ✓    |                              | **Done**      |
-| `NO_COLOR` env variable            | —        | —     | —     | —    | I need it personally         | **Done**      |
-| Response file (`@args.txt`)        | ✓        | —     | —     | —    | javac, MSBuild               | **Done**      |
-| Argument parents (shared args)     | ✓        | —     | —     | —    |                              | **Done**      |
-| Interactive prompting              | —        | ✓     | —     | —    |                              | **Done**      |
-| Password / masked input            | —        | ✓     | —     | —    |                              | **Done**      |
-| Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    |                              | **Done**      |
-| REMAINDER number_of_values         | ✓        | —     | —     | —    |                              | **Done**      |
-| Partial parsing (known args)       | ✓        | —     | —     | ✓    |                              | **Done**      |
-| Require equals syntax              | —        | —     | —     | ✓    |                              | **Done**      |
-| Default-if-no-value                | ✓        | —     | —     | ✓    |                              | **Done**      |
-| Mutual implication (`implies`)     | —        | —     | —     | —    | ArgMojo unique feature       | **Done**      |
-| Shell completion script generation | —        | ✓     | ✓     | ✓    | bash / zsh / fish            | **Done**      |
-| Argument groups in help            | ✓        | —     | ✓     | ✓    |                              | **Done**      |
-| Value-name wrapping control        | —        | —     | —     | ✓    | clap, cargo, pixi, git       | **Done**      |
-| CJK-aware help formatting          | —        | —     | —     | —    | I need it personally         | **Done**      |
-| CJK full-to-half-width correction  | —        | —     | —     | —    | I need it personally         | **Done**      |
-| CJK punctuation detection          | —        | —     | —     | —    | I need it personally         | **Done**      |
-| Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    |                              | **Done**      |
-| Comptime `StringLiteral` params    | —        | —     | —     | ✓    | clap derive macros           | **Done**      |
-| Registration-time name validation  | —        | —     | —     | ✓    | clap panic on unknown ID     | **Done**      |
-| Pre/Post run hooks                 | —        | —     | ✓     | —    |                              | Phase unknown |
-| `Parseable` trait for type params  | —        | —     | —     | ✓    |                              | Phase unknown |
-| Derive / struct-based schema       | —        | —     | —     | ✓    | Requires Mojo macros         | Phase unknown |
-| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | Requires reflection          | Phase unknown |
-| Subcommand variant dispatch        | —        | —     | —     | ✓    | Requires sum types           | Phase unknown |
-
-### 2.3 Features Excluded (Infeasible or Inappropriate)
-
-| Feature                                       | Reason for Exclusion                                      |
-| --------------------------------------------- | --------------------------------------------------------- |
-| Derive / decorator API                        | Mojo has no macros or decorators                          |
-| Usage-string-driven parsing (docopt style)    | Too implicit; not a good fit for a typed systems language |
-| Type-conversion callbacks                     | Use `get_int()` / `get_string()` pattern instead          |
-| Config file reading (`fromfile_prefix_chars`) | Out of scope; users can pre-process argv                  |
-| Environment variable fallback                 | Can be done externally; not core parser responsibility    |
-| Template-customisable help (Go cobra style)   | Mojo has no template engine; help format is hardcoded     |
-| Path / URL / Duration value types             | Mojo stdlib has no `Path` / `Url` / `Duration` types yet  |
+| Feature                            | argparse | Click | cobra | clap | swift | Other                        | Planned phase |
+| ---------------------------------- | -------- | ----- | ----- | ---- | ----- | ---------------------------- | ------------- |
+| Long/short options with values     | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Positional arguments               | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Boolean flags                      | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Default values                     | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Required argument validation       | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| `--` stop marker                   | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto `--help` / `-h` / `-?`        | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto `--version` / `-V`            | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Short flag merging (`-abc`)        | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Display name for value             | ✓        | —     | —     | ✓    | ✓     |                              | **Done**      |
+| Positional arg count validation    | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Choices / enum validation          | ✓        | ✓     | —     | ✓    | ✓     |                              | **Done**      |
+| Mutually exclusive flags           | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Flags required together            | —        | —     | ✓     | —    | —     |                              | **Done**      |
+| `--no-X` negation flags            | ✓ (3.9)  | —     | —     | ✓    | ✓     |                              | **Done**      |
+| Long option prefix matching        | ✓        | —     | —     | —    | —     |                              | **Done**      |
+| Append / collect action            | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| One-required group                 | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Value delimiter (`--tag a,b,c`)    | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Colored help (customisable)        | —        | ✓     | —     | ✓    | —     | pixi                         | **Done**      |
+| Colored warning and error messages | -        | ✓     | -     | ✓    | —     |                              | **Done**      |
+| Number of values per option        | ✓        | ✓     | —     | ✓    | —     |                              | **Done**      |
+| Conditional requirement            | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Numeric range validation           | —        | —     | —     | —    | —     |                              | **Done**      |
+| Key-value map (`-Dkey=val`)        | —        | —     | —     | —    | —     | Java `-D`, Docker `-e`       | **Done**      |
+| Aliases for long names             | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Deprecated arguments               | ✓ (3.13) | —     | ✓     | —    | —     |                              | **Done**      |
+| Negative number / stdin `−`        | ✓        | —     | ✓     | ✓    | ✓     | `allow_hyphen_values()`      | **Done**      |
+| Subcommands                        | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | ✓     | git, cargo, kubectl          | **Done**      |
+| Persistent (global) flags          | —        | —     | ✓     | ✓    | ✓     | git `--no-pager` etc.        | **Done**      |
+| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Subcommand aliases                 | —        | —     | ✓     | ✓    | ✓     | cobra, clap                  | **Done**      |
+| Count with ceiling                 | -        | —     | —     | -    | —     |                              | **Done**      |
+| Cap and floor (clamp) for ranges   | -        | ✓     | —     | —    | —     | Click `IntRange(clamp=True)` | **Done**      |
+| Hidden subcommands                 | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| `NO_COLOR` env variable            | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| Response file (`@args.txt`)        | ✓        | —     | —     | —    | —     | javac, MSBuild               | **Done**      |
+| Argument parents (shared args)     | ✓        | —     | —     | —    | ✓     |                              | **Done**      |
+| Interactive prompting              | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| Password / masked input            | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| REMAINDER number_of_values         | ✓        | —     | —     | —    | ✓     |                              | **Done**      |
+| Partial parsing (known args)       | ✓        | —     | —     | ✓    | —     |                              | **Done**      |
+| Require equals syntax              | —        | —     | —     | ✓    | —     |                              | **Done**      |
+| Default-if-no-value                | ✓        | —     | —     | ✓    | —     |                              | **Done**      |
+| Mutual implication (`implies`)     | —        | —     | —     | —    | —     | ArgMojo unique feature       | **Done**      |
+| Shell completion script generation | —        | ✓     | ✓     | ✓    | ✓     | bash / zsh / fish            | **Done**      |
+| Argument groups in help            | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Value-name wrapping control        | —        | —     | —     | ✓    | —     | clap, cargo, pixi, git       | **Done**      |
+| CJK-aware help formatting          | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| CJK full-to-half-width correction  | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| CJK punctuation detection          | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Comptime `StringLiteral` params    | —        | —     | —     | ✓    | ✓     | clap derive macros           | **Done**      |
+| Registration-time name validation  | —        | —     | —     | ✓    | ✓     | clap panic on unknown ID     | **Done**      |
+| Struct-based schema (reflection)   | —        | —     | —     | —    | ✓     | swift-argument-parser        | Phase 7a      |
+| Pre/Post run hooks                 | —        | —     | ✓     | —    | —     | Cobra                        | Phase 7a      |
+| Derive (macro/decorator-based)     | —        | —     | —     | ✓    | —     | clap `#[derive(Parser)]`     | Phase 7b      |
+| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | ✓     | Requires reflection          | Phase 7b      |
+| Subcommand variant dispatch        | —        | —     | —     | ✓    | ✓     | Requires sum types           | Phase 7b      |
 
 ## 3. Technical Foundations
 
@@ -681,33 +670,37 @@ Note that the following punctuation characters are already handled by the full-w
 - [x] Rewrite `_display_width()`, `_has_fullwidth_chars()`, `_fullwidth_to_halfwidth()` using `codepoints()` API.
 - [x] Remove `_extra_whitespace_chars` field and `whitespace_characters()` API (unnecessary complexity).
 
-### Phase 7: Type-Safe API (aspirational — blocked on Mojo language features)
+### Phase 7: Nice-to-Have (Experimental)
 
-These features represent the "next generation" of CLI parser design, inspired by Rust clap's derive API. They require Mojo language features that do **not yet exist** (macros, reflection, sum types). Tracked here as aspirational goals.
+The features below are **not part of the core builder API**. They are split into sub-phases based on feasibility.
 
-> **Note on clap's success:** The claim that "clap succeeded because of strong typing" is partially misleading. clap's **builder API** (`matches.get_one::<String>("name")`) is structurally identical to ArgMojo's `result.get_string("name")` — both are runtime-typed string-keyed lookups. clap was the dominant Rust CLI library for years (v1–v3) before the derive macro was stabilised. The derive API's real value is **boilerplate reduction** (one struct definition encodes name, type, help, default), not type safety per se. Python argparse (dynamic `Namespace`), Go cobra (`GetString("name")`), and Click all use the same runtime-lookup pattern and are the most popular parsers in their ecosystems.
+#### Phase 7a: Feasible Now (Mojo 0.26.2)
 
-| Feature                                                   | What it needs                            | Status                  |
-| --------------------------------------------------------- | ---------------------------------------- | ----------------------- |
-| `Parseable` trait                                         | Mojo traits + parametric methods         | Can prototype now       |
-| `add_arg[Int]("--port")` generic registration             | `Parseable` trait + type-aware storage   | Can prototype now       |
-| `@cli struct Args` derive                                 | Mojo macros / decorators                 | Blocked — no macros     |
-| `enum Mode { Debug, Release }` → auto choices             | Mojo reflection on enum variants         | Blocked — no reflection |
-| `variant Command { Commit(CommitArgs), Push(PushArgs) }`  | Mojo sum types / enum with payloads      | Blocked — no sum types  |
-| `file: String` (required) vs `output: String?` (optional) | Derive macro to map struct fields → args | Blocked — no macros     |
-| `Path` / `Url` / `Duration` value types                   | Mojo stdlib types                        | Blocked — stdlib gaps   |
+These features use capabilities already available in Mojo 0.26.2 and can be experimented with immediately.
 
-#### What ArgMojo already provides (equivalent functionality)
+| Feature                        | Inspiration                | Status        | Planning doc                                               |
+| ------------------------------ | -------------------------- | ------------- | ---------------------------------------------------------- |
+| Declarative / struct-based API | swift-argument-parser      | Investigating | [declarative_api_planning.md](declarative_api_planning.md) |
+| Pre/Post run hooks             | cobra `PreRun` / `PostRun` | Investigating | TBD                                                        |
 
-| "Missing" feature            | ArgMojo equivalent                                                                                                                             | How                                             |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Typed retrieval              | `get_flag()->Bool`, `get_int()->Int`, `get_string()->String`, `get_count()->Int`, `get_list()->List[String]`, `get_map()->Dict[String,String]` | Already typed at retrieval                      |
-| Enum validation              | `.choice["debug"]().choice["release"]()`                                                                                                       | String-level enum; help shows `{debug,release}` |
-| Required / optional          | `.required()` / `.default["..."]()`                                                                                                            | Parse-time enforcement with coloured errors     |
-| Flag counter (not just bool) | `.count()` + `get_count()`                                                                                                                     | `-vvv → 3`; `.count().max[N]()` caps at ceiling |
-| Range clamping               | `.range[min, max]().clamp()`                                                                                                                   | Adjusts out-of-range values with a warning      |
-| Subcommand dispatch          | `result.subcommand == "search"` + `get_subcommand_result()`                                                                                    | Same pattern as Go cobra                        |
-| Password / masked input      | `.password()` + `_disable_echo()`/`_restore_echo()`                                                                                            | POSIX termios echo control; Click `hide_input`  |
+**Declarative API summary** (see [full design doc](declarative_api_planning.md)):
+
+- **Layered on builder** — `declarative.mojo` is a consumer of `Command` + `Argument`; no new parsing engine.
+- **Swift-inspired** — Parametric wrapper types (`Option[T, ...]`, `Flag[...]`, `Argument[T, ...]`, `Count[...]`) mirror Swift's property wrappers (`@Option`, `@Flag`, `@Argument`). `ArgStruct` trait mirrors `ParsableCommand`.
+- **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level tweaks (groups, implications, coloured help); (2) `parse_split()` returns both typed struct + `ParseResult` for hybrid workflows.
+- **Optional** — Users who prefer the builder API are completely unaffected. Zero change to existing code.
+
+**Pre/Post run hooks** — Straightforward callback mechanism (`fn(ParseResult) raises`). No special language features needed; just needs API design and a decision on execution order with subcommands.
+
+#### Phase 7b: Blocked on Mojo Language Features
+
+These features require Mojo capabilities that do not exist yet. They will remain blocked until upstream Mojo adds them.
+
+| Feature                        | Inspiration                          | Blocked on                |
+| ------------------------------ | ------------------------------------ | ------------------------- |
+| Derive (macro/decorator-based) | clap `#[derive(Parser)]`             | Mojo proc macros          |
+| Enum → type mapping            | clap / swift `ExpressibleByArgument` | Reflection on enums       |
+| Subcommand variant dispatch    | clap / swift `CommandGroup`          | Sum types / tagged unions |
 
 ## 6. Parsing Algorithm
 
