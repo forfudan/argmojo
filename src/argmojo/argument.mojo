@@ -151,6 +151,10 @@ struct Argument(Copyable, Movable, Writable):
     """If True, the user's input is hidden (not echoed) when prompted.
     Useful for passwords and other sensitive values.  Requires a
     terminal; falls back to normal input on non-interactive stdin."""
+    var _show_asterisk: Bool
+    """If True, each keystroke is echoed as ``*`` instead of being
+    completely hidden.  Inspired by sudo-rs.  Only meaningful when
+    ``_hide_input`` is also True."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -200,6 +204,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt = False
         self._prompt_text = ""
         self._hide_input = False
+        self._show_asterisk = False
 
     def __init__(out self, *, copy: Self):
         """Creates a copy of this argument.
@@ -248,6 +253,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt = copy._prompt
         self._prompt_text = copy._prompt_text
         self._hide_input = copy._hide_input
+        self._show_asterisk = copy._show_asterisk
 
     def __init__(out self, *, deinit take: Self):
         """Moves the value from another Argument.
@@ -292,6 +298,7 @@ struct Argument(Copyable, Movable, Writable):
         self._prompt = take._prompt
         self._prompt_text = take._prompt_text^
         self._hide_input = take._hide_input
+        self._show_asterisk = take._show_asterisk
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
@@ -949,6 +956,41 @@ struct Argument(Copyable, Movable, Writable):
         ```
         """
         self._hide_input = True
+        if not self._prompt:
+            self._prompt = True
+        return self^
+
+    def password[asterisk: Bool](var self) -> Self:
+        """Marks this argument as a password with configurable echo style.
+
+        When ``asterisk`` is True, each keystroke is echoed as ``*``
+        (like sudo-rs) instead of being completely hidden.  This gives
+        the user visual feedback on how many characters have been typed
+        while still concealing the actual value.
+
+        When ``asterisk`` is False, behaves identically to the
+        parameterless ``.password()`` (input fully hidden).
+
+        Implies ``.prompt()`` if not already set.
+
+        Parameters:
+            asterisk: If True, echo ``*`` for each character.
+
+        Returns:
+            Self with hidden/asterisk input enabled.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Argument
+        # Asterisk feedback (sudo-rs style):
+        _ = Argument("pass", help="Password").long["pass"]().password[True]()
+        # Fully hidden (same as .password()):
+        _ = Argument("pass", help="Password").long["pass"]().password[False]()
+        ```
+        """
+        self._hide_input = True
+        self._show_asterisk = asterisk
         if not self._prompt:
             self._prompt = True
         return self^

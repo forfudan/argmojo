@@ -354,7 +354,7 @@ def main() raises:
     # ── Subcommand: login (interactive prompting + password) ─────────────
     # Demonstrates .prompt(), .prompt["..."](), and .password() for
     # interactive input.  Missing arguments are prompted for
-    # interactively; the token is masked (hidden input).
+    # interactively; the token is masked with asterisks (sudo-rs style).
     var login = Command("login", "Authenticate with the service")
     login.add_argument(
         Argument("user", help="Username")
@@ -369,7 +369,15 @@ def main() raises:
         .short["t"]()
         .required()
         .prompt["Enter your API token"]()
-        .password()
+        .password[asterisk=False]()  # standard password mode: no echo at all
+    )
+    login.add_argument(
+        Argument("birthdate", help="Birthdate")
+        .long["birthdate"]()
+        .short["b"]()
+        .required()
+        .prompt["Enter your birthdate"]()
+        .password[asterisk=True]()  # asterisk mode: echoes * for each keystroke
     )
     login.add_argument(
         Argument("region", help="Server region")

@@ -552,3 +552,105 @@ def _restore_echo(var saved: List[UInt32]) -> Bool:
     # Keep saved alive — see _disable_echo comment.
     _ = saved^
     return rc == 0
+
+
+# ── ICANON bitmask (platform-dependent) ─────────────────────────────────────
+# macOS: ICANON = 0x100 (bit 8 of c_lflag)
+# Linux: ICANON = 0x002 (bit 1 of c_lflag)
+# We pick the right constant at runtime based on the c_lflag offset
+# detected by _lflag_offset().
+comptime _ICANON_MACOS: UInt32 = 0x00000100
+comptime _ICANON_LINUX: UInt32 = 0x00000002
+
+
+def _read_password_asterisk(msg: String) -> String:
+    """Reads a password interactively, echoing ``*`` for each keystroke.
+
+    Disables ECHO and ICANON in terminal settings so that each byte
+    is delivered immediately and without echo.  For every printable
+    byte, a ``*`` is written to stderr.  Backspace erases the last
+    ``*``.  Enter (LF/CR) finishes input.
+
+    Prompt and feedback are written to stderr (unbuffered), following
+    the convention used by ``sudo``, ``ssh``, and similar tools.
+
+    Falls back to plain ``input()`` (visible) when stdin is not a
+    terminal or the termios layout cannot be determined.
+    Returns an empty string on Ctrl-C or read error.
+    """
+    from std.sys import stderr
+
+    # ── Print prompt ─────────────────────────────────────────────
+    print(msg, end="", file=stderr)
+
+    # ── tcgetattr — save original terminal settings ──────────────
+    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
+    var ptr = buf.unsafe_ptr()
+    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
+    if rc != 0:
+        # Not a terminal — fall back to regular input.
+        try:
+            return input()
+        except:
+            return ""
+
+    var saved = buf.copy()
+    var offset = _lflag_offset(buf)
+    if offset < 0:
+        try:
+            return input()
+        except:
+            return ""
+
+    # ── Disable ECHO + ICANON ────────────────────────────────────
+    var icanon: UInt32
+    if offset == 6:  # macOS
+        icanon = _ICANON_MACOS
+    else:  # Linux
+        icanon = _ICANON_LINUX
+    buf[offset] = buf[offset] & ~_ECHO & ~icanon
+    ptr = buf.unsafe_ptr()
+    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
+    _ = buf^
+    if rc != 0:
+        _ = _restore_echo(saved^)
+        try:
+            return input()
+        except:
+            return ""
+
+    # ── Read one byte at a time ──────────────────────────────────
+    var password = List[UInt8]()
+    var one = List[UInt8](length=1, fill=0)
+
+    while True:
+        var one_ptr = one.unsafe_ptr()
+        var n = external_call["read", Int, Int, Int, Int](0, Int(one_ptr), 1)
+        if n <= 0:
+            break  # EOF or error
+        var ch = one[0]
+        if ch == 10 or ch == 13:  # Enter (LF / CR)
+            break
+        elif ch == 127 or ch == 8:  # Backspace / Delete
+            if len(password) > 0:
+                _ = password.pop()
+                # Erase one asterisk: cursor back, overwrite space, cursor back.
+                print("\x08 \x08", end="", file=stderr)
+        elif ch == 3:  # Ctrl-C — cancel
+            print(file=stderr)
+            _ = _restore_echo(saved^)
+            return ""
+        elif ch == 4:  # Ctrl-D — EOF
+            break
+        elif ch >= 32:  # Printable byte
+            password.append(ch)
+            print("*", end="", file=stderr)
+
+    # ── Restore terminal and build result ────────────────────────
+    print(file=stderr)
+    _ = _restore_echo(saved^)
+
+    var result = String()
+    for i in range(len(password)):
+        result += chr(Int(password[i]))
+    return result^
