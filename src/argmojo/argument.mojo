@@ -956,6 +956,7 @@ struct Argument(Copyable, Movable, Writable):
         ```
         """
         self._hide_input = True
+        self._show_asterisk = False
         if not self._prompt:
             self._prompt = True
         return self^

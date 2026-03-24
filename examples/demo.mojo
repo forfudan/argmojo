@@ -101,9 +101,9 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   ./demo run myapp                            # no extra args → empty remainder
 
   # ── Subcommand: login (interactive prompting) ────────────────────────
-  ./demo login                                # prompts for user and token interactively
-  ./demo login --user alice --token secret    # no prompts needed
-  ./demo login --user alice                   # prompts only for token
+  ./demo login                                # prompts for user, token, and pin
+  ./demo login --user alice --token s --pin 1 # no prompts needed
+  ./demo login --user alice                   # prompts for token (hidden) and pin (****)
 """
 
 from argmojo import Argument, Command
@@ -352,9 +352,11 @@ def main() raises:
     app.add_subcommand(run^)
 
     # ── Subcommand: login (interactive prompting + password) ─────────────
-    # Demonstrates .prompt(), .prompt["..."](), and .password() for
-    # interactive input.  Missing arguments are prompted for
-    # interactively; the token is masked with asterisks (sudo-rs style).
+    # Demonstrates .prompt(), .prompt["..."](), and .password() /
+    # .password[True]() for interactive input.  Missing arguments are
+    # prompted for interactively.
+    #   token    → fully hidden  (.password())       — no echo at all
+    #   pin      → asterisk mode (.password[True]()) — echoes * per key
     var login = Command("login", "Authenticate with the service")
     login.add_argument(
         Argument("user", help="Username")
@@ -369,15 +371,15 @@ def main() raises:
         .short["t"]()
         .required()
         .prompt["Enter your API token"]()
-        .password[asterisk=False]()  # standard password mode: no echo at all
+        .password()  # fully hidden: no echo at all
     )
     login.add_argument(
-        Argument("birthdate", help="Birthdate")
-        .long["birthdate"]()
-        .short["b"]()
+        Argument("pin", help="Security PIN")
+        .long["pin"]()
+        .short["p"]()
         .required()
-        .prompt["Enter your birthdate"]()
-        .password[asterisk=True]()  # asterisk mode: echoes * for each keystroke
+        .prompt["Enter your security PIN"]()
+        .password[True]()  # asterisk mode: echoes * for each keystroke
     )
     login.add_argument(
         Argument("region", help="Server region")
