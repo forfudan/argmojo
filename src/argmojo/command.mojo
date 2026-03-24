@@ -2810,11 +2810,9 @@ struct Command(Copyable, Movable, Writable):
             if a._hide_input:
                 if a._show_asterisk:
                     # Asterisk mode: echo '*' for each keystroke.
-                    value = _read_password_asterisk(msg)
-                    # Empty result means cancel (Ctrl-C) or EOF —
-                    # stop prompting, consistent with the input()
-                    # exception path in the non-asterisk branch.
-                    if len(value) == 0:
+                    try:
+                        value = _read_password_asterisk(msg)
+                    except e:
                         return
                 else:
                     # Password mode: disable echo, read, re-enable echo,

@@ -562,21 +562,31 @@ def _restore_echo(var saved: List[UInt32]) -> Bool:
 comptime _ICANON_MACOS: UInt32 = 0x00000100
 comptime _ICANON_LINUX: UInt32 = 0x00000002
 
+# ── ISIG bitmask (platform-dependent) ───────────────────────────────────────
+# macOS: ISIG = 0x080 (bit 7 of c_lflag)
+# Linux: ISIG = 0x001 (bit 0 of c_lflag)
+comptime _ISIG_MACOS: UInt32 = 0x00000080
+comptime _ISIG_LINUX: UInt32 = 0x00000001
 
-def _read_password_asterisk(msg: String) -> String:
+
+def _read_password_asterisk(msg: String) raises -> String:
     """Reads a password interactively, echoing ``*`` for each keystroke.
 
-    Disables ECHO and ICANON in terminal settings so that each byte
-    is delivered immediately and without echo.  For every printable
-    byte, a ``*`` is written to stderr.  Backspace erases the last
-    ``*``.  Enter (LF/CR) finishes input.
+    Disables ECHO, ICANON, and ISIG in terminal settings so that each
+    byte is delivered immediately and without echo, and interrupt
+    signals (such as Ctrl-C) are read as raw bytes rather than
+    generating signals.  For every printable byte, a ``*`` is written
+    to stderr.  Backspace erases the last ``*``.  Enter (LF/CR)
+    finishes input.
 
     Prompt and feedback are written to stderr (unbuffered), following
     the convention used by ``sudo``, ``ssh``, and similar tools.
 
     Falls back to plain ``input()`` (visible) when stdin is not a
     terminal or the termios layout cannot be determined.
-    Returns an empty string on Ctrl-C or read error.
+
+    Raises on Ctrl-C, Ctrl-D (EOF), or read error after restoring
+    the terminal to its original settings.
     """
     from std.sys import stderr
 
@@ -589,44 +599,41 @@ def _read_password_asterisk(msg: String) -> String:
     var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
     if rc != 0:
         # Not a terminal — fall back to regular input.
-        try:
-            return input()
-        except:
-            return ""
+        # Let input() raise on EOF so the caller can stop prompting.
+        return input()
 
     var saved = buf.copy()
     var offset = _lflag_offset(buf)
     if offset < 0:
-        try:
-            return input()
-        except:
-            return ""
+        return input()
 
-    # ── Disable ECHO + ICANON ────────────────────────────────────
+    # ── Disable ECHO + ICANON + ISIG ─────────────────────────────
     var icanon: UInt32
+    var isig: UInt32
     if offset == 6:  # macOS
         icanon = _ICANON_MACOS
+        isig = _ISIG_MACOS
     else:  # Linux
         icanon = _ICANON_LINUX
-    buf[offset] = buf[offset] & ~_ECHO & ~icanon
+        isig = _ISIG_LINUX
+    buf[offset] = buf[offset] & ~_ECHO & ~icanon & ~isig
     ptr = buf.unsafe_ptr()
     rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
     _ = buf^
     if rc != 0:
         _ = _restore_echo(saved^)
-        try:
-            return input()
-        except:
-            return ""
+        return input()
 
     # ── Read one byte at a time ──────────────────────────────────
     var password = List[UInt8]()
     var one = List[UInt8](length=1, fill=0)
+    var cancelled = False
 
     while True:
         var one_ptr = one.unsafe_ptr()
         var n = external_call["read", Int, Int, Int, Int](0, Int(one_ptr), 1)
         if n <= 0:
+            cancelled = True
             break  # EOF or error
         var ch = one[0]
         if ch == 10 or ch == 13:  # Enter (LF / CR)
@@ -637,18 +644,21 @@ def _read_password_asterisk(msg: String) -> String:
                 # Erase one asterisk: cursor back, overwrite space, cursor back.
                 print("\x08 \x08", end="", file=stderr)
         elif ch == 3:  # Ctrl-C — cancel
-            print(file=stderr)
-            _ = _restore_echo(saved^)
-            return ""
+            cancelled = True
+            break
         elif ch == 4:  # Ctrl-D — EOF
+            cancelled = True
             break
         elif ch >= 32:  # Printable byte
             password.append(ch)
             print("*", end="", file=stderr)
 
-    # ── Restore terminal and build result ────────────────────────
+    # ── Always restore terminal before returning or raising ──────
     print(file=stderr)
     _ = _restore_echo(saved^)
+
+    if cancelled:
+        raise "password input cancelled"
 
     var result = String()
     for i in range(len(password)):
