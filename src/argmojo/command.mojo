@@ -1060,7 +1060,6 @@ struct Command(Copyable, Movable, Writable):
         """
         self._is_hidden = True
 
-    # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
     def disable_help_subcommand(mut self):
         """Opts out of the auto-added ``help`` subcommand.
 
@@ -1176,6 +1175,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._allow_negative_numbers = True
 
+    # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
     def response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 

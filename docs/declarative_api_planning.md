@@ -3,7 +3,7 @@
 > **Status**: Planning  
 > **Target**: argmojo v0.5.0  
 > **Mojo Version**: 0.26.2+  
-> **Intial Date**: 2026-03-24
+> **Initial Date**: 2026-03-24
 
 > 子曰工欲善其事必先利其器
 > The mechanic, who wishes to do his work well, must first sharpen his tools -- Confucius
