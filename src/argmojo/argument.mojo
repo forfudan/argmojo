@@ -65,37 +65,46 @@ struct Argument(Copyable, Movable, Writable):
     var help_text: String
     """Help text displayed in usage information."""
 
-    # === Private fields ===
+    # === Private fields — Naming ===
     var _long_name: String
     """Long option name (e.g., 'output' for --output). Empty if not set."""
     var _short_name: String
     """Short option name (e.g., 'o' for -o). Empty if not set."""
+    var _alias_names: List[String]
+    """Alternative long names that resolve to this argument."""
+
+    # === Private fields — Argument type ===
     var _is_flag: Bool
     """If True, this argument is a boolean flag that takes no value."""
-    var _is_required: Bool
-    """If True, parsing fails when this argument is not provided."""
     var _is_positional: Bool
     """If True, this argument is matched by position rather than by name."""
+    var _is_count: Bool
+    """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
+    var _count_max: Int
+    """Maximum count value (ceiling) for counter flags. 0 means no limit."""
+    var _has_count_max: Bool
+    """Whether a count ceiling has been set via ``.max()``."""
+    var _is_negatable: Bool
+    """If True, this flag also accepts --no-X to set it to False."""
+    var _is_remainder: Bool
+    """If True, this positional argument consumes all remaining tokens
+    (including those starting with ``-``).  Implies ``.positional()`` and
+    ``.append()``.  Must be the last positional argument."""
+
+    # === Private fields — Value defaults & validation ===
     var _default_value: String
     """Default value used when the argument is not provided."""
     var _has_default: Bool
     """Whether a default value has been set."""
+    var _default_if_no_value: String
+    """Value to use when the option appears without an explicit value.
+    Only meaningful for value-taking options with ``_has_default_if_no_value`` set."""
+    var _has_default_if_no_value: Bool
+    """Whether a default-if-no-value has been set via ``.default_if_no_value()``."""
+    var _is_required: Bool
+    """If True, parsing fails when this argument is not provided."""
     var _choice_values: List[String]
     """Allowed values for this argument. Empty means any value is accepted."""
-    var _value_name: String
-    """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
-    var _is_hidden: Bool
-    """If True, this argument is not shown in help output."""
-    var _is_count: Bool
-    """If True, each occurrence increments a counter (e.g., -vvv → 3)."""
-    var _is_negatable: Bool
-    """If True, this flag also accepts --no-X to set it to False."""
-    var _is_append: Bool
-    """If True, repeated uses collect values into a list (e.g., --tag x --tag y)."""
-    var _delimiter_char: String
-    """If non-empty, each value is split by this delimiter into multiple list entries."""
-    var _number_of_values: Int
-    """Number of values to consume per occurrence (0 means single-value mode)."""
     var _range_min: Int
     """Minimum allowed value (inclusive) for numeric range validation."""
     var _range_max: Int
@@ -104,43 +113,46 @@ struct Argument(Copyable, Movable, Writable):
     """Whether numeric range validation is active."""
     var _is_clamp: Bool
     """If True, out-of-range values are clamped (adjusted with warning) instead of rejected."""
+
+    # === Private fields — Collection modes ===
+    var _is_append: Bool
+    """If True, repeated uses collect values into a list (e.g., --tag x --tag y)."""
+    var _delimiter_char: String
+    """If non-empty, each value is split by this delimiter into multiple list entries."""
+    var _number_of_values: Int
+    """Number of values to consume per occurrence (0 means single-value mode)."""
     var _is_map: Bool
     """If True, each value is parsed as key=value and stored in a Dict."""
-    var _alias_names: List[String]
-    """Alternative long names that resolve to this argument."""
-    var _deprecated_msg: String
-    """If non-empty, this argument is deprecated; the string is the warning message."""
-    var _count_max: Int
-    """Maximum count value (ceiling) for counter flags. 0 means no limit."""
-    var _has_count_max: Bool
-    """Whether a count ceiling has been set via ``.max()``."""
+
+    # === Private fields — Parsing behavior ===
+    var _require_equals: Bool
+    """If True, this option requires ``--key=value`` syntax;
+    ``--key value`` (space-separated) is not allowed."""
+    var _allow_hyphen_values: Bool
+    """If True, the literal token ``-`` is accepted as a valid value for
+    this argument (conventionally meaning stdin/stdout)."""
     var _is_persistent: Bool
     """If True, this argument is automatically inherited by every subcommand.
     Persistent flags/options are injected into child command parsers at
     dispatch time so the user may place them either before or after the
     subcommand token on the command line."""
-    var _default_if_no_value: String
-    """Value to use when the option appears without an explicit value.
-    Only meaningful for value-taking options with ``_has_default_if_no_value`` set."""
-    var _has_default_if_no_value: Bool
-    """Whether a default-if-no-value has been set via ``.default_if_no_value()``."""
-    var _require_equals: Bool
-    """If True, this option requires ``--key=value`` syntax;
-    ``--key value`` (space-separated) is not allowed."""
-    var _is_remainder: Bool
-    """If True, this positional argument consumes all remaining tokens
-    (including those starting with ``-``).  Implies ``.positional()`` and
-    ``.append()``.  Must be the last positional argument."""
-    var _allow_hyphen_values: Bool
-    """If True, the literal token ``-`` is accepted as a valid value for
-    this argument (conventionally meaning stdin/stdout)."""
+
+    # === Private fields — Display & help ===
+    var _value_name: String
+    """Display name for the value in help text (e.g., 'FILE' for --output FILE)."""
     var _value_name_wrapped: Bool
     """If True, the value_name is displayed wrapped in angle brackets
     (e.g. ``<FILE>`` instead of ``FILE``).  Defaults to True."""
+    var _is_hidden: Bool
+    """If True, this argument is not shown in help output."""
+    var _deprecated_msg: String
+    """If non-empty, this argument is deprecated; the string is the warning message."""
     var _group: String
     """Help-output group name for this argument.  Arguments with the same
     group name are displayed together under a shared heading.  Empty
     string means ungrouped (shown under the default 'Options:' heading)."""
+
+    # === Private fields — Interactive prompting ===
     var _prompt: Bool
     """If True, the user is interactively prompted for this argument's
     value when it is not provided on the command line."""
@@ -169,38 +181,45 @@ struct Argument(Copyable, Movable, Writable):
         """
         self.name = name
         self.help_text = help
+        # ── Naming ──
         self._long_name = ""
         self._short_name = ""
+        self._alias_names = List[String]()
+        # ── Argument type ──
         self._is_flag = False
-        self._is_required = False
         self._is_positional = False
+        self._is_count = False
+        self._count_max = 0
+        self._has_count_max = False
+        self._is_negatable = False
+        self._is_remainder = False
+        # ── Value defaults & validation ──
         self._default_value = ""
         self._has_default = False
+        self._default_if_no_value = ""
+        self._has_default_if_no_value = False
+        self._is_required = False
         self._choice_values = List[String]()
-        self._value_name = ""
-        self._is_hidden = False
-        self._is_count = False
-        self._is_negatable = False
-        self._is_append = False
-        self._delimiter_char = ""
-        self._number_of_values = 0
         self._range_min = 0
         self._range_max = 0
         self._has_range = False
         self._is_clamp = False
+        # ── Collection modes ──
+        self._is_append = False
+        self._delimiter_char = ""
+        self._number_of_values = 0
         self._is_map = False
-        self._alias_names = List[String]()
-        self._deprecated_msg = ""
-        self._count_max = 0
-        self._has_count_max = False
-        self._is_persistent = False
-        self._default_if_no_value = ""
-        self._has_default_if_no_value = False
+        # ── Parsing behavior ──
         self._require_equals = False
-        self._is_remainder = False
         self._allow_hyphen_values = False
+        self._is_persistent = False
+        # ── Display & help ──
+        self._value_name = ""
         self._value_name_wrapped = True
+        self._is_hidden = False
+        self._deprecated_msg = ""
         self._group = ""
+        # ── Interactive prompting ──
         self._prompt = False
         self._prompt_text = ""
         self._hide_input = False
@@ -214,42 +233,49 @@ struct Argument(Copyable, Movable, Writable):
         """
         self.name = copy.name
         self.help_text = copy.help_text
+        # ── Naming ──
         self._long_name = copy._long_name
         self._short_name = copy._short_name
+        self._alias_names = List[String]()
+        for i in range(len(copy._alias_names)):
+            self._alias_names.append(copy._alias_names[i])
+        # ── Argument type ──
         self._is_flag = copy._is_flag
-        self._is_required = copy._is_required
         self._is_positional = copy._is_positional
+        self._is_count = copy._is_count
+        self._count_max = copy._count_max
+        self._has_count_max = copy._has_count_max
+        self._is_negatable = copy._is_negatable
+        self._is_remainder = copy._is_remainder
+        # ── Value defaults & validation ──
         self._default_value = copy._default_value
         self._has_default = copy._has_default
+        self._default_if_no_value = copy._default_if_no_value
+        self._has_default_if_no_value = copy._has_default_if_no_value
+        self._is_required = copy._is_required
         self._choice_values = List[String]()
         for i in range(len(copy._choice_values)):
             self._choice_values.append(copy._choice_values[i])
-        self._value_name = copy._value_name
-        self._is_hidden = copy._is_hidden
-        self._is_count = copy._is_count
-        self._is_negatable = copy._is_negatable
-        self._is_append = copy._is_append
-        self._delimiter_char = copy._delimiter_char
-        self._number_of_values = copy._number_of_values
         self._range_min = copy._range_min
         self._range_max = copy._range_max
         self._has_range = copy._has_range
         self._is_clamp = copy._is_clamp
+        # ── Collection modes ──
+        self._is_append = copy._is_append
+        self._delimiter_char = copy._delimiter_char
+        self._number_of_values = copy._number_of_values
         self._is_map = copy._is_map
-        self._alias_names = List[String]()
-        for i in range(len(copy._alias_names)):
-            self._alias_names.append(copy._alias_names[i])
-        self._deprecated_msg = copy._deprecated_msg
-        self._count_max = copy._count_max
-        self._has_count_max = copy._has_count_max
-        self._is_persistent = copy._is_persistent
-        self._default_if_no_value = copy._default_if_no_value
-        self._has_default_if_no_value = copy._has_default_if_no_value
+        # ── Parsing behavior ──
         self._require_equals = copy._require_equals
-        self._is_remainder = copy._is_remainder
         self._allow_hyphen_values = copy._allow_hyphen_values
+        self._is_persistent = copy._is_persistent
+        # ── Display & help ──
+        self._value_name = copy._value_name
         self._value_name_wrapped = copy._value_name_wrapped
+        self._is_hidden = copy._is_hidden
+        self._deprecated_msg = copy._deprecated_msg
         self._group = copy._group
+        # ── Interactive prompting ──
         self._prompt = copy._prompt
         self._prompt_text = copy._prompt_text
         self._hide_input = copy._hide_input
@@ -263,38 +289,45 @@ struct Argument(Copyable, Movable, Writable):
         """
         self.name = take.name^
         self.help_text = take.help_text^
+        # ── Naming ──
         self._long_name = take._long_name^
         self._short_name = take._short_name^
+        self._alias_names = take._alias_names^
+        # ── Argument type ──
         self._is_flag = take._is_flag
-        self._is_required = take._is_required
         self._is_positional = take._is_positional
+        self._is_count = take._is_count
+        self._count_max = take._count_max
+        self._has_count_max = take._has_count_max
+        self._is_negatable = take._is_negatable
+        self._is_remainder = take._is_remainder
+        # ── Value defaults & validation ──
         self._default_value = take._default_value^
         self._has_default = take._has_default
+        self._default_if_no_value = take._default_if_no_value^
+        self._has_default_if_no_value = take._has_default_if_no_value
+        self._is_required = take._is_required
         self._choice_values = take._choice_values^
-        self._value_name = take._value_name^
-        self._is_hidden = take._is_hidden
-        self._is_count = take._is_count
-        self._is_negatable = take._is_negatable
-        self._is_append = take._is_append
-        self._delimiter_char = take._delimiter_char^
-        self._number_of_values = take._number_of_values
         self._range_min = take._range_min
         self._range_max = take._range_max
         self._has_range = take._has_range
         self._is_clamp = take._is_clamp
+        # ── Collection modes ──
+        self._is_append = take._is_append
+        self._delimiter_char = take._delimiter_char^
+        self._number_of_values = take._number_of_values
         self._is_map = take._is_map
-        self._alias_names = take._alias_names^
-        self._deprecated_msg = take._deprecated_msg^
-        self._count_max = take._count_max
-        self._has_count_max = take._has_count_max
-        self._is_persistent = take._is_persistent
-        self._default_if_no_value = take._default_if_no_value^
-        self._has_default_if_no_value = take._has_default_if_no_value
+        # ── Parsing behavior ──
         self._require_equals = take._require_equals
-        self._is_remainder = take._is_remainder
         self._allow_hyphen_values = take._allow_hyphen_values
+        self._is_persistent = take._is_persistent
+        # ── Display & help ──
+        self._value_name = take._value_name^
         self._value_name_wrapped = take._value_name_wrapped
+        self._is_hidden = take._is_hidden
+        self._deprecated_msg = take._deprecated_msg^
         self._group = take._group^
+        # ── Interactive prompting ──
         self._prompt = take._prompt
         self._prompt_text = take._prompt_text^
         self._hide_input = take._hide_input
@@ -303,6 +336,8 @@ struct Argument(Copyable, Movable, Writable):
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument
     # ===------------------------------------------------------------------=== #
+
+    # ── Naming ──
 
     def long[name: StringLiteral](var self) -> Self:
         """Sets the long option name (e.g., 'verbose' for --verbose).
@@ -352,6 +387,39 @@ struct Argument(Copyable, Movable, Writable):
         self._short_name = name
         return self^
 
+    def alias_name[name: StringLiteral](var self) -> Self:
+        """Sets an alternative long name for this argument.
+
+        Any alias resolves to this argument during parsing.  For
+        example, ``.long["colour"]().alias_name["color"]()`` makes both
+        ``--colour`` and ``--color`` accepted.  Chain multiple calls
+        for several aliases:
+        ``.alias_name["out"]().alias_name["fmt"]()``.
+
+        Parameters:
+            name: The alternative long option name (without ``--``).
+
+        Returns:
+            Self with the alias registered.
+
+        Constraints:
+            The alias is validated at compile time (same rules as
+            ``.long[]``): must not be empty, must not start with ``-``,
+            and must not contain ``=``.
+        """
+        comptime assert len(name) > 0, "alias name must not be empty"
+        comptime assert not name.startswith(
+            "-"
+        ), "alias name must not start with '-'; omit the '--' prefix"
+        comptime assert name.find("=") == -1, (
+            "alias name must not contain '='; it conflicts with"
+            " --key=value syntax"
+        )
+        self._alias_names.append(name)
+        return self^
+
+    # ── Argument type ──
+
     def flag(var self) -> Self:
         """Marks this argument as a boolean flag (no value needed).
 
@@ -364,19 +432,6 @@ struct Argument(Copyable, Movable, Writable):
             absence leaves it False.
         """
         self._is_flag = True
-        return self^
-
-    def required(var self) -> Self:
-        """Marks this argument as required.
-
-        Returns:
-            Self marked as required.
-
-        Notes:
-            Required arguments must be provided in the input; otherwise, parsing
-            will fail.
-        """
-        self._is_required = True
         return self^
 
     def positional(var self) -> Self:
@@ -397,68 +452,6 @@ struct Argument(Copyable, Movable, Writable):
             Self with _is_flag set to False.
         """
         self._is_flag = False
-        return self^
-
-    def default[value: StringLiteral](var self) -> Self:
-        """Sets a default value for this argument.
-
-        Parameters:
-            value: The default value.
-
-        Returns:
-            Self with the default value set.
-        """
-        self._default_value = value
-        self._has_default = True
-        return self^
-
-    def choice[value: StringLiteral](var self) -> Self:
-        """Adds an allowed value for this argument.
-
-        Chain multiple calls to build the full set of choices:
-        ``.choice["json"]().choice["csv"]().choice["table"]()``.
-        Parameters:
-            value: An allowed value.
-
-        Returns:
-            Self with the choice added.
-
-        Constraints:
-            The value must not be empty.
-        """
-        comptime assert len(value) > 0, "choice value must not be empty"
-        self._choice_values.append(value)
-        return self^
-
-    def value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
-        """Sets the display name for the value in help text.
-
-        When *wrapped* is True (default), the name is displayed inside angle
-        brackets: ``--output <FILE>``.  When False, it is displayed bare:
-        ``--output FILE``.
-
-        Parameters:
-            name: The display name of the value (e.g., "FILE" for --output).
-            wrapped: Wrap the display name in ``<>`` (default True).
-
-        Returns:
-            Self with the value_name set.
-
-        Constraints:
-            The value name must be a non-empty string.
-        """
-        comptime assert len(name) > 0, "value name must be a non-empty string"
-        self._value_name = name
-        self._value_name_wrapped = wrapped
-        return self^
-
-    def hidden(var self) -> Self:
-        """Marks this argument as hidden (not shown in help output).
-
-        Returns:
-            Self marked as hidden.
-        """
-        self._is_hidden = True
         return self^
 
     def count(var self) -> Self:
@@ -525,6 +518,174 @@ struct Argument(Copyable, Movable, Writable):
         self._is_negatable = True
         return self^
 
+    def remainder(var self) -> Self:
+        """Marks this positional argument as a remainder collector.
+
+        A remainder argument consumes **all** remaining tokens on the
+        command line — including those starting with ``-``.  It is
+        equivalent to Python's ``nargs=argparse.REMAINDER``.
+
+        Implies ``.positional()`` and ``.append()`` — values are retrieved
+        via ``ParseResult.get_list()``.
+
+        A ``Command`` may have at most one remainder argument, and it
+        must be the last positional argument.  Tokens collected by a
+        remainder argument are **not** parsed as options; they are stored
+        verbatim.
+
+        Examples::
+
+            # myapp build -- -Wall -O2 src/main.c
+            # With .remainder(), everything after 'build' goes into rest:
+            _ = Argument("rest", help="...").remainder()
+
+            # Or without '--':
+            # myapp run script.py --script-flag
+            # rest = ["script.py", "--script-flag"]
+
+        Returns:
+            Self marked as a remainder positional.
+        """
+        self._is_remainder = True
+        self._is_positional = True
+        self._is_append = True
+        return self^
+
+    # ── Value defaults & validation ──
+
+    def default[value: StringLiteral](var self) -> Self:
+        """Sets a default value for this argument.
+
+        Parameters:
+            value: The default value.
+
+        Returns:
+            Self with the default value set.
+        """
+        self._default_value = value
+        self._has_default = True
+        return self^
+
+    def default_if_no_value[value: StringLiteral](var self) -> Self:
+        """Sets a default value for when the option appears without an explicit value.
+
+        When set, the option may appear without a value.  If no value
+        is given, this default-if-no-value is used.  If a value is
+        provided via ``=`` syntax for long options (``--compress=bzip2``)
+        or attached form for short options (``-cbzip2``), that explicit
+        value is used instead.
+
+        For long options this implies ``require_equals()``.  A
+        space-separated token like ``--compress val`` is not accepted
+        as the option's value; in that case ``--compress`` uses its
+        default-if-no-value and ``val`` is parsed as a separate
+        argument (positional or another option).  To supply an
+        explicit value for the option, the user must write
+        ``--compress=val``.
+
+        Parameters:
+            value: The value to use when no explicit value is given.
+
+        Returns:
+            Self with the default-if-no-value set.
+
+        Examples:
+
+        ```mojo
+        # --compress        → "gzip"  (default-if-no-value)
+        # --compress=bzip2  → "bzip2" (explicit)
+        # -c                → "gzip"  (default-if-no-value)
+        # -cbzip2           → "bzip2" (attached)
+
+        from argmojo import Argument
+        _ = (Argument("compress", help="...")
+            .long["compress"]()
+            .short["c"]()
+            .default_if_no_value["gzip"]())
+        ```
+        """
+        self._default_if_no_value = value
+        self._has_default_if_no_value = True
+        self._require_equals = True  # implied for long options
+        return self^
+
+    def required(var self) -> Self:
+        """Marks this argument as required.
+
+        Returns:
+            Self marked as required.
+
+        Notes:
+            Required arguments must be provided in the input; otherwise, parsing
+            will fail.
+        """
+        self._is_required = True
+        return self^
+
+    def choice[value: StringLiteral](var self) -> Self:
+        """Adds an allowed value for this argument.
+
+        Chain multiple calls to build the full set of choices:
+        ``.choice["json"]().choice["csv"]().choice["table"]()``.
+        Parameters:
+            value: An allowed value.
+
+        Returns:
+            Self with the choice added.
+
+        Constraints:
+            The value must not be empty.
+        """
+        comptime assert len(value) > 0, "choice value must not be empty"
+        self._choice_values.append(value)
+        return self^
+
+    def range[
+        min_val: Int, max_val: Int
+    ](var self) -> Self where max_val >= min_val:
+        """Sets numeric range validation for this argument.
+
+        When set, the parsed value must be an integer within
+        ``[min_val, max_val]`` (inclusive).  Validation occurs
+        after parsing, during the validation phase.
+
+        By default, out-of-range values cause an error.  Chain with
+        ``.clamp()`` to silently adjust the value (with a warning)
+        instead of erroring.
+
+        Parameters:
+            min_val: Minimum allowed value (inclusive).
+            max_val: Maximum allowed value (inclusive).
+
+        Returns:
+            Self with range validation enabled.
+        """
+        self._range_min = min_val
+        self._range_max = max_val
+        self._has_range = True
+        return self^
+
+    def clamp(var self) -> Self:
+        """Enables clamping for numeric range validation.
+
+        When clamping is enabled (used after ``.range[min, max]()``),
+        out-of-range values are adjusted to the nearest boundary
+        instead of causing an error.  A warning is printed to stderr
+        to inform the user of the adjustment.
+
+        For example, ``.range[1, 100]().clamp()`` causes ``--level 200``
+        to be silently adjusted to 100 with a warning.
+
+        Must be used after ``.range()``.
+
+        Returns:
+            Self with clamping enabled.
+        """
+        self._is_clamp = True
+        return self^
+
+    # ── Collection modes ──
+
     def append(var self) -> Self:
         """Marks this argument as an append/collect option.
 
@@ -588,50 +749,6 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    def range[
-        min_val: Int, max_val: Int
-    ](var self) -> Self where max_val >= min_val:
-        """Sets numeric range validation for this argument.
-
-        When set, the parsed value must be an integer within
-        ``[min_val, max_val]`` (inclusive).  Validation occurs
-        after parsing, during the validation phase.
-
-        By default, out-of-range values cause an error.  Chain with
-        ``.clamp()`` to silently adjust the value (with a warning)
-        instead of erroring.
-
-        Parameters:
-            min_val: Minimum allowed value (inclusive).
-            max_val: Maximum allowed value (inclusive).
-
-        Returns:
-            Self with range validation enabled.
-        """
-        self._range_min = min_val
-        self._range_max = max_val
-        self._has_range = True
-        return self^
-
-    def clamp(var self) -> Self:
-        """Enables clamping for numeric range validation.
-
-        When clamping is enabled (used after ``.range[min, max]()``),
-        out-of-range values are adjusted to the nearest boundary
-        instead of causing an error.  A warning is printed to stderr
-        to inform the user of the adjustment.
-
-        For example, ``.range[1, 100]().clamp()`` causes ``--level 200``
-        to be silently adjusted to 100 with a warning.
-
-        Must be used after ``.range()``.
-
-        Returns:
-            Self with clamping enabled.
-        """
-        self._is_clamp = True
-        return self^
-
     def map_option(var self) -> Self:
         """Marks this argument as a key-value map option.
 
@@ -649,56 +766,54 @@ struct Argument(Copyable, Movable, Writable):
         self._is_append = True
         return self^
 
-    def alias_name[name: StringLiteral](var self) -> Self:
-        """Sets an alternative long name for this argument.
+    # ── Parsing behavior ──
 
-        Any alias resolves to this argument during parsing.  For
-        example, ``.long["colour"]().alias_name["color"]()`` makes both
-        ``--colour`` and ``--color`` accepted.  Chain multiple calls
-        for several aliases:
-        ``.alias_name["out"]().alias_name["fmt"]()``.
+    def require_equals(var self) -> Self:
+        """Requires that values be provided using ``=`` syntax.
 
-        Parameters:
-            name: The alternative long option name (without ``--``).
+        When set, ``--key value`` (space-separated) is rejected;
+        only ``--key=value`` is accepted.  This avoids ambiguity
+        when values may start with ``-``.
+
+        Can be combined with ``.default_if_no_value()`` so that ``--key``
+        without ``=`` uses the default-if-no-value, while ``--key=val``
+        uses ``val``.
+
+        Examples::
+
+            # --output=file.txt  → "file.txt" (OK)
+            # --output file.txt  → error
+            _ = Argument("output", help="...").long["output"]().require_equals()
 
         Returns:
-            Self with the alias registered.
-
-        Constraints:
-            The alias is validated at compile time (same rules as
-            ``.long[]``): must not be empty, must not start with ``-``,
-            and must not contain ``=``.
+            Self with require-equals enabled.
         """
-        comptime assert len(name) > 0, "alias name must not be empty"
-        comptime assert not name.startswith(
-            "-"
-        ), "alias name must not start with '-'; omit the '--' prefix"
-        comptime assert name.find("=") == -1, (
-            "alias name must not contain '='; it conflicts with"
-            " --key=value syntax"
-        )
-        self._alias_names.append(name)
+        self._require_equals = True
         return self^
 
-    def deprecated[message: StringLiteral](var self) -> Self:
-        """Marks this argument as deprecated.
+    def allow_hyphen_values(var self) -> Self:
+        """Allows tokens starting with ``-`` as valid values.
 
-        When the user provides a deprecated argument, a warning is
-        printed to stderr but parsing continues normally.
+        By default, tokens that start with ``-`` are interpreted as option
+        flags.  Call this method to accept such tokens as regular values
+        instead, without requiring ``--`` first.  This covers the common
+        Unix convention where a bare ``-`` means stdin/stdout, as well as
+        any other dash-prefixed literal value.
 
-        Parameters:
-            message: The deprecation message (e.g., "Use --format instead").
+        Can be used on positional arguments and value-taking options.
+
+        Examples::
+
+            # Positional: myapp -  → positional value is "-"
+            _ = Argument("input", help="...").positional().allow_hyphen_values()
+
+            # Option: myapp --file -  → file value is "-"
+            _ = Argument("file", help="...").long["file"]().allow_hyphen_values()
 
         Returns:
-            Self marked as deprecated.
-
-        Constraints:
-            The message must not be empty.
+            Self with hyphen-value support enabled.
         """
-        comptime assert (
-            len(message) > 0
-        ), "deprecation message must not be empty"
-        self._deprecated_msg = message
+        self._allow_hyphen_values = True
         return self^
 
     def persistent(var self) -> Self:
@@ -728,128 +843,58 @@ struct Argument(Copyable, Movable, Writable):
         self._is_persistent = True
         return self^
 
-    def default_if_no_value[value: StringLiteral](var self) -> Self:
-        """Sets a default value for when the option appears without an explicit value.
+    # ── Display & help ──
 
-        When set, the option may appear without a value.  If no value
-        is given, this default-if-no-value is used.  If a value is
-        provided via ``=`` syntax for long options (``--compress=bzip2``)
-        or attached form for short options (``-cbzip2``), that explicit
-        value is used instead.
+    def value_name[name: StringLiteral, wrapped: Bool = True](var self) -> Self:
+        """Sets the display name for the value in help text.
 
-        For long options this implies ``require_equals()``.  A
-        space-separated token like ``--compress val`` is not accepted
-        as the option's value; in that case ``--compress`` uses its
-        default-if-no-value and ``val`` is parsed as a separate
-        argument (positional or another option).  To supply an
-        explicit value for the option, the user must write
-        ``--compress=val``.
+        When *wrapped* is True (default), the name is displayed inside angle
+        brackets: ``--output <FILE>``.  When False, it is displayed bare:
+        ``--output FILE``.
 
         Parameters:
-            value: The value to use when no explicit value is given.
+            name: The display name of the value (e.g., "FILE" for --output).
+            wrapped: Wrap the display name in ``<>`` (default True).
 
         Returns:
-            Self with the default-if-no-value set.
+            Self with the value_name set.
 
-        Examples:
-
-        ```mojo
-        # --compress        → "gzip"  (default-if-no-value)
-        # --compress=bzip2  → "bzip2" (explicit)
-        # -c                → "gzip"  (default-if-no-value)
-        # -cbzip2           → "bzip2" (attached)
-
-        from argmojo import Argument
-        _ = (Argument("compress", help="...")
-            .long["compress"]()
-            .short["c"]()
-            .default_if_no_value["gzip"]())
-        ```
+        Constraints:
+            The value name must be a non-empty string.
         """
-        self._default_if_no_value = value
-        self._has_default_if_no_value = True
-        self._require_equals = True  # implied for long options
+        comptime assert len(name) > 0, "value name must be a non-empty string"
+        self._value_name = name
+        self._value_name_wrapped = wrapped
         return self^
 
-    def require_equals(var self) -> Self:
-        """Requires that values be provided using ``=`` syntax.
-
-        When set, ``--key value`` (space-separated) is rejected;
-        only ``--key=value`` is accepted.  This avoids ambiguity
-        when values may start with ``-``.
-
-        Can be combined with ``.default_if_no_value()`` so that ``--key``
-        without ``=`` uses the default-if-no-value, while ``--key=val``
-        uses ``val``.
-
-        Examples::
-
-            # --output=file.txt  → "file.txt" (OK)
-            # --output file.txt  → error
-            _ = Argument("output", help="...").long["output"]().require_equals()
+    def hidden(var self) -> Self:
+        """Marks this argument as hidden (not shown in help output).
 
         Returns:
-            Self with require-equals enabled.
+            Self marked as hidden.
         """
-        self._require_equals = True
+        self._is_hidden = True
         return self^
 
-    def remainder(var self) -> Self:
-        """Marks this positional argument as a remainder collector.
+    def deprecated[message: StringLiteral](var self) -> Self:
+        """Marks this argument as deprecated.
 
-        A remainder argument consumes **all** remaining tokens on the
-        command line — including those starting with ``-``.  It is
-        equivalent to Python's ``nargs=argparse.REMAINDER``.
+        When the user provides a deprecated argument, a warning is
+        printed to stderr but parsing continues normally.
 
-        Implies ``.positional()`` and ``.append()`` — values are retrieved
-        via ``ParseResult.get_list()``.
-
-        A ``Command`` may have at most one remainder argument, and it
-        must be the last positional argument.  Tokens collected by a
-        remainder argument are **not** parsed as options; they are stored
-        verbatim.
-
-        Examples::
-
-            # myapp build -- -Wall -O2 src/main.c
-            # With .remainder(), everything after 'build' goes into rest:
-            _ = Argument("rest", help="...").remainder()
-
-            # Or without '--':
-            # myapp run script.py --script-flag
-            # rest = ["script.py", "--script-flag"]
+        Parameters:
+            message: The deprecation message (e.g., "Use --format instead").
 
         Returns:
-            Self marked as a remainder positional.
+            Self marked as deprecated.
+
+        Constraints:
+            The message must not be empty.
         """
-        self._is_remainder = True
-        self._is_positional = True
-        self._is_append = True
-        return self^
-
-    def allow_hyphen_values(var self) -> Self:
-        """Allows tokens starting with ``-`` as valid values.
-
-        By default, tokens that start with ``-`` are interpreted as option
-        flags.  Call this method to accept such tokens as regular values
-        instead, without requiring ``--`` first.  This covers the common
-        Unix convention where a bare ``-`` means stdin/stdout, as well as
-        any other dash-prefixed literal value.
-
-        Can be used on positional arguments and value-taking options.
-
-        Examples::
-
-            # Positional: myapp -  → positional value is "-"
-            _ = Argument("input", help="...").positional().allow_hyphen_values()
-
-            # Option: myapp --file -  → file value is "-"
-            _ = Argument("file", help="...").long["file"]().allow_hyphen_values()
-
-        Returns:
-            Self with hyphen-value support enabled.
-        """
-        self._allow_hyphen_values = True
+        comptime assert (
+            len(message) > 0
+        ), "deprecation message must not be empty"
+        self._deprecated_msg = message
         return self^
 
     def group[name: StringLiteral](var self) -> Self:
@@ -872,6 +917,8 @@ struct Argument(Copyable, Movable, Writable):
         comptime assert len(name) > 0, "group name must not be empty"
         self._group = name
         return self^
+
+    # ── Interactive prompting ──
 
     def prompt(var self) -> Self:
         """Enables interactive prompting for this argument.

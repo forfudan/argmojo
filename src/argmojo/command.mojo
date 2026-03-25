@@ -160,7 +160,7 @@ struct Command(Copyable, Movable, Writable):
     var subcommands: List[Command]
     """Registered subcommand definitions. Each is a full Command instance."""
 
-    # === Private fields ===
+    # === Private fields — Group constraints ===
     var _exclusive_groups: List[List[String]]
     """Groups of mutually exclusive argument names."""
     var _required_groups: List[List[String]]
@@ -171,16 +171,8 @@ struct Command(Copyable, Movable, Writable):
     """Pairs [target, condition]: target is required when condition is present."""
     var _implications: List[List[String]]
     """Pairs [trigger, implied]: when trigger is set, implied is auto-set."""
-    var _help_on_no_arguments: Bool
-    """When True, show help and exit if no arguments are provided."""
-    var _header_color: String
-    """ANSI code for section headers (Usage, Arguments, Options)."""
-    var _arg_color: String
-    """ANSI code for option / argument names."""
-    var _warn_color: String
-    """ANSI code for deprecation warning messages (default: orange)."""
-    var _error_color: String
-    """ANSI code for parse error messages (default: red)."""
+
+    # === Private fields — Subcommand behavior ===
     var _is_help_subcommand: Bool
     """True for the auto-inserted 'help' pseudo-subcommand.
     Never set this manually; use ``add_subcommand()`` to register subcommands and
@@ -189,6 +181,19 @@ struct Command(Copyable, Movable, Writable):
     var _help_subcommand_enabled: Bool
     """When True (default), auto-insert a 'help' subcommand on first 
     ``add_subcommand()`` call."""
+    var _command_aliases: List[String]
+    """Alternate names for this command when used as a subcommand.
+    Add entries via ``command_aliases()``.  Aliases are matched during
+    subcommand dispatch and appear inline next to the primary name in
+    help (e.g., "clone, cl"), but are not shown as separate entries."""
+    var _is_hidden: Bool
+    """When True, this command is excluded from help output, shell
+    completions, and 'available commands' error lists, but remains
+    dispatchable by exact name or alias.  Set via ``hidden()``."""
+
+    # === Private fields — Parser behavior ===
+    var _help_on_no_arguments: Bool
+    """When True, show help and exit if no arguments are provided."""
     var _allow_negative_numbers: Bool
     """When True, tokens matching negative-number format (-N, -N.N, -NeX)
     are always treated as positional arguments.
@@ -201,30 +206,6 @@ struct Command(Copyable, Movable, Writable):
     By default (False), registering a positional arg on a Command that already 
     has subcommands (or vice versa) raises an Error at registration time.
     Call ``allow_positional_with_subcommands()`` to opt in explicitly."""
-    var _completions_enabled: Bool
-    """When True (default), a built-in completion trigger is active.
-    Call ``disable_default_completions()`` to opt out entirely."""
-    var _completions_name: String
-    """The name used for the built-in completion trigger.
-    Defaults to ``"completions"`` → ``--completions <shell>``.
-    Change via ``completions_name()``."""
-    var _completions_is_subcommand: Bool
-    """When True, the completion trigger is a subcommand instead of an
-    option.  Default False → ``--completions``.  Call
-    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
-    var _command_aliases: List[String]
-    """Alternate names for this command when used as a subcommand.
-    Add entries via ``command_aliases()``.  Aliases are matched during
-    subcommand dispatch and appear inline next to the primary name in
-    help (e.g., "clone, cl"), but are not shown as separate entries."""
-    var _tips: List[String]
-    """User-defined tips shown at the bottom of the help message.
-    Add entries via ``add_tip()``.  Each tip is printed on its own line
-    prefixed with the same bold ``Tip:`` label as the built-in hint."""
-    var _is_hidden: Bool
-    """When True, this command is excluded from help output, shell
-    completions, and 'available commands' error lists, but remains
-    dispatchable by exact name or alias.  Set via ``hidden()``."""
     var _response_file_prefix: String
     """Character prefix that marks a response-file token (e.g. ``@``).
     When a token starts with this prefix, the remainder is treated as a
@@ -245,6 +226,8 @@ struct Command(Copyable, Movable, Writable):
     CJK punctuation (e.g. em-dash ``U+2014``) is substituted before
     running Levenshtein typo suggestion.  Call
     ``disable_punctuation_correction()`` to opt out."""
+
+    # === Private fields — Interactive & confirmation ===
     var _confirmation_enabled: Bool
     """When True, the command prompts the user for confirmation before
     returning the parse result.  If ``--yes`` / ``-y`` is provided on
@@ -253,9 +236,36 @@ struct Command(Copyable, Movable, Writable):
     var _confirmation_prompt: String
     """The prompt text shown when asking for confirmation.
     Empty until ``confirmation_option()`` is called."""
+
+    # === Private fields — Help & display ===
+    var _header_color: String
+    """ANSI code for section headers (Usage, Arguments, Options)."""
+    var _arg_color: String
+    """ANSI code for option / argument names."""
+    var _warn_color: String
+    """ANSI code for deprecation warning messages (default: orange)."""
+    var _error_color: String
+    """ANSI code for parse error messages (default: red)."""
     var _custom_usage: String
     """When non-empty, replaces the auto-generated usage line.
     Set via ``usage("...")``."""
+    var _tips: List[String]
+    """User-defined tips shown at the bottom of the help message.
+    Add entries via ``add_tip()``.  Each tip is printed on its own line
+    prefixed with the same bold ``Tip:`` label as the built-in hint."""
+
+    # === Private fields — Shell completions ===
+    var _completions_enabled: Bool
+    """When True (default), a built-in completion trigger is active.
+    Call ``disable_default_completions()`` to opt out entirely."""
+    var _completions_name: String
+    """The name used for the built-in completion trigger.
+    Defaults to ``"completions"`` → ``--completions <shell>``.
+    Change via ``completions_name()``."""
+    var _completions_is_subcommand: Bool
+    """When True, the completion trigger is a subcommand instead of an
+    option.  Default False → ``--completions``.  Call
+    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
 
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
@@ -279,33 +289,39 @@ struct Command(Copyable, Movable, Writable):
         self.version = version
         self.args = List[Argument]()
         self.subcommands = List[Command]()
+        # ── Group constraints ──
         self._exclusive_groups = List[List[String]]()
         self._required_groups = List[List[String]]()
         self._one_required_groups = List[List[String]]()
         self._conditional_reqs = List[List[String]]()
         self._implications = List[List[String]]()
-        self._help_on_no_arguments = False
+        # ── Subcommand behavior ──
         self._is_help_subcommand = False
         self._help_subcommand_enabled = True
+        self._command_aliases = List[String]()
+        self._is_hidden = False
+        # ── Parser behavior ──
+        self._help_on_no_arguments = False
         self._allow_negative_numbers = False
         self._allow_positional_with_subcommands = False
-        self._completions_enabled = True
-        self._completions_name = String("completions")
-        self._completions_is_subcommand = False
-        self._command_aliases = List[String]()
-        self._tips = List[String]()
-        self._is_hidden = False
         self._response_file_prefix = String("")
         self._response_file_max_depth = 10
         self._disable_fullwidth_correction = False
         self._disable_punctuation_correction = False
+        # ── Interactive & confirmation ──
         self._confirmation_enabled = False
         self._confirmation_prompt = String("")
-        self._custom_usage = String("")
+        # ── Help & display ──
         self._header_color = _DEFAULT_HEADER_COLOR
         self._arg_color = _DEFAULT_ARG_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
+        self._custom_usage = String("")
+        self._tips = List[String]()
+        # ── Shell completions ──
+        self._completions_enabled = True
+        self._completions_name = String("completions")
+        self._completions_is_subcommand = False
 
     def __init__(out self, *, deinit take: Self):
         """Moves a Command, transferring ownership of all fields.
@@ -318,37 +334,43 @@ struct Command(Copyable, Movable, Writable):
         self.version = take.version^
         self.args = take.args^
         self.subcommands = take.subcommands^
+        # ── Group constraints ──
         self._exclusive_groups = take._exclusive_groups^
         self._required_groups = take._required_groups^
         self._one_required_groups = take._one_required_groups^
         self._conditional_reqs = take._conditional_reqs^
         self._implications = take._implications^
-        self._help_on_no_arguments = take._help_on_no_arguments
+        # ── Subcommand behavior ──
         self._is_help_subcommand = take._is_help_subcommand
         self._help_subcommand_enabled = take._help_subcommand_enabled
+        self._command_aliases = take._command_aliases^
+        self._is_hidden = take._is_hidden
+        # ── Parser behavior ──
+        self._help_on_no_arguments = take._help_on_no_arguments
         self._allow_negative_numbers = take._allow_negative_numbers
         self._allow_positional_with_subcommands = (
             take._allow_positional_with_subcommands
         )
-        self._completions_enabled = take._completions_enabled
-        self._completions_name = take._completions_name^
-        self._completions_is_subcommand = take._completions_is_subcommand
-        self._command_aliases = take._command_aliases^
-        self._tips = take._tips^
-        self._is_hidden = take._is_hidden
         self._response_file_prefix = take._response_file_prefix^
         self._response_file_max_depth = take._response_file_max_depth
         self._disable_fullwidth_correction = take._disable_fullwidth_correction
         self._disable_punctuation_correction = (
             take._disable_punctuation_correction
         )
+        # ── Interactive & confirmation ──
         self._confirmation_enabled = take._confirmation_enabled
         self._confirmation_prompt = take._confirmation_prompt^
-        self._custom_usage = take._custom_usage^
+        # ── Help & display ──
         self._header_color = take._header_color^
         self._arg_color = take._arg_color^
         self._warn_color = take._warn_color^
         self._error_color = take._error_color^
+        self._custom_usage = take._custom_usage^
+        self._tips = take._tips^
+        # ── Shell completions ──
+        self._completions_enabled = take._completions_enabled
+        self._completions_name = take._completions_name^
+        self._completions_is_subcommand = take._completions_is_subcommand
 
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
@@ -366,6 +388,7 @@ struct Command(Copyable, Movable, Writable):
         self.version = copy.version
         self.args = copy.args.copy()
         self.subcommands = copy.subcommands.copy()
+        # ── Group constraints ──
         self._exclusive_groups = List[List[String]]()
         for i in range(len(copy._exclusive_groups)):
             self._exclusive_groups.append(copy._exclusive_groups[i].copy())
@@ -383,36 +406,43 @@ struct Command(Copyable, Movable, Writable):
         self._implications = List[List[String]]()
         for i in range(len(copy._implications)):
             self._implications.append(copy._implications[i].copy())
-        self._help_on_no_arguments = copy._help_on_no_arguments
+        # ── Subcommand behavior ──
         self._is_help_subcommand = copy._is_help_subcommand
         self._help_subcommand_enabled = copy._help_subcommand_enabled
+        self._command_aliases = copy._command_aliases.copy()
+        self._is_hidden = copy._is_hidden
+        # ── Parser behavior ──
+        self._help_on_no_arguments = copy._help_on_no_arguments
         self._allow_negative_numbers = copy._allow_negative_numbers
         self._allow_positional_with_subcommands = (
             copy._allow_positional_with_subcommands
         )
-        self._completions_enabled = copy._completions_enabled
-        self._completions_name = copy._completions_name
-        self._completions_is_subcommand = copy._completions_is_subcommand
-        self._command_aliases = copy._command_aliases.copy()
-        self._tips = copy._tips.copy()
-        self._is_hidden = copy._is_hidden
         self._response_file_prefix = copy._response_file_prefix
         self._response_file_max_depth = copy._response_file_max_depth
         self._disable_fullwidth_correction = copy._disable_fullwidth_correction
         self._disable_punctuation_correction = (
             copy._disable_punctuation_correction
         )
+        # ── Interactive & confirmation ──
         self._confirmation_enabled = copy._confirmation_enabled
         self._confirmation_prompt = copy._confirmation_prompt
-        self._custom_usage = copy._custom_usage
+        # ── Help & display ──
         self._header_color = copy._header_color
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
         self._error_color = copy._error_color
+        self._custom_usage = copy._custom_usage
+        self._tips = copy._tips.copy()
+        # ── Shell completions ──
+        self._completions_enabled = copy._completions_enabled
+        self._completions_name = copy._completions_name
+        self._completions_is_subcommand = copy._completions_is_subcommand
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the command
     # ===------------------------------------------------------------------=== #
+
+    # ── Registration ──
 
     def add_argument(mut self, var argument: Argument) raises:
         """Registers an argument definition.
@@ -683,325 +713,7 @@ struct Command(Copyable, Movable, Writable):
         for i in range(len(parent._implications)):
             self._implications.append(parent._implications[i].copy())
 
-    def disable_help_subcommand(mut self):
-        """Opts out of the auto-added ``help`` subcommand.
-
-        By default, the first call to ``add_subcommand()`` automatically
-        registers a ``help`` subcommand so that ``app help <sub>`` works as
-        an alias for ``app <sub> --help``.
-
-        Call this before or after ``add_subcommand()`` to suppress the
-        feature — useful when ``"help"`` is a legitimate first positional
-        value (e.g. a search pattern or entity name).  After disabling, use
-        ``app <sub> --help`` directly.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("search", "Search engine")
-        app.disable_help_subcommand()   # "help" is a valid search query
-        # Now: ``search help init``  →  positionals ["help", "init"] on root,
-        #    so that you can do something like: search "help" in path "init".
-        #    ``search init --help``  →  shows init's help page
-        ```
-        """
-        self._help_subcommand_enabled = False
-        # Remove any already-inserted help subcommand.
-        var new_subs = List[Command]()
-        for i in range(len(self.subcommands)):
-            if not self.subcommands[i]._is_help_subcommand:
-                new_subs.append(self.subcommands[i].copy())
-        self.subcommands = new_subs^
-
-    def allow_negative_numbers(mut self):
-        """Treats tokens that look like negative numbers as positional arguments.
-
-        By default ArgMojo already auto-detects negative-number tokens
-        (``-9``, ``-3.14``, ``-1.5e10``) and passes them through as
-        positionals **when no registered short option starts with a digit**.
-        Call this method explicitly when you have registered a digit short
-        option (e.g., ``-3`` for ``--triple``) and still need negative-number
-        literals to be treated as positionals.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command, Argument
-        var command = Command("calc", "Calculator")
-        command.allow_negative_numbers()
-        command.add_argument(Argument("expr", help="Expression").positional().required())
-        # Now: calc -10.18  →  positionals = ["-10.18"]
-        ```
-        """
-        self._allow_negative_numbers = True
-
-    def allow_positional_with_subcommands(mut self):
-        """Allows a Command to have both positional args and subcommands.
-
-        By default, ArgMojo follows the convention of cobra (Go) and clap
-        (Rust): a Command with subcommands cannot also have positional
-        arguments, because the parser cannot unambiguously distinguish a
-        subcommand name from a positional value.
-
-        Call this method **before** registering positional args and
-        subcommands to opt in to the mixed mode.  In mixed mode, a token
-        that exactly matches a registered subcommand name is dispatched;
-        any other token falls through to the positional list.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command, Argument
-        var app = Command("tool", "Flexible tool")
-        app.allow_positional_with_subcommands()
-        app.add_argument(Argument("target", help="Default target").positional())
-        var sub = Command("build", "Build the project")
-        app.add_subcommand(sub^)
-        # Now: tool build    → dispatch to 'build' subcommand
-        #      tool foo.txt  → positional "foo.txt"
-        ```
-        """
-        self._allow_positional_with_subcommands = True
-
-    def disable_default_completions(mut self):
-        """Disables the built-in completion trigger entirely.
-
-        By default, every ``Command`` has a built-in ``--completions bash``
-        (or ``zsh`` / ``fish``) that prints a shell completion script and
-        exits.  Call this method to remove that trigger completely.
-
-        The ``generate_completion()`` method is still available for
-        programmatic use — only the automatic trigger is removed.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("myapp", "My CLI")
-        app.disable_default_completions()
-        # --completions is now an unknown option
-        # but app.generate_completion["bash"]() still works
-        ```
-        """
-        self._completions_enabled = False
-
-    def completions_name(mut self, name: String):
-        """Sets the name used for the built-in completion trigger.
-
-        Default is ``"completions"`` → ``--completions <shell>``.
-        Change to any name you prefer:
-
-        - ``app.completions_name("autocomp")`` → ``--autocomp bash``
-        - ``app.completions_name("generate-completions")`` → ``--generate-completions bash``
-
-        Combine with ``completions_as_subcommand()`` to use as a subcommand:
-
-        - ``app.completions_name("comp")`` + ``app.completions_as_subcommand()``
-          → ``myapp comp bash``
-
-        Args:
-            name: The new trigger name (without ``--`` prefix).
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("myapp", "My CLI")
-        app.completions_name("autocomp")
-        # Now: myapp --autocomp bash
-        ```
-        """
-        self._completions_name = name
-
-    def completions_as_subcommand(mut self):
-        """Switches the built-in completion trigger from an option to a subcommand.
-
-        Default behaviour: ``myapp --completions bash``
-        After calling this: ``myapp completions bash``
-
-        Combine with ``completions_name()`` to customise the subcommand name:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("decimo", "CLI calculator based on decimo")
-        app.completions_name("comp")
-        app.completions_as_subcommand()
-        # → myapp comp bash
-        ```
-
-        The subcommand is auto-registered when ``parse()`` runs. It does
-        **not** appear in help output by default (like the ``help``
-        subcommand). The auto-registered subcommand takes one positional
-        argument (the shell name) and handles printing + exiting.
-        """
-        self._completions_is_subcommand = True
-
-    def add_tip(mut self, tip: String):
-        """Adds a custom tip line to the bottom of the help message.
-
-        Each tip is printed on its own line below the built-in ``--``
-        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
-        documenting shell idioms, environment variables, or any other
-        usage notes that don't fit in argument help strings.
-
-        Args:
-            tip: The tip text to display.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command, Argument
-        var command = Command("myapp", "A sample application")
-        command.add_tip("Set MYAPP_DEBUG=1 to enable debug logging.")
-        command.add_tip("Config file: ~/.config/myapp/config.toml")
-        ```
-        """
-        self._tips.append(tip)
-
-    # TODO: alias_name[name: StringLiteral](mut self) for compile-time checks
-    def command_aliases(mut self, var names: List[String]):
-        """Registers alternate names for this command when used as a subcommand.
-
-        Aliases are matched during subcommand dispatch and included in
-        shell completion scripts, but they do **not** appear as separate
-        entries in the ``Commands:`` help section.  Instead, aliases are
-        shown inline next to the primary name.
-
-        Args:
-            names: The list of alias strings.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var clone = Command("clone", "Clone a repository")
-        var aliases: List[String] = ["cl"]
-        clone.command_aliases(aliases^)
-        # Now: mgit cl ... is equivalent to mgit clone ...
-        ```
-        """
-        for i in range(len(names)):
-            self._command_aliases.append(names[i])
-
-    def hidden(mut self):
-        """Marks this subcommand as hidden.
-
-        A hidden subcommand is excluded from help output, shell completion
-        scripts, and the "Available commands" error message, but remains
-        dispatchable by exact name or alias.  Useful for internal,
-        experimental, or deprecated subcommands.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("myapp", "A sample application")
-        var debug = Command("debug", "Internal debug command")
-        debug.hidden()
-        app.add_subcommand(debug^)
-        # 'debug' won't appear in --help or completions, but:
-        #   app debug ...   still works
-        ```
-        """
-        self._is_hidden = True
-
-    # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
-    def response_file_prefix(mut self, prefix: String = "@"):
-        """Enables response-file expansion for this command.
-
-        Warning: **Temporarily disabled** — the underlying expansion
-        logic is compiled out to work around a Mojo compiler deadlock
-        triggered by ``-D ASSERT=all``.  Calling this method still
-        stores the prefix, but ``parse_arguments()`` will **not**
-        expand response-file tokens until the compiler bug is fixed.
-
-        When enabled, any token that starts with the given ``prefix``
-        is treated as a response-file reference.  The remainder of
-        the token is the file path; each non-empty, non-comment line
-        of that file is inserted as a separate argument in place of
-        the original token.
-
-        - Blank lines and lines starting with ``#`` are ignored.
-        - Leading / trailing whitespace on each line is stripped.
-        - Response files may reference other response files (recursive),
-          up to the configured nesting depth (set via
-          ``response_file_max_depth[depth]()``; default 10).
-        - To pass a literal token that starts with the prefix (e.g. an
-          email ``@user``), escape it by doubling the prefix: ``@@user``
-          is inserted as ``@user``.
-
-        Args:
-            prefix: The prefix character(s) that introduce a response
-                file (default ``"@"``).
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var command = Command("myapp", "A sample application")
-        command.response_file_prefix()  # uses default '@'
-        # Now: myapp @args.txt  reads arguments from args.txt
-        ```
-        """
-        self._response_file_prefix = prefix
-
-    def response_file_max_depth[depth: Int](mut self) where depth > 0:
-        """Sets the maximum nesting depth for response-file expansion.
-
-        Warning: **Temporarily disabled** — see
-        ``response_file_prefix()`` docstring for details.
-
-        Parameters:
-            depth: Maximum recursion depth (default 10).
-                Constraints: must be positive.
-        """
-        self._response_file_max_depth = depth
-
-    def disable_fullwidth_correction(mut self):
-        """Disables automatic full-width → half-width character correction.
-
-        By default, ArgMojo detects fullwidth ASCII characters
-        (``U+FF01``–``U+FF5E``) and fullwidth spaces (``U+3000``) in
-        option tokens (those starting with ``-``) and auto-corrects them
-        to their halfwidth equivalents with a warning.  This helps CJK
-        users who forget to switch input methods.
-
-        Call this method to disable that correction entirely — useful
-        when strict parsing is preferred.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("myapp", "My CLI")
-        app.disable_fullwidth_correction()
-        # Now: －－ｖｅｒｂｏｓｅ is NOT corrected → unknown option error
-        ```
-        """
-        self._disable_fullwidth_correction = True
-
-    def disable_punctuation_correction(mut self):
-        """Disables CJK punctuation detection in error recovery.
-
-        By default, when an unknown option is encountered, ArgMojo tries
-        substituting common CJK punctuation (e.g. em-dash ``——`` →
-        ``--``) before running Levenshtein typo suggestion.  This helps
-        CJK users who accidentally type Chinese punctuation.
-
-        Call this method to disable that behaviour — useful when strict
-        error messages are preferred.
-
-        Example:
-
-        ```mojo
-        from argmojo import Command
-        var app = Command("myapp", "My CLI")
-        app.disable_punctuation_correction()
-        # Now: ——verbose will NOT attempt em-dash → hyphen correction
-        ```
-        """
-        self._disable_punctuation_correction = True
+    # ── Group constraints ──
 
     def mutually_exclusive(mut self, var names: List[String]) raises:
         """Declares a group of mutually exclusive arguments.
@@ -1300,32 +1012,114 @@ struct Command(Copyable, Movable, Writable):
         var imp_triple: List[String] = [trigger, implied, implied_kind]
         self._implications.append(imp_triple^)
 
-    def usage(mut self, text: String):
-        """Sets a custom usage line, replacing the auto-generated one.
+    # ── Subcommand behavior ──
 
-        By default, ArgMojo generates a usage line like::
+    def command_aliases(mut self, var names: List[String]):
+        """Registers alternate names for this command when used as a subcommand.
 
-            Usage: myapp <file> [OPTIONS]
-
-        Call this method to override it with a completely custom string.
-        The string should **not** include the ``Usage:`` prefix — it will
-        be added automatically.
+        Aliases are matched during subcommand dispatch and included in
+        shell completion scripts, but they do **not** appear as separate
+        entries in the ``Commands:`` help section.  Instead, aliases are
+        shown inline next to the primary name.
 
         Args:
-            text: The custom usage text (e.g. ``"myapp [-v | --version]
-                [-C <path>] <command> [<args>]"``).
+            names: The list of alias strings.
 
         Example:
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("git", "The stupid content tracker")
-        cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
-        # --help will show:
-        #   Usage: git [-v | --version] [-C <path>] <command> [<args>]
+        var clone = Command("clone", "Clone a repository")
+        var aliases: List[String] = ["cl"]
+        clone.command_aliases(aliases^)
+        # Now: mgit cl ... is equivalent to mgit clone ...
         ```
         """
-        self._custom_usage = text
+        for i in range(len(names)):
+            self._command_aliases.append(names[i])
+
+    def hidden(mut self):
+        """Marks this subcommand as hidden.
+
+        A hidden subcommand is excluded from help output, shell completion
+        scripts, and the "Available commands" error message, but remains
+        dispatchable by exact name or alias.  Useful for internal,
+        experimental, or deprecated subcommands.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "A sample application")
+        var debug = Command("debug", "Internal debug command")
+        debug.hidden()
+        app.add_subcommand(debug^)
+        # 'debug' won't appear in --help or completions, but:
+        #   app debug ...   still works
+        ```
+        """
+        self._is_hidden = True
+
+    def disable_help_subcommand(mut self):
+        """Opts out of the auto-added ``help`` subcommand.
+
+        By default, the first call to ``add_subcommand()`` automatically
+        registers a ``help`` subcommand so that ``app help <sub>`` works as
+        an alias for ``app <sub> --help``.
+
+        Call this before or after ``add_subcommand()`` to suppress the
+        feature — useful when ``"help"`` is a legitimate first positional
+        value (e.g. a search pattern or entity name).  After disabling, use
+        ``app <sub> --help`` directly.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("search", "Search engine")
+        app.disable_help_subcommand()   # "help" is a valid search query
+        # Now: ``search help init``  →  positionals ["help", "init"] on root,
+        #    so that you can do something like: search "help" in path "init".
+        #    ``search init --help``  →  shows init's help page
+        ```
+        """
+        self._help_subcommand_enabled = False
+        # Remove any already-inserted help subcommand.
+        var new_subs = List[Command]()
+        for i in range(len(self.subcommands)):
+            if not self.subcommands[i]._is_help_subcommand:
+                new_subs.append(self.subcommands[i].copy())
+        self.subcommands = new_subs^
+
+    def allow_positional_with_subcommands(mut self):
+        """Allows a Command to have both positional args and subcommands.
+
+        By default, ArgMojo follows the convention of cobra (Go) and clap
+        (Rust): a Command with subcommands cannot also have positional
+        arguments, because the parser cannot unambiguously distinguish a
+        subcommand name from a positional value.
+
+        Call this method **before** registering positional args and
+        subcommands to opt in to the mixed mode.  In mixed mode, a token
+        that exactly matches a registered subcommand name is dispatched;
+        any other token falls through to the positional list.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var app = Command("tool", "Flexible tool")
+        app.allow_positional_with_subcommands()
+        app.add_argument(Argument("target", help="Default target").positional())
+        var sub = Command("build", "Build the project")
+        app.add_subcommand(sub^)
+        # Now: tool build    → dispatch to 'build' subcommand
+        #      tool foo.txt  → positional "foo.txt"
+        ```
+        """
+        self._allow_positional_with_subcommands = True
+
+    # ── Parser behavior ──
 
     def help_on_no_arguments(mut self) raises:
         """Enables showing help when invoked with no arguments.
@@ -1358,6 +1152,127 @@ struct Command(Copyable, Movable, Writable):
                     " help_on_no_arguments() or .prompt()"
                 )
         self._help_on_no_arguments = True
+
+    def allow_negative_numbers(mut self):
+        """Treats tokens that look like negative numbers as positional arguments.
+
+        By default ArgMojo already auto-detects negative-number tokens
+        (``-9``, ``-3.14``, ``-1.5e10``) and passes them through as
+        positionals **when no registered short option starts with a digit**.
+        Call this method explicitly when you have registered a digit short
+        option (e.g., ``-3`` for ``--triple``) and still need negative-number
+        literals to be treated as positionals.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("calc", "Calculator")
+        command.allow_negative_numbers()
+        command.add_argument(Argument("expr", help="Expression").positional().required())
+        # Now: calc -10.18  →  positionals = ["-10.18"]
+        ```
+        """
+        self._allow_negative_numbers = True
+
+    # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
+    def response_file_prefix(mut self, prefix: String = "@"):
+        """Enables response-file expansion for this command.
+
+        Warning: **Temporarily disabled** — the underlying expansion
+        logic is compiled out to work around a Mojo compiler deadlock
+        triggered by ``-D ASSERT=all``.  Calling this method still
+        stores the prefix, but ``parse_arguments()`` will **not**
+        expand response-file tokens until the compiler bug is fixed.
+
+        When enabled, any token that starts with the given ``prefix``
+        is treated as a response-file reference.  The remainder of
+        the token is the file path; each non-empty, non-comment line
+        of that file is inserted as a separate argument in place of
+        the original token.
+
+        - Blank lines and lines starting with ``#`` are ignored.
+        - Leading / trailing whitespace on each line is stripped.
+        - Response files may reference other response files (recursive),
+          up to the configured nesting depth (set via
+          ``response_file_max_depth[depth]()``; default 10).
+        - To pass a literal token that starts with the prefix (e.g. an
+          email ``@user``), escape it by doubling the prefix: ``@@user``
+          is inserted as ``@user``.
+
+        Args:
+            prefix: The prefix character(s) that introduce a response
+                file (default ``"@"``).
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var command = Command("myapp", "A sample application")
+        command.response_file_prefix()  # uses default '@'
+        # Now: myapp @args.txt  reads arguments from args.txt
+        ```
+        """
+        self._response_file_prefix = prefix
+
+    def response_file_max_depth[depth: Int](mut self) where depth > 0:
+        """Sets the maximum nesting depth for response-file expansion.
+
+        Warning: **Temporarily disabled** — see
+        ``response_file_prefix()`` docstring for details.
+
+        Parameters:
+            depth: Maximum recursion depth (default 10).
+                Constraints: must be positive.
+        """
+        self._response_file_max_depth = depth
+
+    def disable_fullwidth_correction(mut self):
+        """Disables automatic full-width → half-width character correction.
+
+        By default, ArgMojo detects fullwidth ASCII characters
+        (``U+FF01``–``U+FF5E``) and fullwidth spaces (``U+3000``) in
+        option tokens (those starting with ``-``) and auto-corrects them
+        to their halfwidth equivalents with a warning.  This helps CJK
+        users who forget to switch input methods.
+
+        Call this method to disable that correction entirely — useful
+        when strict parsing is preferred.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_fullwidth_correction()
+        # Now: －－ｖｅｒｂｏｓｅ is NOT corrected → unknown option error
+        ```
+        """
+        self._disable_fullwidth_correction = True
+
+    def disable_punctuation_correction(mut self):
+        """Disables CJK punctuation detection in error recovery.
+
+        By default, when an unknown option is encountered, ArgMojo tries
+        substituting common CJK punctuation (e.g. em-dash ``——`` →
+        ``--``) before running Levenshtein typo suggestion.  This helps
+        CJK users who accidentally type Chinese punctuation.
+
+        Call this method to disable that behaviour — useful when strict
+        error messages are preferred.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_punctuation_correction()
+        # Now: ——verbose will NOT attempt em-dash → hyphen correction
+        ```
+        """
+        self._disable_punctuation_correction = True
+
+    # ── Interactive & confirmation ──
 
     def confirmation_option(mut self) raises:
         """Adds a ``--yes`` / ``-y`` flag to skip a confirmation prompt.
@@ -1446,6 +1361,59 @@ struct Command(Copyable, Movable, Writable):
     # This ensures developers get a compiler error for invalid colour
     # names during development, instead of end users seeing runtime
     # failures caused by a misspelled or unsupported colour.
+
+    # ── Help & display ──
+
+    def usage(mut self, text: String):
+        """Sets a custom usage line, replacing the auto-generated one.
+
+        By default, ArgMojo generates a usage line like::
+
+            Usage: myapp <file> [OPTIONS]
+
+        Call this method to override it with a completely custom string.
+        The string should **not** include the ``Usage:`` prefix — it will
+        be added automatically.
+
+        Args:
+            text: The custom usage text (e.g. ``"myapp [-v | --version]
+                [-C <path>] <command> [<args>]"``).
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var cmd = Command("git", "The stupid content tracker")
+        cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+        # --help will show:
+        #   Usage: git [-v | --version] [-C <path>] <command> [<args>]
+        ```
+        """
+        self._custom_usage = text
+
+    def add_tip(mut self, tip: String):
+        """Adds a custom tip line to the bottom of the help message.
+
+        Each tip is printed on its own line below the built-in ``--``
+        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
+        documenting shell idioms, environment variables, or any other
+        usage notes that don't fit in argument help strings.
+
+        Args:
+            tip: The tip text to display.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_tip("Set MYAPP_DEBUG=1 to enable debug logging.")
+        command.add_tip("Config file: ~/.config/myapp/config.toml")
+        ```
+        """
+        self._tips.append(tip)
+
+    # TODO: alias_name[name: StringLiteral](mut self) for compile-time checks
     def header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
@@ -1528,6 +1496,81 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         self._error_color = _resolve_color[name]()
+
+    # ── Shell completions ──
+
+    def disable_default_completions(mut self):
+        """Disables the built-in completion trigger entirely.
+
+        By default, every ``Command`` has a built-in ``--completions bash``
+        (or ``zsh`` / ``fish``) that prints a shell completion script and
+        exits.  Call this method to remove that trigger completely.
+
+        The ``generate_completion()`` method is still available for
+        programmatic use — only the automatic trigger is removed.
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.disable_default_completions()
+        # --completions is now an unknown option
+        # but app.generate_completion["bash"]() still works
+        ```
+        """
+        self._completions_enabled = False
+
+    def completions_name(mut self, name: String):
+        """Sets the name used for the built-in completion trigger.
+
+        Default is ``"completions"`` → ``--completions <shell>``.
+        Change to any name you prefer:
+
+        - ``app.completions_name("autocomp")`` → ``--autocomp bash``
+        - ``app.completions_name("generate-completions")`` → ``--generate-completions bash``
+
+        Combine with ``completions_as_subcommand()`` to use as a subcommand:
+
+        - ``app.completions_name("comp")`` + ``app.completions_as_subcommand()``
+          → ``myapp comp bash``
+
+        Args:
+            name: The new trigger name (without ``--`` prefix).
+
+        Example:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("myapp", "My CLI")
+        app.completions_name("autocomp")
+        # Now: myapp --autocomp bash
+        ```
+        """
+        self._completions_name = name
+
+    def completions_as_subcommand(mut self):
+        """Switches the built-in completion trigger from an option to a subcommand.
+
+        Default behaviour: ``myapp --completions bash``
+        After calling this: ``myapp completions bash``
+
+        Combine with ``completions_name()`` to customise the subcommand name:
+
+        ```mojo
+        from argmojo import Command
+        var app = Command("decimo", "CLI calculator based on decimo")
+        app.completions_name("comp")
+        app.completions_as_subcommand()
+        # → myapp comp bash
+        ```
+
+        The subcommand is auto-registered when ``parse()`` runs. It does
+        **not** appear in help output by default (like the ``help``
+        subcommand). The auto-registered subcommand takes one positional
+        argument (the shell name) and handles printing + exiting.
+        """
+        self._completions_is_subcommand = True
 
     # ===------------------------------------------------------------------=== #
     # Private output helpers
@@ -1690,6 +1733,10 @@ struct Command(Copyable, Movable, Writable):
             s += " <COMMAND>"
         s += " [OPTIONS]"
         return s
+
+    # ===------------------------------------------------------------------=== #
+    # Public parse methods
+    # ===------------------------------------------------------------------=== #
 
     def parse(self) raises -> ParseResult:
         """Parses command-line arguments from ``sys.argv()``.
