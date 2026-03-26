@@ -801,7 +801,7 @@ var args = Parser[MyArgs]()
 **My approach**: `parse_split()` returns a **tuple of both**:
 
 ```mojo
-def parse_split(mut self) raises -> (T, ParseResult):
+def parse_split(mut self) raises -> Tuple[T, ParseResult]:
 ```
 
 - The first element is your struct `T` with all declarative-registered fields populated & typed.

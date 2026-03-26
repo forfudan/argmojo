@@ -19,15 +19,6 @@ struct Parser[T: Parsable](Movable):
 
     Parameters:
         T: A struct conforming to ``Parsable`` whose fields define the CLI schema.
-
-    Examples:
-
-    ```sh
-    from argmojo.parser import Parser
-
-    var args = Parser[Grep]().parse()
-    print(args.pattern.value)
-    ```
     """
 
     var _command: Command
@@ -38,8 +29,13 @@ struct Parser[T: Parsable](Movable):
 
     fn __init__(out self):
         """Create a Parser and prepare the underlying Command."""
+        var cmd_name = String(Self.T.name())
+        if not cmd_name:
+            cmd_name = String("command")
         self._command = Command(
-            String(Self.T.name()), String(Self.T.description())
+            cmd_name,
+            String(Self.T.description()),
+            version=String(Self.T.version()),
         )
         self._built = False
 
@@ -63,6 +59,10 @@ struct Parser[T: Parsable](Movable):
             return
         self._built = True
         # Placeholder — will be filled with comptime reflection logic.
+        raise Error(
+            "Parser._build() is not yet implemented. "
+            "The reflection-based builder will land in a follow-up PR."
+        )
 
     def _from_result(self, result: ParseResult) raises -> Self.T:
         """Populate a T instance from ParseResult.
@@ -74,7 +74,10 @@ struct Parser[T: Parsable](Movable):
             A populated instance of T.
         """
         # Placeholder — returns default-initialised T for now.
-        return Self.T()
+        raise Error(
+            "Parser._from_result() is not yet implemented. "
+            "The write-back logic will land in a follow-up PR."
+        )
 
     def to_command(mut self) raises -> ref[self._command] Command:
         """Return a mutable reference to the underlying Command.
@@ -84,15 +87,6 @@ struct Parser[T: Parsable](Movable):
 
         Returns:
             A mutable reference to the underlying Command.
-
-        Examples:
-
-        ```sh
-        var parser = Parser[MyArgs]()
-        var cmd = parser.to_command()
-        cmd.mutually_exclusive(["json", "yaml"])
-        var args = parser.parse()
-        ```
         """
         self._build()
         return self._command
@@ -109,21 +103,17 @@ struct Parser[T: Parsable](Movable):
         var result = self._command.parse()
         return self._from_result(result)
 
-    # NOTE: parse_split is disabled for now — Mojo 0.26.2 cannot construct
-    # a Tuple[Self.T, ParseResult] return type when T is trait-constrained.
-    # Uncomment once Mojo supports this.
-    #
-    # def parse_split(mut self) raises -> (Self.T, ParseResult):
-    #     """Build, parse argv, and return both T and the raw ParseResult.
-    #
-    #     Use this when you've added extra arguments via ``to_command()``
-    #     that aren't part of T — the typed struct covers declarative
-    #     fields, the ParseResult covers everything.
-    #
-    #     Returns:
-    #         A tuple of (populated T, raw ParseResult).
-    #     """
-    #     self._build()
-    #     var result = self._command.parse()
-    #     var args = self._from_result(result)
-    #     return (args^, result^)
+    def parse_split(mut self) raises -> Tuple[Self.T, ParseResult]:
+        """Build, parse argv, and return both T and the raw ParseResult.
+
+        Use this when you've added extra arguments via ``to_command()``
+        that aren't part of T — the typed struct covers declarative
+        fields, the ParseResult covers everything.
+
+        Returns:
+            A tuple of (populated T, raw ParseResult).
+        """
+        self._build()
+        var result = self._command.parse()
+        var args = self._from_result(result)
+        return Tuple[Self.T, ParseResult](args^, result^)
