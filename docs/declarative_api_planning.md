@@ -3,16 +3,16 @@
 > **Status**: Planning  
 > **Target**: argmojo v0.5.0  
 > **Mojo Version**: 0.26.2+  
-> **Initial Date**: 2026-03-24
-
-> 子曰工欲善其事必先利其器
+> **Initial Date**: 2026-03-24  
+>
+> 子曰工欲善其事必先利其器  
 > The mechanic, who wishes to do his work well, must first sharpen his tools -- Confucius
 
 ## 1. Design Goals
 
 I want the declarative API to satisfy five goals:
 
-1. **Optional** — If you prefer the builder API, nothing changes for you. The declaration module is a separate import (`from argmojo.declaration import ...`). Zero change to existing code.
+1. **Optional** — If you prefer the builder API, nothing changes for you. The parser module is a separate import (`from argmojo.parser import ...`). Zero change to existing code.
 
 2. **Hybrid** — Builder and declarative can coexist in a single program. You define a struct for 80% of arguments, then reach for builder methods for the remaining 20% (groups, implications, advanced constraints).
 
@@ -20,7 +20,7 @@ I want the declarative API to satisfy five goals:
 
 4. **Type-safe** — Parsed results come back as your own struct with typed fields, not `ParseResult.get_string("name")`.
 
-5. **Two innovations** — I think there are two features I can offer beyond what Swift Argument Parser does (see [§6](#6-innovations)).
+5. **Five innovations** — I think there are five features I can offer beyond what Swift Argument Parser does (see [§6](#6-innovations)).
 
 ## 2. Mojo Reflection Capabilities (v0.26.2)
 
@@ -61,35 +61,76 @@ struct Greet: ParsableCommand {
 Greet.main()
 ```
 
+What the compiler actually sees — Swift **desugars** the `@` property wrappers into hidden parametric structs:
+
+```swift
+struct Greet: ParsableCommand {
+    // @Argument(help: "The person's name.")
+    // var name: String
+    //   desugared into:
+    var _name: Argument<String> = Argument<String>(help: "The person's name.")
+    var name: String {
+        get { _name.wrappedValue }
+        set { _name.wrappedValue = newValue }
+    }
+
+    // @Option(name: .shortAndLong, help: "Repeat count.")
+    // var count: Int = 1
+    //   desugared into:
+    var _count: Option<Int> = Option<Int>(name: .shortAndLong, help: "Repeat count.", wrappedValue: 1)
+    var count: Int {
+        get { _count.wrappedValue }
+        set { _count.wrappedValue = newValue }
+    }
+
+    // @Flag(inversion: .prefixedNo, help: "Include greeting.")
+    // var includeGreeting = true
+    //   desugared into:
+    var _includeGreeting: Flag<Bool> = Flag<Bool>(inversion: .prefixedNo, help: "Include greeting.", wrappedValue: true)
+    var includeGreeting: Bool {
+        get { _includeGreeting.wrappedValue }
+        set { _includeGreeting.wrappedValue = newValue }
+    }
+
+    mutating func run() throws {
+        for _ in 0..<count { print("Hello, \(name)!") }
+    }
+}
+```
+
+So under the hood, Swift is wrapping each field in a parametric metadata-carrying struct (`Argument<String>`, `Option<Int>`, `Flag<Bool>`). The `@` sugar just hides the wrapper and generates a computed property so users write `args.name` instead of `args._name.wrappedValue`.
+
+This is inspiring, great! It can be translated into Mojo with explicit parametric structs — the only cost is the lack of `@` sugar, so users access the inner value via `.value` instead of a compiler-generated computed property.
+
 Direct mapping to argmojo declarative API:
 
-| Swift Mechanism                  | ArgMojo Equivalent                           |
-| -------------------------------- | -------------------------------------------- |
-| `@Argument(help: "...")`         | `Positional[T, help="..."]`                  |
-| `@Option(name: .shortAndLong)`   | `Option[T, long="...", short="..."]`         |
-| `@Flag(inversion: .prefixedNo)`  | `Flag[negatable=True]`                       |
-| (no Swift equivalent)            | `Count[short="v", max=3]`                    |
-| (no Swift equivalent)            | `Declaration[T]`                             |
-| `ParsableCommand` protocol       | `Declarable` trait                           |
-| `@OptionGroup`                   | Argument parents via `Command.add_parent()`  |
-| `ExpressibleByArgument` protocol | `ExpressibleByArgument` trait                |
-| `CommandGroup`                   | `SubDeclaration[...]`                        |
-| `mutating func run()`            | Separate: `Declaration[T].parse()` returns T |
-| `mutating func validate()`       | `def validate(self) raises` on `Declarable`  |
+| Swift Mechanism                  | ArgMojo Equivalent                          |
+| -------------------------------- | ------------------------------------------- |
+| `@Argument(help: "...")`         | `Positional[T, help="..."]`                 |
+| `@Option(name: .shortAndLong)`   | `Option[T, long="...", short="..."]`        |
+| `@Flag(inversion: .prefixedNo)`  | `Flag[negatable=True]`                      |
+| (no Swift equivalent)            | `Count[short="v", max=3]`                   |
+| (no Swift equivalent)            | `Parser[T]`                                 |
+| `ParsableCommand` protocol       | `Parsable` trait                            |
+| `@OptionGroup`                   | Argument parents via `Command.add_parent()` |
+| `ExpressibleByArgument` protocol | `ExpressibleByArgument` trait               |
+| `CommandGroup`                   | `SubParser[...]`                            |
+| `mutating func run()`            | Separate: `Parser[T].parse()` returns T     |
+| `mutating func validate()`       | `def validate(self) raises` on `Parsable`   |
 
 What I think argmojo can add beyond Swift:
 
-1. `to_command()` exposes the underlying `Command` for builder-level customisation — Swift's `ParsableCommand` is a sealed box with no escape hatch to things like mutually exclusive groups, implications, or custom help formatting.
+1. `to_command()` exposes the underlying `Command` (as reference) for builder-level customisation — Swift's `ParsableCommand` is a sealed box with no escape hatch to things like mutually exclusive groups, implications, or custom help formatting.
 2. `parse_split()` returns both typed struct + `ParseResult` — Swift requires all fields to live in the struct.
 3. Declarative is optional — Swift has no builder alternative; you *must* use the struct-based approach.
 
-**`validate()`**: I'm also thinking about an optional `def validate(self) raises` method on `Declarable` (mirroring Swift's `validate()`). It would complement `to_command()` for post-parse cross-field validation without requiring the builder API.
+**`validate()`**: I'm also thinking about an optional `def validate(self) raises` method on `Parsable` (mirroring Swift's `validate()`). It would complement `to_command()` for post-parse cross-field validation without requiring the builder API.
 
 **A note on naming** — I had to pick names for several structs and traits. Some were genuinely hard. The final names inevitably reflect my personal taste, but I tried to be consistent and self-explanatory. Here's what I chose and why:
 
-1. **`Declaration`**: It's really a declarative command — you call `.parse()` on it, much like `Command`. I wanted to call it `DeclarativeCommand`, but that's too long. `CLI` was another candidate, but `CLI.to_command()` reads oddly. `Declaration` felt right — short, clear, and it tells you this is the declarative counterpart to `Command`.
+1. **`Parser`**: The declarative orchestrator — you call `.parse()` on it, much like `Command`. I originally called it `Declaration`, but that was misleading since it wraps and drives a `Command` internally. `Parser` aligns with clap's `#[derive(Parser)]` and clearly communicates its role: it parses CLI arguments from a struct schema. `CLI` was another candidate, but `CLI.to_command()` reads oddly. `Parser[T]` felt right — short, familiar, and it tells you this is the declarative counterpart to `Command`.
 
-2. **`Declarable`**: This is the trait that user structs conform to. I followed Mojo's `TypeName+able` pattern (`Int`→`Intable`, `String`→`Stringable`, `Declaration`→`Declarable`). I considered `Parsable` (à la Swift's `ParsableCommand`), but parsing is what `Declaration` does, not what the struct does — the struct *declares* CLI structure. `Declaration[T: Declarable]` reads naturally: "a declaration of something declarable." The deeper reason this naming is tricky: unlike Swift or Rust, we need *two* layers of abstraction — a user-defined struct layer and a builder layer. You should always think of the user struct (`Declarable`) and `Declaration` as a pair — one cannot exist without the other.
+2. **`Parsable`**: This is the trait that user structs conform to. It follows Swift's `ParsableCommand` naming and Mojo's `TypeName+able` pattern (`Int`→`Intable`, `String`→`Stringable`, `Parser`→`Parsable`). `Parser[T: Parsable]` reads naturally: "a parser of something parsable." The user struct describes *what* to parse (the schema), and `Parser` knows *how* to parse it. You should always think of the user struct (`Parsable`) and `Parser` as a pair — one cannot exist without the other.
 
 3. **`Positional`**: Swift calls it `@Argument`, but I already have an `Argument` struct in the builder layer that covers *all* argument types. Two different `Argument` types with different meanings would be confusing. `Positional` is unambiguous — it tells you exactly what kind of argument it is.
 
@@ -100,27 +141,27 @@ What I think argmojo can add beyond Swift:
 │  User Code                                                               │
 │                                                                          │
 │  @fieldwise_init                                                         │
-│  struct MyArgs(Declarable):                                                │
+│  struct MyArgs(Parsable):                                                │
 │      var name: Positional[String, help="Name", required=True]            │
 │      var verbose: Flag[short="v", help="Verbose"]                        │
 │      var output: Option[String, long="output", short="o"]                │
 │      def __init__(out self): self = arg_defaults[Self]()                 │
 │                                                                          │
-│  var decl = Declaration[MyArgs]()                                        │
+│  var decl = Parser[MyArgs]()                                             │
 │  var cmd = decl.to_command()                                             │
 │  cmd.mutually_exclusive([...])                                           │
 │  var args = decl.parse()  →  MyArgs (typed struct)                       │
 │                                                                          │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  declaration.mojo  (NEW — ~400-600 lines)                                │
+│  parser.mojo  (NEW — ~400-600 lines)                                     │
 │                                                                          │
-│  Declaration[T].to_command() → Command  (reflect T → builder calls)      │
-│  Declaration[T].parse()      → T        (parse + write-back)             │
-│  Declaration[T].from_result()→ T        (ParseResult → struct)           │
+│  Parser[T].to_command() → Command  (reflect T → builder calls)           │
+│  Parser[T].parse()      → T        (parse + write-back)                  │
+│  Parser[T].from_result()→ T        (ParseResult → struct)                │
 │  arg_defaults[T]()      → T          (default-initialized)               │
 │                                                                          │
 │  Wrapper types: Positional[T, ...], Option[T, ...], Flag[...], Count[...]│
-│  Trait: Declarable                                                         │
+│  Trait: Parsable                                                         │
 │                                                                          │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  argument.mojo + command.mojo + parse_result.mojo  (UNCHANGED)           │
@@ -133,11 +174,22 @@ What I think argmojo can add beyond Swift:
 
 ### Files Changed
 
-| File                           | Change                                           |
-| ------------------------------ | ------------------------------------------------ |
-| `src/argmojo/declaration.mojo` | **New file** — all declaration types and logic   |
-| `src/argmojo/__init__.mojo`    | Add `from .declaration import ...` (conditional) |
-| Everything else                | **Zero changes**                                 |
+| File                        | Change                                      |
+| --------------------------- | ------------------------------------------- |
+| `src/argmojo/parser.mojo`   | **New file** — all parser types and logic   |
+| `src/argmojo/__init__.mojo` | Add `from .parser import ...` (conditional) |
+| Everything else             | **Zero changes**                            |
+
+### Comparison between Builder and Declarative APIs
+
+| Aspect        | Builder API                 | Declarative API                                            |
+| ------------- | --------------------------- | ---------------------------------------------------------- |
+| Command       | `Command`                   | `Parser[MyArgs: Parsable]` (two layers)                    |
+| Argument      | `Argument`                  | `Positional`, `Option`, `Flag`, `Count` (four types)       |
+| Add arguments | `command.add_argument(...)` | 4 types of structs within `MyArgs` (compile-time metadata) |
+| Parse         | `command.parse()`           | `parser.parse()` (returns typed struct)                    |
+| Parse result  | `ParseResult`               | Typed struct `MyArgs` with inner `.value` fields           |
+| Transform     | `Parser.to_command()`       | -                                                          |
 
 ## 4. Detailed API Design
 
@@ -294,13 +346,13 @@ In **hybrid** mode, imports are clean with no name collisions:
 
 ```mojo
 from argmojo import Command, Argument
-from argmojo.declaration import Declaration, Option, Flag, Positional, Declarable
+from argmojo.parser import Parser, Option, Flag, Positional, Parsable
 ```
 
-### 4.2 The `Declarable` Trait
+### 4.2 The `Parsable` Trait
 
 ```mojo
-trait Declarable(Defaultable, Movable):
+trait Parsable(Defaultable, Movable):
     """Marker trait for structs that can be parsed from CLI arguments."""
 
     @staticmethod
@@ -323,7 +375,7 @@ Minimal implementation — you only need to provide `description()`:
 
 ```mojo
 @fieldwise_init
-struct MyArgs(Declarable):
+struct MyArgs(Parsable):
     var input: Positional[String, help="Input file", required=True]
 
     def __init__(out self): self = arg_defaults[Self]()
@@ -335,10 +387,10 @@ struct MyArgs(Declarable):
 
 `version()` and `name()` have default implementations in the trait, so they're optional.
 
-### 4.3 The `Declaration[T]` Orchestrator
+### 4.3 The `Parser[T]` Orchestrator
 
 ```mojo
-struct Declaration[T: Declarable]:
+struct Parser[T: Parsable]:
     """Orchestrates struct-to-command conversion, parsing, and write-back."""
 
     var _command: Command
@@ -350,7 +402,7 @@ struct Declaration[T: Declarable]:
 
     # ── Core methods ──
 
-    def to_command(mut self) raises -> ref Command:
+    def to_command(mut self) raises -> ref [self._command] Command:
         """Build and return the underlying Command.
         Users can modify it with builder methods before parsing."""
         if not self._built:
@@ -387,7 +439,7 @@ struct Declaration[T: Declarable]:
     # NOTE: Capturing closures (unified {mut x}) cannot be passed as def() arguments
     #       due to type mismatch (nonescaping closure ≠ bare def). Non-capturing is sufficient here.
 
-    def configure(mut self, callback: def(mut Command) raises -> None) raises -> ref Self:
+    def configure(mut self, callback: def(mut Command) raises -> None) raises -> ref [self] Self:
         """Apply builder-level customizations via callback."""
         if not self._built:
             self._build()
@@ -473,7 +525,7 @@ struct Declaration[T: Declarable]:
 This initialises all wrapper fields to their defaults (inspired by Swift's default property initialization):
 
 ```mojo
-def arg_defaults[T: Declarable]() -> T:
+def arg_defaults[T: Parsable]() -> T:
     """Create a default-initialized instance of T.
     Wrapper types (Positional, Option, Flag, Count) are initialized to their defaults.
     Bare types use their Defaultable implementation."""
@@ -515,10 +567,10 @@ This generates `.alias_name["out"]().alias_name["dest"]()`.
 ### 5.1 Pure Declarative (Simple Tool)
 
 ```mojo
-from argmojo.declaration import Declaration, Option, Flag, Positional, Count, Declarable, arg_defaults
+from argmojo.parser import Parser, Option, Flag, Positional, Count, Parsable, arg_defaults
 
 @fieldwise_init
-struct Grep(Declarable):
+struct Grep(Parsable):
     """Search for patterns in files."""
 
     var pattern: Positional[String, help="Search pattern", required=True]
@@ -541,7 +593,7 @@ struct Grep(Declarable):
         return "1.0.0"
 
 def main() raises:
-    var args = Declaration[Grep]().parse()
+    var args = Parser[Grep]().parse()
 
     print("Pattern:", args.pattern.value)
     print("Path:", args.path.value)
@@ -557,10 +609,10 @@ def main() raises:
 
 ```mojo
 from argmojo import Command, Argument
-from argmojo.declaration import Declaration, Option, Flag, Positional, Declarable, arg_defaults
+from argmojo.parser import Parser, Option, Flag, Positional, Parsable, arg_defaults
 
 @fieldwise_init
-struct Deploy(Declarable):
+struct Deploy(Parsable):
     var target: Positional[String, help="Deploy target", required=True, choices="staging,prod"]
     var force: Flag[short="f", help="Force deploy without checks"]
     var dry_run: Flag[long="dry-run", help="Simulate without changes"]
@@ -575,9 +627,9 @@ struct Deploy(Declarable):
         return "Deploy application to target environment."
 
 def main() raises:
-    var decl = Declaration[Deploy]()
+    var decl = Parser[Deploy]()
 
-    # Bridge to builder: add constraints that declaration can't express
+    # Bridge to builder: add constraints that the parser can't express
     var cmd = decl.to_command()
     cmd.mutually_exclusive(["force", "dry-run"])
     cmd.implies("force", "tag")       # force requires a tag
@@ -596,10 +648,10 @@ def main() raises:
 
 ```mojo
 from argmojo import Command, Argument
-from argmojo.declaration import Declaration, Positional, Option, Flag, Declarable, arg_defaults
+from argmojo.parser import Parser, Positional, Option, Flag, Parsable, arg_defaults
 
 @fieldwise_init
-struct Convert(Declarable):
+struct Convert(Parsable):
     var input: Positional[String, help="Input file", required=True]
     var output: Option[String, long="output", short="o", help="Output file"]
 
@@ -610,7 +662,7 @@ struct Convert(Declarable):
         return "File format converter."
 
 def main() raises:
-    var decl = Declaration[Convert]()
+    var decl = Parser[Convert]()
 
     # Add extra builder-only arguments via to_command()
     var cmd = decl.to_command()
@@ -641,10 +693,10 @@ def main() raises:
 ### 5.4 Subcommands with Declarative
 
 ```mojo
-from argmojo.declaration import Declaration, SubDeclaration, Option, Flag, Positional, Declarable, arg_defaults
+from argmojo.parser import Parser, SubParser, Option, Flag, Positional, Parsable, arg_defaults
 
 @fieldwise_init
-struct Clone(Declarable):
+struct Clone(Parsable):
     var url: Positional[String, help="Repository URL", required=True]
     var depth: Option[Int, long="depth", help="Clone depth", default="0"]
     var branch: Option[String, short="b", long="branch", help="Branch to clone"]
@@ -660,7 +712,7 @@ struct Clone(Declarable):
         return "clone"
 
 @fieldwise_init
-struct Push(Declarable):
+struct Push(Parsable):
     var remote: Positional[String, help="Remote name", default="origin"]
     var force: Flag[short="f", help="Force push"]
     var tags: Flag[long="tags", help="Push all tags"]
@@ -676,8 +728,8 @@ struct Push(Declarable):
         return "push"
 
 def main() raises:
-    # SubDeclaration registers multiple Declarable types as subcommands
-    var result = SubDeclaration["mgit", "A mini git tool", Clone, Push]().parse()
+    # SubParser registers multiple Parsable types as subcommands
+    var result = SubParser["mgit", "A mini git tool", Clone, Push]().parse()
 
     if result.subcommand == "clone":
         var args = result.get[Clone]()
@@ -696,7 +748,7 @@ def main() raises:
 **What I'm adding**: `to_command()` returns a mutable reference to the underlying `Command` object, so you can do arbitrary builder modifications before parsing:
 
 ```mojo
-var decl = Declaration[MyArgs]()
+var decl = Parser[MyArgs]()
 var cmd = decl.to_command()
 cmd.mutually_exclusive(["json", "yaml"])
 cmd.required_together(["username", "password"])
@@ -728,7 +780,7 @@ to_command() + new arguments        →  parse_split()  →  (T, ParseResult) (p
 **`configure()` with non-capturing callbacks**: I've verified in Mojo 0.26.2 that `configure()` works with non-capturing callbacks (nested functions that don't capture external state). Since `configure()` callbacks only operate on the `mut Command` parameter, capturing is unnecessary:
 
 ```mojo
-var args = Declaration[MyArgs]()
+var args = Parser[MyArgs]()
     .configure(def(mut cmd) raises: cmd.mutually_exclusive([...]))
     .configure(def(mut cmd) raises: cmd.implies("a", "b"))
     .parse()
@@ -749,7 +801,7 @@ var args = Declaration[MyArgs]()
 **My approach**: `parse_split()` returns a **tuple of both**:
 
 ```mojo
-def parse_split(mut self) raises -> (T, ParseResult):
+def parse_split(mut self) raises -> Tuple[T, ParseResult]:
 ```
 
 - The first element is your struct `T` with all declarative-registered fields populated & typed.
@@ -778,6 +830,122 @@ The dual-return enables a practical workflow:
 1. Start with pure declarative
 2. Need one advanced option? Add it via `to_command()` + `parse_split()`
 3. No need to convert the struct field (or add a new nested type)
+
+### 6.3 Innovation #3: Compile-Time Schema Validation
+
+**The problem**: In every runtime CLI library, schema errors (duplicate short flags, invalid short flag length, positional-after-optional ordering) only surface when you run the program — or worse, when a user triggers the specific code path.
+
+**What I'm adding**: Since all wrapper metadata lives in compile-time parameters (`StringLiteral`, `Bool`, `Int`), the declarative layer can validate the **entire schema at compile time** using `comptime assert`. Your program won't even compile if the schema is invalid.
+
+Concrete checks in `Parser[T]._build()`:
+
+```mojo
+@parameter
+fn _validate_schema[T: Parsable]():
+    # 1. Duplicate short flags
+    #    Nested comptime loop over all field pairs; extract each wrapper's
+    #    `short` parameter and assert no two are equal.
+
+    # 2. Invalid short flag length
+    #    comptime assert len(short) == 1 for every field that declares one.
+
+    # 3. Positional ordering
+    #    Track a "seen_non_positional" flag. If a Positional appears after
+    #    an Option/Flag, assert failure — positionals must come first.
+
+    # 4. Type-metadata mismatch
+    #    e.g. `choices` on a Flag has no meaning; `append` on a Positional
+    #    without `remainder` is contradictory. comptime assert catches these.
+
+    # 5. choices vs default consistency
+    #    If `choices="json,yaml,csv"` and `default="xml"`, the default is
+    #    not in the choices set — comptime assert failure.
+    ...
+```
+
+**Why this matters**: Neither Swift Argument Parser, Rust clap, nor mojopt can do this. Swift's property wrappers are validated at runtime. Rust's proc macros catch *some* errors but not all (e.g. duplicate short flags pass the proc macro and fail at runtime). Mojo's parametric type system uniquely enables full schema validation at compile time.
+
+**Zero-cost guarantee**: All checks use `comptime assert` — they're erased from the binary. No performance cost, no code bloat.
+
+### 6.4 Innovation #4: Declarative `depends_on` / `conflicts_with`
+
+**The problem**: Cross-field constraints like "username requires password" or "json conflicts with yaml" currently require the imperative `to_command()` escape hatch:
+
+```mojo
+var decl = Parser[MyArgs]()
+var cmd = decl.to_command()
+cmd.required_together(["username", "password"])
+cmd.mutually_exclusive(["json", "yaml"])
+var args = decl.parse()
+```
+
+This works, but it breaks the "everything in the struct" philosophy and requires string-keyed names (typo-prone).
+
+**What I'm adding**: `depends_on` and `conflicts_with` as StringLiteral parameters on wrapper types:
+
+```mojo
+@value
+struct MyArgs(Parsable):
+    var username: Option[String, long="username", short="u",
+                         depends_on="password"]
+    var password: Option[String, long="password", short="p",
+                         depends_on="username"]
+    var json: Flag[long="json", conflicts_with="yaml"]
+    var yaml: Flag[long="yaml", conflicts_with="json"]
+```
+
+**Translation in `_build()`**:
+
+| Declarative parameter        | Builder call generated                                   |
+| ---------------------------- | -------------------------------------------------------- |
+| `depends_on="password"`      | `cmd.required_if("password", "username")`                |
+| `conflicts_with="json,yaml"` | `cmd.mutually_exclusive(["this_field", "json", "yaml"])` |
+
+**Compile-time name validation**: Since `depends_on` and `conflicts_with` are `StringLiteral` parameters, and all field names are known at compile time via `struct_field_names`, I can verify at compile time that every referenced name actually exists in the struct:
+
+```mojo
+# In _build(), at comptime:
+# depends_on="password" → verify "password" is in struct_field_names[T]()
+# If not → comptime assert failure with a clear error message
+```
+
+This catches typos like `depends_on="passwrod"` at compile time — something no other CLI library can do.
+
+**Symmetry note**: `depends_on` is symmetric by convention (if A depends on B, B depends on A). A single `depends_on="password"` on `username` generates `required_together(["username", "password"])`. If both sides declare it, deduplication in `_build()` prevents double-registration.
+
+### 6.5 Innovation #5: Compile-Time Derived Completions from `choices`
+
+**The problem**: Shell completions for argument values usually require explicit registration — you declare choices in one place and completions in another, duplicating information. In the builder API:
+
+```mojo
+var arg = Argument("format", help="Output format")
+    .choice["json"]()
+    .choice["yaml"]()
+    .choice["csv"]()
+# Choices are registered, but completions only work if generate_completion is called
+```
+
+**What I'm adding**: Since `choices` is a compile-time `StringLiteral` parameter, the declarative layer can **automatically derive** shell completions from choices — no explicit completion registration needed:
+
+```mojo
+@value
+struct MyArgs(Parsable):
+    var format: Option[String, long="format", short="f",
+                       choices="json,yaml,csv"]
+    # ^ completions for --format automatically include "json", "yaml", "csv"
+```
+
+**How it works**: During `_build()`, when a field has a non-empty `choices` parameter, the generated completion script automatically includes those values as completions for that argument's value. The builder's `generate_completion["fish"]()` / `generate_completion["zsh"]()` / `generate_completion["bash"]()` already reads `_choice_values` — the declarative layer simply ensures they're populated.
+
+**Compile-time generation**: Since all choices are `StringLiteral` values known at compile time, the entire completion script could be generated as a compile-time constant:
+
+```mojo
+# Hypothetical: completion script as a compile-time StringLiteral
+alias fish_completion = Parser[MyArgs].completion_script["fish"]()
+# This is a StringLiteral — zero runtime cost to produce
+```
+
+**Practical value**: For tools with many `choices`-based arguments (e.g. `--format`, `--color`, `--log-level`), this eliminates the boilerplate of manually wiring completions. The struct declaration is the single source of truth for both validation and completions.
 
 ## 7. Internal Implementation Details
 
@@ -838,15 +1006,15 @@ When populating your struct from `ParseResult`, I dispatch based on the field ty
 
 Missing/optional values: if `result.has(name)` returns `False` and the field isn't required, the default value stays.
 
-### 7.3 SubDeclaration Design
+### 7.3 SubParser Design
 
-`SubDeclaration` is parameterized on variadic types:
+`SubParser` is parameterized on variadic types:
 
 ```mojo
-struct SubDeclaration[
+struct SubParser[
     app_name: StringLiteral,
     app_description: StringLiteral,
-    *Ts: Declarable,
+    *Ts: Parsable,
 ]:
     var _command: Command
 
@@ -857,34 +1025,34 @@ struct SubDeclaration[
         # For each type in Ts, build a sub-Command and register via add_subcommand
         @parameter
         for i in range(len(Ts)):
-            var sub_cmd = Declaration[Ts[i]]().to_command()
+            var sub_cmd = Parser[Ts[i]]().to_command()
             self._command.add_subcommand(sub_cmd)
         return SubResult[*Ts](self._command.parse())
 ```
 
 `SubResult` provides a `get[T]()` method that does the write-back for the matched subcommand.
 
-**Note**: Variadic type parameters are still evolving in Mojo. If `*Ts` isn't stable yet, I'll fall back to explicit overloads for 1–8 subcommand types (like `SubDeclaration2[T1, T2]`, `SubDeclaration3[T1, T2, T3]`, etc.).
+**Note**: Variadic type parameters are still evolving in Mojo. If `*Ts` isn't stable yet, I'll fall back to explicit overloads for 1–8 subcommand types (like `SubParser2[T1, T2]`, `SubParser3[T1, T2, T3]`, etc.).
 
 ## 8. What Stays in Builder-Only Territory
 
 Some features are inherently imperative and don't fit neatly into struct declarations. I'm keeping these builder-only (accessible via `to_command()`):
 
-| Feature                    | Reason                                 |
-| -------------------------- | -------------------------------------- |
-| `mutually_exclusive()`     | Cross-field constraint on N args       |
-| `required_together()`      | Cross-field constraint on N args       |
-| `one_required()`           | Cross-field constraint on N args       |
-| `required_if()`            | Cross-field conditional                |
-| `implies()`                | Cross-field chain with cycle detection |
-| `confirmation_option()`    | Adds a synthetic `--yes` arg           |
-| `help_on_no_arguments()`   | Command-level behavior                 |
-| `add_tip()`                | Help formatting                        |
-| Color config               | Command-level presentation             |
-| Completions config         | Command-level behavior                 |
-| Response file config       | Command-level behavior                 |
-| `allow_negative_numbers()` | Parser behavior flag                   |
-| `add_parent()`             | Cross-command inheritance              |
+| Feature                    | Reason                                                             |
+| -------------------------- | ------------------------------------------------------------------ |
+| `mutually_exclusive()`     | Partially declarative via `conflicts_with` (§6.4); builder for N>2 |
+| `required_together()`      | Partially declarative via `depends_on` (§6.4); builder for N>2     |
+| `one_required()`           | Cross-field constraint on N args                                   |
+| `required_if()`            | Cross-field conditional                                            |
+| `implies()`                | Cross-field chain with cycle detection                             |
+| `confirmation_option()`    | Adds a synthetic `--yes` arg                                       |
+| `help_on_no_arguments()`   | Command-level behavior                                             |
+| `add_tip()`                | Help formatting                                                    |
+| Color config               | Command-level presentation                                         |
+| Completions config         | Command-level behavior                                             |
+| Response file config       | Command-level behavior                                             |
+| `allow_negative_numbers()` | Parser behavior flag                                               |
+| `add_parent()`             | Cross-command inheritance                                          |
 
 I think this is the right call — these features describe *relationships between* arguments or *command-level* behavior, not individual argument metadata. Trying to force them into struct field attributes would create a confusing, non-composable API.
 
@@ -894,7 +1062,7 @@ I think this is the right call — these features describe *relationships betwee
 | ------------------------------- | ------------------------------- | --------------------------------------------- |
 | Language mechanism              | Property wrappers (`@Option`)   | Parametric wrapper types (`Option[T]`)        |
 | Wrapper vocabulary              | `@Argument`, `@Option`, `@Flag` | `Positional[T]`, `Option[T]`, `Flag`, `Count` |
-| Protocol / trait                | `ParsableCommand`               | `Declarable`                                  |
+| Protocol / trait                | `ParsableCommand`               | `Parsable`                                    |
 | Type-safe value access          | Direct field access             | `args.field.value`                            |
 | Flag as Bool                    | Direct Bool                     | `Flag.__bool__()` implicit conversion         |
 | Count flag                      | ✗ not built-in                  | ✓ `Count[short="v", max=3]`                   |
@@ -906,37 +1074,55 @@ I think this is the right call — these features describe *relationships betwee
 | Interactive prompt              | ✗ not supported                 | ✓ `prompt=True` in wrapper                    |
 | Password / masked input         | ✗ not supported                 | ✓ `password=True` in wrapper                  |
 | Shell completions               | ✓ built-in                      | ✓ inherited from builder                      |
-| Subcommands                     | ✓ nested `ParsableCommand`      | ✓ `SubDeclaration[...]` variadic types        |
+| Compile-time schema validation  | ✗ validated at runtime          | ✓ `comptime assert` catches errors (§6.3)     |
+| Declarative field constraints   | ✗ not in struct schema          | ✓ `depends_on`/`conflicts_with` (§6.4)        |
+| Auto-derived completions        | ✗ manual registration           | ✓ from `choices` at compile time (§6.5)       |
+| Subcommands                     | ✓ nested `ParsableCommand`      | ✓ `SubParser[...]` variadic types             |
 | CJK-aware help                  | ✗ not supported                 | ✓ inherited from builder                      |
 | Auto-naming (underscore→hyphen) | ✓ camelCase→kebab-case          | ✓ snake_case→kebab-case                       |
 
 ## 10. Implementation Roadmap
 
-### Phase 1: Core Wrapper Types + Declaration
+### Phase 1: Core Wrapper Types + Parser
 
 - [ ] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs
-- [ ] Implement `Declarable` trait
-- [ ] Implement `arg_defaults[T]()` 
-- [ ] Implement `Declaration[T]._build()` — reflection to Command builder calls
-- [ ] Implement `Declaration[T]._from_result()` — ParseResult to struct write-back
-- [ ] Implement `Declaration[T].parse()` — end-to-end
+- [ ] Implement `Parsable` trait
+- [ ] Implement `arg_defaults[T]()`
+- [ ] Implement `Parser[T]._build()` — reflection to Command builder calls
+- [ ] Implement `Parser[T]._from_result()` — ParseResult to struct write-back
+- [ ] Implement `Parser[T].parse()` — end-to-end
 - [ ] Auto-naming convention (underscore → hyphen)
 
 ### Phase 2: Hybrid Features
 
-- [ ] Implement `Declaration[T].to_command()` escape hatch
-- [ ] Implement `Declaration[T].parse_split()` dual return
-- [ ] Test: declaration + `mutually_exclusive()` via to_command()
-- [ ] Test: declaration + extra builder args via parse_split
-- [ ] Implement `Declaration[T].configure()` callback (non-capturing, works in 0.26.2)
+- [ ] Implement `Parser[T].to_command()` escape hatch
+- [ ] Implement `Parser[T].parse_split()` dual return
+- [ ] Test: parser + `mutually_exclusive()` via to_command()
+- [ ] Test: parser + extra builder args via parse_split
+- [ ] Implement `Parser[T].configure()` callback (non-capturing, works in 0.26.2)
 
 ### Phase 3: Subcommands
 
-- [ ] Implement `SubDeclaration[..., *Ts]` or `SubDeclaration2/3/...` overloads
+- [ ] Implement `SubParser[..., *Ts]` or `SubParser2/3/...` overloads
 - [ ] Implement `SubResult.get[T]()` typed subcommand access
-- [ ] Test: nested subcommands with declaration
+- [ ] Test: nested subcommands with parser
 
-### Phase 4: Polish
+### Phase 4: Further enhancements
+
+- [ ] Implement `_validate_schema[T]()` compile-time checks (§6.3)
+  - [ ] Duplicate short flag detection
+  - [ ] Invalid short flag length
+  - [ ] Positional ordering enforcement
+  - [ ] Type-metadata mismatch detection
+  - [ ] Choices vs default consistency
+- [ ] Add `depends_on`/`conflicts_with` parameters to `Option` and `Flag` (§6.4)
+  - [ ] Compile-time validation of referenced field names
+  - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `_build()`
+- [ ] Auto-derive completions from `choices` parameters (§6.5)
+  - [ ] Ensure choices flow to `generate_completion` output
+  - [ ] Explore compile-time completion script generation
+
+### Phase 5: Polish
 
 - [ ] Comprehensive test suite (parallel to existing builder tests)
 - [ ] Examples: simple, hybrid, subcommands
