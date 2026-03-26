@@ -138,7 +138,7 @@ def _read_response_file(
 struct Command(Copyable, Movable, Writable):
     """Defines a CLI command prototype with its arguments and handles parsing.
 
-    Example:
+    Examples:
 
     ```mojo
     from argmojo import Command, Argument
@@ -455,7 +455,7 @@ struct Command(Copyable, Movable, Writable):
         Args:
             argument: The Argument to register.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -557,7 +557,7 @@ struct Command(Copyable, Movable, Writable):
             Error if a persistent argument on this command shares a ``long_name``
             or ``short_name`` with any local argument on ``sub``.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -661,7 +661,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error if any inherited argument violates registration guards.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -732,7 +732,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error: If any name in the group is not a registered argument.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -782,7 +782,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error: If any name in the group is not a registered argument.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -832,7 +832,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error: If any name in the group is not a registered argument.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -883,7 +883,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error: If either name is not a registered argument.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -936,7 +936,7 @@ struct Command(Copyable, Movable, Writable):
             either argument is unknown, or if the implied argument is
             not a flag or count.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1025,7 +1025,7 @@ struct Command(Copyable, Movable, Writable):
         Args:
             names: The list of alias strings.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1046,7 +1046,7 @@ struct Command(Copyable, Movable, Writable):
         dispatchable by exact name or alias.  Useful for internal,
         experimental, or deprecated subcommands.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1072,7 +1072,7 @@ struct Command(Copyable, Movable, Writable):
         value (e.g. a search pattern or entity name).  After disabling, use
         ``app <sub> --help`` directly.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1104,7 +1104,7 @@ struct Command(Copyable, Movable, Writable):
         that exactly matches a registered subcommand name is dispatched;
         any other token falls through to the positional list.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1131,7 +1131,7 @@ struct Command(Copyable, Movable, Writable):
             Error if any registered argument has ``.prompt()`` enabled,
             since prompting is unreachable when help is shown on no args.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1163,7 +1163,7 @@ struct Command(Copyable, Movable, Writable):
         option (e.g., ``-3`` for ``--triple``) and still need negative-number
         literals to be treated as positionals.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1204,7 +1204,7 @@ struct Command(Copyable, Movable, Writable):
             prefix: The prefix character(s) that introduce a response
                 file (default ``"@"``).
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1239,7 +1239,7 @@ struct Command(Copyable, Movable, Writable):
         Call this method to disable that correction entirely — useful
         when strict parsing is preferred.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1261,7 +1261,7 @@ struct Command(Copyable, Movable, Writable):
         Call this method to disable that behaviour — useful when strict
         error messages are preferred.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1289,7 +1289,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error if a ``--yes`` / ``-y`` argument is already registered.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1336,7 +1336,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error if a ``--yes`` / ``-y`` argument is already registered.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1379,7 +1379,7 @@ struct Command(Copyable, Movable, Writable):
             text: The custom usage text (e.g. ``"myapp [-v | --version]
                 [-C <path>] <command> [<args>]"``).
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1402,7 +1402,7 @@ struct Command(Copyable, Movable, Writable):
         Args:
             tip: The tip text to display.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command, Argument
@@ -1427,7 +1427,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1447,7 +1447,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1467,7 +1467,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1487,7 +1487,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1509,7 +1509,7 @@ struct Command(Copyable, Movable, Writable):
         The ``generate_completion()`` method is still available for
         programmatic use — only the automatic trigger is removed.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -1538,7 +1538,7 @@ struct Command(Copyable, Movable, Writable):
         Args:
             name: The new trigger name (without ``--`` prefix).
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
@@ -4239,7 +4239,7 @@ struct Command(Copyable, Movable, Writable):
         Returns:
             The completion script as a string.
 
-        Example:
+        Examples:
 
         ```mojo
         from argmojo import Command
