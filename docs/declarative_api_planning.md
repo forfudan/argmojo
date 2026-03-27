@@ -143,7 +143,7 @@ What I think argmojo can add beyond Swift:
 │      var name: Positional[String, help="Name", required=True]            │
 │      var verbose: Flag[short="v", help="Verbose"]                        │
 │      var output: Option[String, long="output", short="o"]                │
-│      def __init__(out self): self = arg_defaults[Self]()                 │
+│      def __init__(out self):  # initialise each field explicitly         │
 │                                                                          │
 │  # Pure declarative (one line):                                          │
 │  var args = MyArgs.parse()                                               │
@@ -167,7 +167,7 @@ What I think argmojo can add beyond Swift:
 │  Parsable.parse_split() → (Self, ParseResult)  (dual return)             │
 │  Parsable.parse_args()  → Self      (parse from explicit arg list)       │
 │  Parsable.validate()    → None      (post-parse cross-field validation)  │
-│  arg_defaults[T]()      → T        (default-initialized)                 │
+│  (wrapper types are Defaultable — initialise fields explicitly)           │
 │                                                                          │
 │  argument_wrappers.mojo — wrapper types:                                 │
 │  Positional[T, ...], Option[T, ...], Flag[...], Count[...]               │
@@ -487,7 +487,8 @@ Minimal implementation — you only need to provide `description()`:
 struct MyArgs(Parsable):
     var input: Positional[String, help="Input file", required=True]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.input = Positional[String, help="Input file", required=True]()
 
     @staticmethod
     def description() -> String:
@@ -554,17 +555,19 @@ def _from_result[T: Parsable](result: ParseResult) raises -> T:
     return out
 ```
 
-### 4.4 The `arg_defaults[T]()` Helper
+### 4.4 Explicit Field Initialization
 
-This initialises all wrapper fields to their defaults (inspired by Swift's default property initialization):
+Each wrapper type (`Positional`, `Option`, `Flag`, `Count`) implements `Defaultable`,
+so the user initialises every field in `__init__` with the wrapper's default constructor:
 
 ```mojo
-def arg_defaults[T: Parsable]() -> T:
-    """Create a default-initialized instance of T.
-    Wrapper types (Positional, Option, Flag, Count) are initialized to their defaults.
-    Bare types use their Defaultable implementation."""
-    return T()  # Works because T: Defaultable, and all wrappers are Defaultable
+def __init__(out self):
+    self.pattern = Positional[String, help="Search pattern", required=True]()
+    self.verbose = Flag[short="v", help="Verbose"]()
+    self.output = Option[String, long="output", short="o"]()
 ```
+
+This keeps the struct fully self-describing — no external helper needed.
 
 ### 4.5 Auto-Naming Convention
 
@@ -601,7 +604,7 @@ This generates `.alias_name["out"]().alias_name["dest"]()`.
 ### 5.1 Pure Declarative (Simple Tool)
 
 ```mojo
-from argmojo import Parsable, Option, Flag, Positional, Count, arg_defaults
+from argmojo import Parsable, Option, Flag, Positional, Count
 
 struct Grep(Parsable):
     """Search for patterns in files."""
@@ -615,7 +618,13 @@ struct Grep(Parsable):
     var ext: Option[List[String], short="e", long="ext", help="File extensions", append=True]
 
     def __init__(out self):
-        self = arg_defaults[Self]()
+        self.pattern = Positional[String, help="Search pattern", required=True]()
+        self.path = Positional[String, help="File or directory", default="."]()
+        self.ignore_case = Flag[short="i", help="Case-insensitive search"]()
+        self.count_only = Flag[short="c", long="count", help="Only print match count"]()
+        self.max_count = Option[Int, short="m", long="max-count", help="Stop after N matches", default="0"]()
+        self.verbose = Count[short="v", help="Increase verbosity", max=3]()
+        self.ext = Option[List[String], short="e", long="ext", help="File extensions", append=True]()
 
     @staticmethod
     def description() -> String:
@@ -642,7 +651,7 @@ def main() raises:
 
 ```mojo
 from argmojo import Command, Argument
-from argmojo import Parsable, Option, Flag, Positional, arg_defaults
+from argmojo import Parsable, Option, Flag, Positional
 
 struct Deploy(Parsable):
     var target: Positional[String, help="Deploy target", required=True, choices="staging,prod"]
@@ -652,7 +661,13 @@ struct Deploy(Parsable):
     var replicas: Option[Int, long="replicas", short="r", help="Number of replicas",
                       default="3", has_range=True, range_min=1, range_max=100]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.target = Positional[String, help="Deploy target", required=True, choices="staging,prod"]()
+        self.force = Flag[short="f", help="Force deploy without checks"]()
+        self.dry_run = Flag[long="dry-run", help="Simulate without changes"]()
+        self.tag = Option[String, long="tag", short="t", help="Release tag"]()
+        self.replicas = Option[Int, long="replicas", short="r", help="Number of replicas",
+                          default="3", has_range=True, range_min=1, range_max=100]()
 
     @staticmethod
     def description() -> String:
@@ -673,13 +688,15 @@ def main() raises:
 
 ```mojo
 from argmojo import Command, Argument
-from argmojo import Parsable, Positional, Option, arg_defaults
+from argmojo import Parsable, Positional, Option
 
 struct Convert(Parsable):
     var input: Positional[String, help="Input file", required=True]
     var output: Option[String, long="output", short="o", help="Output file"]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.input = Positional[String, help="Input file", required=True]()
+        self.output = Option[String, long="output", short="o", help="Output file"]()
 
     @staticmethod
     def description() -> String:
@@ -721,7 +738,7 @@ Every level in the command tree is a `Parsable` struct — root, mid-level, and 
 Subcommand registration uses the `subcommands()` hook — inspired by Swift's `CommandConfiguration(subcommands:)`. The hook is called automatically by `to_command()`, so the tree assembles itself recursively.
 
 ```mojo
-from argmojo import Parsable, Option, Flag, Positional, arg_defaults
+from argmojo import Parsable, Option, Flag, Positional
 
 # Leaf subcommands — each has run() for its logic
 struct Clone(Parsable):
@@ -729,7 +746,10 @@ struct Clone(Parsable):
     var depth: Option[Int, long="depth", help="Clone depth", default="0"]
     var branch: Option[String, short="b", long="branch", help="Branch to clone"]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.url = Positional[String, help="Repository URL", required=True]()
+        self.depth = Option[Int, long="depth", help="Clone depth", default="0"]()
+        self.branch = Option[String, short="b", long="branch", help="Branch to clone"]()
 
     @staticmethod
     def description() -> String:
@@ -747,7 +767,10 @@ struct Push(Parsable):
     var force: Flag[short="f", help="Force push"]
     var tags: Flag[long="tags", help="Push all tags"]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.remote = Positional[String, help="Remote name", default="origin"]()
+        self.force = Flag[short="f", help="Force push"]()
+        self.tags = Flag[long="tags", help="Push all tags"]()
 
     @staticmethod
     def description() -> String:
@@ -764,7 +787,8 @@ struct Push(Parsable):
 struct MyGit(Parsable):
     var verbose: Flag[short="v", help="Verbose output", persistent=True]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.verbose = Flag[short="v", help="Verbose output", persistent=True]()
 
     @staticmethod
     def name() -> String:
@@ -822,7 +846,9 @@ struct AddRemote(Parsable):
     var name_: Positional[String, help="Remote name", required=True]
     var url: Positional[String, help="Remote URL", required=True]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.name_ = Positional[String, help="Remote name", required=True]()
+        self.url = Positional[String, help="Remote URL", required=True]()
 
     @staticmethod
     def description() -> String: return "Add a remote."
@@ -836,7 +862,8 @@ struct AddRemote(Parsable):
 struct RemoveRemote(Parsable):
     var name_: Positional[String, help="Remote name", required=True]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.name_ = Positional[String, help="Remote name", required=True]()
 
     @staticmethod
     def description() -> String: return "Remove a remote."
@@ -851,7 +878,8 @@ struct RemoveRemote(Parsable):
 struct Remote(Parsable):
     var timeout: Option[Int, long="timeout", help="Timeout in seconds", default="30"]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.timeout = Option[Int, long="timeout", help="Timeout in seconds", default="30"]()
 
     @staticmethod
     def name() -> String: return "remote"
@@ -868,7 +896,8 @@ struct Remote(Parsable):
 struct MyGit(Parsable):
     var verbose: Flag[short="v", help="Verbose output", persistent=True]
 
-    def __init__(out self): self = arg_defaults[Self]()
+    def __init__(out self):
+        self.verbose = Flag[short="v", help="Verbose output", persistent=True]()
 
     @staticmethod
     def name() -> String: return "mgit"
@@ -892,10 +921,12 @@ def main() raises:
     elif result.subcommand == "remote":
         var remote_args = Remote.from_result(result)
         print("Timeout:", remote_args.timeout.value)
-        if result.sub_result().subcommand == "add":
-            AddRemote.from_result(result.sub_result()).run()
-        elif result.sub_result().subcommand == "remove":
-            RemoveRemote.from_result(result.sub_result()).run()
+        if result.has_subcommand_result():
+            var sub = result.get_subcommand_result()
+            if sub.subcommand == "add":
+                AddRemote.from_result(sub).run()
+            elif sub.subcommand == "remove":
+                RemoveRemote.from_result(sub).run()
 ```
 
 The entire tree (`mgit → clone | push | remote → add | remove`) is declared in the structs themselves. `main()` only handles dispatch.
@@ -1330,7 +1361,7 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Implement `_from_result[T]()` — ParseResult to struct write-back
 - [x] Auto-naming convention (underscore → hyphen)
 - [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
-- [x] `miji.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
+- [x] `jomo.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
 
 ### Phase 2: Hybrid Features
 

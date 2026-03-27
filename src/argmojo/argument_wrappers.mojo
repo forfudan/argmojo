@@ -194,8 +194,10 @@ struct Option[
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
                 arg._alias_names.append(String(a))
-        comptime if Self.negatable:
-            arg._is_negatable = True
+        # NOTE: negatable is intentionally ignored for Option.
+        # Negatable behaviour is only meaningful for boolean Flag arguments.
+        # Setting _is_negatable on a non-flag Argument would cause
+        # --no-<name> to write into ParseResult._flags, breaking value lookups.
         comptime if Self.default != "":
             arg._has_default = True
             arg._default_value = String(Self.default)
@@ -235,8 +237,10 @@ struct Option[
         comptime if Self.prompt:
             arg._prompt = True
         comptime if Self.prompt_text != "":
+            arg._prompt = True
             arg._prompt_text = String(Self.prompt_text)
         comptime if Self.password:
+            arg._prompt = True
             arg._hide_input = True
         cmd.add_argument(arg^)
 
@@ -244,7 +248,7 @@ struct Option[
         if not result.has(field_name):
             return
         comptime tname = get_type_name[Self.T]()
-        comptime if "List" in tname:
+        comptime if tname == "List[String]":
             var lst = result.get_list(field_name)
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
@@ -259,11 +263,17 @@ struct Option[
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
             dest.bitcast[Int]().init_pointee_move(v)
-        else:
+        elif tname == "String":
             var s = result.get_string(field_name)
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
             dest.bitcast[String]().init_pointee_move(s^)
+        else:
+            comptime assert False, (
+                "Unsupported Option[T] type in read_from_result: "
+                + get_type_name[Self.T]()
+                + ". Supported: String, Int, List[String], Dict[String, String]."
+            )
 
 
 # =======================================================================
@@ -475,7 +485,7 @@ struct Positional[
         if not result.has(field_name):
             return
         comptime tname = get_type_name[Self.T]()
-        comptime if "List" in tname:
+        comptime if tname == "List[String]":
             var lst = result.get_list(field_name)
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
@@ -485,11 +495,17 @@ struct Positional[
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
             dest.bitcast[Int]().init_pointee_move(v)
-        else:
+        elif tname == "String":
             var s = result.get_string(field_name)
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
             dest.bitcast[String]().init_pointee_move(s^)
+        else:
+            comptime assert False, (
+                "Unsupported Positional[T] type in read_from_result: "
+                + get_type_name[Self.T]()
+                + ". Supported: String, Int, List[String]."
+            )
 
 
 # =======================================================================

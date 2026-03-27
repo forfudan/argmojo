@@ -4,7 +4,6 @@ from std.reflection import (
     struct_field_count,
     struct_field_names,
     struct_field_types,
-    get_type_name,
 )
 
 from .argument_wrappers import ArgumentLike
@@ -69,8 +68,8 @@ trait Parsable(Defaultable, Movable):
     def name() -> String:
         """Return the command name.
 
-        Override to change from the default (lowercased struct name).
-        An empty string means "use the lowercased struct name".
+        Override to provide a custom command name.
+        An empty string (the default) means ``"command"`` is used.
 
         Returns:
             The command name.

@@ -3,6 +3,8 @@
 Tests _reflect_and_register / _from_result via the public
 to_command / parse_args / from_result functions.
 """
+from std.testing import assert_true, assert_false, assert_equal, TestSuite
+
 from argmojo import (
     Command,
     Parsable,
@@ -14,7 +16,6 @@ from argmojo import (
     parse_args,
     from_result,
 )
-from argmojo.parse_result import ParseResult
 
 
 # =======================================================================
@@ -226,21 +227,49 @@ def test_trait_methods() raises:
     assert_true(grep2.pattern.value == "query", "trait from_result pattern")
     print("  Grep.from_result(): OK")
 
-    # Grep.from_command() — just verify it compiles (needs real argv to run)
-    # var cmd3 = Grep.to_command()
-    # var grep3 = Grep.from_command(cmd3^)
-
     print("  PASSED\n")
 
 
-# =======================================================================
-# Helpers
-# =======================================================================
+def test_split_return() raises:
+    """Test the split-return pattern: both typed struct AND raw ParseResult.
 
+    parse_split() and from_command_split() use sys.argv() so they can't be
+    unit-tested directly.  This test exercises the same concept via
+    to_command + parse_arguments + from_result, verifying that both the
+    typed struct and the raw ParseResult contain correct values.
+    """
+    print("=== test_split_return ===")
 
-def assert_true(cond: Bool, msg: String = "") raises:
-    if not cond:
-        raise Error("Assertion failed: " + msg)
+    var cmd = to_command[Grep]()
+    var args = List[String]()
+    args.append(String("grep"))
+    args.append(String("--output"))
+    args.append(String("split.txt"))
+    args.append(String("-v"))
+    args.append(String("-dd"))
+    args.append(String("split_pattern"))
+
+    # Parse into a raw ParseResult.
+    var result = cmd.parse_arguments(args)
+
+    # Typed write-back (same as what parse_split returns as element 0).
+    var grep = from_result[Grep](result)
+
+    # Verify typed access.
+    assert_true(grep.output.value == "split.txt", "split typed output")
+    assert_true(grep.verbose.value, "split typed verbose")
+    assert_true(grep.pattern.value == "split_pattern", "split typed pattern")
+    assert_true(grep.debug_level.value == 2, "split typed debug_level")
+
+    # Verify raw ParseResult access (same as what parse_split returns as element 1).
+    assert_true(result.get_string("output") == "split.txt", "split raw output")
+    assert_true(result.get_flag("verbose"), "split raw verbose")
+    assert_true(
+        result.get_string("pattern") == "split_pattern", "split raw pattern"
+    )
+    assert_true(result.get_count("debug_level") == 2, "split raw debug_level")
+
+    print("  PASSED\n")
 
 
 # =======================================================================
@@ -249,9 +278,4 @@ def assert_true(cond: Bool, msg: String = "") raises:
 
 
 def main() raises:
-    test_to_command()
-    test_parse_args()
-    test_from_result()
-    test_auto_naming()
-    test_trait_methods()
-    print("All Phase 1 tests passed!")
+    TestSuite.discover_tests[__functions_in_module()]().run()
