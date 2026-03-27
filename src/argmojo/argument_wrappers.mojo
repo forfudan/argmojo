@@ -482,16 +482,13 @@ struct Positional[
         comptime type_name = get_type_name[Self.T]()
         comptime if type_name == "List[String]":
             var lst = result.get_list(field_name)
-            var tmp = rebind[Self.T](lst^).copy()
-            self.value = tmp^
+            self.value = rebind[Self.T](lst^).copy()
         elif type_name == "Int":
             var v = result.get_int(field_name)
-            var tmp = rebind[Self.T](v).copy()
-            self.value = tmp^
+            self.value = rebind[Self.T](v).copy()
         elif type_name == "String":
             var s = result.get_string(field_name)
-            var tmp = rebind[Self.T](s^).copy()
-            self.value = tmp^
+            self.value = rebind[Self.T](s^).copy()
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
