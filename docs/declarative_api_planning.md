@@ -400,12 +400,14 @@ trait Parsable(Defaultable, Movable):
     @staticmethod
     def to_command() raises -> Command:
         """Reflect over Self's fields and return a configured Command.
+        Automatically calls subcommands() to register child commands.
         Users can modify it with builder methods before calling from_command()."""
         var cmd_name = Self.name()
         if not cmd_name:
             cmd_name = String("command")
         var cmd = Command(cmd_name, Self.description(), version=Self.version())
         _reflect_and_register[Self](cmd)
+        Self.subcommands(cmd)   # hook: register child commands
         return cmd^
 
     @staticmethod
@@ -454,6 +456,23 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse_arguments(args)
         return _from_result[Self](result)
 
+    # ── Subcommand tree assembly ──
+
+    @staticmethod
+    def subcommands(mut cmd: Command) raises:
+        """Register subcommands on cmd. Override in parent commands.
+        Called automatically by to_command(). Default: no subcommands.
+        Inspired by Swift's CommandConfiguration(subcommands:)."""
+        pass
+
+    # ── Execution ──
+
+    def run(self) raises:
+        """Execute this command's logic. Override in leaf commands.
+        Called after parsing — NOT parsing itself (unlike mojopt's run()).
+        Inspired by Swift's ParsableCommand.run()."""
+        pass
+
     # ── Post-parse validation ──
 
     def validate(self) raises:
@@ -475,7 +494,7 @@ struct MyArgs(Parsable):
         return "My awesome tool"
 ```
 
-Everything else (`parse()`, `to_command()`, `from_command()`, `from_command_split()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `version()`, `name()`) comes from trait defaults.
+Everything else (`parse()`, `to_command()`, `from_command()`, `from_command_split()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
 
 ### 4.3 Internal Free Functions
 
@@ -699,24 +718,12 @@ def main() raises:
 
 Every level in the command tree is a `Parsable` struct — root, mid-level, and leaf. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]`.
 
+Subcommand registration uses the `subcommands()` hook — inspired by Swift's `CommandConfiguration(subcommands:)`. The hook is called automatically by `to_command()`, so the tree assembles itself recursively.
+
 ```mojo
 from argmojo import Parsable, Option, Flag, Positional, arg_defaults
 
-# Root command — has its own flags
-struct MyGit(Parsable):
-    var verbose: Flag[short="v", help="Verbose output", persistent=True]
-
-    def __init__(out self): self = arg_defaults[Self]()
-
-    @staticmethod
-    def name() -> String:
-        return "mgit"
-
-    @staticmethod
-    def description() -> String:
-        return "A mini git tool."
-
-# Leaf subcommands — also Parsable
+# Leaf subcommands — each has run() for its logic
 struct Clone(Parsable):
     var url: Positional[String, help="Repository URL", required=True]
     var depth: Option[Int, long="depth", help="Clone depth", default="0"]
@@ -731,6 +738,9 @@ struct Clone(Parsable):
     @staticmethod
     def name() -> String:
         return "clone"
+
+    def run(self) raises:
+        print("Cloning:", self.url.value)
 
 struct Push(Parsable):
     var remote: Positional[String, help="Remote name", default="origin"]
@@ -747,46 +757,67 @@ struct Push(Parsable):
     def name() -> String:
         return "push"
 
-def main() raises:
-    # Build command tree — every level is Parsable
-    var cmd = MyGit.to_command()
-    cmd.add_subcommand(Clone.to_command())
-    cmd.add_subcommand(Push.to_command())
+    def run(self) raises:
+        print("Pushing to:", self.remote.value)
 
-    # Parse: root flags (typed) + full result (for subcommand dispatch)
-    var (git_args, result) = MyGit.from_command_split(cmd^)
+# Root command — has its own flags + declares subcommands
+struct MyGit(Parsable):
+    var verbose: Flag[short="v", help="Verbose output", persistent=True]
+
+    def __init__(out self): self = arg_defaults[Self]()
+
+    @staticmethod
+    def name() -> String:
+        return "mgit"
+
+    @staticmethod
+    def description() -> String:
+        return "A mini git tool."
+
+    @staticmethod
+    def subcommands(mut cmd: Command) raises:
+        cmd.add_subcommand(Clone.to_command())
+        cmd.add_subcommand(Push.to_command())
+
+def main() raises:
+    # One call builds the entire tree (to_command calls subcommands() automatically)
+    var (git_args, result) = MyGit.parse_split()
 
     if git_args.verbose:
         print("Verbose mode on")
 
     # Dispatch subcommands with typed write-back
     if result.subcommand == "clone":
-        var args = Clone.from_result(result)
-        print("Cloning:", args.url.value)
+        Clone.from_result(result).run()
     elif result.subcommand == "push":
-        var args = Push.from_result(result)
-        print("Pushing to:", args.remote.value)
+        Push.from_result(result).run()
 ```
 
-#### 5.4.1 Nested Subcommands
+Compare this to the earlier design that required manual tree assembly in `main()`. The `subcommands()` hook keeps the tree structure in the struct definition, not scattered in `main()`.
+
+#### 5.4.1 With Builder Customization
+
+When you need root-level builder config (colors, tips, etc.), use `to_command()` + `from_command_split()`:
+
+```mojo
+def main() raises:
+    var cmd = MyGit.to_command()    # tree already assembled via subcommands()
+    cmd.header_color["CYAN"]()
+    cmd.add_tip("Run 'mgit help <command>' for details")
+
+    var (git_args, result) = MyGit.from_command_split(cmd^)
+
+    if result.subcommand == "clone":
+        Clone.from_result(result).run()
+    elif result.subcommand == "push":
+        Push.from_result(result).run()
+```
+
+#### 5.4.2 Nested Subcommands
 
 The same pattern scales to arbitrary depth (e.g. `mgit remote add`):
 
 ```mojo
-# Mid-level command — Parsable with its own flags
-struct Remote(Parsable):
-    var timeout: Option[Int, long="timeout", help="Timeout in seconds", default="30"]
-
-    def __init__(out self): self = arg_defaults[Self]()
-
-    @staticmethod
-    def name() -> String:
-        return "remote"
-
-    @staticmethod
-    def description() -> String:
-        return "Manage remotes."
-
 struct AddRemote(Parsable):
     var name_: Positional[String, help="Remote name", required=True]
     var url: Positional[String, help="Remote URL", required=True]
@@ -794,38 +825,109 @@ struct AddRemote(Parsable):
     def __init__(out self): self = arg_defaults[Self]()
 
     @staticmethod
-    def description() -> String:
-        return "Add a remote."
+    def description() -> String: return "Add a remote."
 
     @staticmethod
-    def name() -> String:
-        return "add"
+    def name() -> String: return "add"
+
+    def run(self) raises:
+        print("Adding remote:", self.name_.value, self.url.value)
+
+struct RemoveRemote(Parsable):
+    var name_: Positional[String, help="Remote name", required=True]
+
+    def __init__(out self): self = arg_defaults[Self]()
+
+    @staticmethod
+    def description() -> String: return "Remove a remote."
+
+    @staticmethod
+    def name() -> String: return "remove"
+
+    def run(self) raises:
+        print("Removing remote:", self.name_.value)
+
+# Mid-level command — Parsable with its own flags + nested subcommands
+struct Remote(Parsable):
+    var timeout: Option[Int, long="timeout", help="Timeout in seconds", default="30"]
+
+    def __init__(out self): self = arg_defaults[Self]()
+
+    @staticmethod
+    def name() -> String: return "remote"
+
+    @staticmethod
+    def description() -> String: return "Manage remotes."
+
+    @staticmethod
+    def subcommands(mut cmd: Command) raises:
+        cmd.add_subcommand(AddRemote.to_command())
+        cmd.add_subcommand(RemoveRemote.to_command())
+
+# Root — references Remote which references AddRemote/RemoveRemote
+struct MyGit(Parsable):
+    var verbose: Flag[short="v", help="Verbose output", persistent=True]
+
+    def __init__(out self): self = arg_defaults[Self]()
+
+    @staticmethod
+    def name() -> String: return "mgit"
+
+    @staticmethod
+    def description() -> String: return "A mini git tool."
+
+    @staticmethod
+    def subcommands(mut cmd: Command) raises:
+        cmd.add_subcommand(Clone.to_command())
+        cmd.add_subcommand(Push.to_command())
+        cmd.add_subcommand(Remote.to_command())  # nested tree assembled recursively
 
 def main() raises:
-    # Build nested tree
-    var remote_cmd = Remote.to_command()
-    remote_cmd.add_subcommand(AddRemote.to_command())
-    remote_cmd.add_subcommand(RemoveRemote.to_command())
+    var (git_args, result) = MyGit.parse_split()
 
-    var root = MyGit.to_command()
-    root.add_subcommand(Clone.to_command())
-    root.add_subcommand(remote_cmd)
-    root.header_color["CYAN"]()
-    root.add_tip("Run 'mgit help <command>' for details")
-
-    # Parse root
-    var (git_args, result) = MyGit.from_command_split(root^)
-
-    if result.subcommand == "remote":
+    if result.subcommand == "clone":
+        Clone.from_result(result).run()
+    elif result.subcommand == "push":
+        Push.from_result(result).run()
+    elif result.subcommand == "remote":
         var remote_args = Remote.from_result(result)
         print("Timeout:", remote_args.timeout.value)
-        # Nested dispatch
         if result.sub_result().subcommand == "add":
-            var args = AddRemote.from_result(result.sub_result())
-            print("Adding remote:", args.name_.value, args.url.value)
+            AddRemote.from_result(result.sub_result()).run()
+        elif result.sub_result().subcommand == "remove":
+            RemoveRemote.from_result(result.sub_result()).run()
 ```
 
-**Note**: Root-level customization (colors, tips, persistent flags) is natural — `to_command()` gives you the `Command` to modify before parsing. No escape hatch needed.
+The entire tree (`mgit → clone | push | remote → add | remove`) is declared in the structs themselves. `main()` only handles dispatch.
+
+#### 5.4.3 Future: Auto-Dispatch (When Mojo Gets Variadic Type Tuples)
+
+Currently, subcommand dispatch requires manual `if/elif` chains with string matching. This is the main remaining gap vs Swift (which auto-dispatches via `run()`) and Rust (which uses exhaustive `match` on enums).
+
+When Mojo gains stable variadic type tuples and/or enum with associated data, auto-dispatch becomes possible:
+
+```mojo
+# Hypothetical future — compile-time type tuple + auto-dispatch
+struct MyGit(Parsable):
+    var verbose: Flag[short="v", persistent=True]
+    alias Subcommands = (Clone, Push, Remote)    # compile-time type tuple
+
+    @staticmethod
+    def execute() raises:
+        """Parse + dispatch in one call. Auto-generated from Subcommands."""
+        var (self_args, result) = Self.parse_split()
+        @parameter
+        for i in range(len(Self.Subcommands)):
+            alias T = Self.Subcommands[i]
+            if result.subcommand == T.name():
+                T.from_result(result).run()
+                return
+
+def main() raises:
+    MyGit.execute()   # one line — tree + parse + dispatch
+```
+
+This would also enable compile-time duplicate name detection and exhaustive dispatch guarantees. Until then, the `subcommands()` hook + manual dispatch is the cleanest available approach.
 
 ## 6. Innovations
 
@@ -1105,58 +1207,67 @@ Missing/optional values: if `result.has(name)` returns `False` and the field isn
 
 ### 7.3 Subcommand Design — Parsable Everywhere
 
-Instead of a separate compositor type (like an `SubParser[*Ts]` struct), subcommands use the same `Parsable` trait at every level. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]` — one concept, not two.
+Instead of a separate compositor type, subcommands use the same `Parsable` trait at every level. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]` — one concept, not two.
 
-**Every level is Parsable**: root commands, mid-level commands, and leaf commands are all `Parsable` structs. Root-level and mid-level flags live naturally as struct fields.
+**Design principles**:
 
-**Subcommand registration uses the builder bridge**: `to_command()` produces a `Command`, and `add_subcommand()` wires the tree together. This reuses the existing builder infrastructure — no new type or wiring mechanism needed.
+1. **Every level is Parsable**: root, mid-level, and leaf commands are all `Parsable` structs. Flags at any level live as natural struct fields.
+2. **`subcommands()` hook**: Each parent declares its children via `subcommands(mut cmd)`, called automatically by `to_command()`. Trees assemble recursively — no manual wiring in `main()`.
+3. **`run()` method**: Each leaf carries its execution logic, inspired by Swift's `ParsableCommand.run()`. This is purely execution — it does NOT parse (unlike mojopt's `run()`).
+4. **`from_result()` for dispatch**: Write-back from an already-parsed `ParseResult`, enabling typed subcommand access without re-parsing.
 
-**Two new methods on `Parsable`** enable subcommand workflows:
+**Key methods for subcommand workflows**:
 
 ```mojo
+# On the trait — automatically called by to_command()
+@staticmethod
+def subcommands(mut cmd: Command) raises:
+    """Override to register child commands. Default: no subcommands."""
+    pass
+
+# Execution — override in leaf commands
+def run(self) raises:
+    """Execute this command's logic after parsing."""
+    pass
+
+# Parse + split for dispatch
 @staticmethod
 def from_command_split(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
     """Parse cmd and return both typed Self (root flags)
     and raw ParseResult (for subcommand dispatch)."""
-    var result = cmd.parse()
-    var typed = _from_result[Self](result)
-    return Tuple[Self, ParseResult](typed^, result^)
 
+# Write-back without re-parsing
 @staticmethod
 def from_result(result: ParseResult) raises -> Self:
-    """Write-back from an existing ParseResult without re-parsing.
-    Used for subcommand dispatch: the parent already parsed,
-    this extracts the matched subcommand's fields into Self."""
-    return _from_result[Self](result)
+    """Extract matched subcommand's fields from existing ParseResult."""
 ```
 
 **Typical flow**:
 
 ```mojo
-# 1. Build the tree
-var root = MyGit.to_command()
-root.add_subcommand(Clone.to_command())
-root.add_subcommand(Push.to_command())
-
-# 2. Parse — root flags are typed, subcommand info is in ParseResult
-var (git_args, result) = MyGit.from_command_split(root^)
-
-# 3. Dispatch with typed write-back
+# Simple — tree built automatically via subcommands() hook
+var (git_args, result) = MyGit.parse_split()
 if result.subcommand == "clone":
-    var args = Clone.from_result(result)
+    Clone.from_result(result).run()
+
+# With customization — to_command() already includes subcommands
+var cmd = MyGit.to_command()
+cmd.header_color["CYAN"]()
+var (git_args, result) = MyGit.from_command_split(cmd^)
 ```
 
-**Why not a separate compositor type?**
+**Comparison with alternatives**:
 
-| Concern                      | Parsable everywhere        | Separate compositor (e.g. `App[*Ts]`)         |
-| ---------------------------- | -------------------------- | --------------------------------------------- |
-| Root-level flags             | Natural struct fields      | No home — needs builder escape                |
-| Nesting (2+ levels)          | Uniform at all depths      | Breaks: compositor ≠ Parsable                 |
-| Concept count                | One (`Parsable`)           | Two (`Parsable` + compositor)                 |
-| Root customization           | Natural via `to_command()` | Needs `to_command()` bridge on compositor too |
-| Compile-time subcommand list | Manual `add_subcommand()`  | Automatic from type params                    |
+| Concern                      | Parsable everywhere (current) | Separate compositor (rejected) | Future: type tuples            |
+| ---------------------------- | ----------------------------- | ------------------------------ | ------------------------------ |
+| Root-level flags             | Natural struct fields         | No home — needs builder escape | Same as current                |
+| Nesting (2+ levels)          | Uniform at all depths         | Breaks: compositor ≠ Parsable  | Same as current                |
+| Concept count                | One (`Parsable`)              | Two (`Parsable` + compositor)  | One                            |
+| Tree assembly                | `subcommands()` hook          | Automatic from type params     | `alias Subcommands = (T1, T2)` |
+| Dispatch                     | Manual `if/elif` strings      | Manual `if/elif` strings       | Auto-dispatch via `execute()`  |
+| Compile-time subcommand list | No                            | Yes                            | Yes                            |
 
-The compile-time registration guarantee is the one trade-off, but it's outweighed by the uniform model that scales to arbitrary nesting with natural support for mid-level flags and root customization.
+**Remaining gap: string-based dispatch.** The `if result.subcommand == "clone"` pattern is the main area where Swift and Rust are stronger. Swift auto-dispatches via protocol, Rust uses exhaustive `match` on enums. See §5.4.3 for the future Mojo solution with variadic type tuples.
 
 ## 8. What Stays in Builder-Only Territory
 
@@ -1182,35 +1293,37 @@ I think this is the right call — these features describe *relationships betwee
 
 ## 9. Comparison with Swift Argument Parser
 
-| Aspect                          | Swift Argument Parser           | ArgMojo Declarative                           |
-| ------------------------------- | ------------------------------- | --------------------------------------------- |
-| Language mechanism              | Property wrappers (`@Option`)   | Parametric wrapper types (`Option[T]`)        |
-| Wrapper vocabulary              | `@Argument`, `@Option`, `@Flag` | `Positional[T]`, `Option[T]`, `Flag`, `Count` |
-| Protocol / trait                | `ParsableCommand`               | `Parsable`                                    |
-| Type-safe value access          | Direct field access             | `args.field.value`                            |
-| Flag as Bool                    | Direct Bool                     | `Flag.__bool__()` implicit conversion         |
-| Count flag                      | ✗ not built-in                  | ✓ `Count[short="v", max=3]`                   |
-| Builder fallback                | ✗ no builder API                | ✓ full builder API as alternative             |
-| Declarative ↔ builder bridge    | ✗ no escape hatch               | ✓ `to_command()` exposes owned `Command`      |
-| Dual-return parse               | ✗ struct-only return            | ✓ `parse_split()` → (T, ParseResult)          |
-| Post-parse validation           | `mutating func validate()`      | `def validate(self) raises` (planned)         |
-| Mutually exclusive groups       | ✗ not in struct schema          | ✓ via `to_command()`                          |
-| Interactive prompt              | ✗ not supported                 | ✓ `prompt=True` in wrapper                    |
-| Password / masked input         | ✗ not supported                 | ✓ `password=True` in wrapper                  |
-| Shell completions               | ✓ built-in                      | ✓ inherited from builder                      |
-| Compile-time schema validation  | ✗ validated at runtime          | ✓ `comptime assert` catches errors (§6.3)     |
-| Declarative field constraints   | ✗ not in struct schema          | ✓ `depends_on`/`conflicts_with` (§6.4)        |
-| Auto-derived completions        | ✗ manual registration           | ✓ from `choices` at compile time (§6.5)       |
-| Subcommands                     | ✓ nested `ParsableCommand`      | ✓ `Parsable` at every level + `to_command()`  |
-| CJK-aware help                  | ✗ not supported                 | ✓ inherited from builder                      |
-| Auto-naming (underscore→hyphen) | ✓ camelCase→kebab-case          | ✓ snake_case→kebab-case                       |
+| Aspect                          | Swift Argument Parser                | ArgMojo Declarative                              |
+| ------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| Language mechanism              | Property wrappers (`@Option`)        | Parametric wrapper types (`Option[T]`)           |
+| Wrapper vocabulary              | `@Argument`, `@Option`, `@Flag`      | `Positional[T]`, `Option[T]`, `Flag`, `Count`    |
+| Protocol / trait                | `ParsableCommand`                    | `Parsable`                                       |
+| Type-safe value access          | Direct field access                  | `args.field.value`                               |
+| Flag as Bool                    | Direct Bool                          | `Flag.__bool__()` implicit conversion            |
+| Count flag                      | ✗ not built-in                       | ✓ `Count[short="v", max=3]`                      |
+| Builder fallback                | ✗ no builder API                     | ✓ full builder API as alternative                |
+| Declarative ↔ builder bridge    | ✗ no escape hatch                    | ✓ `to_command()` exposes owned `Command`         |
+| Dual-return parse               | ✗ struct-only return                 | ✓ `parse_split()` → (T, ParseResult)             |
+| Post-parse validation           | `mutating func validate()`           | `def validate(self) raises` (planned)            |
+| Mutually exclusive groups       | ✗ not in struct schema               | ✓ via `to_command()`                             |
+| Interactive prompt              | ✗ not supported                      | ✓ `prompt=True` in wrapper                       |
+| Password / masked input         | ✗ not supported                      | ✓ `password=True` in wrapper                     |
+| Shell completions               | ✓ built-in                           | ✓ inherited from builder                         |
+| Compile-time schema validation  | ✗ validated at runtime               | ✓ `comptime assert` catches errors (§6.3)        |
+| Declarative field constraints   | ✗ not in struct schema               | ✓ `depends_on`/`conflicts_with` (§6.4)           |
+| Auto-derived completions        | ✗ manual registration                | ✓ from `choices` at compile time (§6.5)          |
+| Subcommand tree assembly        | `CommandConfiguration(subcommands:)` | `subcommands(mut cmd)` hook on `Parsable`        |
+| Subcommand execution            | `mutating func run()`                | `def run(self) raises` on `Parsable`             |
+| Subcommand dispatch             | Automatic via protocol               | Manual `if/elif` (auto-dispatch planned, §5.4.3) |
+| CJK-aware help                  | ✗ not supported                      | ✓ inherited from builder                         |
+| Auto-naming (underscore→hyphen) | ✓ camelCase→kebab-case               | ✓ snake_case→kebab-case                          |
 
 ## 10. Implementation Roadmap
 
 ### Phase 1: Core Wrapper Types + Trait Default Methods
 
 - [ ] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs
-- [ ] Implement `Parsable` trait with all default methods (`parse`, `to_command`, `from_command`, `parse_split`, `parse_args`, `validate`)
+- [ ] Implement `Parsable` trait with all default methods (`parse`, `to_command`, `from_command`, `from_command_split`, `from_result`, `parse_split`, `parse_args`, `validate`, `run`, `subcommands`)
 - [ ] Implement `arg_defaults[T]()`
 - [ ] Implement `_reflect_and_register[T]()` — reflection to Command builder calls
 - [ ] Implement `_from_result[T]()` — ParseResult to struct write-back
@@ -1226,11 +1339,14 @@ I think this is the right call — these features describe *relationships betwee
 
 ### Phase 3: Subcommands
 
+- [ ] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
+- [ ] Implement `run(self)` on `Parsable` trait (default no-op)
 - [ ] Implement `from_command_split()` on `Parsable` trait
 - [ ] Implement `from_result()` on `Parsable` trait (public write-back)
-- [ ] Test: flat subcommands with `to_command()` + `add_subcommand()`
-- [ ] Test: nested subcommands (2+ levels) with mid-level flags
-- [ ] Test: root-level customization (colors, tips, persistent flags) with subcommands
+- [ ] Test: flat subcommands with `subcommands()` hook
+- [ ] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()`
+- [ ] Test: root-level customization via `to_command()` + `from_command_split()`
+- [ ] Test: `run()` dispatch pattern
 
 ### Phase 4: Further enhancements
 
