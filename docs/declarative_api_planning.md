@@ -1320,14 +1320,17 @@ I think this is the right call — these features describe *relationships betwee
 
 ## 10. Implementation Roadmap
 
-### Phase 1: Core Wrapper Types + Trait Default Methods
+### Phase 1: Core Wrapper Types + Trait Default Methods (DONE)
 
-- [ ] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs
-- [ ] Implement `Parsable` trait with all default methods (`parse`, `to_command`, `from_command`, `from_command_split`, `from_result`, `parse_split`, `parse_args`, `validate`, `run`, `subcommands`)
-- [ ] Implement `arg_defaults[T]()`
-- [ ] Implement `_reflect_and_register[T]()` — reflection to Command builder calls
-- [ ] Implement `_from_result[T]()` — ParseResult to struct write-back
-- [ ] Auto-naming convention (underscore → hyphen)
+- [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in `argument_wrappers.mojo`
+- [x] Implement `ArgumentLike` trait with `add_to_command()` and `read_from_result()` methods
+- [x] Implement `Parsable` trait with default methods (`description`, `version`, `name`, `subcommands`, `run`)
+- [x] Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `from_command`, `from_command_split`, `from_result`
+- [x] Implement `_reflect_and_register[T]()` — reflection to Command builder calls
+- [x] Implement `_from_result[T]()` — ParseResult to struct write-back
+- [x] Auto-naming convention (underscore → hyphen)
+- [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
+- [x] `miji.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
 
 ### Phase 2: Hybrid Features
 
@@ -1339,10 +1342,10 @@ I think this is the right call — these features describe *relationships betwee
 
 ### Phase 3: Subcommands
 
-- [ ] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
-- [ ] Implement `run(self)` on `Parsable` trait (default no-op)
-- [ ] Implement `from_command_split()` on `Parsable` trait
-- [ ] Implement `from_result()` on `Parsable` trait (public write-back)
+- [x] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
+- [x] Implement `run(self)` on `Parsable` trait (default no-op)
+- [x] Implement `from_command_split()` as free function
+- [x] Implement `from_result()` as free function (public write-back)
 - [ ] Test: flat subcommands with `subcommands()` hook
 - [ ] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()`
 - [ ] Test: root-level customization via `to_command()` + `from_command_split()`
@@ -1366,6 +1369,7 @@ I think this is the right call — these features describe *relationships betwee
 ### Phase 5: Polish
 
 - [ ] Comprehensive test suite (parallel to existing builder tests)
-- [ ] Examples: simple, hybrid, subcommands
+- [x] Examples: `jomo.mojo` (Mojo CLI lookalike, hybrid declarative + builder)
+- [ ] Examples: simple pure-declarative, more hybrid patterns
 - [ ] User manual additions
 - [ ] README update with declarative examples

@@ -64,6 +64,7 @@ build = """pixi run package && bash -c '\
   mojo build -I src examples/mgit.mojo  -o mgit  & pids+=($!); \
   mojo build -I src examples/demo.mojo  -o demo  & pids+=($!); \
   mojo build -I src examples/yu.mojo    -o yu    & pids+=($!); \
+  mojo build -I src examples/jomo.mojo  -o jomo  & pids+=($!); \
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
@@ -76,6 +77,7 @@ debug = """pixi run package \
 && mojo run -I src -D ASSERT=all examples/mgit.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/demo.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/yu.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/jomo.mojo -- --help \
 """
 
 # run (debug mode) example binaries (parallel, fail if any run fails)

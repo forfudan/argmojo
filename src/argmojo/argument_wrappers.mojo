@@ -3,14 +3,63 @@
 Four wrapper structs that encode argument metadata as compile-time
 parameters.  Each wraps a runtime ``value`` field and carries all
 configuration (long name, short name, help text, choices, ...) in its
-type signature so that ``Parser[T]._build()`` can translate them
-to builder calls without any runtime metadata tables.
+type signature so that reflection-based ``_reflect_and_register`` can
+translate them to builder calls without any runtime metadata tables.
 
 - ``Option[T, ...]``    -- named option (``--output file.txt``, ``-o val``)
 - ``Flag[...]``         -- boolean flag (``--verbose``, ``-v``)
 - ``Positional[T, ...]``-- positional argument (matched by position)
 - ``Count[...]``        -- count flag (``-vvv`` -> 3)
+
+All four conform to the ``ArgumentLike`` trait, which provides two
+reflection hooks:
+
+- ``add_to_command(field_name, mut cmd)`` — translate compile-time params
+  to an ``Argument`` and add it to the ``Command``.
+- ``read_from_result(mut self, field_name, result)`` — populate ``self.value``
+  from a ``ParseResult``.
 """
+
+from std.memory import UnsafePointer
+from std.reflection import get_type_name
+from .argument import Argument
+from .parse_result import ParseResult
+
+
+# =======================================================================
+# ArgumentLike trait
+# =======================================================================
+
+
+trait ArgumentLike:
+    """Trait for wrapper types that can register themselves on a Command
+    and write back parsed values from a ParseResult.
+
+    Implemented by Option, Flag, Positional, and Count.
+    """
+
+    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+        """Translate compile-time parameters into an Argument and add to cmd.
+
+        Args:
+            field_name: The struct field name (used as default long name).
+            cmd: The Command to register the argument on.
+        """
+        ...
+
+    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+        """Populate self.value from a ParseResult.
+
+        Args:
+            field_name: The struct field name (used as lookup key).
+            result: The ParseResult containing parsed values.
+        """
+        ...
+
+
+# Forward-import Command to avoid circular imports.
+# ArgumentLike methods receive `mut cmd: Command` via the trait.
+from .command import Command
 
 
 # =======================================================================
@@ -54,12 +103,12 @@ struct Option[
     prompt: Bool = False,
     prompt_text: StringLiteral = "",
     password: Bool = False,
-](Copyable, Movable, Defaultable):
+](ArgumentLike, Copyable, Defaultable, Movable):
     """A named option that takes a value.
 
     ``T`` is the value type stored at runtime (``String``, ``Int``,
     ``List[String]``, etc.).  All other parameters are keyword-only
-    compile-time metadata consumed by ``Parser[T]._build()``.
+    compile-time metadata consumed by ``_reflect_and_register``.
 
     Parameters:
         T: The value type stored at runtime.
@@ -134,6 +183,88 @@ struct Option[
         """
         self.value = take.value^
 
+    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+        var long_name = String(Self.long) if Self.long else field_name.replace(
+            "_", "-"
+        )
+        var arg = Argument(field_name, help=String(Self.help))
+        arg._long_name = long_name
+        comptime if Self.short != "":
+            arg._short_name = String(Self.short)
+        comptime if Self.alias_name != "":
+            for a in String(Self.alias_name).split(","):
+                arg._alias_names.append(String(a))
+        comptime if Self.negatable:
+            arg._is_negatable = True
+        comptime if Self.default != "":
+            arg._has_default = True
+            arg._default_value = String(Self.default)
+        comptime if Self.required:
+            arg._is_required = True
+        comptime if Self.choices != "":
+            for c in String(Self.choices).split(","):
+                arg._choice_values.append(String(c))
+        comptime if Self.has_range:
+            arg._has_range = True
+            arg._range_min = Self.range_min
+            arg._range_max = Self.range_max
+        comptime if Self.clamp:
+            arg._is_clamp = True
+        comptime if Self.append:
+            arg._is_append = True
+        comptime if Self.delimiter != "":
+            arg._delimiter_char = String(Self.delimiter)
+        comptime if Self.nargs > 0:
+            arg._number_of_values = Self.nargs
+        comptime if Self.map_option:
+            arg._is_map = True
+        comptime if Self.require_equals:
+            arg._require_equals = True
+        comptime if Self.allow_hyphen:
+            arg._allow_hyphen_values = True
+        comptime if Self.persistent:
+            arg._is_persistent = True
+        comptime if Self.value_name != "":
+            arg._value_name = String(Self.value_name)
+        comptime if Self.hidden:
+            arg._is_hidden = True
+        comptime if Self.deprecated != "":
+            arg._deprecated_msg = String(Self.deprecated)
+        comptime if Self.group != "":
+            arg._group = String(Self.group)
+        comptime if Self.prompt:
+            arg._prompt = True
+        comptime if Self.prompt_text != "":
+            arg._prompt_text = String(Self.prompt_text)
+        comptime if Self.password:
+            arg._hide_input = True
+        cmd.add_argument(arg^)
+
+    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+        if not result.has(field_name):
+            return
+        comptime tname = get_type_name[Self.T]()
+        comptime if "List" in tname:
+            var lst = result.get_list(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[List[String]]().init_pointee_move(lst^)
+        elif "Dict" in tname:
+            var m = result.get_map(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[Dict[String, String]]().init_pointee_move(m^)
+        elif tname == "Int":
+            var v = result.get_int(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[Int]().init_pointee_move(v)
+        else:
+            var s = result.get_string(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[String]().init_pointee_move(s^)
+
 
 # =======================================================================
 # Flag
@@ -154,7 +285,7 @@ struct Flag[
     hidden: Bool = False,
     deprecated: StringLiteral = "",
     group: StringLiteral = "",
-](Copyable, Movable, Defaultable):
+](ArgumentLike, Copyable, Defaultable, Movable):
     """A boolean flag (no value; presence means ``True``).
 
     Provides ``__bool__`` so you can write ``if args.verbose:``
@@ -224,6 +355,29 @@ struct Flag[
         """
         return self.value
 
+    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+        var long_name = String(Self.long) if Self.long else field_name.replace(
+            "_", "-"
+        )
+        var arg = Argument(field_name, help=String(Self.help)).flag()
+        arg._long_name = long_name
+        comptime if Self.short != "":
+            arg._short_name = String(Self.short)
+        comptime if Self.negatable:
+            arg._is_negatable = True
+        comptime if Self.persistent:
+            arg._is_persistent = True
+        comptime if Self.hidden:
+            arg._is_hidden = True
+        comptime if Self.deprecated != "":
+            arg._deprecated_msg = String(Self.deprecated)
+        comptime if Self.group != "":
+            arg._group = String(Self.group)
+        cmd.add_argument(arg^)
+
+    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+        self.value = result.get_flag(field_name)
+
 
 # =======================================================================
 # Positional
@@ -243,7 +397,7 @@ struct Positional[
     # -- Display & help --
     value_name: StringLiteral = "",
     group: StringLiteral = "",
-](Copyable, Movable, Defaultable):
+](ArgumentLike, Copyable, Defaultable, Movable):
     """A positional argument (matched by order, not by name).
 
     Positionals don't have ``--long`` or ``-short`` names.  Use
@@ -299,6 +453,44 @@ struct Positional[
         """
         self.value = take.value^
 
+    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+        var arg = Argument(field_name, help=String(Self.help)).positional()
+        comptime if Self.remainder:
+            arg._is_remainder = True
+        comptime if Self.default != "":
+            arg._has_default = True
+            arg._default_value = String(Self.default)
+        comptime if Self.required:
+            arg._is_required = True
+        comptime if Self.choices != "":
+            for c in String(Self.choices).split(","):
+                arg._choice_values.append(String(c))
+        comptime if Self.value_name != "":
+            arg._value_name = String(Self.value_name)
+        comptime if Self.group != "":
+            arg._group = String(Self.group)
+        cmd.add_argument(arg^)
+
+    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+        if not result.has(field_name):
+            return
+        comptime tname = get_type_name[Self.T]()
+        comptime if "List" in tname:
+            var lst = result.get_list(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[List[String]]().init_pointee_move(lst^)
+        elif tname == "Int":
+            var v = result.get_int(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[Int]().init_pointee_move(v)
+        else:
+            var s = result.get_string(field_name)
+            var dest = UnsafePointer(to=self.value)
+            dest.destroy_pointee()
+            dest.bitcast[String]().init_pointee_move(s^)
+
 
 # =======================================================================
 # Count
@@ -318,7 +510,7 @@ struct Count[
     # -- Display & help --
     hidden: Bool = False,
     group: StringLiteral = "",
-](Copyable, Movable, Defaultable):
+](ArgumentLike, Copyable, Defaultable, Movable):
     """A count flag (each occurrence increments the value).
 
     Commonly used for verbosity: ``-v`` -> 1, ``-vv`` -> 2, ``-vvv`` -> 3.
@@ -375,3 +567,25 @@ struct Count[
             take: The Count to move from.
         """
         self.value = take.value
+
+    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+        var long_name = String(Self.long) if Self.long else field_name.replace(
+            "_", "-"
+        )
+        var arg = Argument(field_name, help=String(Self.help)).count()
+        arg._long_name = long_name
+        comptime if Self.short != "":
+            arg._short_name = String(Self.short)
+        comptime if Self.max > 0:
+            arg._has_count_max = True
+            arg._count_max = Self.max
+        comptime if Self.persistent:
+            arg._is_persistent = True
+        comptime if Self.hidden:
+            arg._is_hidden = True
+        comptime if Self.group != "":
+            arg._group = String(Self.group)
+        cmd.add_argument(arg^)
+
+    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+        self.value = result.get_count(field_name)
