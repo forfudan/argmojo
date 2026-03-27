@@ -246,17 +246,13 @@ struct Option[
             return
         comptime type_name = get_type_name[Self.T]()
         comptime if type_name == "List[String]":
-            var lst = result.get_list(field_name)
-            self.value = rebind[Self.T](lst^).copy()
+            self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Dict[String, String]":
-            var m = result.get_map(field_name)
-            self.value = rebind[Self.T](m^).copy()
+            self.value = rebind[Self.T](result.get_map(field_name)).copy()
         elif type_name == "Int":
-            var v = result.get_int(field_name)
-            self.value = rebind[Self.T](v).copy()
+            self.value = rebind[Self.T](result.get_int(field_name)).copy()
         elif type_name == "String":
-            var s = result.get_string(field_name)
-            self.value = rebind[Self.T](s^).copy()
+            self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
@@ -481,14 +477,11 @@ struct Positional[
             return
         comptime type_name = get_type_name[Self.T]()
         comptime if type_name == "List[String]":
-            var lst = result.get_list(field_name)
-            self.value = rebind[Self.T](lst^).copy()
+            self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Int":
-            var v = result.get_int(field_name)
-            self.value = rebind[Self.T](v).copy()
+            self.value = rebind[Self.T](result.get_int(field_name)).copy()
         elif type_name == "String":
-            var s = result.get_string(field_name)
-            self.value = rebind[Self.T](s^).copy()
+            self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
