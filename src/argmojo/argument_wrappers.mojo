@@ -211,7 +211,8 @@ struct Option[
             arg._is_append = True
         comptime if Self.delimiter != "":
             arg._delimiter_char = String(Self.delimiter)
-        comptime if Self.nargs > 0:
+            arg._is_append = True
+        comptime if Self.nargs > 1:
             arg._number_of_values = Self.nargs
         comptime if Self.map_option:
             arg._is_map = True
@@ -250,7 +251,7 @@ struct Option[
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
             dest.bitcast[List[String]]().init_pointee_move(lst^)
-        elif "Dict" in tname:
+        elif tname == "Dict[String, String]":
             var m = result.get_map(field_name)
             var dest = UnsafePointer(to=self.value)
             dest.destroy_pointee()
@@ -467,6 +468,7 @@ struct Positional[
         var arg = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
             arg._is_remainder = True
+            arg._is_append = True
         comptime if Self.default != "":
             arg._has_default = True
             arg._default_value = String(Self.default)
