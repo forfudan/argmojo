@@ -20,7 +20,6 @@ reflection hooks:
   from a ``ParseResult``.
 """
 
-from std.memory import UnsafePointer
 from std.reflection import get_type_name
 from .argument import Argument
 from .parse_result import ParseResult
@@ -245,27 +244,15 @@ struct Option[
     ) raises:
         if not result.has(field_name):
             return
-        comptime tname = get_type_name[Self.T]()
-        comptime if tname == "List[String]":
-            var lst = result.get_list(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[List[String]]().init_pointee_move(lst^)
-        elif tname == "Dict[String, String]":
-            var m = result.get_map(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[Dict[String, String]]().init_pointee_move(m^)
-        elif tname == "Int":
-            var v = result.get_int(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[Int]().init_pointee_move(v)
-        elif tname == "String":
-            var s = result.get_string(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[String]().init_pointee_move(s^)
+        comptime type_name = get_type_name[Self.T]()
+        comptime if type_name == "List[String]":
+            self.value = rebind[Self.T](result.get_list(field_name)).copy()
+        elif type_name == "Dict[String, String]":
+            self.value = rebind[Self.T](result.get_map(field_name)).copy()
+        elif type_name == "Int":
+            self.value = rebind[Self.T](result.get_int(field_name)).copy()
+        elif type_name == "String":
+            self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
@@ -488,22 +475,13 @@ struct Positional[
     ) raises:
         if not result.has(field_name):
             return
-        comptime tname = get_type_name[Self.T]()
-        comptime if tname == "List[String]":
-            var lst = result.get_list(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[List[String]]().init_pointee_move(lst^)
-        elif tname == "Int":
-            var v = result.get_int(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[Int]().init_pointee_move(v)
-        elif tname == "String":
-            var s = result.get_string(field_name)
-            var dest = UnsafePointer(to=self.value)
-            dest.destroy_pointee()
-            dest.bitcast[String]().init_pointee_move(s^)
+        comptime type_name = get_type_name[Self.T]()
+        comptime if type_name == "List[String]":
+            self.value = rebind[Self.T](result.get_list(field_name)).copy()
+        elif type_name == "Int":
+            self.value = rebind[Self.T](result.get_int(field_name)).copy()
+        elif type_name == "String":
+            self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
