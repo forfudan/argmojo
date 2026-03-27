@@ -47,7 +47,9 @@ trait ArgumentLike:
         """
         ...
 
-    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+    fn read_from_result(
+        mut self, field_name: String, result: ParseResult
+    ) raises:
         """Populate self.value from a ParseResult.
 
         Args:
@@ -75,8 +77,6 @@ struct Option[
     short: StringLiteral = "",
     help: StringLiteral = "",
     alias_name: StringLiteral = "",
-    # -- Argument type --
-    negatable: Bool = False,
     # -- Value defaults & validation --
     default: StringLiteral = "",
     required: Bool = False,
@@ -116,7 +116,6 @@ struct Option[
         short: Short option character (e.g. ``"o"`` for ``-o``).
         help: Help text shown in ``--help`` output.
         alias_name: Comma-separated alias long names.
-        negatable: If True, generate ``--x`` / ``--no-x`` pair (T must be Bool).
         default: Default value as a string literal.
         required: If True, the option must be provided.
         choices: Comma-separated allowed values.
@@ -194,10 +193,6 @@ struct Option[
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
                 arg._alias_names.append(String(a))
-        # NOTE: negatable is intentionally ignored for Option.
-        # Negatable behaviour is only meaningful for boolean Flag arguments.
-        # Setting _is_negatable on a non-flag Argument would cause
-        # --no-<name> to write into ParseResult._flags, breaking value lookups.
         comptime if Self.default != "":
             arg._has_default = True
             arg._default_value = String(Self.default)
@@ -244,7 +239,9 @@ struct Option[
             arg._hide_input = True
         cmd.add_argument(arg^)
 
-    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+    fn read_from_result(
+        mut self, field_name: String, result: ParseResult
+    ) raises:
         if not result.has(field_name):
             return
         comptime tname = get_type_name[Self.T]()
@@ -272,7 +269,8 @@ struct Option[
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
                 + get_type_name[Self.T]()
-                + ". Supported: String, Int, List[String], Dict[String, String]."
+                + ". Supported: String, Int, List[String], Dict[String,"
+                " String]."
             )
 
 
@@ -385,7 +383,9 @@ struct Flag[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+    fn read_from_result(
+        mut self, field_name: String, result: ParseResult
+    ) raises:
         self.value = result.get_flag(field_name)
 
 
@@ -481,7 +481,9 @@ struct Positional[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+    fn read_from_result(
+        mut self, field_name: String, result: ParseResult
+    ) raises:
         if not result.has(field_name):
             return
         comptime tname = get_type_name[Self.T]()
@@ -603,5 +605,7 @@ struct Count[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(mut self, field_name: String, result: ParseResult) raises:
+    fn read_from_result(
+        mut self, field_name: String, result: ParseResult
+    ) raises:
         self.value = result.get_count(field_name)
