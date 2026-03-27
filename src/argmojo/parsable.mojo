@@ -95,6 +95,127 @@ trait Parsable(Defaultable, Movable):
         """
         pass
 
+    # ── Core: one-line parse ──
+
+    @staticmethod
+    def parse() raises -> Self:
+        """Build, parse sys.argv(), and return a populated Self.
+
+        This is the primary entry point for pure-declarative usage.
+
+        Returns:
+            A populated instance of Self.
+        """
+        var cmd = Self.to_command()
+        var result = cmd.parse()
+        return _from_result[Self](result)
+
+    @staticmethod
+    def parse_args(args: List[String]) raises -> Self:
+        """Build, parse the given argument list, and return a populated Self.
+
+        Useful for testing without touching sys.argv().
+
+        Args:
+            args: The raw argument strings (including program name at index 0).
+
+        Returns:
+            A populated instance of Self.
+        """
+        var cmd = Self.to_command()
+        var result = cmd.parse_arguments(args)
+        return _from_result[Self](result)
+
+    # ── Hybrid: to_command → customise → from_command ──
+
+    @staticmethod
+    def to_command() raises -> Command:
+        """Reflect over Self's fields and return a configured Command.
+
+        Automatically calls ``subcommands()`` to register child commands.
+        Users can modify the returned Command with builder methods
+        before calling ``from_command()`` or ``from_command_split()``.
+
+        Returns:
+            A fully configured Command.
+        """
+        var cmd_name = String(Self.name())
+        if not cmd_name:
+            cmd_name = String("command")
+        var cmd = Command(
+            cmd_name,
+            String(Self.description()),
+            version=String(Self.version()),
+        )
+        _reflect_and_register[Self](cmd)
+        Self.subcommands(cmd)
+        return cmd^
+
+    @staticmethod
+    def from_command(var cmd: Command) raises -> Self:
+        """Parse using a pre-configured Command and return a populated Self.
+
+        Use after ``to_command()`` + builder customisations.
+
+        Args:
+            cmd: A Command (typically from ``to_command()``).
+
+        Returns:
+            A populated instance of Self.
+        """
+        var result = cmd.parse()
+        return _from_result[Self](result)
+
+    # ── Dual return ──
+
+    @staticmethod
+    def parse_split() raises -> Tuple[Self, ParseResult]:
+        """Build, parse argv, and return both Self and raw ParseResult.
+
+        Use when you need both typed fields and subcommand dispatch.
+
+        Returns:
+            A tuple of (populated Self, raw ParseResult).
+        """
+        var cmd = Self.to_command()
+        var result = cmd.parse()
+        var args = _from_result[Self](result)
+        return Tuple[Self, ParseResult](args^, result^)
+
+    @staticmethod
+    def from_command_split(var cmd: Command) raises -> Tuple[Self, ParseResult]:
+        """Parse using a pre-configured Command and return both Self and ParseResult.
+
+        Essential for subcommand dispatch: the typed Self gives
+        root-level flags, ParseResult gives subcommand name + fields.
+
+        Args:
+            cmd: A Command (typically from ``to_command()``).
+
+        Returns:
+            A tuple of (populated Self, raw ParseResult).
+        """
+        var result = cmd.parse()
+        var args = _from_result[Self](result)
+        return Tuple[Self, ParseResult](args^, result^)
+
+    # ── Subcommand write-back ──
+
+    @staticmethod
+    def from_result(result: ParseResult) raises -> Self:
+        """Populate Self from an existing ParseResult (no parsing).
+
+        Useful for subcommand dispatch — after the parent parses,
+        extract child fields from the subcommand result.
+
+        Args:
+            result: The ParseResult containing parsed values.
+
+        Returns:
+            A populated instance of Self.
+        """
+        return _from_result[Self](result)
+
 
 # =======================================================================
 # Reflection helpers

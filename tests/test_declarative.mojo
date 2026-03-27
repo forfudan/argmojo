@@ -29,10 +29,16 @@ struct Grep(Parsable):
     var debug_level: Count[long="debug", short="d", help="Debug level", max=3]
 
     def __init__(out self):
-        self.output = Option[String, long="output", short="o", help="Output file"]()
+        self.output = Option[
+            String, long="output", short="o", help="Output file"
+        ]()
         self.verbose = Flag[short="v", help="Verbose mode"]()
-        self.pattern = Positional[String, help="Search pattern", required=True]()
-        self.debug_level = Count[long="debug", short="d", help="Debug level", max=3]()
+        self.pattern = Positional[
+            String, help="Search pattern", required=True
+        ]()
+        self.debug_level = Count[
+            long="debug", short="d", help="Debug level", max=3
+        ]()
 
     fn __init__(out self, *, deinit take: Self):
         self.output = take.output^
@@ -61,16 +67,27 @@ def test_to_command() raises:
 
     # Should have 4 arguments.
     print("  arg count:", len(cmd.args))
-    assert_true(len(cmd.args) == 4, "expected 4 args, got " + String(len(cmd.args)))
+    assert_true(
+        len(cmd.args) == 4, "expected 4 args, got " + String(len(cmd.args))
+    )
 
     for i in range(len(cmd.args)):
-        print("  [" + String(i) + "]", cmd.args[i].name,
-              "long:", cmd.args[i]._long_name,
-              "short:", cmd.args[i]._short_name,
-              "help:", cmd.args[i].help_text,
-              "flag:", cmd.args[i]._is_flag,
-              "positional:", cmd.args[i]._is_positional,
-              "count:", cmd.args[i]._is_count)
+        print(
+            "  [" + String(i) + "]",
+            cmd.args[i].name,
+            "long:",
+            cmd.args[i]._long_name,
+            "short:",
+            cmd.args[i]._short_name,
+            "help:",
+            cmd.args[i].help_text,
+            "flag:",
+            cmd.args[i]._is_flag,
+            "positional:",
+            cmd.args[i]._is_positional,
+            "count:",
+            cmd.args[i]._is_count,
+        )
 
     # Check output option.
     assert_true(cmd.args[0].name == "output", "arg0 name")
@@ -175,6 +192,47 @@ def test_auto_naming() raises:
     print("  PASSED\n")
 
 
+def test_trait_methods() raises:
+    """Test calling parse/to_command/from_result as trait static methods on the struct.
+    """
+    print("=== test_trait_methods ===")
+
+    # Grep.to_command() — trait method
+    var cmd = Grep.to_command()
+    assert_true(len(cmd.args) == 4, "trait to_command arg count")
+    print("  Grep.to_command(): OK")
+
+    # Grep.parse_args() — trait method
+    var args = List[String]()
+    args.append(String("grep"))
+    args.append(String("--output"))
+    args.append(String("trait.txt"))
+    args.append(String("-v"))
+    args.append(String("pattern"))
+
+    var grep = Grep.parse_args(args)
+    assert_true(grep.output.value == "trait.txt", "trait parse_args output")
+    assert_true(grep.verbose.value, "trait parse_args verbose")
+    assert_true(grep.pattern.value == "pattern", "trait parse_args pattern")
+    print("  Grep.parse_args(): OK")
+
+    # Grep.from_result() — trait method
+    var cmd2 = Grep.to_command()
+    var args2 = List[String]()
+    args2.append(String("grep"))
+    args2.append(String("query"))
+    var result = cmd2.parse_arguments(args2)
+    var grep2 = Grep.from_result(result)
+    assert_true(grep2.pattern.value == "query", "trait from_result pattern")
+    print("  Grep.from_result(): OK")
+
+    # Grep.from_command() — just verify it compiles (needs real argv to run)
+    # var cmd3 = Grep.to_command()
+    # var grep3 = Grep.from_command(cmd3^)
+
+    print("  PASSED\n")
+
+
 # =======================================================================
 # Helpers
 # =======================================================================
@@ -195,4 +253,5 @@ def main() raises:
     test_parse_args()
     test_from_result()
     test_auto_naming()
+    test_trait_methods()
     print("All Phase 1 tests passed!")
