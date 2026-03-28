@@ -1,4 +1,4 @@
-"""Phase 3 declarative subcommand tests.
+"""Declarative subcommand tests.
 
 Tests Parsable structs as subcommand participants:
   - Flat subcommands: parent Parsable + Parsable children via subcommands() hook
