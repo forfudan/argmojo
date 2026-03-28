@@ -9,15 +9,15 @@ Simulates the interface of the ``mojo`` command-line tool:
     jomo doc src/mylib/__init__.mojo
 
 No actual compilation happens — only argument parsing and a summary.
-This demo starts simple and will grow as more declarative features land.
 
 Showcases:
   - Declarative root struct with ``Parsable`` trait
-  - Global options via ``Option`` and ``Flag`` wrappers
-  - Auto-naming (underscore → hyphen in long names)
-  - The ``subcommands()`` hook to register builder-API child commands
-  - Hybrid approach: declarative root + builder subcommands
-  - ``parse_split`` for subcommand dispatch
+  - Declarative subcommand structs (``format``, ``doc``, ``package``)
+  - Builder subcommands (``run``, ``build``) for shared compilation options
+  - Hybrid: declarative root + both declarative and builder children
+  - ``subcommands()`` hook with ``ChildParsable.to_command()``
+  - ``from_result[T]()`` write-back for typed subcommand dispatch
+  - ``run()`` dispatch pattern
 
 Try these (build first with: pixi run mojo build -I src -o jomo examples/jomo.mojo):
 
@@ -40,6 +40,7 @@ from argmojo import (
     Parsable,
     Option,
     Flag,
+    Positional,
     Count,
     to_command,
     from_result,
@@ -70,23 +71,155 @@ struct Jomo(Parsable):
 
     @staticmethod
     def subcommands(mut cmd: Command) raises:
-        """Register all subcommands using the builder API."""
-        cmd.add_subcommand(_build_run())
-        cmd.add_subcommand(_build_build())
-        cmd.add_subcommand(_build_package())
-        cmd.add_subcommand(_build_format())
-        cmd.add_subcommand(_build_doc())
+        """Register subcommands — mix of declarative and builder."""
+        # Builder subcommands (share compilation/target option helpers)
+        # `build_run()` and `build_build()` returns Command instances
+        # that are defined with builder-style APIs (not Parsable structs).
+        cmd.add_subcommand(build_run())
+        cmd.add_subcommand(build_build())
+        # Declarative subcommands
+        var pkg = JomoPackage.to_command()
+        pkg.help_on_no_arguments()
+        cmd.add_subcommand(pkg^)
+        var fmt = JomoFormat.to_command()
+        fmt.help_on_no_arguments()
+        cmd.add_subcommand(fmt^)
+        var doc = JomoDoc.to_command()
+        doc.help_on_no_arguments()
+        cmd.add_subcommand(doc^)
 
     def run(self) raises:
         print("Jomo -- run a subcommand. Try: jomo --help")
 
 
 # =====================================================================
-# Subcommands (builder API — declarative subcommands are Phase 2)
+# Declarative subcommands: format, doc, package (Parsable structs)
 # =====================================================================
 
 
-def _shared_compilation_options(mut cmd: Command) raises:
+struct JomoFormat(Parsable):
+    """Format Mojo source files."""
+
+    var line_length: Option[
+        Int,
+        long="line-length",
+        short="l",
+        help="Max character line length",
+        default="80",
+        has_range=True,
+        range_min=1,
+        range_max=200,
+        value_name="INTEGER",
+        group="Format options",
+    ]
+    var quiet: Flag[
+        long="quiet",
+        short="q",
+        help="Disables non-error messages",
+        group="Diagnostic options",
+    ]
+    var source: Positional[
+        String,
+        help="Mojo source file to format",
+        required=True,
+        value_name="SOURCE",
+    ]
+
+    @staticmethod
+    def name() -> String:
+        return "format"
+
+    @staticmethod
+    def description() -> String:
+        return "Formats Mojo source files."
+
+    def run(self) raises:
+        print("Formatting:", self.source.value)
+        print("  line-length:", self.line_length.value)
+        if self.quiet.value:
+            print("  (quiet mode)")
+
+
+struct JomoDoc(Parsable):
+    """Compile docstrings from a Mojo file."""
+
+    var path: Positional[
+        String,
+        help="Path to the Mojo source file",
+        required=True,
+        value_name="PATH",
+    ]
+    var output: Option[
+        String,
+        long="output",
+        short="o",
+        help="Output path for generated docs",
+        value_name="PATH",
+        group="Output options",
+    ]
+
+    @staticmethod
+    def name() -> String:
+        return "doc"
+
+    @staticmethod
+    def description() -> String:
+        return "Compiles docstrings from a Mojo file."
+
+    def run(self) raises:
+        print("Generating docs for:", self.path.value)
+        if self.output.value:
+            print("  output:", self.output.value)
+
+
+struct JomoPackage(Parsable):
+    """Compile a Mojo package."""
+
+    var path: Positional[
+        String,
+        help="Path to the package directory",
+        required=True,
+        value_name="PATH",
+    ]
+    var output: Option[
+        String,
+        long="output",
+        short="o",
+        help="Output path (.mojopkg)",
+        value_name="PATH",
+        group="Output options",
+    ]
+    var include_path: Option[
+        List[String],
+        long="include-path",
+        short="I",
+        help="Append to the module search path",
+        append=True,
+        value_name="PATH",
+    ]
+
+    @staticmethod
+    def name() -> String:
+        return "package"
+
+    @staticmethod
+    def description() -> String:
+        return "Compiles a Mojo package."
+
+    def run(self) raises:
+        print("Packaging:", self.path.value)
+        if self.output.value:
+            print("  output:", self.output.value)
+        for i in range(len(self.include_path.value)):
+            print("  include:", self.include_path.value[i])
+
+
+# =====================================================================
+# Builder subcommands: run, build (share compilation/target options)
+# =====================================================================
+
+
+def shared_compilation_options(mut cmd: Command) raises:
     """Add options shared by `run` and `build`."""
     cmd.add_argument(
         Argument("optimization-level", help="Optimization level (0-3)")
@@ -137,7 +270,7 @@ def _shared_compilation_options(mut cmd: Command) raises:
     )
 
 
-def _shared_target_options(mut cmd: Command) raises:
+def shared_target_options(mut cmd: Command) raises:
     """Add target options shared by `run` and `build`."""
     cmd.add_argument(
         Argument("target-triple", help="Compilation target triple")
@@ -159,10 +292,10 @@ def _shared_target_options(mut cmd: Command) raises:
     )
 
 
-def _build_run() raises -> Command:
+def build_run() raises -> Command:
     var cmd = Command("run", "Builds and executes a Mojo file.")
-    _shared_compilation_options(cmd)
-    _shared_target_options(cmd)
+    shared_compilation_options(cmd)
+    shared_target_options(cmd)
     cmd.add_argument(
         Argument("path", help="Path to the Mojo source file")
         .positional()
@@ -179,10 +312,10 @@ def _build_run() raises -> Command:
     return cmd^
 
 
-def _build_build() raises -> Command:
+def build_build() raises -> Command:
     var cmd = Command("build", "Builds an executable from a Mojo file.")
-    _shared_compilation_options(cmd)
-    _shared_target_options(cmd)
+    shared_compilation_options(cmd)
+    shared_target_options(cmd)
     cmd.add_argument(
         Argument("output", help="Output path for the executable")
         .long["output"]()
@@ -215,86 +348,13 @@ def _build_build() raises -> Command:
     return cmd^
 
 
-def _build_package() raises -> Command:
-    var cmd = Command("package", "Compiles a Mojo package.")
-    cmd.add_argument(
-        Argument("path", help="Path to the package directory")
-        .positional()
-        .required()
-        .value_name["PATH"]()
-    )
-    cmd.add_argument(
-        Argument("output", help="Output path (.mojopkg)")
-        .long["output"]()
-        .short["o"]()
-        .value_name["PATH"]()
-        .group["Output options"]()
-    )
-    cmd.add_argument(
-        Argument("include-path", help="Append to the module search path")
-        .long["include-path"]()
-        .short["I"]()
-        .append()
-        .value_name["PATH"]()
-    )
-    cmd.help_on_no_arguments()
-    return cmd^
-
-
-def _build_format() raises -> Command:
-    var cmd = Command("format", "Formats Mojo source files.")
-    cmd.add_argument(
-        Argument("line-length", help="Max character line length")
-        .long["line-length"]()
-        .short["l"]()
-        .default["80"]()
-        .range[1, 200]()
-        .value_name["INTEGER"]()
-        .group["Format options"]()
-    )
-    cmd.add_argument(
-        Argument("quiet", help="Disables non-error messages")
-        .long["quiet"]()
-        .short["q"]()
-        .flag()
-        .group["Diagnostic options"]()
-    )
-    cmd.add_argument(
-        Argument("source", help="Mojo source file to format")
-        .positional()
-        .required()
-        .value_name["SOURCE"]()
-    )
-    cmd.help_on_no_arguments()
-    return cmd^
-
-
-def _build_doc() raises -> Command:
-    var cmd = Command("doc", "Compiles docstrings from a Mojo file.")
-    cmd.add_argument(
-        Argument("path", help="Path to the Mojo source file")
-        .positional()
-        .required()
-        .value_name["PATH"]()
-    )
-    cmd.add_argument(
-        Argument("output", help="Output path for generated docs")
-        .long["output"]()
-        .short["o"]()
-        .value_name["PATH"]()
-        .group["Output options"]()
-    )
-    cmd.help_on_no_arguments()
-    return cmd^
-
-
 # =====================================================================
 # Entry point
 # =====================================================================
 
 
 def main() raises:
-    # Build the command tree: declarative root + builder subcommands.
+    # Build the command tree: declarative root + mixed subcommands.
     var cmd = to_command[Jomo]()
 
     # Parse argv.
@@ -303,8 +363,23 @@ def main() raises:
     # Populate the declarative root struct.
     var jomo = from_result[Jomo](result)
 
-    # Show what we got.
+    # Show verbosity if set.
     if jomo.verbose.value > 0:
         print("Verbosity level:", jomo.verbose.value)
 
-    result.print_summary()
+    # Dispatch subcommands.
+    if result.has_subcommand_result():
+        var sub = result.get_subcommand_result()
+
+        # Declarative subcommands — typed dispatch via from_result + run().
+        if result.subcommand == "format":
+            from_result[JomoFormat](sub).run()
+        elif result.subcommand == "doc":
+            from_result[JomoDoc](sub).run()
+        elif result.subcommand == "package":
+            from_result[JomoPackage](sub).run()
+        else:
+            # Builder subcommands (run, build) — use raw ParseResult.
+            sub.print_summary()
+    else:
+        jomo.run()
