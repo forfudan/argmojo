@@ -73,7 +73,7 @@ struct Jomo(Parsable):
     def subcommands(mut cmd: Command) raises:
         """Register subcommands — mix of declarative and builder."""
         # Builder subcommands (share compilation/target option helpers)
-        # `build_run()` and `build_build()` returns Command instances
+        # `build_run()` and `build_build()` return Command instances
         # that are defined with builder-style APIs (not Parsable structs).
         cmd.add_subcommand(build_run())
         cmd.add_subcommand(build_build())

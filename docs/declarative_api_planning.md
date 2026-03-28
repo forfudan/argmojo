@@ -167,7 +167,7 @@ What I think argmojo can add beyond Swift:
 │  Parsable.parse_split() → (Self, ParseResult)  (dual return)             │
 │  Parsable.parse_args()  → Self      (parse from explicit arg list)       │
 │  Parsable.validate()    → None      (post-parse cross-field validation)  │
-│  (wrapper types are Defaultable — initialise fields explicitly)          │
+│  (wrapper types are auto-initialised by Parsable — no manual __init__)   │
 │                                                                          │
 │  argument_wrappers.mojo — wrapper types:                                 │
 │  Positional[T, ...], Option[T, ...], Flag[...], Count[...]               │
