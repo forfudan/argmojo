@@ -1,5 +1,6 @@
 """Declares the Parsable trait, reflection helpers, and convenience functions."""
 
+from std.builtin.constrained import _constrained_field_conforms_to
 from std.reflection import (
     struct_field_count,
     struct_field_names,
@@ -19,6 +20,9 @@ trait Parsable(Defaultable, Movable):
     compile-time reflection over wrapper-typed fields (Option, Flag,
     Positional, Count).
 
+    The default ``__init__`` is provided automatically via reflection,
+    and the compiler synthesises the move ``__init__`` from ``Movable``
+    conformance, so conforming structs do **not** need to define them.
     Users only need to provide ``description()`` (required) and
     optionally override ``version()``, ``name()``, and ``subcommands()``.
 
@@ -33,16 +37,46 @@ trait Parsable(Defaultable, Movable):
                            help="Output file"]
         var verbose: Flag[short="v", help="Enable verbose output"]
 
-        def __init__(out self):
-            self.output = Option[String, long="output", short="o",
-                                 help="Output file"]()
-            self.verbose = Flag[short="v", help="Enable verbose output"]()
-
         @staticmethod
         def description() -> String:
             return "My awesome tool."
     ```
     """
+
+    fn __init__(out self):
+        """Default-initialise all fields via reflection.
+
+        Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
+        compiler's definite-assignment check, then placement-news each
+        field with ``UnsafePointer.init_pointee_move(type_of(field)())``.
+        Otherwise, the user would have to write a custom ``__init__`` that
+        manually default-constructs each field.
+        """
+        # [Mojo Miji]
+        # When Mojo compiles this struct, it calculates the full memory layout
+        # before compiling the __init__. This means that at this point, the
+        # struct's fields are reserved in the memory layout but not yet
+        # initialized. We can safely tell the compiler to treat them as
+        # initialized so that we can reflect over the fields and initialize them
+        # in a loop using unsafe pointer operations.
+        __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
+        comptime field_count = struct_field_count[Self]()
+        comptime field_types = struct_field_types[Self]()
+        comptime for i in range(field_count):
+            comptime FieldType = field_types[i]
+            _constrained_field_conforms_to[
+                conforms_to(FieldType, Defaultable & Movable),
+                Parent=Self,
+                FieldIndex=i,
+                ParentConformsTo="Defaultable & Movable",
+            ]()
+            ref field = trait_downcast[Movable & Defaultable](
+                __struct_field_ref(i, self)
+            )
+            # [Mojo Miji]
+            # type_of(field)() calls the default constructor for the field's
+            # type, which is an instance of one of the argument wrapper structs.
+            UnsafePointer(to=field).init_pointee_move(type_of(field)())
 
     @staticmethod
     def description() -> String:

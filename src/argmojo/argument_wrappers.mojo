@@ -111,7 +111,8 @@ struct Option[
 
     Parameters:
         T: The value type stored at runtime.
-        long: Long option name (e.g. ``"output"`` for ``--output``). Empty = auto from field name.
+        long: Long option name (e.g. ``"output"`` for ``--output``).
+            Empty = auto from field name.
         short: Short option character (e.g. ``"o"`` for ``-o``).
         help: Help text shown in ``--help`` output.
         alias_name: Comma-separated alias long names.
