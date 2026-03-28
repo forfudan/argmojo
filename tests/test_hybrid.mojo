@@ -1,17 +1,22 @@
-"""Phase 2: Hybrid declarative + builder tests.
+"""Hybrid declarative + builder tests.
 
 Tests the bridge between declarative Parsable structs and
-builder-level customisations via to_command() / from_command() /
-parse_split() / from_command_split().
+builder-level customisations using to_command(), parse_arguments(),
+parse_args(), ParseResult, and from_result().
 
 Covers:
-  - to_command() + builder modifications + parse
-  - parse_split() dual return with extra builder args
+  - to_command() + builder modifications + parse_arguments() + from_result()
+  - Free functions: to_command[T](), parse_args[T](), from_result[T]()
   - mutually_exclusive() via to_command()
   - required_together() via to_command()
   - implies() via to_command()
-  - extra builder args accessible via ParseResult
+  - Extra builder args accessible via ParseResult
   - configure() free function pattern
+
+Note: from_command(), parse_split(), and from_command_split() call
+cmd.parse() which reads sys.argv(), so they cannot be exercised in
+unit tests with synthetic argument lists.  Their logic is identical
+to to_command() + parse_arguments() + from_result() which IS tested.
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
@@ -23,12 +28,9 @@ from argmojo import (
     Option,
     Flag,
     Positional,
-    Count,
-    ParseResult,
     to_command,
     parse_args,
     from_result,
-    from_command_split,
 )
 
 
@@ -393,9 +395,8 @@ def test_configure_function_pattern() raises:
     var cmd = Deploy.to_command()
     configure_deploy(cmd)
 
-    # --force implies --tag, so providing --force without --tag
-    # means tag gets auto-set (as empty flag). Let's test the
-    # non-conflicting path first.
+    # configure_deploy sets a mutually exclusive group for --force/--dry-run.
+    # This test covers the non-conflicting case where only --dry-run is used.
     var args: List[String] = ["command", "--dry-run", "staging"]
     var result = cmd.parse_arguments(args)
     var deploy = Deploy.from_result(result)
@@ -425,7 +426,104 @@ def test_configure_exclusive_enforced() raises:
 
 
 # =======================================================================
-# 8. Combined: declarative struct + builder constraints + mixed access
+# 8. Free functions: to_command[T](), parse_args[T](), from_result[T]()
+# =======================================================================
+
+
+def test_free_to_command() raises:
+    """Free function to_command[T]() builds Command with all arguments."""
+    var cmd = to_command[Deploy]()
+
+    # Same result as Deploy.to_command() — 5 args registered.
+    assert_true(
+        len(cmd.args) == 5, "expected 5 args, got " + String(len(cmd.args))
+    )
+
+
+def test_free_parse_args() raises:
+    """Free function parse_args[T]() parses an argument list into a typed struct.
+    """
+    var args: List[String] = [
+        "command",
+        "--tag",
+        "v3.0",
+        "-f",
+        "--replicas",
+        "7",
+        "staging",
+    ]
+    var deploy = parse_args[Deploy](args)
+
+    assert_equal(deploy.target.value, "staging")
+    assert_equal(deploy.tag.value, "v3.0")
+    assert_true(deploy.force.value, msg="force should be True")
+    assert_equal(deploy.replicas.value, 7)
+
+
+def test_free_from_result() raises:
+    """Free function from_result[T]() populates struct from ParseResult."""
+    var cmd = to_command[AuthArgs]()
+    var args: List[String] = ["command", "-u", "alice", "--token", "tok123"]
+    var result = cmd.parse_arguments(args)
+
+    # Use the free function, not the trait method.
+    var auth = from_result[AuthArgs](result)
+    assert_equal(auth.username.value, "alice")
+    assert_equal(auth.token.value, "tok123")
+    assert_equal(auth.password.value, "")
+
+
+def test_free_functions_with_builder_mods() raises:
+    """Free functions + builder mods: to_command → customise → parse → from_result.
+    """
+    var cmd = to_command[Deploy]()
+    var group: List[String] = ["force", "dry_run"]
+    cmd.mutually_exclusive(group^)
+    cmd.add_tip("Use --dry-run to preview")
+
+    var args: List[String] = ["command", "--dry-run", "--replicas", "2", "prod"]
+    var result = cmd.parse_arguments(args)
+
+    var deploy = from_result[Deploy](result)
+    assert_equal(deploy.target.value, "prod")
+    assert_true(deploy.dry_run.value, msg="dry_run should be True")
+    assert_false(deploy.force.value, msg="force should be False")
+    assert_equal(deploy.replicas.value, 2)
+
+
+def test_dual_return_typed_and_raw() raises:
+    """Dual return pattern: both typed struct AND raw ParseResult from same parse.
+    """
+    var cmd = to_command[Convert]()
+    cmd.add_argument(
+        Argument("format", help="Output format")
+        .long["format"]()
+        .default["json"]()
+    )
+
+    var args: List[String] = [
+        "command",
+        "--format",
+        "yaml",
+        "-o",
+        "out.yaml",
+        "input.json",
+    ]
+    var result = cmd.parse_arguments(args)
+
+    # Typed access via free function.
+    var conv = from_result[Convert](result)
+    assert_equal(conv.input.value, "input.json")
+    assert_equal(conv.output.value, "out.yaml")
+
+    # Raw access for both declarative and builder-added fields.
+    assert_equal(result.get_string("format"), "yaml")
+    assert_equal(result.get_string("output"), "out.yaml")
+    assert_equal(result.get_string("input"), "input.json")
+
+
+# =======================================================================
+# 9. Combined: declarative struct + builder constraints + mixed access
 # =======================================================================
 
 
