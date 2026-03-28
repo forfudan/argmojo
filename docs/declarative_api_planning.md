@@ -1365,11 +1365,11 @@ I think this is the right call — these features describe *relationships betwee
 
 ### Phase 2: Hybrid Features
 
-- [ ] Test `to_command()` + builder modifications + `from_command()` end-to-end
-- [ ] Test `parse_split()` dual return with extra builder args
-- [ ] Test: `mutually_exclusive()` via `to_command()`
-- [ ] Test: extra builder args via `parse_split()`
-- [ ] Document the `configure()` free function pattern for reusable configuration
+- [x] Test `to_command()` + builder modifications + `from_command()` end-to-end
+- [x] Test `parse_split()` dual return with extra builder args
+- [x] Test: `mutually_exclusive()` via `to_command()`
+- [x] Test: extra builder args via `parse_split()`
+- [x] Document the `configure()` free function pattern for reusable configuration
 
 ### Phase 3: Subcommands
 
