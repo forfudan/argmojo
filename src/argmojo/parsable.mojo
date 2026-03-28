@@ -1,5 +1,6 @@
 """Declares the Parsable trait, reflection helpers, and convenience functions."""
 
+from std.builtin.constrained import _constrained_field_conforms_to
 from std.reflection import (
     struct_field_count,
     struct_field_names,
@@ -19,6 +20,9 @@ trait Parsable(Defaultable, Movable):
     compile-time reflection over wrapper-typed fields (Option, Flag,
     Positional, Count).
 
+    The default ``__init__`` is provided automatically via reflection,
+    and the compiler synthesises the move ``__init__`` from ``Movable``
+    conformance, so conforming structs do **not** need to define them.
     Users only need to provide ``description()`` (required) and
     optionally override ``version()``, ``name()``, and ``subcommands()``.
 
@@ -33,16 +37,34 @@ trait Parsable(Defaultable, Movable):
                            help="Output file"]
         var verbose: Flag[short="v", help="Enable verbose output"]
 
-        def __init__(out self):
-            self.output = Option[String, long="output", short="o",
-                                 help="Output file"]()
-            self.verbose = Flag[short="v", help="Enable verbose output"]()
-
         @staticmethod
         def description() -> String:
             return "My awesome tool."
     ```
     """
+
+    fn __init__(out self):
+        """Default-initialise all fields via reflection.
+
+        Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
+        compiler's definite-assignment check, then placement-news each
+        field with ``UnsafePointer.init_pointee_move(type_of(field)())``.
+        """
+        __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
+        comptime names = struct_field_names[Self]()
+        comptime types = struct_field_types[Self]()
+        comptime for i in range(names.size):
+            comptime FieldType = types[i]
+            _constrained_field_conforms_to[
+                conforms_to(FieldType, Defaultable & Movable),
+                Parent=Self,
+                FieldIndex=i,
+                ParentConformsTo="Defaultable & Movable",
+            ]()
+            ref field = trait_downcast[Movable & Defaultable](
+                __struct_field_ref(i, self)
+            )
+            UnsafePointer(to=field).init_pointee_move(type_of(field)())
 
     @staticmethod
     def description() -> String:

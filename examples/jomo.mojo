@@ -56,14 +56,6 @@ struct Jomo(Parsable):
 
     var verbose: Count[short="v", help="Increase verbosity", persistent=True]
 
-    def __init__(out self):
-        self.verbose = Count[
-            short="v", help="Increase verbosity", persistent=True
-        ]()
-
-    fn __init__(out self, *, deinit take: Self):
-        self.verbose = take.verbose^
-
     @staticmethod
     def description() -> String:
         return String("The Jomo command line interface.")

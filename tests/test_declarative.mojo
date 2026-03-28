@@ -29,24 +29,6 @@ struct Grep(Parsable):
     var pattern: Positional[String, help="Search pattern", required=True]
     var debug_level: Count[long="debug", short="d", help="Debug level", max=3]
 
-    def __init__(out self):
-        self.output = Option[
-            String, long="output", short="o", help="Output file"
-        ]()
-        self.verbose = Flag[short="v", help="Verbose mode"]()
-        self.pattern = Positional[
-            String, help="Search pattern", required=True
-        ]()
-        self.debug_level = Count[
-            long="debug", short="d", help="Debug level", max=3
-        ]()
-
-    fn __init__(out self, *, deinit take: Self):
-        self.output = take.output^
-        self.verbose = take.verbose^
-        self.pattern = take.pattern^
-        self.debug_level = take.debug_level^
-
     @staticmethod
     def description() -> String:
         return String("Search for patterns in files.")
@@ -127,14 +109,6 @@ def test_from_result() raises:
 struct AutoNameArgs(Parsable):
     var no_color: Flag[help="Disable color"]
     var max_depth: Option[Int, help="Max depth"]
-
-    def __init__(out self):
-        self.no_color = Flag[help="Disable color"]()
-        self.max_depth = Option[Int, help="Max depth"]()
-
-    fn __init__(out self, *, deinit take: Self):
-        self.no_color = take.no_color^
-        self.max_depth = take.max_depth^
 
     @staticmethod
     def description() -> String:
