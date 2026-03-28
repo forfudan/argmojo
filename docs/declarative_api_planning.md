@@ -1365,11 +1365,13 @@ I think this is the right call — these features describe *relationships betwee
 
 ### Phase 2: Hybrid Features
 
-- [ ] Test `to_command()` + builder modifications + `from_command()` end-to-end
-- [ ] Test `parse_split()` dual return with extra builder args
-- [ ] Test: `mutually_exclusive()` via `to_command()`
-- [ ] Test: extra builder args via `parse_split()`
-- [ ] Document the `configure()` free function pattern for reusable configuration
+- [x] Test `to_command()` + builder modifications + `from_result()` end-to-end
+- [x] Test dual-return pattern (typed struct + raw ParseResult from same parse)
+- [x] Test: `mutually_exclusive()` via `to_command()`
+- [x] Test: extra builder args accessible via ParseResult + `from_result()`
+- [x] Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_result[T]()`
+- [x] Document the `configure()` free function pattern (via test helper + test)
+- Note: `from_command()`, `parse_split()`, `from_command_split()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_result()` which **is** tested.
 
 ### Phase 3: Subcommands
 

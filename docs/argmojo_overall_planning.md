@@ -579,6 +579,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:" section in help, completions, and error messages; dispatchable by exact name or alias (clap `Command::hide`, cobra `Hidden`) (PR #9)
 - [x] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set (any value, including empty), suppress all ANSI colour output; lower priority than explicit `.color(False)` API call (PR #9)
 - [x] **Value-name wrapping control** — `.value_name[wrapped: Bool = True]("NAME")` displays custom value names in `<NAME>` by default (matching clap/cargo/pixi/git convention); pass `False` for bare display (PR #17)
+- [ ] **Extend `implies()`** - support value-taking options with a default value, e.g., `cmd.implies("debug", "output", "debug.log")` — when `--debug` is set, auto-set `--output` to `"debug.log"`. Currently `implies()` only supports flag/count targets (same as cobra in Go). Revisit when there is a concrete use case.
 
 #### Explicitly Out of Scope in This Phase
 
