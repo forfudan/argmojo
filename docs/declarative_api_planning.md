@@ -26,18 +26,18 @@ I want the declarative API to satisfy five goals:
 
 Available compile-time reflection primitives:
 
-| API                                 | Purpose                                  |
-| ----------------------------------- | ---------------------------------------- |
-| `struct_field_count[T]()`           | Number of fields in struct T             |
-| `struct_field_names[T]()`           | Indexable list of field name strings     |
-| `struct_field_types[T]()`           | Indexable list of field types            |
-| `get_type_name[T]()`                | String name of type T                    |
-| `__struct_field_ref(idx, instance)` | Reference to field by compile-time index |
-| `conforms_to(type, Trait)`          | Compile-time trait conformance check     |
-| `trait_downcast[Trait](value)`      | Cast value to trait-conforming type      |
-| `@fieldwise_init`                   | Auto-generate constructor from fields    |
-| `comptime for idx in range(N)`      | Compile-time loop                        |
-| `comptime if condition`             | Compile-time conditional                 |
+| API                                 | Purpose                                                    |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `struct_field_count[T]()`           | Number of fields in struct T                               |
+| `struct_field_names[T]()`           | Indexable list of field name strings                       |
+| `struct_field_types[T]()`           | Indexable list of field types                              |
+| `get_type_name[T]()`                | String name of type T                                      |
+| `__struct_field_ref(idx, instance)` | Reference to field by compile-time index                   |
+| `conforms_to(type, Trait)`          | Compile-time trait conformance check                       |
+| `trait_downcast[Trait](value)`      | Cast value to trait-conforming type                        |
+| ~~`@fieldwise_init`~~               | ~~Auto-generate constructor from fields~~[^fieldwise_init] |
+| `comptime for idx in range(N)`      | Compile-time loop                                          |
+| `comptime if condition`             | Compile-time conditional                                   |
 
 **Key limitation**: No proc macros, no custom decorators, no `#[derive(...)]`. So all declarative behavior has to be implemented via parametric functions that reflect over user-defined structs.
 
@@ -143,7 +143,7 @@ What I think argmojo can add beyond Swift:
 │      var name: Positional[String, help="Name", required=True]            │
 │      var verbose: Flag[short="v", help="Verbose"]                        │
 │      var output: Option[String, long="output", short="o"]                │
-│      def __init__(out self):  # initialise each field explicitly         │
+│      # No __init__ needed — Parsable auto-initialises all fields         │
 │                                                                          │
 │  # Pure declarative (one line):                                          │
 │  var args = MyArgs.parse()                                               │
@@ -167,7 +167,7 @@ What I think argmojo can add beyond Swift:
 │  Parsable.parse_split() → (Self, ParseResult)  (dual return)             │
 │  Parsable.parse_args()  → Self      (parse from explicit arg list)       │
 │  Parsable.validate()    → None      (post-parse cross-field validation)  │
-│  (wrapper types are Defaultable — initialise fields explicitly)           │
+│  (wrapper types are auto-initialised by Parsable — no manual __init__)   │
 │                                                                          │
 │  argument_wrappers.mojo — wrapper types:                                 │
 │  Positional[T, ...], Option[T, ...], Flag[...], Count[...]               │
@@ -487,9 +487,6 @@ Minimal implementation — you only need to provide `description()`:
 struct MyArgs(Parsable):
     var input: Positional[String, help="Input file", required=True]
 
-    def __init__(out self):
-        self.input = Positional[String, help="Input file", required=True]()
-
     @staticmethod
     def description() -> String:
         return "My awesome tool"
@@ -555,19 +552,15 @@ def _from_result[T: Parsable](result: ParseResult) raises -> T:
     return out
 ```
 
-### 4.4 Explicit Field Initialization
+### 4.4 Field Initialization (Auto-Init)
 
-Each wrapper type (`Positional`, `Option`, `Flag`, `Count`) implements `Defaultable`,
-so the user initialises every field in `__init__` with the wrapper's default constructor:
-
-```mojo
-def __init__(out self):
-    self.pattern = Positional[String, help="Search pattern", required=True]()
-    self.verbose = Flag[short="v", help="Verbose"]()
-    self.output = Option[String, long="output", short="o"]()
-```
-
-This keeps the struct fully self-describing — no external helper needed.
+> **Update**: As of Phase 1 implementation, users **no longer need to write `__init__`**.
+> The `Parsable` trait provides a default `__init__` that uses
+> `__mlir_op.lit.ownership.mark_initialized` + `comptime for` +
+> `UnsafePointer.init_pointee_move(type_of(field)())` to auto-initialise
+> every field via reflection. The compiler auto-synthesises the move init
+> from `Movable` conformance. Users only need to declare fields and
+> provide `description()`.
 
 ### 4.5 Auto-Naming Convention
 
@@ -601,6 +594,10 @@ This generates `.alias_name["out"]().alias_name["dest"]()`.
 
 ## 5. Usage Examples
 
+> **Note**: The examples below have been updated to reflect the current
+> implementation. Users no longer need to write `__init__` — the `Parsable`
+> trait auto-initialises all fields via reflection (see §4.4).
+
 ### 5.1 Pure Declarative (Simple Tool)
 
 ```mojo
@@ -616,15 +613,6 @@ struct Grep(Parsable):
     var max_count: Option[Int, short="m", long="max-count", help="Stop after N matches", default="0"]
     var verbose: Count[short="v", help="Increase verbosity", max=3]
     var ext: Option[List[String], short="e", long="ext", help="File extensions", append=True]
-
-    def __init__(out self):
-        self.pattern = Positional[String, help="Search pattern", required=True]()
-        self.path = Positional[String, help="File or directory", default="."]()
-        self.ignore_case = Flag[short="i", help="Case-insensitive search"]()
-        self.count_only = Flag[short="c", long="count", help="Only print match count"]()
-        self.max_count = Option[Int, short="m", long="max-count", help="Stop after N matches", default="0"]()
-        self.verbose = Count[short="v", help="Increase verbosity", max=3]()
-        self.ext = Option[List[String], short="e", long="ext", help="File extensions", append=True]()
 
     @staticmethod
     def description() -> String:
@@ -661,14 +649,6 @@ struct Deploy(Parsable):
     var replicas: Option[Int, long="replicas", short="r", help="Number of replicas",
                       default="3", has_range=True, range_min=1, range_max=100]
 
-    def __init__(out self):
-        self.target = Positional[String, help="Deploy target", required=True, choices="staging,prod"]()
-        self.force = Flag[short="f", help="Force deploy without checks"]()
-        self.dry_run = Flag[long="dry-run", help="Simulate without changes"]()
-        self.tag = Option[String, long="tag", short="t", help="Release tag"]()
-        self.replicas = Option[Int, long="replicas", short="r", help="Number of replicas",
-                          default="3", has_range=True, range_min=1, range_max=100]()
-
     @staticmethod
     def description() -> String:
         return "Deploy application to target environment."
@@ -684,6 +664,8 @@ def main() raises:
 
     # from_command() takes the customised Command and returns typed Deploy
     var args = Deploy.from_command(cmd^)
+```
+
 ### 5.3 Split Parse (Declarative + Extra Builder Fields)
 
 ```mojo
@@ -693,10 +675,6 @@ from argmojo import Parsable, Positional, Option
 struct Convert(Parsable):
     var input: Positional[String, help="Input file", required=True]
     var output: Option[String, long="output", short="o", help="Output file"]
-
-    def __init__(out self):
-        self.input = Positional[String, help="Input file", required=True]()
-        self.output = Option[String, long="output", short="o", help="Output file"]()
 
     @staticmethod
     def description() -> String:
@@ -746,11 +724,6 @@ struct Clone(Parsable):
     var depth: Option[Int, long="depth", help="Clone depth", default="0"]
     var branch: Option[String, short="b", long="branch", help="Branch to clone"]
 
-    def __init__(out self):
-        self.url = Positional[String, help="Repository URL", required=True]()
-        self.depth = Option[Int, long="depth", help="Clone depth", default="0"]()
-        self.branch = Option[String, short="b", long="branch", help="Branch to clone"]()
-
     @staticmethod
     def description() -> String:
         return "Clone a repository."
@@ -767,11 +740,6 @@ struct Push(Parsable):
     var force: Flag[short="f", help="Force push"]
     var tags: Flag[long="tags", help="Push all tags"]
 
-    def __init__(out self):
-        self.remote = Positional[String, help="Remote name", default="origin"]()
-        self.force = Flag[short="f", help="Force push"]()
-        self.tags = Flag[long="tags", help="Push all tags"]()
-
     @staticmethod
     def description() -> String:
         return "Push commits to remote."
@@ -786,9 +754,6 @@ struct Push(Parsable):
 # Root command — has its own flags + declares subcommands
 struct MyGit(Parsable):
     var verbose: Flag[short="v", help="Verbose output", persistent=True]
-
-    def __init__(out self):
-        self.verbose = Flag[short="v", help="Verbose output", persistent=True]()
 
     @staticmethod
     def name() -> String:
@@ -846,10 +811,6 @@ struct AddRemote(Parsable):
     var name_: Positional[String, help="Remote name", required=True]
     var url: Positional[String, help="Remote URL", required=True]
 
-    def __init__(out self):
-        self.name_ = Positional[String, help="Remote name", required=True]()
-        self.url = Positional[String, help="Remote URL", required=True]()
-
     @staticmethod
     def description() -> String: return "Add a remote."
 
@@ -861,9 +822,6 @@ struct AddRemote(Parsable):
 
 struct RemoveRemote(Parsable):
     var name_: Positional[String, help="Remote name", required=True]
-
-    def __init__(out self):
-        self.name_ = Positional[String, help="Remote name", required=True]()
 
     @staticmethod
     def description() -> String: return "Remove a remote."
@@ -877,9 +835,6 @@ struct RemoveRemote(Parsable):
 # Mid-level command — Parsable with its own flags + nested subcommands
 struct Remote(Parsable):
     var timeout: Option[Int, long="timeout", help="Timeout in seconds", default="30"]
-
-    def __init__(out self):
-        self.timeout = Option[Int, long="timeout", help="Timeout in seconds", default="30"]()
 
     @staticmethod
     def name() -> String: return "remote"
@@ -895,9 +850,6 @@ struct Remote(Parsable):
 # Root — references Remote which references AddRemote/RemoveRemote
 struct MyGit(Parsable):
     var verbose: Flag[short="v", help="Verbose output", persistent=True]
-
-    def __init__(out self):
-        self.verbose = Flag[short="v", help="Verbose output", persistent=True]()
 
     @staticmethod
     def name() -> String: return "mgit"
@@ -1379,10 +1331,11 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Implement `run(self)` on `Parsable` trait (default no-op)
 - [x] Implement `from_command_split()` as free function
 - [x] Implement `from_result()` as free function (public write-back)
-- [ ] Test: flat subcommands with `subcommands()` hook
-- [ ] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()`
-- [ ] Test: root-level customization via `to_command()` + `from_command_split()`
-- [ ] Test: `run()` dispatch pattern
+- [x] Test: flat subcommands with `subcommands()` hook (6 tests in `test_subcommands_declarative.mojo`)
+- [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()` (6 tests)
+- [x] Test: root-level customization via `to_command()` + dual return + `from_result()` (4 tests)
+- [x] Test: `run()` dispatch pattern — root no-op, leaf field access, full dispatch, nested dispatch (5 tests)
+- [x] Test: `parse_args` free function with subcommands (2 tests)
 
 ### Phase 4: Further enhancements
 
@@ -1406,3 +1359,5 @@ I think this is the right call — these features describe *relationships betwee
 - [ ] Examples: simple pure-declarative, more hybrid patterns
 - [ ] User manual additions
 - [ ] README update with declarative examples
+
+[^fieldwise_init]: removed — compiler auto-synthesises move init from `Movable` conformance; the `Parsable` trait now provides a reflection-based default `__init__` via `mark_initialized` + `comptime for`.
