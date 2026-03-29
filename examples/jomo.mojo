@@ -16,7 +16,7 @@ Showcases:
   - Builder subcommands (``run``, ``build``) for shared compilation options
   - Hybrid: declarative root + both declarative and builder children
   - ``subcommands()`` hook with ``ChildParsable.to_command()``
-  - ``from_result[T]()`` write-back for typed subcommand dispatch
+  - ``T.from_result()`` write-back for typed subcommand dispatch
   - ``run()`` dispatch pattern
 
 Try these (build first with: pixi run mojo build -I src -o jomo examples/jomo.mojo):
@@ -42,8 +42,6 @@ from argmojo import (
     Flag,
     Positional,
     Count,
-    to_command,
-    from_result,
 )
 
 
@@ -355,13 +353,13 @@ def build_build() raises -> Command:
 
 def main() raises:
     # Build the command tree: declarative root + mixed subcommands.
-    var cmd = to_command[Jomo]()
+    var cmd = Jomo.to_command()
 
     # Parse argv.
     var result = cmd.parse()
 
     # Populate the declarative root struct.
-    var jomo = from_result[Jomo](result)
+    var jomo = Jomo.from_result(result)
 
     # Show verbosity if set.
     if jomo.verbose.value > 0:
@@ -373,11 +371,11 @@ def main() raises:
 
         # Declarative subcommands — typed dispatch via from_result + run().
         if result.subcommand == "format":
-            from_result[JomoFormat](sub).run()
+            JomoFormat.from_result(sub).run()
         elif result.subcommand == "doc":
-            from_result[JomoDoc](sub).run()
+            JomoDoc.from_result(sub).run()
         elif result.subcommand == "package":
-            from_result[JomoPackage](sub).run()
+            JomoPackage.from_result(sub).run()
         else:
             # Builder subcommands (run, build) — use raw ParseResult.
             sub.print_summary()

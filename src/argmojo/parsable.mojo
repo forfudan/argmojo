@@ -1,4 +1,4 @@
-"""Declares the Parsable trait, reflection helpers, and convenience functions."""
+"""Declares the Parsable trait and its reflection-based default methods."""
 
 from std.builtin.constrained import _constrained_field_conforms_to
 from std.reflection import (
@@ -141,7 +141,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse()
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     @staticmethod
     def parse_args(args: List[String]) raises -> Self:
@@ -157,7 +157,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse_arguments(args)
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     # ── Hybrid: to_command → customise → from_command ──
 
@@ -180,7 +180,7 @@ trait Parsable(Defaultable, Movable):
             String(Self.description()),
             version=String(Self.version()),
         )
-        _reflect_and_register[Self](cmd)
+        Self.register_into_command(cmd)
         Self.subcommands(cmd)
         return cmd^
 
@@ -197,7 +197,7 @@ trait Parsable(Defaultable, Movable):
             A populated instance of Self.
         """
         var result = cmd.parse()
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     # ── Dual return ──
 
@@ -212,7 +212,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse()
-        var args = _from_result[Self](result)
+        var args = Self.from_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
     @staticmethod
@@ -229,7 +229,7 @@ trait Parsable(Defaultable, Movable):
             A tuple of (populated Self, raw ParseResult).
         """
         var result = cmd.parse()
-        var args = _from_result[Self](result)
+        var args = Self.from_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
     # ── Subcommand write-back ──
@@ -247,199 +247,46 @@ trait Parsable(Defaultable, Movable):
         Returns:
             A populated instance of Self.
         """
-        return _from_result[Self](result)
+        var out = Self()
+        comptime field_count = struct_field_count[Self]()
+        comptime field_types = struct_field_types[Self]()
+        comptime field_names = struct_field_names[Self]()
 
+        comptime for idx in range(field_count):
+            comptime ftype = field_types[idx]
+            comptime if conforms_to(ftype, ArgumentLike):
+                ref field = __struct_field_ref(idx, out)
+                comptime fname = field_names[idx]
+                trait_downcast[ArgumentLike](field).read_from_result(
+                    String(fname), result
+                )
 
-# =======================================================================
-# Reflection helpers
-# =======================================================================
+        return out^
 
+    # ── Reflection: register fields into Command ──
 
-def _reflect_and_register[T: Parsable](mut cmd: Command) raises:
-    """Iterate T's fields via reflection and register ArgumentLike-conforming
-    ones as Arguments on cmd.
+    @staticmethod
+    def register_into_command(mut cmd: Command) raises:
+        """Iterate Self's fields via reflection and register
+        ArgumentLike-conforming ones as Arguments on cmd.
 
-    Parameters:
-        T: A struct conforming to Parsable.
+        Called automatically by ``to_command()``.  Exposed so that
+        advanced users can build a Command manually and still benefit
+        from declarative field registration.
 
-    Args:
-        cmd: The Command to register arguments on.
-    """
-    var instance = T()
-    comptime field_count = struct_field_count[T]()
-    comptime field_types = struct_field_types[T]()
-    comptime field_names = struct_field_names[T]()
+        Args:
+            cmd: The Command to register arguments on.
+        """
+        var instance = Self()
+        comptime field_count = struct_field_count[Self]()
+        comptime field_types = struct_field_types[Self]()
+        comptime field_names = struct_field_names[Self]()
 
-    comptime for idx in range(field_count):
-        comptime ftype = field_types[idx]
-        comptime if conforms_to(ftype, ArgumentLike):
-            ref field = __struct_field_ref(idx, instance)
-            comptime fname = field_names[idx]
-            trait_downcast[ArgumentLike](field).add_to_command(
-                String(fname), cmd
-            )
-
-
-def _from_result[T: Parsable](result: ParseResult) raises -> T:
-    """Create a T instance and populate ArgumentLike-conforming fields from
-    the given ParseResult.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Args:
-        result: The ParseResult containing parsed values.
-
-    Returns:
-        A populated instance of T.
-    """
-    var out = T()
-    comptime field_count = struct_field_count[T]()
-    comptime field_types = struct_field_types[T]()
-    comptime field_names = struct_field_names[T]()
-
-    comptime for idx in range(field_count):
-        comptime ftype = field_types[idx]
-        comptime if conforms_to(ftype, ArgumentLike):
-            ref field = __struct_field_ref(idx, out)
-            comptime fname = field_names[idx]
-            trait_downcast[ArgumentLike](field).read_from_result(
-                String(fname), result
-            )
-
-    return out^
-
-
-# =======================================================================
-# Parsable convenience functions
-# =======================================================================
-
-
-def to_command[T: Parsable]() raises -> Command:
-    """Build a Command from T's metadata and fields.
-
-    Reflects over T's fields, registers them as arguments, and
-    calls ``T.subcommands()`` to wire child commands.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Returns:
-        A fully configured Command.
-    """
-    var cmd_name = String(T.name())
-    if not cmd_name:
-        cmd_name = String("command")
-    var cmd = Command(
-        cmd_name,
-        String(T.description()),
-        version=String(T.version()),
-    )
-    _reflect_and_register[T](cmd)
-    T.subcommands(cmd)
-    return cmd^
-
-
-def parse[T: Parsable]() raises -> T:
-    """Build, parse argv, and return a populated T.
-
-    This is the primary entry point for pure-declarative usage.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Returns:
-        A populated instance of T.
-    """
-    var cmd = to_command[T]()
-    var result = cmd.parse()
-    return _from_result[T](result)
-
-
-def parse_args[T: Parsable](args: List[String]) raises -> T:
-    """Build, parse the given argument list, and return a populated T.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Args:
-        args: The raw argument strings (including program name at index 0).
-
-    Returns:
-        A populated instance of T.
-    """
-    var cmd = to_command[T]()
-    var result = cmd.parse_arguments(args)
-    return _from_result[T](result)
-
-
-def parse_split[T: Parsable]() raises -> Tuple[T, ParseResult]:
-    """Build, parse argv, and return both T and raw ParseResult.
-
-    Use when you need both typed fields and subcommand dispatch.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Returns:
-        A tuple of (populated T, raw ParseResult).
-    """
-    var cmd = to_command[T]()
-    var result = cmd.parse()
-    var args = _from_result[T](result)
-    return Tuple[T, ParseResult](args^, result^)
-
-
-def from_command[T: Parsable](var cmd: Command) raises -> T:
-    """Parse using a pre-configured Command and return a populated T.
-
-    Use when you've customised the Command via ``to_command()`` before parsing.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Args:
-        cmd: A Command (typically from ``to_command[T]()``).
-
-    Returns:
-        A populated instance of T.
-    """
-    var result = cmd.parse()
-    return _from_result[T](result)
-
-
-def from_command_split[
-    T: Parsable
-](var cmd: Command) raises -> Tuple[T, ParseResult]:
-    """Parse using a pre-configured Command and return both T and ParseResult.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Args:
-        cmd: A Command (typically from ``to_command[T]()``).
-
-    Returns:
-        A tuple of (populated T, raw ParseResult).
-    """
-    var result = cmd.parse()
-    var args = _from_result[T](result)
-    return Tuple[T, ParseResult](args^, result^)
-
-
-def from_result[T: Parsable](result: ParseResult) raises -> T:
-    """Populate T from an existing ParseResult (no parsing).
-
-    Useful for subcommand dispatch — after the parent parses,
-    extract child fields from the subcommand result.
-
-    Parameters:
-        T: A struct conforming to Parsable.
-
-    Args:
-        result: The ParseResult containing parsed values.
-
-    Returns:
-        A populated instance of T.
-    """
-    return _from_result[T](result)
+        comptime for idx in range(field_count):
+            comptime ftype = field_types[idx]
+            comptime if conforms_to(ftype, ArgumentLike):
+                ref field = __struct_field_ref(idx, instance)
+                comptime fname = field_names[idx]
+                trait_downcast[ArgumentLike](field).add_to_command(
+                    String(fname), cmd
+                )
