@@ -393,7 +393,7 @@ trait Parsable(Defaultable, Movable):
         This is the primary entry point."""
         var cmd = Self.to_command()
         var result = cmd.parse()
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     # ── Hybrid: to_command → customise → from_command ──
 
@@ -406,7 +406,7 @@ trait Parsable(Defaultable, Movable):
         if not cmd_name:
             cmd_name = String("command")
         var cmd = Command(cmd_name, Self.description(), version=Self.version())
-        _reflect_and_register[Self](cmd)
+        Self.register_into_command(cmd)
         Self.subcommands(cmd)   # hook: register child commands
         return cmd^
 
@@ -415,7 +415,7 @@ trait Parsable(Defaultable, Movable):
         """Parse from a pre-configured Command (hybrid mode).
         Use after to_command() + builder customisations."""
         var result = cmd.parse()
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     # ── Dual return ──
 
@@ -425,7 +425,7 @@ trait Parsable(Defaultable, Movable):
         The struct covers declarative fields; ParseResult covers everything."""
         var cmd = Self.to_command()
         var result = cmd.parse()
-        var typed = _from_result[Self](result)
+        var typed = Self.from_result(result)
         return Tuple[Self, ParseResult](typed^, result^)
 
     @staticmethod
@@ -435,7 +435,7 @@ trait Parsable(Defaultable, Movable):
         the typed Self gives root-level flags, ParseResult gives
         subcommand name + fields for from_result() write-back."""
         var result = cmd.parse()
-        var typed = _from_result[Self](result)
+        var typed = Self.from_result(result)
         return Tuple[Self, ParseResult](typed^, result^)
 
     # ── Subcommand write-back ──
@@ -445,7 +445,7 @@ trait Parsable(Defaultable, Movable):
         """Write-back from an existing ParseResult without re-parsing.
         Used for subcommand dispatch: the parent already parsed,
         this extracts the matched subcommand's fields into Self."""
-        return _from_result[Self](result)
+        ...  # reflection logic inlined (see implementation)
 
     # ── Testing helper ──
 
@@ -454,7 +454,7 @@ trait Parsable(Defaultable, Movable):
         """Parse from an explicit arg list (useful for testing)."""
         var cmd = Self.to_command()
         var result = cmd.parse_arguments(args)
-        return _from_result[Self](result)
+        return Self.from_result(result)
 
     # ── Subcommand tree assembly ──
 
@@ -494,63 +494,14 @@ struct MyArgs(Parsable):
 
 Everything else (`parse()`, `to_command()`, `from_command()`, `from_command_split()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
 
-### 4.3 Internal Free Functions
+### 4.3 Implementation Notes
 
-The trait default methods delegate to module-level free functions for the heavy lifting:
+All reflection logic lives directly inside the `Parsable` trait's default methods — there are **no standalone helper functions**:
 
-```mojo
-def _reflect_and_register[T: Parsable](mut cmd: Command) raises:
-    """Reflect over T's fields and register Arguments on cmd."""
-    comptime field_count = struct_field_count[T]()
-    comptime field_names = struct_field_names[T]()
-    comptime field_types = struct_field_types[T]()
+- **`register_into_command(mut cmd)`** — iterates Self's fields via `comptime for` + `struct_field_types[Self]()`, downcasts each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, cmd)`. Called by `to_command()`.
+- **`from_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_args()`, `from_command()`, `parse_split()`, `from_command_split()`, and directly by users for subcommand dispatch.
 
-    comptime for idx in range(field_count):
-        comptime fname = field_names[idx]
-        comptime ftype = field_types[idx]
-
-        # Dispatch based on wrapper type
-        comptime if _is_option_type(ftype):
-            _register_option(cmd, fname, ftype)
-        elif _is_flag_type(ftype):
-            _register_flag(cmd, fname, ftype)
-        elif _is_positional_type(ftype):
-            _register_positional(cmd, fname, ftype)
-        elif _is_count_type(ftype):
-            _register_count(cmd, fname, ftype)
-        else:
-            # Bare type: treat as named option with field name as long name
-            _register_bare(cmd, fname, ftype)
-
-def _from_result[T: Parsable](result: ParseResult) raises -> T:
-    """Write ParseResult values back into a T instance."""
-    var out = T()
-    comptime field_count = struct_field_count[T]()
-    comptime field_names = struct_field_names[T]()
-    comptime field_types = struct_field_types[T]()
-
-    comptime for idx in range(field_count):
-        comptime fname = field_names[idx]
-        comptime ftype = field_types[idx]
-
-        comptime if _is_flag_type(ftype):
-            ref field = __struct_field_ref(idx, out)
-            field.value = result.get_flag(String(fname))
-        elif _is_count_type(ftype):
-            ref field = __struct_field_ref(idx, out)
-            field.value = result.get_count(String(fname))
-        elif _is_positional_type(ftype):
-            ref field = __struct_field_ref(idx, out)
-            _write_positional_value(field, fname, result)
-        elif _is_option_type(ftype):
-            ref field = __struct_field_ref(idx, out)
-            _write_option_value(field, fname, result)
-        else:
-            ref field = __struct_field_ref(idx, out)
-            _write_bare_value(field, fname, result)
-
-    return out
-```
+This design keeps `parsable.mojo` self-contained: the trait IS the entire declarative API.
 
 ### 4.4 Field Initialization (Auto-Init)
 
@@ -1020,7 +971,7 @@ The dual-return enables a practical workflow:
 
 **What I'm adding**: Since all wrapper metadata lives in compile-time parameters (`StringLiteral`, `Bool`, `Int`), the declarative layer can validate the **entire schema at compile time** using `comptime assert`. Your program won't even compile if the schema is invalid.
 
-Concrete checks in `_reflect_and_register[]`:
+Concrete checks in `register_into_command()`:
 
 ```mojo
 @parameter
@@ -1076,7 +1027,7 @@ struct MyArgs(Parsable):
     var yaml: Flag[long="yaml", conflicts_with="json"]
 ```
 
-**Translation in `_reflect_and_register()`**:
+**Translation in `register_into_command()`**:
 
 | Declarative parameter        | Builder call generated                                   |
 | ---------------------------- | -------------------------------------------------------- |
@@ -1086,14 +1037,14 @@ struct MyArgs(Parsable):
 **Compile-time name validation**: Since `depends_on` and `conflicts_with` are `StringLiteral` parameters, and all field names are known at compile time via `struct_field_names`, I can verify at compile time that every referenced name actually exists in the struct:
 
 ```mojo
-# In _reflect_and_register(), at comptime:
+# In register_into_command(), at comptime:
 # depends_on="password" → verify "password" is in struct_field_names[T]()
 # If not → comptime assert failure with a clear error message
 ```
 
 This catches typos like `depends_on="passwrod"` at compile time — something no other CLI library can do.
 
-**Symmetry note**: `depends_on` is symmetric by convention (if A depends on B, B depends on A). A single `depends_on="password"` on `username` generates `required_together(["username", "password"])`. If both sides declare it, deduplication in `_reflect_and_register()` prevents double-registration.
+**Symmetry note**: `depends_on` is symmetric by convention (if A depends on B, B depends on A). A single `depends_on="password"` on `username` generates `required_together(["username", "password"])`. If both sides declare it, deduplication in `register_into_command()` prevents double-registration.
 
 ### 6.5 Innovation #5: Compile-Time Derived Completions from `choices`
 
@@ -1117,7 +1068,7 @@ struct MyArgs(Parsable):
     # ^ completions for --format automatically include "json", "yaml", "csv"
 ```
 
-**How it works**: During `_reflect_and_register()`, when a field has a non-empty `choices` parameter, the generated completion script automatically includes those values as completions for that argument's value. The builder's `generate_completion["fish"]()` / `generate_completion["zsh"]()` / `generate_completion["bash"]()` already reads `_choice_values` — the declarative layer simply ensures they're populated.
+**How it works**: During `register_into_command()`, when a field has a non-empty `choices` parameter, the generated completion script automatically includes those values as completions for that argument's value. The builder's `generate_completion["fish"]()` / `generate_completion["zsh"]()` / `generate_completion["bash"]()` already reads `_choice_values` — the declarative layer simply ensures they're populated.
 
 **Compile-time generation**: Since all choices are `StringLiteral` values known at compile time, the entire completion script could be generated as a compile-time constant:
 
@@ -1308,9 +1259,8 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in `argument_wrappers.mojo`
 - [x] Implement `ArgumentLike` trait with `add_to_command()` and `read_from_result()` methods
 - [x] Implement `Parsable` trait with default methods (`description`, `version`, `name`, `subcommands`, `run`)
-- [x] Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `from_command`, `from_command_split`, `from_result`
-- [x] Implement `_reflect_and_register[T]()` — reflection to Command builder calls
-- [x] Implement `_from_result[T]()` — ParseResult to struct write-back
+- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `from_command`, `from_command_split`, `from_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_args()`, etc.
+- [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ — merged into trait methods `register_into_command()` and `from_result()`. No standalone helper functions remain.
 - [x] Auto-naming convention (underscore → hyphen)
 - [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
 - [x] `jomo.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
@@ -1321,7 +1271,7 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Test dual-return pattern (typed struct + raw ParseResult from same parse)
 - [x] Test: `mutually_exclusive()` via `to_command()`
 - [x] Test: extra builder args accessible via ParseResult + `from_result()`
-- [x] Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_result[T]()`
+- [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_result[T]()`~~ — converted to trait static method tests (`T.to_command()`, `T.parse_args()`, `T.from_result()`)
 - [x] Document the `configure()` free function pattern (via test helper + test)
 - Note: `from_command()`, `parse_split()`, `from_command_split()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_result()` which **is** tested.
 
@@ -1329,13 +1279,13 @@ I think this is the right call — these features describe *relationships betwee
 
 - [x] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
 - [x] Implement `run(self)` on `Parsable` trait (default no-op)
-- [x] Implement `from_command_split()` as free function
-- [x] Implement `from_result()` as free function (public write-back)
+- [x] Implement `from_command_split()` as trait static method
+- [x] Implement `from_result()` as trait static method (public write-back)
 - [x] Test: flat subcommands with `subcommands()` hook (6 tests in `test_subcommands_declarative.mojo`)
 - [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()` (6 tests)
 - [x] Test: root-level customization via `to_command()` + dual return + `from_result()` (4 tests)
 - [x] Test: `run()` dispatch pattern — root no-op, leaf field access, full dispatch, nested dispatch (5 tests)
-- [x] Test: `parse_args` free function with subcommands (2 tests)
+- [x] Test: `parse_args` trait static method with subcommands (2 tests)
 
 ### Phase 4: Further enhancements
 
@@ -1347,7 +1297,7 @@ I think this is the right call — these features describe *relationships betwee
   - [ ] Choices vs default consistency
 - [ ] Add `depends_on`/`conflicts_with` parameters to `Option` and `Flag` (§6.4)
   - [ ] Compile-time validation of referenced field names
-  - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `_reflect_and_register()`
+  - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `register_into_command()`
 - [ ] Auto-derive completions from `choices` parameters (§6.5)
   - [ ] Ensure choices flow to `generate_completion` output
   - [ ] Explore compile-time completion script generation

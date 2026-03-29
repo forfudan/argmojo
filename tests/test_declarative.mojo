@@ -1,7 +1,7 @@
 """End-to-end test for the declarative Parsable API (Phase 1).
 
-Tests _reflect_and_register / _from_result via the public
-to_command / parse_args / from_result functions.
+Tests register_into_command / from_result via the Parsable trait
+static methods: to_command(), parse_args(), from_result().
 """
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 
@@ -12,9 +12,6 @@ from argmojo import (
     Flag,
     Positional,
     Count,
-    to_command,
-    parse_args,
-    from_result,
 )
 
 
@@ -45,7 +42,7 @@ struct Grep(Parsable):
 
 def test_to_command() raises:
     """Test that to_command registers all arguments correctly."""
-    var cmd = to_command[Grep]()
+    var cmd = Grep.to_command()
 
     # Should have 4 arguments.
     assert_true(
@@ -80,7 +77,7 @@ def test_parse_args() raises:
     args.append(String("-ddd"))
     args.append(String("hello.*world"))
 
-    var grep = parse_args[Grep](args)
+    var grep = Grep.parse_args(args)
 
     assert_true(grep.output.value == "result.txt", "output value")
     assert_true(grep.verbose.value, "verbose value")
@@ -91,7 +88,7 @@ def test_parse_args() raises:
 def test_from_result() raises:
     """Test from_result writes back from an existing ParseResult."""
 
-    var cmd = to_command[Grep]()
+    var cmd = Grep.to_command()
     var args = List[String]()
     args.append(String("grep"))
     args.append(String("--output"))
@@ -99,7 +96,7 @@ def test_from_result() raises:
     args.append(String("pattern_str"))
 
     var result = cmd.parse_arguments(args)
-    var grep = from_result[Grep](result)
+    var grep = Grep.from_result(result)
 
     assert_true(grep.output.value == "out.txt", "output")
     assert_true(not grep.verbose.value, "verbose should be false")
@@ -118,7 +115,7 @@ struct AutoNameArgs(Parsable):
 def test_auto_naming() raises:
     """Test that underscore field names auto-convert to hyphen long names."""
 
-    var cmd = to_command[AutoNameArgs]()
+    var cmd = AutoNameArgs.to_command()
 
     assert_true(cmd.args[0]._long_name == "no-color", "no_color -> no-color")
     assert_true(cmd.args[1]._long_name == "max-depth", "max_depth -> max-depth")
@@ -158,7 +155,7 @@ def test_trait_methods() raises:
 def test_split_return() raises:
     """Test the split-return pattern: both typed struct AND raw ParseResult."""
 
-    var cmd = to_command[Grep]()
+    var cmd = Grep.to_command()
     var args = List[String]()
     args.append(String("grep"))
     args.append(String("--output"))
@@ -171,7 +168,7 @@ def test_split_return() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed write-back (same as what parse_split returns as element 0).
-    var grep = from_result[Grep](result)
+    var grep = Grep.from_result(result)
 
     # Verify typed access.
     assert_true(grep.output.value == "split.txt", "split typed output")

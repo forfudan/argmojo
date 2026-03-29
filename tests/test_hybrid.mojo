@@ -6,7 +6,7 @@ parse_args(), ParseResult, and from_result().
 
 Covers:
   - to_command() + builder modifications + parse_arguments() + from_result()
-  - Free functions: to_command[T](), parse_args[T](), from_result[T]()
+  - Trait static methods: T.to_command(), T.parse_args(), T.from_result()
   - mutually_exclusive() via to_command()
   - required_together() via to_command()
   - implies() via to_command()
@@ -28,9 +28,6 @@ from argmojo import (
     Option,
     Flag,
     Positional,
-    to_command,
-    parse_args,
-    from_result,
 )
 
 
@@ -426,13 +423,13 @@ def test_configure_exclusive_enforced() raises:
 
 
 # =======================================================================
-# 8. Free functions: to_command[T](), parse_args[T](), from_result[T]()
+# 8. Trait static methods: T.to_command(), T.parse_args(), T.from_result()
 # =======================================================================
 
 
 def test_free_to_command() raises:
-    """Free function to_command[T]() builds Command with all arguments."""
-    var cmd = to_command[Deploy]()
+    """Trait static method T.to_command() builds Command with all arguments."""
+    var cmd = Deploy.to_command()
 
     # Same result as Deploy.to_command() — 5 args registered.
     assert_true(
@@ -441,7 +438,7 @@ def test_free_to_command() raises:
 
 
 def test_free_parse_args() raises:
-    """Free function parse_args[T]() parses an argument list into a typed struct.
+    """Trait static method T.parse_args() parses an argument list into a typed struct.
     """
     var args: List[String] = [
         "command",
@@ -452,7 +449,7 @@ def test_free_parse_args() raises:
         "7",
         "staging",
     ]
-    var deploy = parse_args[Deploy](args)
+    var deploy = Deploy.parse_args(args)
 
     assert_equal(deploy.target.value, "staging")
     assert_equal(deploy.tag.value, "v3.0")
@@ -461,22 +458,22 @@ def test_free_parse_args() raises:
 
 
 def test_free_from_result() raises:
-    """Free function from_result[T]() populates struct from ParseResult."""
-    var cmd = to_command[AuthArgs]()
+    """Trait static method T.from_result() populates struct from ParseResult."""
+    var cmd = AuthArgs.to_command()
     var args: List[String] = ["command", "-u", "alice", "--token", "tok123"]
     var result = cmd.parse_arguments(args)
 
-    # Use the free function, not the trait method.
-    var auth = from_result[AuthArgs](result)
+    # Use the trait static method.
+    var auth = AuthArgs.from_result(result)
     assert_equal(auth.username.value, "alice")
     assert_equal(auth.token.value, "tok123")
     assert_equal(auth.password.value, "")
 
 
 def test_free_functions_with_builder_mods() raises:
-    """Free functions + builder mods: to_command → customise → parse → from_result.
+    """Trait methods + builder mods: to_command → customise → parse → from_result.
     """
-    var cmd = to_command[Deploy]()
+    var cmd = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
     cmd.mutually_exclusive(group^)
     cmd.add_tip("Use --dry-run to preview")
@@ -484,7 +481,7 @@ def test_free_functions_with_builder_mods() raises:
     var args: List[String] = ["command", "--dry-run", "--replicas", "2", "prod"]
     var result = cmd.parse_arguments(args)
 
-    var deploy = from_result[Deploy](result)
+    var deploy = Deploy.from_result(result)
     assert_equal(deploy.target.value, "prod")
     assert_true(deploy.dry_run.value, msg="dry_run should be True")
     assert_false(deploy.force.value, msg="force should be False")
@@ -494,7 +491,7 @@ def test_free_functions_with_builder_mods() raises:
 def test_dual_return_typed_and_raw() raises:
     """Dual return pattern: both typed struct AND raw ParseResult from same parse.
     """
-    var cmd = to_command[Convert]()
+    var cmd = Convert.to_command()
     cmd.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
@@ -511,8 +508,8 @@ def test_dual_return_typed_and_raw() raises:
     ]
     var result = cmd.parse_arguments(args)
 
-    # Typed access via free function.
-    var conv = from_result[Convert](result)
+    # Typed access via trait static method.
+    var conv = Convert.from_result(result)
     assert_equal(conv.input.value, "input.json")
     assert_equal(conv.output.value, "out.yaml")
 
