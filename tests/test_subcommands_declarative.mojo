@@ -295,7 +295,7 @@ def test_flat_root_config_with_search() raises:
     assert_equal(search.pattern.value, "pattern")
 
 
-def test_flat_free_function_to_command() raises:
+def test_flat_root_to_command() raises:
     """Use trait static method AppRoot.to_command() to build Command."""
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "search", "test"]
@@ -628,7 +628,7 @@ def test_run_root_noop_when_subcommand_dispatched() raises:
 
 
 def test_parse_args_with_subcommands() raises:
-    """Free function parse_args works when subcommands are registered."""
+    """Method parse_args works when subcommands are registered."""
     var args: List[String] = ["app", "-v", "search", "hello"]
     var root = AppRoot.parse_args(args)
     assert_true(root.verbose.value)
@@ -637,7 +637,7 @@ def test_parse_args_with_subcommands() raises:
 
 
 def test_parse_args_nested() raises:
-    """Free function parse_args works through nested subcommand dispatch."""
+    """Method parse_args works through nested subcommand dispatch."""
     var args: List[String] = [
         "git",
         "-v",

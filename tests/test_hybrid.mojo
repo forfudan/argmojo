@@ -427,7 +427,7 @@ def test_configure_exclusive_enforced() raises:
 # =======================================================================
 
 
-def test_free_to_command() raises:
+def test_to_command() raises:
     """Trait static method T.to_command() builds Command with all arguments."""
     var cmd = Deploy.to_command()
 
@@ -437,7 +437,7 @@ def test_free_to_command() raises:
     )
 
 
-def test_free_parse_args() raises:
+def test_parse_args() raises:
     """Trait static method T.parse_args() parses an argument list into a typed struct.
     """
     var args: List[String] = [
@@ -457,7 +457,7 @@ def test_free_parse_args() raises:
     assert_equal(deploy.replicas.value, 7)
 
 
-def test_free_from_result() raises:
+def test_from_result() raises:
     """Trait static method T.from_result() populates struct from ParseResult."""
     var cmd = AuthArgs.to_command()
     var args: List[String] = ["command", "-u", "alice", "--token", "tok123"]
@@ -470,7 +470,7 @@ def test_free_from_result() raises:
     assert_equal(auth.password.value, "")
 
 
-def test_free_functions_with_builder_mods() raises:
+def test_methods_with_builder_mods() raises:
     """Trait methods + builder mods: to_command → customise → parse → from_result.
     """
     var cmd = Deploy.to_command()
