@@ -37,7 +37,7 @@ trait ArgumentLike:
     Implemented by Option, Flag, Positional, and Count.
     """
 
-    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut cmd: Command) raises:
         """Translate compile-time parameters into an Argument and add to cmd.
 
         Args:
@@ -46,7 +46,7 @@ trait ArgumentLike:
         """
         ...
 
-    fn read_from_result(
+    def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
         """Populate self.value from a ParseResult.
@@ -162,11 +162,11 @@ struct Option[
     var value: Self.T
     """The runtime value populated by parsing."""
 
-    fn __init__(out self):
+    def __init__(out self):
         """Default-initialise with ``T()``."""
         self.value = Self.T()
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Copy from an existing instance.
 
         Args:
@@ -174,7 +174,7 @@ struct Option[
         """
         self.value = copy.value.copy()
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Move from an existing instance.
 
         Args:
@@ -182,7 +182,7 @@ struct Option[
         """
         self.value = take.value^
 
-    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut cmd: Command) raises:
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -240,7 +240,7 @@ struct Option[
             arg._hide_input = True
         cmd.add_argument(arg^)
 
-    fn read_from_result(
+    def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
         if not result.has(field_name):
@@ -314,11 +314,11 @@ struct Flag[
     var value: Bool
     """The runtime value populated by parsing."""
 
-    fn __init__(out self):
+    def __init__(out self):
         """Default-initialise to ``False``."""
         self.value = False
 
-    fn __init__(out self, val: Bool):
+    def __init__(out self, val: Bool):
         """Initialise with an explicit value.
 
         Args:
@@ -326,7 +326,7 @@ struct Flag[
         """
         self.value = val
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Copy from an existing instance.
 
         Args:
@@ -334,7 +334,7 @@ struct Flag[
         """
         self.value = copy.value
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Move from an existing instance.
 
         Args:
@@ -342,7 +342,7 @@ struct Flag[
         """
         self.value = take.value
 
-    fn __bool__(self) -> Bool:
+    def __bool__(self) -> Bool:
         """Implicit conversion to ``Bool`` for convenience.
 
         Allows ``if args.verbose:`` rather than ``if args.verbose.value:``.
@@ -352,7 +352,7 @@ struct Flag[
         """
         return self.value
 
-    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut cmd: Command) raises:
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -372,7 +372,7 @@ struct Flag[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(
+    def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
         self.value = result.get_flag(field_name)
@@ -432,11 +432,11 @@ struct Positional[
     var value: Self.T
     """The runtime value populated by parsing."""
 
-    fn __init__(out self):
+    def __init__(out self):
         """Default-initialise with ``T()``."""
         self.value = Self.T()
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Copy from an existing instance.
 
         Args:
@@ -444,7 +444,7 @@ struct Positional[
         """
         self.value = copy.value.copy()
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Move from an existing instance.
 
         Args:
@@ -452,7 +452,7 @@ struct Positional[
         """
         self.value = take.value^
 
-    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut cmd: Command) raises:
         var arg = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
             arg._is_remainder = True
@@ -471,7 +471,7 @@ struct Positional[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(
+    def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
         if not result.has(field_name):
@@ -539,11 +539,11 @@ struct Count[
     var value: Int
     """The runtime value populated by parsing."""
 
-    fn __init__(out self):
+    def __init__(out self):
         """Default-initialise to ``0``."""
         self.value = 0
 
-    fn __init__(out self, val: Int):
+    def __init__(out self, val: Int):
         """Initialise with an explicit value.
 
         Args:
@@ -551,7 +551,7 @@ struct Count[
         """
         self.value = val
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         """Copy from an existing instance.
 
         Args:
@@ -559,7 +559,7 @@ struct Count[
         """
         self.value = copy.value
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         """Move from an existing instance.
 
         Args:
@@ -567,7 +567,7 @@ struct Count[
         """
         self.value = take.value
 
-    fn add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut cmd: Command) raises:
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -586,7 +586,7 @@ struct Count[
             arg._group = String(Self.group)
         cmd.add_argument(arg^)
 
-    fn read_from_result(
+    def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
         self.value = result.get_count(field_name)
