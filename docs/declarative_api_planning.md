@@ -1021,7 +1021,7 @@ As far as I know, this is a **new pattern** not seen in any CLI library in any l
 The dual-return enables a practical workflow:
 
 1. Start with pure declarative
-2. Need one advanced option? Add it via `to_command()` + `parse_split()`
+2. Need one advanced option? Add it via `to_command()` + `parse_with_command(command: Command)`
 3. No need to convert the struct field (or add a new nested type)
 
 ### 6.3 Innovation #3: Compile-Time Schema Validation
