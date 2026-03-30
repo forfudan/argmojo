@@ -7,7 +7,7 @@ Tests Parsable structs as subcommand participants:
   - run() dispatch pattern for leaf command execution
   - Child.from_result() write-back from subcommand ParseResult
 
-Note: from_command(), parse_split(), and from_command_split() call
+Note: from_command(), parse_split(), and parse_with_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  The testable equivalents
 (to_command + parse_arguments + from_result) exercise identical logic.

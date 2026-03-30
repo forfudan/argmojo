@@ -83,7 +83,10 @@ debug = """pixi run package \
 && mojo run -I src -D ASSERT=all examples/mgit.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/demo.mojo -- --help \
 && mojo run -I src -D ASSERT=all examples/yu.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/jomo.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/declarative/search.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/declarative/convert.mojo -- --help \
+&& mojo run -I src -D ASSERT=all examples/declarative/jomo.mojo -- --help \
 """
 
 # run (debug mode) example binaries (parallel, fail if any run fails)
@@ -96,11 +99,15 @@ d = """pixi run package && bash -c '\
   mojo run -I src -D ASSERT=all examples/mgit.mojo  -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/demo.mojo  -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/yu.mojo    -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/declarative/search.mojo -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/declarative/convert.mojo -- --help & pids+=($!); \
+  mojo run -I src -D ASSERT=all examples/declarative/jomo.mojo -- --help & pids+=($!); \
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
 # clean build artifacts
-clean = "rm -f argmojo.mojopkg mgrep mgit demo yu jomo"
+clean = "rm -f argmojo.mojopkg mgrep mgit demo yu search deploy convert jomo"
 
 # Run all
 all = """

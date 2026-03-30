@@ -429,7 +429,7 @@ trait Parsable(Defaultable, Movable):
         return Tuple[Self, ParseResult](typed^, result^)
 
     @staticmethod
-    def from_command_split(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
+    def parse_with_command(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
         """Parse from a pre-configured Command and return BOTH typed Self
         AND raw ParseResult. Essential for subcommand dispatch:
         the typed Self gives root-level flags, ParseResult gives
@@ -492,14 +492,14 @@ struct MyArgs(Parsable):
         return "My awesome tool"
 ```
 
-Everything else (`parse()`, `to_command()`, `from_command()`, `from_command_split()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
+Everything else (`parse()`, `to_command()`, `from_command()`, `parse_with_command()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
 
 ### 4.3 Implementation Notes
 
 All reflection logic lives directly inside the `Parsable` trait's default methods — there are **no standalone helper functions**:
 
 - **`register_into_command(mut cmd)`** — iterates Self's fields via `comptime for` + `struct_field_types[Self]()`, downcasts each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, cmd)`. Called by `to_command()`.
-- **`from_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_args()`, `from_command()`, `parse_split()`, `from_command_split()`, and directly by users for subcommand dispatch.
+- **`from_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_args()`, `from_command()`, `parse_split()`, `parse_with_command()`, and directly by users for subcommand dispatch.
 
 This design keeps `parsable.mojo` self-contained: the trait IS the entire declarative API.
 
@@ -549,21 +549,36 @@ This generates `.alias_name["out"]().alias_name["dest"]()`.
 > implementation. Users no longer need to write `__init__` — the `Parsable`
 > trait auto-initialises all fields via reflection (see §4.4).
 
-### 5.1 Pure Declarative (Simple Tool)
+### 5.1 Pure Declarative (simple tool)
 
 ```mojo
 from argmojo import Parsable, Option, Flag, Positional, Count
 
-struct Grep(Parsable):
+
+struct Search(Parsable):
     """Search for patterns in files."""
 
     var pattern: Positional[String, help="Search pattern", required=True]
     var path: Positional[String, help="File or directory", default="."]
     var ignore_case: Flag[short="i", help="Case-insensitive search"]
     var count_only: Flag[short="c", long="count", help="Only print match count"]
-    var max_count: Option[Int, short="m", long="max-count", help="Stop after N matches", default="0"]
-    var verbose: Count[short="v", help="Increase verbosity", max=3]
-    var ext: Option[List[String], short="e", long="ext", help="File extensions", append=True]
+    var max_count: Option[
+        Int,
+        short="m",
+        long="max-count",
+        help="Stop after N matches",
+        default="0",
+        range_max=100,  # The max value of matches
+        clamp=True,  # The value will be clamped to the range if it exceeds the limits
+    ]
+    var verbose: Count[
+        short="v",
+        help="Increase verbosity",
+        max=3,  # The max level of verbosity, e.g. -vvvv will be treated as -vvv
+    ]
+    var ext: Option[
+        List[String], short="e", long="ext", help="File extensions", append=True
+    ]
 
     @staticmethod
     def description() -> String:
@@ -573,55 +588,85 @@ struct Grep(Parsable):
     def version() -> String:
         return "1.0.0"
 
-def main() raises:
-    var args = Grep.parse()            # One line. No wrapper struct.
 
-    print("Pattern:", args.pattern.value)
-    print("Path:", args.path.value)
-    if args.ignore_case:           # Flag.__bool__() works
-        print("Case insensitive mode")
-    if args.verbose.value > 0:
-        print("Verbosity level:", args.verbose.value)
-    for e in args.ext.value:
-        print("Extension:", e[])
+def main() raises:
+    # Just one line to parse the arguments into a typed struct
+    var args = Search.parse()
+
+    # Print the parsed arguments
+    print("pattern:", args.pattern.value)
+    print("path:", args.path.value)
+    print("ignore_case:", args.ignore_case.value)
+    print("count_only:", args.count_only.value)
+    print("max_count:", args.max_count.value)
+    print("verbose:", args.verbose.value)
+    print("ext:", args.ext.value)
 ```
 
-### 5.2 Declarative + Builder Hybrid (Complex Tool)
+### 5.2 Declarative + Builder Hybrid (granular control with Command API)
 
 ```mojo
 from argmojo import Command, Argument
 from argmojo import Parsable, Option, Flag, Positional
 
+
 struct Deploy(Parsable):
-    var target: Positional[String, help="Deploy target", required=True, choices="staging,prod"]
+    var target: Positional[
+        String, help="Deploy target", required=True, choices="staging,prod"
+    ]
     var force: Flag[short="f", help="Force deploy without checks"]
+    var validated: Flag[
+        long="validated", help="Only deploy if validation passes"
+    ]
     var dry_run: Flag[long="dry-run", help="Simulate without changes"]
     var tag: Option[String, long="tag", short="t", help="Release tag"]
-    var replicas: Option[Int, long="replicas", short="r", help="Number of replicas",
-                      default="3", has_range=True, range_min=1, range_max=100]
+    var replicas: Option[
+        Int,
+        long="replicas",
+        short="r",
+        help="Number of replicas",
+        default="3",
+        has_range=True,
+        range_min=1,
+        range_max=100,
+        clamp=True,
+    ]
 
     @staticmethod
     def description() -> String:
         return "Deploy application to target environment."
 
-def main() raises:
-    # to_command() returns an owned Command — customise it freely
-    var cmd = Deploy.to_command()
-    cmd.mutually_exclusive(["force", "dry-run"])
-    cmd.implies("force", "tag")       # force requires a tag
-    cmd.confirmation_option["Deploy to production?"]()
-    cmd.header_color["CYAN"]()
-    cmd.add_tip("Use --dry-run to preview changes first")
 
-    # from_command() takes the customised Command and returns typed Deploy
-    var args = Deploy.from_command(cmd^)
+def main() raises:
+    # to_command() returns an owned Command for further customization
+    var command = Deploy.to_command()
+
+    # Add more granular control with Command API
+    command.mutually_exclusive(["force", "dry_run"])
+    command.implies("force", "validated")  # force implies validated
+    command.confirmation_option["Deploy to production?"]()
+    command.add_tip("Use --dry-run to preview changes first")
+    command.header_color["CYAN"]()
+    command.help_on_no_arguments()  # Show help if no arguments are provided
+
+    # from_command() parses the customized command and returns a populated Deploy instance
+    var deploy = Deploy.from_command(command^)
+
+    # Print the parsed arguments
+    print("target:", deploy.target.value)
+    print("force:", deploy.force.value)
+    print("validated:", deploy.validated.value)
+    print("dry_run:", deploy.dry_run.value)
+    print("tag:", deploy.tag.value)
+    print("replicas:", deploy.replicas.value)
 ```
 
-### 5.3 Split Parse (Declarative + Extra Builder Fields)
+### 5.3 Split Parse (declarative + extra builder fields)
 
 ```mojo
 from argmojo import Command, Argument
 from argmojo import Parsable, Positional, Option
+
 
 struct Convert(Parsable):
     var input: Positional[String, help="Input file", required=True]
@@ -631,25 +676,36 @@ struct Convert(Parsable):
     def description() -> String:
         return "File format converter."
 
+
 def main() raises:
-    # to_command() → customise → parse_split()
-    var cmd = Convert.to_command()
-    cmd.add_argument(
+    # to_command() returns an owned Command for further customization
+    var command = Convert.to_command()
+
+    # Add more arguments that are too complex for the declarative API
+    command.add_argument(
         Argument("format", help="Output format")
-        .long["format"]().short["f"]()
-        .choice["json"]().choice["yaml"]().choice["toml"]()
+        .long["format"]()
+        .short["f"]()
+        .choice["json"]()
+        .choice["yaml"]()
+        .choice["toml"]()
         .default["json"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("indent", help="Indent level")
         .long["indent"]()
-        .range[0, 8]().default["2"]()
+        .range[0, 8]()
+        .default["2"]()
     )
 
-    # parse_split returns BOTH the typed struct AND the raw ParseResult
-    var result = Convert.parse_split()
-    var args = result[0]       # typed Convert
-    var raw  = result[1]       # untyped ParseResult
+    # Add more granular control with Command API
+    command.header_color["GREEN"]()  # Set the help header color to green
+    command.help_on_no_arguments()  # Show help if no arguments are provided
+
+    # parse_with_command() returns BOTH the typed struct AND the raw ParseResult
+    var result = Convert.parse_with_command(command^)
+    ref args = result[0]  # typed Convert
+    ref raw = result[1]  # untyped ParseResult
 
     # Declarative fields: typed access
     print("Input:", args.input.value)
@@ -658,6 +714,9 @@ def main() raises:
     # Builder fields: ParseResult access
     var format = raw.get_string("format")
     var indent = raw.get_int("indent")
+
+    print("Format:", format)
+    print("Indent:", indent)
 ```
 
 ### 5.4 Subcommands with Declarative
@@ -737,7 +796,7 @@ Compare this to the earlier design that required manual tree assembly in `main()
 
 #### 5.4.1 With Builder Customization
 
-When you need root-level builder config (colors, tips, etc.), use `to_command()` + `from_command_split()`:
+When you need root-level builder config (colors, tips, etc.), use `to_command()` + `parse_with_command()`:
 
 ```mojo
 def main() raises:
@@ -745,7 +804,7 @@ def main() raises:
     cmd.header_color["CYAN"]()
     cmd.add_tip("Run 'mgit help <command>' for details")
 
-    var (git_args, result) = MyGit.from_command_split(cmd^)
+    var (git_args, result) = MyGit.parse_with_command(cmd^)
 
     if result.subcommand == "clone":
         Clone.from_result(result).run()
@@ -962,7 +1021,7 @@ As far as I know, this is a **new pattern** not seen in any CLI library in any l
 The dual-return enables a practical workflow:
 
 1. Start with pure declarative
-2. Need one advanced option? Add it via `to_command()` + `parse_split()`
+2. Need one advanced option? Add it via `to_command()` + `parse_with_command(command: Command)`
 3. No need to convert the struct field (or add a new nested type)
 
 ### 6.3 Innovation #3: Compile-Time Schema Validation
@@ -1166,7 +1225,7 @@ def run(self) raises:
 
 # Parse + split for dispatch
 @staticmethod
-def from_command_split(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
+def parse_with_command(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
     """Parse cmd and return both typed Self (root flags)
     and raw ParseResult (for subcommand dispatch)."""
 
@@ -1187,7 +1246,7 @@ if result.subcommand == "clone":
 # With customization — to_command() already includes subcommands
 var cmd = MyGit.to_command()
 cmd.header_color["CYAN"]()
-var (git_args, result) = MyGit.from_command_split(cmd^)
+var (git_args, result) = MyGit.parse_with_command(cmd^)
 ```
 
 **Comparison with alternatives**:
@@ -1259,7 +1318,7 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in `argument_wrappers.mojo`
 - [x] Implement `ArgumentLike` trait with `add_to_command()` and `read_from_result()` methods
 - [x] Implement `Parsable` trait with default methods (`description`, `version`, `name`, `subcommands`, `run`)
-- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `from_command`, `from_command_split`, `from_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_args()`, etc.
+- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `from_command`, `parse_with_command`, `from_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_args()`, etc.
 - [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ — merged into trait methods `register_into_command()` and `from_result()`. No standalone helper functions remain.
 - [x] Auto-naming convention (underscore → hyphen)
 - [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
@@ -1273,13 +1332,13 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Test: extra builder args accessible via ParseResult + `from_result()`
 - [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_result[T]()`~~ — converted to trait static method tests (`T.to_command()`, `T.parse_args()`, `T.from_result()`)
 - [x] Document the `configure()` free function pattern (via test helper + test)
-- Note: `from_command()`, `parse_split()`, `from_command_split()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_result()` which **is** tested.
+- Note: `from_command()`, `parse_split()`, `parse_with_command()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_result()` which **is** tested.
 
 ### Phase 3: Subcommands
 
 - [x] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
 - [x] Implement `run(self)` on `Parsable` trait (default no-op)
-- [x] Implement `from_command_split()` as trait static method
+- [x] Implement `parse_with_command()` as trait static method
 - [x] Implement `from_result()` as trait static method (public write-back)
 - [x] Test: flat subcommands with `subcommands()` hook (6 tests in `test_subcommands_declarative.mojo`)
 - [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()` (6 tests)
@@ -1301,6 +1360,8 @@ I think this is the right call — these features describe *relationships betwee
 - [ ] Auto-derive completions from `choices` parameters (§6.5)
   - [ ] Ensure choices flow to `generate_completion` output
   - [ ] Explore compile-time completion script generation
+- [ ] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
+- [ ] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_result()`.
 
 ### Phase 5: Polish
 

@@ -43,7 +43,7 @@ trait Parsable(Defaultable, Movable):
     ```
     """
 
-    fn __init__(out self):
+    def __init__(out self):
         """Default-initialise all fields via reflection.
 
         Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
@@ -167,7 +167,7 @@ trait Parsable(Defaultable, Movable):
 
         Automatically calls ``subcommands()`` to register child commands.
         Users can modify the returned Command with builder methods
-        before calling ``from_command()`` or ``from_command_split()``.
+        before calling ``from_command()`` or ``parse_with_command()``.
 
         Returns:
             A fully configured Command.
@@ -216,7 +216,7 @@ trait Parsable(Defaultable, Movable):
         return Tuple[Self, ParseResult](args^, result^)
 
     @staticmethod
-    def from_command_split(var cmd: Command) raises -> Tuple[Self, ParseResult]:
+    def parse_with_command(var cmd: Command) raises -> Tuple[Self, ParseResult]:
         """Parse using a pre-configured Command and return both Self and ParseResult.
 
         Essential for subcommand dispatch: the typed Self gives

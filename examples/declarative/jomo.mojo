@@ -1,4 +1,4 @@
-"""Example: a Mojo CLI lookalike using the declarative API.
+"""Example: Subcommands with Declarative
 
 Simulates the interface of the ``mojo`` command-line tool:
 
