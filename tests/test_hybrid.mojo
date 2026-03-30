@@ -341,7 +341,7 @@ def test_extra_builder_args_defaults() raises:
 
 
 # =======================================================================
-# 6. parse_with_command free function
+# 6. parse_with_command trait static method pattern
 # =======================================================================
 
 

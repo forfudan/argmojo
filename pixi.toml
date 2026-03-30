@@ -100,7 +100,7 @@ d = """pixi run package && bash -c '\
   mojo run -I src -D ASSERT=all examples/demo.mojo  -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/yu.mojo    -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/declarative/search.mojo -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help & pids+=($!); \ 
+  mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/declarative/convert.mojo -- --help & pids+=($!); \
   mojo run -I src -D ASSERT=all examples/declarative/jomo.mojo -- --help & pids+=($!); \
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
@@ -113,6 +113,7 @@ clean = "rm -f argmojo.mojopkg mgrep mgit demo yu search deploy convert jomo"
 all = """
 pixi run format \
 && pixi run package \
+&& pixi run doc \
 && pixi run t \
 && pixi run d \
 && pixi run clean"""

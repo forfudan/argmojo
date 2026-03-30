@@ -1360,8 +1360,8 @@ I think this is the right call — these features describe *relationships betwee
 - [ ] Auto-derive completions from `choices` parameters (§6.5)
   - [ ] Ensure choices flow to `generate_completion` output
   - [ ] Explore compile-time completion script generation
-- [] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
-- [] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_result()`.
+- [ ] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
+- [ ] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_result()`.
 
 ### Phase 5: Polish
 

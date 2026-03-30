@@ -25,6 +25,7 @@ struct Search(Parsable):
         long="max-count",
         help="Stop after N matches",
         default="0",
+        has_range=True,
         range_max=100,  # The max value of matches
         clamp=True,  # The value will be clamped to the range if it exceeds the limits
     ]
