@@ -47,7 +47,6 @@ def main() raises:
     # Add more granular control with Command API
     command.mutually_exclusive(["force", "dry_run"])
     command.implies("force", "validated")  # force implies validated
-    command.confirmation_option["Deploy to production?"]()
     command.add_tip("Use --dry-run to preview changes first")
     command.header_color["CYAN"]()
     command.help_on_no_arguments()  # Show help if no arguments are provided
