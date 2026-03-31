@@ -551,6 +551,8 @@ This generates `.alias_name["out"]().alias_name["dest"]()`.
 
 ### 5.1 Pure Declarative (simple tool)
 
+[See `examples/declarative/search.mojo` for the full code](../examples/declarative/search.mojo).
+
 ```mojo
 from argmojo import Parsable, Option, Flag, Positional, Count
 
@@ -604,6 +606,8 @@ def main() raises:
 ```
 
 ### 5.2 Declarative + Builder Hybrid (granular control with Command API)
+
+[See `examples/declarative/deploy.mojo` for the full code](../examples/declarative/deploy.mojo).
 
 ```mojo
 from argmojo import Command, Argument
@@ -663,6 +667,8 @@ def main() raises:
 
 ### 5.3 Split Parse (declarative + extra builder fields)
 
+[See `examples/declarative/convert.mojo` for the full code](../examples/declarative/convert.mojo).
+
 ```mojo
 from argmojo import Command, Argument
 from argmojo import Parsable, Positional, Option
@@ -720,6 +726,8 @@ def main() raises:
 ```
 
 ### 5.4 Subcommands with Declarative
+
+> [See `examples/declarative/jomo.mojo` for an interesting example](../examples/declarative/jomo.mojo), where I use the hybrid API to build a Mojo CLI like tool.
 
 Every level in the command tree is a `Parsable` struct — root, mid-level, and leaf. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]`.
 
