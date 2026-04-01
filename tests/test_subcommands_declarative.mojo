@@ -5,12 +5,12 @@ Tests Parsable structs as subcommand participants:
   - Nested subcommands (2+ levels) with mid-level flags
   - Root customization + dual return (typed Self + raw ParseResult)
   - run() dispatch pattern for leaf command execution
-  - Child.from_result() write-back from subcommand ParseResult
+  - Child.from_parse_result() write-back from subcommand ParseResult
 
 Note: parse_from_command(), parse_split(), and parse_with_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  The testable equivalents
-(to_command + parse_arguments + from_result) exercise identical logic.
+(to_command + parse_arguments + from_parse_result) exercise identical logic.
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
@@ -230,14 +230,14 @@ def test_flat_dispatch_search() raises:
         "hello",
     ]
     var result = cmd.parse_arguments(args)
-    var root = AppRoot.from_result(result)
+    var root = AppRoot.from_parse_result(result)
 
     assert_true(root.verbose.value)
     assert_equal(result.subcommand, "search")
     assert_true(result.has_subcommand_result())
 
     var sub = result.get_subcommand_result()
-    var search = SearchCmd.from_result(sub)
+    var search = SearchCmd.from_parse_result(sub)
     assert_equal(search.pattern.value, "hello")
     assert_true(search.case_sensitive.value)
 
@@ -250,7 +250,7 @@ def test_flat_dispatch_list() raises:
 
     assert_equal(result.subcommand, "list")
     var sub = result.get_subcommand_result()
-    var lst = ListCmd.from_result(sub)
+    var lst = ListCmd.from_parse_result(sub)
     assert_true(lst.all.value)
     assert_equal(lst.format.value, "json")
 
@@ -263,7 +263,7 @@ def test_flat_dispatch_list_default_format() raises:
 
     assert_equal(result.subcommand, "list")
     var sub = result.get_subcommand_result()
-    var lst = ListCmd.from_result(sub)
+    var lst = ListCmd.from_parse_result(sub)
     assert_false(lst.all.value)
     assert_equal(lst.format.value, "table")
 
@@ -273,7 +273,7 @@ def test_flat_root_only_no_subcommand() raises:
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose", "-c", "myconfig.toml"]
     var result = cmd.parse_arguments(args)
-    var root = AppRoot.from_result(result)
+    var root = AppRoot.from_parse_result(result)
 
     assert_true(root.verbose.value)
     assert_equal(root.config.value, "myconfig.toml")
@@ -286,12 +286,12 @@ def test_flat_root_config_with_search() raises:
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "-c", "prod.toml", "search", "pattern"]
     var result = cmd.parse_arguments(args)
-    var root = AppRoot.from_result(result)
+    var root = AppRoot.from_parse_result(result)
 
     assert_equal(root.config.value, "prod.toml")
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
-    var search = SearchCmd.from_result(sub)
+    var search = SearchCmd.from_parse_result(sub)
     assert_equal(search.pattern.value, "pattern")
 
 
@@ -303,7 +303,7 @@ def test_flat_root_to_command() raises:
 
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
-    var search = SearchCmd.from_result(sub)
+    var search = SearchCmd.from_parse_result(sub)
     assert_equal(search.pattern.value, "test")
 
 
@@ -324,7 +324,7 @@ def test_nested_remote_add() raises:
         "https://example.com",
     ]
     var result = cmd.parse_arguments(args)
-    var root = GitApp.from_result(result)
+    var root = GitApp.from_parse_result(result)
 
     assert_true(root.verbose.value)
     assert_equal(result.subcommand, "remote")
@@ -332,14 +332,14 @@ def test_nested_remote_add() raises:
 
     # Level 2: remote
     var remote_result = result.get_subcommand_result()
-    var remote = RemoteCmd.from_result(remote_result)
+    var remote = RemoteCmd.from_parse_result(remote_result)
     assert_false(remote.verbose.value)  # remote's own verbose not set
     assert_equal(remote_result.subcommand, "add")
     assert_true(remote_result.has_subcommand_result())
 
     # Level 3: add
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
     assert_equal(add_cmd.rname.value, "origin")
     assert_equal(add_cmd.url.value, "https://example.com")
     assert_false(add_cmd.fetch.value)
@@ -360,7 +360,7 @@ def test_nested_remote_add_with_fetch() raises:
 
     var remote_result = result.get_subcommand_result()
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
     assert_equal(add_cmd.rname.value, "origin")
     assert_equal(add_cmd.url.value, "https://example.com")
     assert_true(add_cmd.fetch.value)
@@ -380,11 +380,11 @@ def test_nested_mid_level_flag() raises:
     var result = cmd.parse_arguments(args)
 
     var remote_result = result.get_subcommand_result()
-    var remote = RemoteCmd.from_result(remote_result)
+    var remote = RemoteCmd.from_parse_result(remote_result)
     assert_true(remote.verbose.value)  # mid-level flag set
 
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
     assert_equal(add_cmd.rname.value, "origin")
 
 
@@ -399,7 +399,7 @@ def test_nested_remote_remove() raises:
     assert_equal(remote_result.subcommand, "remove")
 
     var rm_result = remote_result.get_subcommand_result()
-    var rm_cmd = RemoteRemoveCmd.from_result(rm_result)
+    var rm_cmd = RemoteRemoveCmd.from_parse_result(rm_result)
     assert_equal(rm_cmd.rname.value, "origin")
     assert_true(rm_cmd.force.value)
 
@@ -412,7 +412,7 @@ def test_nested_remote_remove_no_force() raises:
 
     var remote_result = result.get_subcommand_result()
     var rm_result = remote_result.get_subcommand_result()
-    var rm_cmd = RemoteRemoveCmd.from_result(rm_result)
+    var rm_cmd = RemoteRemoveCmd.from_parse_result(rm_result)
     assert_equal(rm_cmd.rname.value, "origin")
     assert_false(rm_cmd.force.value)
 
@@ -430,15 +430,15 @@ def test_nested_root_and_mid_verbose() raises:
         "https://example.com",
     ]
     var result = cmd.parse_arguments(args)
-    var root = GitApp.from_result(result)
+    var root = GitApp.from_parse_result(result)
     assert_true(root.verbose.value)
 
     var remote_result = result.get_subcommand_result()
-    var remote = RemoteCmd.from_result(remote_result)
+    var remote = RemoteCmd.from_parse_result(remote_result)
     assert_true(remote.verbose.value)
 
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
     assert_equal(add_cmd.rname.value, "origin")
 
 
@@ -470,7 +470,7 @@ def test_dual_return_root_and_subcommand() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed root
-    var root = AppRoot.from_result(result)
+    var root = AppRoot.from_parse_result(result)
     assert_true(root.verbose.value)
 
     # Raw result for subcommand dispatch
@@ -479,7 +479,7 @@ def test_dual_return_root_and_subcommand() raises:
     var sub = result.get_subcommand_result()
 
     # Typed child from raw sub-result
-    var search = SearchCmd.from_result(sub)
+    var search = SearchCmd.from_parse_result(sub)
     assert_equal(search.pattern.value, "hello")
 
 
@@ -499,31 +499,31 @@ def test_dual_return_nested() raises:
     var result = cmd.parse_arguments(args)
 
     # Root typed
-    var root = GitApp.from_result(result)
+    var root = GitApp.from_parse_result(result)
     assert_true(root.verbose.value)
 
     # Mid-level typed
     var remote_result = result.get_subcommand_result()
-    var remote = RemoteCmd.from_result(remote_result)
+    var remote = RemoteCmd.from_parse_result(remote_result)
     assert_true(remote.verbose.value)
 
     # Leaf typed
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
     assert_equal(add_cmd.rname.value, "origin")
     assert_equal(add_cmd.url.value, "https://x.com")
     assert_true(add_cmd.fetch.value)
 
 
 def test_from_result_child_only() raises:
-    """Extract child directly from sub-result via ChildParsable.from_result().
+    """Extract child directly from sub-result via ChildParsable.from_parse_result().
     """
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "list", "--all", "-f", "csv"]
     var result = cmd.parse_arguments(args)
 
     var sub = result.get_subcommand_result()
-    var lst = ListCmd.from_result(sub)
+    var lst = ListCmd.from_parse_result(sub)
     assert_true(lst.all.value)
     assert_equal(lst.format.value, "csv")
 
@@ -538,7 +538,7 @@ def test_run_default_noop() raises:
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose"]
     var result = cmd.parse_arguments(args)
-    var root = AppRoot.from_result(result)
+    var root = AppRoot.from_parse_result(result)
     root.run()  # Should complete without error
 
 
@@ -549,21 +549,21 @@ def test_run_leaf_reads_fields() raises:
     var result = cmd.parse_arguments(args)
 
     var sub = result.get_subcommand_result()
-    var leaf = RunLeafCmd.from_result(sub)
+    var leaf = RunLeafCmd.from_parse_result(sub)
     assert_equal(leaf.target.value, "myapp")
     assert_true(leaf.release.value)
     leaf.run()  # Should not raise — target is non-empty
 
 
 def test_run_dispatch_full_pattern() raises:
-    """Full dispatch: parse root → check subcommand → from_result → run().
+    """Full dispatch: parse root → check subcommand → from_parse_result → run().
 
     This is the canonical pattern for declarative subcommand dispatch:
     1. Build root Command via to_command()
     2. Parse arguments
-    3. Extract root typed fields via from_result
+    3. Extract root typed fields via from_parse_result
     4. Check result.subcommand
-    5. Extract child typed fields via from_result on sub-result
+    5. Extract child typed fields via from_parse_result on sub-result
     6. Call child.run()
     """
     var cmd = RunTestRoot.to_command()
@@ -577,13 +577,13 @@ def test_run_dispatch_full_pattern() raises:
     var result = cmd.parse_arguments(args)
 
     # Step 3: root typed
-    var root = RunTestRoot.from_result(result)
+    var root = RunTestRoot.from_parse_result(result)
     assert_true(root.debug.value)
 
     # Step 4-5: dispatch
     assert_equal(result.subcommand, "build")
     var sub = result.get_subcommand_result()
-    var build = RunLeafCmd.from_result(sub)
+    var build = RunLeafCmd.from_parse_result(sub)
 
     # Step 6: run
     assert_equal(build.target.value, "myapp")
@@ -606,7 +606,7 @@ def test_run_nested_dispatch() raises:
     # Navigate to leaf
     var remote_result = result.get_subcommand_result()
     var add_result = remote_result.get_subcommand_result()
-    var add_cmd = RemoteAddCmd.from_result(add_result)
+    var add_cmd = RemoteAddCmd.from_parse_result(add_result)
 
     # Leaf run() validates rname and url are non-empty
     add_cmd.run()
@@ -618,7 +618,7 @@ def test_run_root_noop_when_subcommand_dispatched() raises:
     var args: List[String] = ["runner", "--debug", "build", "myapp"]
     var result = cmd.parse_arguments(args)
 
-    var root = RunTestRoot.from_result(result)
+    var root = RunTestRoot.from_parse_result(result)
     root.run()  # Root's run() is a no-op, doesn't interfere
 
 

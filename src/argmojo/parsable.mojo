@@ -141,7 +141,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse()
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     @staticmethod
     def parse_args(args: List[String]) raises -> Self:
@@ -157,7 +157,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse_arguments(args)
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     # ── Hybrid: to_command → customise → parse_from_command ──
 
@@ -214,7 +214,7 @@ trait Parsable(Defaultable, Movable):
             A populated instance of Self.
         """
         var result = cmd.parse()
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     # ── Dual return ──
 
@@ -229,7 +229,7 @@ trait Parsable(Defaultable, Movable):
         """
         var cmd = Self.to_command()
         var result = cmd.parse()
-        var args = Self.from_result(result)
+        var args = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
     @staticmethod
@@ -246,13 +246,13 @@ trait Parsable(Defaultable, Movable):
             A tuple of (populated Self, raw ParseResult).
         """
         var result = cmd.parse()
-        var args = Self.from_result(result)
+        var args = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
     # ── Subcommand write-back ──
 
     @staticmethod
-    def from_result(result: ParseResult) raises -> Self:
+    def from_parse_result(result: ParseResult) raises -> Self:
         """Populate Self from an existing ParseResult (no parsing).
 
         Useful for subcommand dispatch — after the parent parses,

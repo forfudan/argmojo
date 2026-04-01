@@ -3784,7 +3784,7 @@ def main() raises:
     if git_args.verbose:
         print("Verbose mode on")
     if result.subcommand == "clone":
-        Clone.from_result(result).run()
+        Clone.from_parse_result(result).run()
 ```
 
 See [`examples/declarative/jomo.mojo`](../examples/declarative/jomo.mojo) for a more complete example that mixes declarative and builder subcommands, including nested subcommands.
@@ -3803,15 +3803,15 @@ Fields wrapped in `Positional[...]` don't get auto-generated long names.
 
 ### API Summary
 
-| Method                       | Returns                 | Purpose                                                      |
-| ---------------------------- | ----------------------- | ------------------------------------------------------------ |
-| `T.parse()`                  | `T`                     | Build + parse `sys.argv()` + typed result                    |
-| `T.parse_args(args)`         | `T`                     | Parse explicit arg list (testing)                            |
-| `T.to_command()`             | `Command`               | Reflect struct → owned `Command` for customisation           |
-| `T.parse_from_command(cmd^)` | `T`                     | Parse a customised `Command` → typed struct                  |
-| `T.parse_split()`            | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
-| `T.parse_with_command(cmd^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
-| `T.from_result(result)`      | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+| Method                        | Returns                 | Purpose                                                      |
+| ----------------------------- | ----------------------- | ------------------------------------------------------------ |
+| `T.parse()`                   | `T`                     | Build + parse `sys.argv()` + typed result                    |
+| `T.parse_args(args)`          | `T`                     | Parse explicit arg list (testing)                            |
+| `T.to_command()`              | `Command`               | Reflect struct → owned `Command` for customisation           |
+| `T.parse_from_command(cmd^)`  | `T`                     | Parse a customised `Command` → typed struct                  |
+| `T.parse_split()`             | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
+| `T.parse_with_command(cmd^)`  | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
+| `T.from_parse_result(result)` | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
 
 ## Cross-Library Method Name Reference
 

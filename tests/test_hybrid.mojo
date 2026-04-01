@@ -2,11 +2,11 @@
 
 Tests the bridge between declarative Parsable structs and
 builder-level customisations using to_command(), parse_arguments(),
-parse_args(), ParseResult, and from_result().
+parse_args(), ParseResult, and from_parse_result().
 
 Covers:
-  - to_command() + builder modifications + parse_arguments() + from_result()
-  - Trait static methods: T.to_command(), T.parse_args(), T.from_result()
+  - to_command() + builder modifications + parse_arguments() + from_parse_result()
+  - Trait static methods: T.to_command(), T.parse_args(), T.from_parse_result()
   - mutually_exclusive() via to_command()
   - required_together() via to_command()
   - implies() via to_command()
@@ -16,7 +16,7 @@ Covers:
 Note: parse_from_command(), parse_split(), and parse_with_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  Their logic is identical
-to to_command() + parse_arguments() + from_result() which IS tested.
+to to_command() + parse_arguments() + from_parse_result() which IS tested.
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
@@ -95,7 +95,7 @@ def test_to_command_with_tip() raises:
 
     var args: List[String] = ["command", "--tag", "v1.0", "-f", "staging"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "staging")
     assert_equal(deploy.tag.value, "v1.0")
@@ -112,7 +112,7 @@ def test_to_command_with_colors() raises:
 
     var args: List[String] = ["command", "--replicas", "5", "prod"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "prod")
     assert_equal(deploy.replicas.value, 5)
@@ -125,7 +125,7 @@ def test_to_command_with_usage() raises:
 
     var args: List[String] = ["command", "staging"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "staging")
 
@@ -143,7 +143,7 @@ def test_exclusive_one_allowed() raises:
 
     var args: List[String] = ["command", "-f", "staging"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_true(deploy.force.value, msg="force should be True")
     assert_false(deploy.dry_run.value, msg="dry_run should be False")
@@ -177,7 +177,7 @@ def test_exclusive_none_allowed() raises:
 
     var args: List[String] = ["command", "staging"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_false(deploy.force.value, msg="force should be False")
     assert_false(deploy.dry_run.value, msg="dry_run should be False")
@@ -196,7 +196,7 @@ def test_required_together_both_provided() raises:
 
     var args: List[String] = ["command", "-u", "admin", "-p", "secret"]
     var result = cmd.parse_arguments(args)
-    var auth = AuthArgs.from_result(result)
+    var auth = AuthArgs.from_parse_result(result)
 
     assert_equal(auth.username.value, "admin")
     assert_equal(auth.password.value, "secret")
@@ -210,7 +210,7 @@ def test_required_together_none_provided() raises:
 
     var args: List[String] = ["command"]
     var result = cmd.parse_arguments(args)
-    var auth = AuthArgs.from_result(result)
+    var auth = AuthArgs.from_parse_result(result)
 
     assert_equal(auth.username.value, "")
     assert_equal(auth.password.value, "")
@@ -248,7 +248,7 @@ def test_implies_sets_flag() raises:
 
     var args: List[String] = ["command", "-d"]
     var result = cmd.parse_arguments(args)
-    var dbg = DebugArgs.from_result(result)
+    var dbg = DebugArgs.from_parse_result(result)
 
     assert_true(dbg.debug.value, msg="debug should be True")
     assert_true(dbg.verbose.value, msg="verbose should be implied by debug")
@@ -261,7 +261,7 @@ def test_implies_not_triggered() raises:
 
     var args: List[String] = ["command"]
     var result = cmd.parse_arguments(args)
-    var dbg = DebugArgs.from_result(result)
+    var dbg = DebugArgs.from_parse_result(result)
 
     assert_false(dbg.debug.value, msg="debug should be False")
     assert_false(dbg.verbose.value, msg="verbose should be False")
@@ -275,7 +275,7 @@ def test_implies_chain() raises:
 
     var args: List[String] = ["command", "--debug"]
     var result = cmd.parse_arguments(args)
-    var dbg = DebugArgs.from_result(result)
+    var dbg = DebugArgs.from_parse_result(result)
 
     assert_true(dbg.debug.value, msg="debug should be True")
     assert_true(dbg.verbose.value, msg="verbose should be implied")
@@ -313,7 +313,7 @@ def test_extra_builder_args() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed access for declarative fields
-    var conv = Convert.from_result(result)
+    var conv = Convert.from_parse_result(result)
     assert_equal(conv.input.value, "input.json")
     assert_equal(conv.output.value, "out.yaml")
 
@@ -334,7 +334,7 @@ def test_extra_builder_args_defaults() raises:
     var args: List[String] = ["command", "input.txt"]
     var result = cmd.parse_arguments(args)
 
-    var conv = Convert.from_result(result)
+    var conv = Convert.from_parse_result(result)
     assert_equal(conv.input.value, "input.txt")
     assert_equal(conv.output.value, "")
     assert_equal(result.get_string("format"), "json")
@@ -362,7 +362,7 @@ def test_parse_with_command_manual() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed write-back
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
     assert_equal(deploy.target.value, "prod")
     assert_true(deploy.force.value, msg="force")
     assert_equal(deploy.tag.value, "v2.0")
@@ -396,7 +396,7 @@ def test_configure_function_pattern() raises:
     # This test covers the non-conflicting case where only --dry-run is used.
     var args: List[String] = ["command", "--dry-run", "staging"]
     var result = cmd.parse_arguments(args)
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
 
     assert_false(deploy.force.value, msg="force should be False")
     assert_true(deploy.dry_run.value, msg="dry_run should be True")
@@ -423,7 +423,7 @@ def test_configure_exclusive_enforced() raises:
 
 
 # =======================================================================
-# 8. Trait static methods: T.to_command(), T.parse_args(), T.from_result()
+# 8. Trait static methods: T.to_command(), T.parse_args(), T.from_parse_result()
 # =======================================================================
 
 
@@ -458,20 +458,21 @@ def test_parse_args() raises:
 
 
 def test_from_result() raises:
-    """Trait static method T.from_result() populates struct from ParseResult."""
+    """Trait static method T.from_parse_result() populates struct from ParseResult.
+    """
     var cmd = AuthArgs.to_command()
     var args: List[String] = ["command", "-u", "alice", "--token", "tok123"]
     var result = cmd.parse_arguments(args)
 
     # Use the trait static method.
-    var auth = AuthArgs.from_result(result)
+    var auth = AuthArgs.from_parse_result(result)
     assert_equal(auth.username.value, "alice")
     assert_equal(auth.token.value, "tok123")
     assert_equal(auth.password.value, "")
 
 
 def test_methods_with_builder_mods() raises:
-    """Trait methods + builder mods: to_command → customise → parse → from_result.
+    """Trait methods + builder mods: to_command → customise → parse → from_parse_result.
     """
     var cmd = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
@@ -481,7 +482,7 @@ def test_methods_with_builder_mods() raises:
     var args: List[String] = ["command", "--dry-run", "--replicas", "2", "prod"]
     var result = cmd.parse_arguments(args)
 
-    var deploy = Deploy.from_result(result)
+    var deploy = Deploy.from_parse_result(result)
     assert_equal(deploy.target.value, "prod")
     assert_true(deploy.dry_run.value, msg="dry_run should be True")
     assert_false(deploy.force.value, msg="force should be False")
@@ -509,7 +510,7 @@ def test_dual_return_typed_and_raw() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed access via trait static method.
-    var conv = Convert.from_result(result)
+    var conv = Convert.from_parse_result(result)
     assert_equal(conv.input.value, "input.json")
     assert_equal(conv.output.value, "out.yaml")
 
@@ -547,7 +548,7 @@ def test_combined_workflow() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed access
-    var auth = AuthArgs.from_result(result)
+    var auth = AuthArgs.from_parse_result(result)
     assert_equal(auth.username.value, "admin")
     assert_equal(auth.password.value, "secret123")
     assert_equal(auth.token.value, "")
@@ -597,7 +598,7 @@ def test_combined_extra_arg_with_mfa() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed struct
-    var auth = AuthArgs.from_result(result)
+    var auth = AuthArgs.from_parse_result(result)
     assert_equal(auth.token.value, "abc123")
     assert_equal(auth.username.value, "")
 

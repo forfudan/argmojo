@@ -393,7 +393,7 @@ trait Parsable(Defaultable, Movable):
         This is the primary entry point."""
         var cmd = Self.to_command()
         var result = cmd.parse()
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     # ── Hybrid: to_command → customise → parse_from_command ──
 
@@ -415,7 +415,7 @@ trait Parsable(Defaultable, Movable):
         """Parse from a pre-configured Command (hybrid mode).
         Use after to_command() + builder customisations."""
         var result = cmd.parse()
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     # ── Dual return ──
 
@@ -425,7 +425,7 @@ trait Parsable(Defaultable, Movable):
         The struct covers declarative fields; ParseResult covers everything."""
         var cmd = Self.to_command()
         var result = cmd.parse()
-        var typed = Self.from_result(result)
+        var typed = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](typed^, result^)
 
     @staticmethod
@@ -433,15 +433,15 @@ trait Parsable(Defaultable, Movable):
         """Parse from a pre-configured Command and return BOTH typed Self
         AND raw ParseResult. Essential for subcommand dispatch:
         the typed Self gives root-level flags, ParseResult gives
-        subcommand name + fields for from_result() write-back."""
+        subcommand name + fields for from_parse_result() write-back."""
         var result = cmd.parse()
-        var typed = Self.from_result(result)
+        var typed = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](typed^, result^)
 
     # ── Subcommand write-back ──
 
     @staticmethod
-    def from_result(result: ParseResult) raises -> Self:
+    def from_parse_result(result: ParseResult) raises -> Self:
         """Write-back from an existing ParseResult without re-parsing.
         Used for subcommand dispatch: the parent already parsed,
         this extracts the matched subcommand's fields into Self."""
@@ -454,7 +454,7 @@ trait Parsable(Defaultable, Movable):
         """Parse from an explicit arg list (useful for testing)."""
         var cmd = Self.to_command()
         var result = cmd.parse_arguments(args)
-        return Self.from_result(result)
+        return Self.from_parse_result(result)
 
     # ── Subcommand tree assembly ──
 
@@ -492,14 +492,14 @@ struct MyArgs(Parsable):
         return "My awesome tool"
 ```
 
-Everything else (`parse()`, `to_command()`, `parse_from_command()`, `parse_with_command()`, `from_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
+Everything else (`parse()`, `to_command()`, `parse_from_command()`, `parse_with_command()`, `from_parse_result()`, `parse_split()`, `parse_args()`, `validate()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults.
 
 ### 4.3 Implementation Notes
 
 All reflection logic lives directly inside the `Parsable` trait's default methods — there are **no standalone helper functions**:
 
 - **`to_command()`** — creates a `Command`, iterates Self's fields via `comptime for` + `struct_field_types[Self]()`, downcasts each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, cmd)`. Registers subcommands via `subcommands()` hook.
-- **`from_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_args()`, `parse_from_command()`, `parse_split()`, `parse_with_command()`, and directly by users for subcommand dispatch.
+- **`from_parse_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_args()`, `parse_from_command()`, `parse_split()`, `parse_with_command()`, and directly by users for subcommand dispatch.
 
 This design keeps `parsable.mojo` self-contained: the trait IS the entire declarative API.
 
@@ -795,9 +795,9 @@ def main() raises:
 
     # Dispatch subcommands with typed write-back
     if result.subcommand == "clone":
-        Clone.from_result(result).run()
+        Clone.from_parse_result(result).run()
     elif result.subcommand == "push":
-        Push.from_result(result).run()
+        Push.from_parse_result(result).run()
 ```
 
 Compare this to the earlier design that required manual tree assembly in `main()`. The `subcommands()` hook keeps the tree structure in the struct definition, not scattered in `main()`.
@@ -815,9 +815,9 @@ def main() raises:
     var (git_args, result) = MyGit.parse_with_command(cmd^)
 
     if result.subcommand == "clone":
-        Clone.from_result(result).run()
+        Clone.from_parse_result(result).run()
     elif result.subcommand == "push":
-        Push.from_result(result).run()
+        Push.from_parse_result(result).run()
 ```
 
 #### 5.4.2 Nested Subcommands
@@ -885,18 +885,18 @@ def main() raises:
     var (git_args, result) = MyGit.parse_split()
 
     if result.subcommand == "clone":
-        Clone.from_result(result).run()
+        Clone.from_parse_result(result).run()
     elif result.subcommand == "push":
-        Push.from_result(result).run()
+        Push.from_parse_result(result).run()
     elif result.subcommand == "remote":
-        var remote_args = Remote.from_result(result)
+        var remote_args = Remote.from_parse_result(result)
         print("Timeout:", remote_args.timeout.value)
         if result.has_subcommand_result():
             var sub = result.get_subcommand_result()
             if sub.subcommand == "add":
-                AddRemote.from_result(sub).run()
+                AddRemote.from_parse_result(sub).run()
             elif sub.subcommand == "remove":
-                RemoveRemote.from_result(sub).run()
+                RemoveRemote.from_parse_result(sub).run()
 ```
 
 The entire tree (`mgit → clone | push | remote → add | remove`) is declared in the structs themselves. `main()` only handles dispatch.
@@ -921,7 +921,7 @@ struct MyGit(Parsable):
         for i in range(len(Self.Subcommands)):
             alias T = Self.Subcommands[i]
             if result.subcommand == T.name():
-                T.from_result(result).run()
+                T.from_parse_result(result).run()
                 return
 
 def main() raises:
@@ -1215,7 +1215,7 @@ Instead of a separate compositor type, subcommands use the same `Parsable` trait
 1. **Every level is Parsable**: root, mid-level, and leaf commands are all `Parsable` structs. Flags at any level live as natural struct fields.
 2. **`subcommands()` hook**: Each parent declares its children via `subcommands(mut cmd)`, called automatically by `to_command()`. Trees assemble recursively — no manual wiring in `main()`.
 3. **`run()` method**: Each leaf carries its execution logic, inspired by Swift's `ParsableCommand.run()`. This is purely execution — it does NOT parse (unlike mojopt's `run()`).
-4. **`from_result()` for dispatch**: Write-back from an already-parsed `ParseResult`, enabling typed subcommand access without re-parsing.
+4. **`from_parse_result()` for dispatch**: Write-back from an already-parsed `ParseResult`, enabling typed subcommand access without re-parsing.
 
 **Key methods for subcommand workflows**:
 
@@ -1239,7 +1239,7 @@ def parse_with_command(owned cmd: Command) raises -> Tuple[Self, ParseResult]:
 
 # Write-back without re-parsing
 @staticmethod
-def from_result(result: ParseResult) raises -> Self:
+def from_parse_result(result: ParseResult) raises -> Self:
     """Extract matched subcommand's fields from existing ParseResult."""
 ```
 
@@ -1249,7 +1249,7 @@ def from_result(result: ParseResult) raises -> Self:
 # Simple — tree built automatically via subcommands() hook
 var (git_args, result) = MyGit.parse_split()
 if result.subcommand == "clone":
-    Clone.from_result(result).run()
+    Clone.from_parse_result(result).run()
 
 # With customization — to_command() already includes subcommands
 var cmd = MyGit.to_command()
@@ -1326,31 +1326,31 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in `argument_wrappers.mojo`
 - [x] Implement `ArgumentLike` trait with `add_to_command()` and `read_from_result()` methods
 - [x] Implement `Parsable` trait with default methods (`description`, `version`, `name`, `subcommands`, `run`)
-- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `parse_from_command`, `parse_with_command`, `from_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_args()`, etc.
-- [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ — merged into trait method `to_command()` and `from_result()`. No standalone helper functions remain.
+- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_split`, `parse_from_command`, `parse_with_command`, `from_parse_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_args()`, etc.
+- [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ — merged into trait method `to_command()` and `from_parse_result()`. No standalone helper functions remain.
 - [x] Auto-naming convention (underscore → hyphen)
 - [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
 - [x] `jomo.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
 
 ### Phase 2: Hybrid Features
 
-- [x] Test `to_command()` + builder modifications + `from_result()` end-to-end
+- [x] Test `to_command()` + builder modifications + `from_parse_result()` end-to-end
 - [x] Test dual-return pattern (typed struct + raw ParseResult from same parse)
 - [x] Test: `mutually_exclusive()` via `to_command()`
-- [x] Test: extra builder args accessible via ParseResult + `from_result()`
-- [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_result[T]()`~~ — converted to trait static method tests (`T.to_command()`, `T.parse_args()`, `T.from_result()`)
+- [x] Test: extra builder args accessible via ParseResult + `from_parse_result()`
+- [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_parse_result[T]()`~~ — converted to trait static method tests (`T.to_command()`, `T.parse_args()`, `T.from_parse_result()`)
 - [x] Document the `configure()` free function pattern (via test helper + test)
-- Note: `parse_from_command()`, `parse_split()`, `parse_with_command()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_result()` which **is** tested.
+- Note: `parse_from_command()`, `parse_split()`, `parse_with_command()` call `cmd.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_parse_result()` which **is** tested.
 
 ### Phase 3: Subcommands
 
 - [x] Implement `subcommands(mut cmd)` hook on `Parsable` trait + auto-call in `to_command()`
 - [x] Implement `run(self)` on `Parsable` trait (default no-op)
 - [x] Implement `parse_with_command()` as trait static method
-- [x] Implement `from_result()` as trait static method (public write-back)
+- [x] Implement `from_parse_result()` as trait static method (public write-back)
 - [x] Test: flat subcommands with `subcommands()` hook (6 tests in `test_subcommands_declarative.mojo`)
 - [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()` (6 tests)
-- [x] Test: root-level customization via `to_command()` + dual return + `from_result()` (4 tests)
+- [x] Test: root-level customization via `to_command()` + dual return + `from_parse_result()` (4 tests)
 - [x] Test: `run()` dispatch pattern — root no-op, leaf field access, full dispatch, nested dispatch (5 tests)
 - [x] Test: `parse_args` trait static method with subcommands (2 tests)
 
@@ -1369,7 +1369,7 @@ I think this is the right call — these features describe *relationships betwee
   - [ ] Ensure choices flow to `generate_completion` output
   - [ ] Explore compile-time completion script generation
 - [ ] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
-- [ ] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_result()`.
+- [ ] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_parse_result()`.
 
 ### Phase 5: Polish
 
