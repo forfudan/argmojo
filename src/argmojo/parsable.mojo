@@ -112,7 +112,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def subcommands(mut cmd: Command) raises:
-        """Override to register child subcommands.
+        """Register child subcommands onto the given Command via builder API.
 
         Called automatically by ``to_command()``.  The default does nothing.
 
