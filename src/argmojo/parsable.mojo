@@ -159,15 +159,17 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse_arguments(args)
         return Self.from_result(result)
 
-    # ── Hybrid: to_command → customise → from_command ──
+    # ── Hybrid: to_command → customise → parse_from_command ──
 
     @staticmethod
     def to_command() raises -> Command:
-        """Reflect over Self's fields and return a configured Command.
+        """Reflect over Self's fields, register them, and return a configured Command.
 
+        Iterates Self's fields via reflection and registers
+        ArgumentLike-conforming ones as Arguments on the Command.
         Automatically calls ``subcommands()`` to register child commands.
         Users can modify the returned Command with builder methods
-        before calling ``from_command()`` or ``parse_with_command()``.
+        before calling ``parse_from_command()`` or ``parse_with_command()``.
 
         Returns:
             A fully configured Command.
@@ -180,12 +182,27 @@ trait Parsable(Defaultable, Movable):
             String(Self.description()),
             version=String(Self.version()),
         )
-        Self.register_into_command(cmd)
+
+        # Register fields into Command via reflection.
+        var instance = Self()
+        comptime field_count = struct_field_count[Self]()
+        comptime field_types = struct_field_types[Self]()
+        comptime field_names = struct_field_names[Self]()
+
+        comptime for idx in range(field_count):
+            comptime ftype = field_types[idx]
+            comptime if conforms_to(ftype, ArgumentLike):
+                ref field = __struct_field_ref(idx, instance)
+                comptime fname = field_names[idx]
+                trait_downcast[ArgumentLike](field).add_to_command(
+                    String(fname), cmd
+                )
+
         Self.subcommands(cmd)
         return cmd^
 
     @staticmethod
-    def from_command(var cmd: Command) raises -> Self:
+    def parse_from_command(var cmd: Command) raises -> Self:
         """Parse using a pre-configured Command and return a populated Self.
 
         Use after ``to_command()`` + builder customisations.
@@ -262,31 +279,3 @@ trait Parsable(Defaultable, Movable):
                 )
 
         return out^
-
-    # ── Reflection: register fields into Command ──
-
-    @staticmethod
-    def register_into_command(mut cmd: Command) raises:
-        """Iterate Self's fields via reflection and register
-        ArgumentLike-conforming ones as Arguments on cmd.
-
-        Called automatically by ``to_command()``.  Exposed so that
-        advanced users can build a Command manually and still benefit
-        from declarative field registration.
-
-        Args:
-            cmd: The Command to register arguments on.
-        """
-        var instance = Self()
-        comptime field_count = struct_field_count[Self]()
-        comptime field_types = struct_field_types[Self]()
-        comptime field_names = struct_field_names[Self]()
-
-        comptime for idx in range(field_count):
-            comptime ftype = field_types[idx]
-            comptime if conforms_to(ftype, ArgumentLike):
-                ref field = __struct_field_ref(idx, instance)
-                comptime fname = field_names[idx]
-                trait_downcast[ArgumentLike](field).add_to_command(
-                    String(fname), cmd
-                )

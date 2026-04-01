@@ -13,7 +13,7 @@ Covers:
   - Extra builder args accessible via ParseResult
   - configure() free function pattern
 
-Note: from_command(), parse_split(), and parse_with_command() call
+Note: parse_from_command(), parse_split(), and parse_with_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  Their logic is identical
 to to_command() + parse_arguments() + from_result() which IS tested.

@@ -1,6 +1,6 @@
 """End-to-end test for the declarative Parsable API (Phase 1).
 
-Tests register_into_command / from_result via the Parsable trait
+Tests to_command / from_result via the Parsable trait
 static methods: to_command(), parse_args(), from_result().
 """
 from std.testing import assert_true, assert_false, assert_equal, TestSuite

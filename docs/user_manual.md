@@ -3718,7 +3718,7 @@ See [`examples/declarative/search.mojo`](../examples/declarative/search.mojo) fo
 
 ### Hybrid — Declarative + Builder Customisation
 
-When you need builder-level features (mutually exclusive groups, implications, colours, tips) on top of a declarative struct, use the `to_command()` → modify → `from_command()` bridge:
+When you need builder-level features (mutually exclusive groups, implications, colours, tips) on top of a declarative struct, use the `to_command()` → modify → `parse_from_command()` bridge:
 
 ```mojo
 def main() raises:
@@ -3727,7 +3727,7 @@ def main() raises:
     cmd.implies("force", "validated")
     cmd.add_tip("Use --dry-run to preview changes first")
     cmd.header_color["CYAN"]()
-    var deploy = Deploy.from_command(cmd^)       # Command → typed struct
+    var deploy = Deploy.parse_from_command(cmd^)       # Command → typed struct
     print(deploy.target.value)
 ```
 
@@ -3808,7 +3808,7 @@ Fields wrapped in `Positional[...]` don't get auto-generated long names.
 | `T.parse()`                  | `T`                     | Build + parse `sys.argv()` + typed result                    |
 | `T.parse_args(args)`         | `T`                     | Parse explicit arg list (testing)                            |
 | `T.to_command()`             | `Command`               | Reflect struct → owned `Command` for customisation           |
-| `T.from_command(cmd^)`       | `T`                     | Parse a customised `Command` → typed struct                  |
+| `T.parse_from_command(cmd^)` | `T`                     | Parse a customised `Command` → typed struct                  |
 | `T.parse_split()`            | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
 | `T.parse_with_command(cmd^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
 | `T.from_result(result)`      | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |

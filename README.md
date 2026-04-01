@@ -205,7 +205,7 @@ Need builder-level features (mutually exclusive groups, implications, custom hel
 var cmd = Deploy.to_command()              # struct → Command
 cmd.mutually_exclusive(["force", "dry_run"])
 cmd.implies("force", "validated")
-var deploy = Deploy.from_command(cmd^)     # Command → typed struct
+var deploy = Deploy.parse_from_command(cmd^)     # Command → typed struct
 ```
 
 See `examples/declarative/` for more patterns: pure declarative, hybrid, split parse, and subcommands.
