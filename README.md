@@ -1,6 +1,6 @@
 # ArgMojo
 
-A command-line argument parser library for Mojo, inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, Swift's `swift-argument-parser`, and other popular libraries.
+A feature-rich command-line argument parser library for Mojo, with both builder and struct-based declarative APIs. Inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, and Swift's `swift-argument-parser`.
 
 <!-- 
 > **A**rguments **R**esolved and **G**rouped into **M**eaningful **O**ptions and **J**oined **O**bjects
