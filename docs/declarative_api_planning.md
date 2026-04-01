@@ -794,10 +794,11 @@ def main() raises:
         print("Verbose mode on")
 
     # Dispatch subcommands with typed write-back
+    var sub = result.get_subcommand_result()
     if result.subcommand == "clone":
-        Clone.from_parse_result(result).run()
+        Clone.from_parse_result(sub).run()
     elif result.subcommand == "push":
-        Push.from_parse_result(result).run()
+        Push.from_parse_result(sub).run()
 ```
 
 Compare this to the earlier design that required manual tree assembly in `main()`. The `subcommands()` hook keeps the tree structure in the struct definition, not scattered in `main()`.
@@ -814,10 +815,11 @@ def main() raises:
 
     var (git_args, result) = MyGit.parse_with_command(cmd^)
 
+    var sub = result.get_subcommand_result()
     if result.subcommand == "clone":
-        Clone.from_parse_result(result).run()
+        Clone.from_parse_result(sub).run()
     elif result.subcommand == "push":
-        Push.from_parse_result(result).run()
+        Push.from_parse_result(sub).run()
 ```
 
 #### 5.4.2 Nested Subcommands
@@ -884,19 +886,20 @@ struct MyGit(Parsable):
 def main() raises:
     var (git_args, result) = MyGit.parse_split()
 
+    var sub = result.get_subcommand_result()
     if result.subcommand == "clone":
-        Clone.from_parse_result(result).run()
+        Clone.from_parse_result(sub).run()
     elif result.subcommand == "push":
-        Push.from_parse_result(result).run()
+        Push.from_parse_result(sub).run()
     elif result.subcommand == "remote":
-        var remote_args = Remote.from_parse_result(result)
+        var remote_args = Remote.from_parse_result(sub)
         print("Timeout:", remote_args.timeout.value)
-        if result.has_subcommand_result():
-            var sub = result.get_subcommand_result()
-            if sub.subcommand == "add":
-                AddRemote.from_parse_result(sub).run()
-            elif sub.subcommand == "remove":
-                RemoveRemote.from_parse_result(sub).run()
+        if sub.has_subcommand_result():
+            var nested = sub.get_subcommand_result()
+            if nested.subcommand == "add":
+                AddRemote.from_parse_result(nested).run()
+            elif nested.subcommand == "remove":
+                RemoveRemote.from_parse_result(nested).run()
 ```
 
 The entire tree (`mgit → clone | push | remote → add | remove`) is declared in the structs themselves. `main()` only handles dispatch.
@@ -921,7 +924,7 @@ struct MyGit(Parsable):
         for i in range(len(Self.Subcommands)):
             alias T = Self.Subcommands[i]
             if result.subcommand == T.name():
-                T.from_parse_result(result).run()
+                T.from_parse_result(result.get_subcommand_result()).run()
                 return
 
 def main() raises:
@@ -1249,7 +1252,8 @@ def from_parse_result(result: ParseResult) raises -> Self:
 # Simple — tree built automatically via subcommands() hook
 var (git_args, result) = MyGit.parse_split()
 if result.subcommand == "clone":
-    Clone.from_parse_result(result).run()
+    var sub = result.get_subcommand_result()
+    Clone.from_parse_result(sub).run()
 
 # With customization — to_command() already includes subcommands
 var cmd = MyGit.to_command()

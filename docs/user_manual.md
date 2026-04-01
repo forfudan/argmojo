@@ -3784,7 +3784,8 @@ def main() raises:
     if git_args.verbose:
         print("Verbose mode on")
     if result.subcommand == "clone":
-        Clone.from_parse_result(result).run()
+        var sub = result.get_subcommand_result()
+        Clone.from_parse_result(sub).run()
 ```
 
 See [`examples/declarative/jomo.mojo`](../examples/declarative/jomo.mojo) for a more complete example that mixes declarative and builder subcommands, including nested subcommands.

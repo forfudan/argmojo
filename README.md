@@ -161,7 +161,7 @@ def main() raises:
 
     # Parse and use
     var result = app.parse()
-    
+
     print("pattern:", result.get_string("pattern"))
     print("path:   ", result.get_string("path"))
     print("format: ", result.get_string("format"))
