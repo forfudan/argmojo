@@ -3,7 +3,7 @@
 Four wrapper structs that encode argument metadata as compile-time
 parameters.  Each wraps a runtime ``value`` field and carries all
 configuration (long name, short name, help text, choices, ...) in its
-type signature so that reflection-based ``register_into_command`` can
+type signature so that reflection-based ``to_command`` can
 translate them to builder calls without any runtime metadata tables.
 
 - ``Option[T, ...]``    -- named option (``--output file.txt``, ``-o val``)
@@ -107,7 +107,7 @@ struct Option[
 
     ``T`` is the value type stored at runtime (``String``, ``Int``,
     ``List[String]``, etc.).  All other parameters are keyword-only
-    compile-time metadata consumed by ``register_into_command``.
+    compile-time metadata consumed by ``to_command``.
 
     Parameters:
         T: The value type stored at runtime.

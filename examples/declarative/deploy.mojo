@@ -51,8 +51,8 @@ def main() raises:
     command.header_color["CYAN"]()
     command.help_on_no_arguments()  # Show help if no arguments are provided
 
-    # from_command() parses the customized command and returns a populated Deploy instance
-    var deploy = Deploy.from_command(command^)
+    # parse_from_command() parses the customized command and returns a populated Deploy instance
+    var deploy = Deploy.parse_from_command(command^)
 
     # Print the parsed arguments
     print("target:", deploy.target.value)

@@ -1,7 +1,7 @@
 """End-to-end test for the declarative Parsable API (Phase 1).
 
-Tests register_into_command / from_result via the Parsable trait
-static methods: to_command(), parse_args(), from_result().
+Tests to_command / from_parse_result via the Parsable trait
+static methods: to_command(), parse_args(), from_parse_result().
 """
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 
@@ -86,7 +86,7 @@ def test_parse_args() raises:
 
 
 def test_from_result() raises:
-    """Test from_result writes back from an existing ParseResult."""
+    """Test from_parse_result writes back from an existing ParseResult."""
 
     var cmd = Grep.to_command()
     var args = List[String]()
@@ -96,7 +96,7 @@ def test_from_result() raises:
     args.append(String("pattern_str"))
 
     var result = cmd.parse_arguments(args)
-    var grep = Grep.from_result(result)
+    var grep = Grep.from_parse_result(result)
 
     assert_true(grep.output.value == "out.txt", "output")
     assert_true(not grep.verbose.value, "verbose should be false")
@@ -122,7 +122,7 @@ def test_auto_naming() raises:
 
 
 def test_trait_methods() raises:
-    """Test calling parse/to_command/from_result as trait static methods on the struct.
+    """Test calling parse/to_command/from_parse_result as trait static methods on the struct.
     """
 
     # Grep.to_command() — trait method
@@ -142,14 +142,16 @@ def test_trait_methods() raises:
     assert_true(grep.verbose.value, "trait parse_args verbose")
     assert_true(grep.pattern.value == "pattern", "trait parse_args pattern")
 
-    # Grep.from_result() — trait method
+    # Grep.from_parse_result() — trait method
     var cmd2 = Grep.to_command()
     var args2 = List[String]()
     args2.append(String("grep"))
     args2.append(String("query"))
     var result = cmd2.parse_arguments(args2)
-    var grep2 = Grep.from_result(result)
-    assert_true(grep2.pattern.value == "query", "trait from_result pattern")
+    var grep2 = Grep.from_parse_result(result)
+    assert_true(
+        grep2.pattern.value == "query", "trait from_parse_result pattern"
+    )
 
 
 def test_split_return() raises:
@@ -168,7 +170,7 @@ def test_split_return() raises:
     var result = cmd.parse_arguments(args)
 
     # Typed write-back (same as what parse_split returns as element 0).
-    var grep = Grep.from_result(result)
+    var grep = Grep.from_parse_result(result)
 
     # Verify typed access.
     assert_true(grep.output.value == "split.txt", "split typed output")
