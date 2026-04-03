@@ -111,15 +111,29 @@ trait Parsable(Defaultable, Movable):
         return String("")
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        """Register child subcommands onto the given Command via builder API.
+    def subcommands() raises -> List[Command]:
+        """Return a list of child subcommands.
 
-        Called automatically by ``to_command()``.  The default does nothing.
+        Called automatically by ``to_command()`` to register children.
+        Override to declare declarative subcommands:
 
-        Args:
-            cmd: The parent Command to add subcommands to.
+        ```sh
+        @staticmethod
+        def subcommands() raises -> List[Command]:
+            var subs = List[Command]()
+            subs.append(ChildA.to_command())
+            subs.append(ChildB.to_command())
+            return subs^
+        ```
+
+        For builder subcommands or per-child customization, use
+        ``to_command()`` in ``main()`` and call ``cmd.add_subcommand()``
+        directly.
+
+        Returns:
+            A list of Command instances (empty by default).
         """
-        pass
+        return List[Command]()
 
     def run(self) raises:
         """Execute this command's logic after parsing.
@@ -198,7 +212,9 @@ trait Parsable(Defaultable, Movable):
                     String(fname), cmd
                 )
 
-        Self.subcommands(cmd)
+        var subs = Self.subcommands()
+        while len(subs) > 0:
+            cmd.add_subcommand(subs.pop(0))
         return cmd^
 
     @staticmethod

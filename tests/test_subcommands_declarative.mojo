@@ -83,9 +83,11 @@ struct AppRoot(Parsable):
         return "My CLI application"
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(SearchCmd.to_command())
-        cmd.add_subcommand(ListCmd.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(SearchCmd.to_command())
+        subs.append(ListCmd.to_command())
+        return subs^
 
 
 # =====================================================================
@@ -144,9 +146,11 @@ struct RemoteCmd(Parsable):
         return "Manage remotes"
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(RemoteAddCmd.to_command())
-        cmd.add_subcommand(RemoteRemoveCmd.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(RemoteAddCmd.to_command())
+        subs.append(RemoteRemoveCmd.to_command())
+        return subs^
 
 
 struct GitApp(Parsable):
@@ -163,8 +167,10 @@ struct GitApp(Parsable):
         return "Git-like tool"
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(RemoteCmd.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(RemoteCmd.to_command())
+        return subs^
 
 
 # =====================================================================
@@ -186,8 +192,10 @@ struct RunTestRoot(Parsable):
         return "Run-dispatch test"
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(RunLeafCmd.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(RunLeafCmd.to_command())
+        return subs^
 
     def run(self) raises:
         """Root run does nothing (like printing help)."""

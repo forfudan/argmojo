@@ -15,7 +15,8 @@ Showcases:
   - Declarative subcommand structs (``format``, ``doc``, ``package``)
   - Builder subcommands (``run``, ``build``) for shared compilation options
   - Hybrid: declarative root + both declarative and builder children
-  - ``subcommands()`` hook with ``ChildParsable.to_command()``
+  - ``subcommands()`` returning ``List[Command]`` for declarative children
+  - Builder subcommands added in ``main()`` via ``command.add_subcommand()``
   - ``T.from_parse_result()`` write-back for typed subcommand dispatch
   - ``run()`` dispatch pattern
 
@@ -68,23 +69,23 @@ struct Jomo(Parsable):
         return String("jomo")
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        """Register subcommands — mix of declarative and builder."""
-        # Builder subcommands (share compilation/target option helpers)
-        # `build_run()` and `build_build()` return Command instances
-        # that are defined with builder-style APIs (not Parsable structs).
-        cmd.add_subcommand(build_run())
-        cmd.add_subcommand(build_build())
-        # Declarative subcommands
-        var pkg = JomoPackage.to_command()
-        pkg.help_on_no_arguments()
-        cmd.add_subcommand(pkg^)
-        var fmt = JomoFormat.to_command()
-        fmt.help_on_no_arguments()
-        cmd.add_subcommand(fmt^)
-        var doc = JomoDoc.to_command()
-        doc.help_on_no_arguments()
-        cmd.add_subcommand(doc^)
+    def subcommands() raises -> List[Command]:
+        """Declarative subcommands — configure and return them."""
+        var subs = List[Command]()
+
+        var format_cmd = JomoFormat.to_command()
+        format_cmd.help_on_no_arguments()
+        subs.append(format_cmd^)
+
+        var doc_cmd = JomoDoc.to_command()
+        doc_cmd.help_on_no_arguments()
+        subs.append(doc_cmd^)
+
+        var package_cmd = JomoPackage.to_command()
+        package_cmd.help_on_no_arguments()
+        subs.append(package_cmd^)
+
+        return subs^
 
     def run(self) raises:
         print("Jomo -- run a subcommand. Try: jomo --help")
@@ -217,9 +218,9 @@ struct JomoPackage(Parsable):
 # =====================================================================
 
 
-def shared_compilation_options(mut cmd: Command) raises:
+def shared_compilation_options(mut command: Command) raises:
     """Add options shared by `run` and `build`."""
-    cmd.add_argument(
+    command.add_argument(
         Argument("optimization-level", help="Optimization level (0-3)")
         .long["optimization-level"]()
         .short["O"]()
@@ -228,7 +229,7 @@ def shared_compilation_options(mut cmd: Command) raises:
         .value_name["LEVEL"]()
         .group["Compilation options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("include-path", help="Append to the module search path")
         .long["include-path"]()
         .short["I"]()
@@ -236,7 +237,7 @@ def shared_compilation_options(mut cmd: Command) raises:
         .value_name["PATH"]()
         .group["Compilation options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("define", help="Define a compile-time key=value (-D key=val)")
         .long["define"]()
         .short["D"]()
@@ -244,7 +245,7 @@ def shared_compilation_options(mut cmd: Command) raises:
         .value_name["KEY=VALUE"]()
         .group["Compilation options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument(
             "debug-level", help="Debug info level: none, line-tables, full"
         )
@@ -257,7 +258,7 @@ def shared_compilation_options(mut cmd: Command) raises:
         .value_name["LEVEL"]()
         .group["Compilation options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("num-threads", help="Max threads for compilation (0 = all)")
         .long["num-threads"]()
         .short["j"]()
@@ -268,21 +269,21 @@ def shared_compilation_options(mut cmd: Command) raises:
     )
 
 
-def shared_target_options(mut cmd: Command) raises:
+def shared_target_options(mut command: Command) raises:
     """Add target options shared by `run` and `build`."""
-    cmd.add_argument(
+    command.add_argument(
         Argument("target-triple", help="Compilation target triple")
         .long["target-triple"]()
         .value_name["TRIPLE"]()
         .group["Target options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("target-cpu", help="Compilation target CPU")
         .long["target-cpu"]()
         .value_name["CPU"]()
         .group["Target options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("target-features", help="Compilation target CPU features")
         .long["target-features"]()
         .value_name["FEATURES"]()
@@ -291,37 +292,37 @@ def shared_target_options(mut cmd: Command) raises:
 
 
 def build_run() raises -> Command:
-    var cmd = Command("run", "Builds and executes a Mojo file.")
-    shared_compilation_options(cmd)
-    shared_target_options(cmd)
-    cmd.add_argument(
+    var command = Command("run", "Builds and executes a Mojo file.")
+    shared_compilation_options(command)
+    shared_target_options(command)
+    command.add_argument(
         Argument("path", help="Path to the Mojo source file")
         .positional()
         .required()
         .value_name["PATH"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("args", help="Arguments passed to the Mojo program")
         .positional()
         .remainder()
         .value_name["ARGS"]()
     )
-    cmd.help_on_no_arguments()
-    return cmd^
+    command.help_on_no_arguments()
+    return command^
 
 
 def build_build() raises -> Command:
-    var cmd = Command("build", "Builds an executable from a Mojo file.")
-    shared_compilation_options(cmd)
-    shared_target_options(cmd)
-    cmd.add_argument(
+    var command = Command("build", "Builds an executable from a Mojo file.")
+    shared_compilation_options(command)
+    shared_target_options(command)
+    command.add_argument(
         Argument("output", help="Output path for the executable")
         .long["output"]()
         .short["o"]()
         .value_name["PATH"]()
         .group["Output options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument(
             "emit", help="Output file type: exe, shared-lib, object, llvm, asm"
         )
@@ -336,14 +337,14 @@ def build_build() raises -> Command:
         .value_name["FILE_TYPE"]()
         .group["Output options"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("path", help="Path to the Mojo source file")
         .positional()
         .required()
         .value_name["PATH"]()
     )
-    cmd.help_on_no_arguments()
-    return cmd^
+    command.help_on_no_arguments()
+    return command^
 
 
 # =====================================================================
@@ -353,31 +354,35 @@ def build_build() raises -> Command:
 
 def main() raises:
     # Build the command tree: declarative root + mixed subcommands.
-    var cmd = Jomo.to_command()
+    var command = Jomo.to_command()
+
+    # Builder subcommands — added here, not in subcommands().
+    command.add_subcommand(build_run())
+    command.add_subcommand(build_build())
 
     # Parse argv.
-    var result = cmd.parse()
+    var parse_result = command.parse()
 
     # Populate the declarative root struct.
-    var jomo = Jomo.from_parse_result(result)
+    var jomo = Jomo.from_parse_result(parse_result)
 
     # Show verbosity if set.
     if jomo.verbose.value > 0:
         print("Verbosity level:", jomo.verbose.value)
 
     # Dispatch subcommands.
-    if result.has_subcommand_result():
-        var sub = result.get_subcommand_result()
+    if parse_result.has_subcommand_result():
+        var subcommand_parse_result = parse_result.get_subcommand_result()
 
         # Declarative subcommands — typed dispatch via from_parse_result + run().
-        if result.subcommand == "format":
-            JomoFormat.from_parse_result(sub).run()
-        elif result.subcommand == "doc":
-            JomoDoc.from_parse_result(sub).run()
-        elif result.subcommand == "package":
-            JomoPackage.from_parse_result(sub).run()
+        if parse_result.subcommand == "format":
+            JomoFormat.from_parse_result(subcommand_parse_result).run()
+        elif parse_result.subcommand == "doc":
+            JomoDoc.from_parse_result(subcommand_parse_result).run()
+        elif parse_result.subcommand == "package":
+            JomoPackage.from_parse_result(subcommand_parse_result).run()
         else:
             # Builder subcommands (run, build) — use raw ParseResult.
-            sub.print_summary()
+            subcommand_parse_result.print_summary()
     else:
         jomo.run()
