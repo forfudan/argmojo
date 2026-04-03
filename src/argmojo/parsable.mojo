@@ -115,7 +115,7 @@ trait Parsable(Defaultable, Movable):
         """Return a list of child subcommands.
 
         Called automatically by ``to_command()`` to register children.
-        Override to declare declarative subcommands::
+        Override to declare declarative subcommands:
 
         ```sh
         @staticmethod
@@ -213,8 +213,8 @@ trait Parsable(Defaultable, Movable):
                 )
 
         var subs = Self.subcommands()
-        for i in range(len(subs)):
-            cmd.add_subcommand(subs[i].copy())
+        while len(subs) > 0:
+            cmd.add_subcommand(subs.pop(0))
         return cmd^
 
     @staticmethod

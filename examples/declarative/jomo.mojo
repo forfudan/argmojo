@@ -70,11 +70,21 @@ struct Jomo(Parsable):
 
     @staticmethod
     def subcommands() raises -> List[Command]:
-        """Declarative subcommands — just list them."""
+        """Declarative subcommands — configure and return them."""
         var subs = List[Command]()
-        subs.append(JomoFormat.to_command())
-        subs.append(JomoDoc.to_command())
-        subs.append(JomoPackage.to_command())
+
+        var format_cmd = JomoFormat.to_command()
+        format_cmd.help_on_no_arguments()
+        subs.append(format_cmd^)
+
+        var doc_cmd = JomoDoc.to_command()
+        doc_cmd.help_on_no_arguments()
+        subs.append(doc_cmd^)
+
+        var package_cmd = JomoPackage.to_command()
+        package_cmd.help_on_no_arguments()
+        subs.append(package_cmd^)
+
         return subs^
 
     def run(self) raises:
