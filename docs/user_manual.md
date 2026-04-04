@@ -120,7 +120,7 @@ from argmojo import Argument, Command
   - [The `Parsable` Trait](#the-parsable-trait)
   - [Pure Declarative — One-Line Parse](#pure-declarative--one-line-parse)
   - [Hybrid — Declarative + Builder Customisation](#hybrid--declarative--builder-customisation)
-  - [Split Parse — Declarative + Extra Builder Fields](#split-parse--declarative--extra-builder-fields)
+  - [Full Parse — Declarative + Extra Builder Fields](#full-parse--declarative--extra-builder-fields)
   - [Subcommands](#subcommands-1)
   - [Auto-Naming Convention](#auto-naming-convention)
   - [API Summary](#api-summary)
@@ -215,7 +215,7 @@ command.add_argument(Argument("pattern", help="Search pattern").positional().req
 command.add_argument(Argument("path",    help="Search path").positional().default["."]())
 ```
 
-```bash
+```shell
 myapp "hello" ./src
 #       ↑        ↑
 #     pattern   path
@@ -243,7 +243,7 @@ Long options start with `--` and can receive a value in two ways:
 command.add_argument(Argument("output", help="Output file").long["output"]())
 ```
 
-```bash
+```shell
 myapp --output result.txt
 myapp --output=result.txt
 ```
@@ -264,7 +264,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp -o result.txt          # space-separated
 myapp -oresult.txt           # attached value (see §9)
 ```
@@ -288,7 +288,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --verbose    # verbose = True
 myapp -v           # verbose = True
 myapp              # verbose = False (default)
@@ -314,7 +314,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp "hello"                # format = "table", path = "."
 myapp "hello" --format csv   # format = "csv",   path = "."
 myapp "hello" ./src          # format = "table", path = "./src"
@@ -332,7 +332,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp "hello"   # OK
 myapp           # Error: Required argument 'pattern' was not provided
 ```
@@ -353,7 +353,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --colour red     # OK — colour = "red"
 myapp --color  red     # OK — resolved via alias, colour = "red"
 ```
@@ -528,7 +528,7 @@ command.add_argument(Argument("brief",     help="Brief mode").long["brief"]().sh
 command.add_argument(Argument("colorize",  help="Colorize").long["colorize"]().short["c"]().flag())
 ```
 
-```bash
+```shell
 myapp -abc
 # Expands to: -a -b -c
 # all = True, brief = True, colorize = True
@@ -540,7 +540,7 @@ myapp -abc
 command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
 ```
 
-```bash
+```shell
 myapp -abofile.txt
 # Expands to: -a -b -o file.txt
 # all = True, brief = True, output = "file.txt"
@@ -554,7 +554,7 @@ A short option that takes a value can have its value **attached directly** — n
 command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
 ```
 
-```bash
+```shell
 myapp -ofile.txt          # output = "file.txt"
 myapp -o file.txt         # output = "file.txt"  (same result)
 ```
@@ -574,7 +574,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp -v             # verbose = 1
 myapp -vv            # verbose = 2
 myapp -vvv           # verbose = 3
@@ -606,7 +606,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp -vvv           # verbose = 3
 myapp -vvvvv         # verbose = 3  (capped, warning printed)
 myapp -vvvvvvvvvv    # verbose = 3  (capped, warning printed)
@@ -615,7 +615,7 @@ myapp -vv            # verbose = 2  (below ceiling, not affected)
 
 The warning looks like:
 
-```bash
+```console
 warning: '--verbose' count 5 exceeds maximum 3, capped to 3
 ```
 
@@ -640,7 +640,7 @@ command.add_argument(
 
 ---
 
-```bash
+```shell
 myapp --color       # color = True,  has("color") = True
 myapp --no-color    # color = False, has("color") = True
 myapp               # color = False, has("color") = False  (default)
@@ -714,7 +714,7 @@ command.add_argument(
 
 ---
 
-```bash
+```shell
 myapp --tag alpha --tag beta --tag gamma
 # tags = ["alpha", "beta", "gamma"]
 
@@ -780,7 +780,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --env dev --env prod       # OK
 myapp --env dev --env local      # Error: Invalid value 'local' for argument 'env'
 ```
@@ -806,7 +806,7 @@ Calling `.delimiter[","]()` automatically implies `.append()` — you do not nee
 
 ---
 
-```bash
+```shell
 myapp --env dev,staging,prod
 # envs = ["dev", "staging", "prod"]
 
@@ -851,7 +851,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --env dev,prod       # OK
 myapp --env dev,local      # Error: Invalid value 'local' for argument 'env'
 ```
@@ -869,7 +869,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --path "/usr/lib;/opt/lib;/home/lib"
 # paths = ["/usr/lib", "/opt/lib", "/home/lib"]
 ```
@@ -886,7 +886,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --tag a,b --tag c -t d,e
 # tags = ["a", "b", "c", "d", "e"]
 ```
@@ -915,7 +915,7 @@ retrieved with `get_list()`.
 
 ---
 
-```bash
+```shell
 myapp --point 10 20
 # point = ["10", "20"]
 
@@ -929,7 +929,7 @@ myapp --rgb 255 128 0
 
 Each occurrence consumes N more values, all accumulating in the same list:
 
-```bash
+```shell
 myapp --point 1 2 --point 3 4
 # point = ["1", "2", "3", "4"]
 ```
@@ -940,7 +940,7 @@ myapp --point 1 2 --point 3 4
 
 nargs works with short options too:
 
-```bash
+```shell
 myapp -c 255 128 0
 # rgb = ["255", "128", "0"]
 ```
@@ -968,7 +968,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --route north east    # ✓ both valid
 myapp --route north up      # ✗ 'up' is not a valid choice
 ```
@@ -1012,7 +1012,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --define CC=gcc -D CXX=g++
 # result.get_map("define") → {"CC": "gcc", "CXX": "g++"}
 ```
@@ -1029,7 +1029,7 @@ next `=` to produce key `CC` and value `gcc`.
 **Value with embedded `=`** — everything after the first `=` in the
 raw value is the value part:
 
-```bash
+```shell
 myapp --define PATH=/usr/bin:/bin
 # key = "PATH", value = "/usr/bin:/bin"
 ```
@@ -1048,7 +1048,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --define CC=gcc,CXX=g++
 # result.get_map("define") → {"CC": "gcc", "CXX": "g++"}
 ```
@@ -1089,7 +1089,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --log-level debug    # OK
 myapp --log-level trace    # Error: Invalid value 'trace' for argument 'log-level'
                            #        (choose from 'debug', 'info', 'warn', 'error')
@@ -1097,13 +1097,13 @@ myapp --log-level trace    # Error: Invalid value 'trace' for argument 'log-leve
 
 **In help text**, choices are shown automatically:
 
-```bash
+```console
   --log-level {debug,info,warn,error}  Log level
 ```
 
 **Combining with short options and attached values:**
 
-```bash
+```shell
 myapp -ldebug              # (if short name is "l") OK
 myapp -l trace             # Error, same as above
 ```
@@ -1119,7 +1119,7 @@ command.add_argument(Argument("pattern", help="Search pattern").positional().req
 # Only 1 positional arg is defined.
 ```
 
-```bash
+```shell
 myapp "hello"                  # OK
 myapp "hello" extra1 extra2    # Error: Too many positional arguments: expected 1, got 3
 ```
@@ -1131,7 +1131,7 @@ command.add_argument(Argument("pattern", help="Search pattern").positional().req
 command.add_argument(Argument("path",    help="Search path").positional().default["."]())
 ```
 
-```bash
+```shell
 myapp "hello" ./src            # OK — pattern = "hello", path = "./src"
 myapp "hello" ./src /tmp       # Error: Too many positional arguments: expected 2, got 3
 ```
@@ -1151,7 +1151,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --port 8080    # OK
 myapp --port 0       # Error: Value 0 for '--port' is out of range [1, 65535]
 myapp --port 70000   # Error: Value 70000 for '--port' is out of range [1, 65535]
@@ -1161,7 +1161,7 @@ myapp --port 70000   # Error: Value 70000 for '--port' is out of range [1, 65535
 
 **Boundary values** — both min and max are inclusive:
 
-```bash
+```shell
 myapp --port 1       # OK
 myapp --port 65535   # OK
 ```
@@ -1177,7 +1177,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --port 50 --port 101
 # Error: Value 101 for '--port' is out of range [1, 100]
 ```
@@ -1195,7 +1195,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --level 5      # OK — level = 5
 myapp --level 20     # Warning, level = 9  (clamped to max)
 myapp --level -3     # Warning, level = 0  (clamped to min)
@@ -1203,7 +1203,7 @@ myapp --level -3     # Warning, level = 0  (clamped to min)
 
 The warning looks like:
 
-```bash
+```console
 warning: '--level' value 20 is out of range [0, 9], clamped to 9
 ```
 
@@ -1217,7 +1217,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --port 50 --port 200 --port 0
 # warning: '--port' value 200 is out of range [1, 100], clamped to 100
 # warning: '--port' value 0 is out of range [1, 100], clamped to 1
@@ -1228,7 +1228,7 @@ myapp --port 50 --port 200 --port 0
 
 **Without `.clamp()`** — the existing behaviour is unchanged; an out-of-range value raises an error:
 
-```bash
+```shell
 myapp --port 200
 # Error: Value 200 for '--port' is out of range [1, 100]
 ```
@@ -1256,7 +1256,7 @@ command.mutually_exclusive(group^)
 
 ---
 
-```bash
+```shell
 myapp --json           # OK — only one from the group
 myapp --yaml           # OK
 myapp                  # OK — none from the group is also fine
@@ -1278,7 +1278,7 @@ var io_group: List[String] = ["input", "stdin"]
 command.mutually_exclusive(io_group^)
 ```
 
-```bash
+```shell
 myapp --input data.csv         # OK
 myapp --stdin                  # OK
 myapp --input data.csv --stdin # Error: mutually exclusive
@@ -1330,7 +1330,7 @@ command.one_required(format_group^)
 
 ---
 
-```bash
+```shell
 myapp --json               # OK (one provided)
 myapp --yaml               # OK (one provided)
 myapp                      # Error: At least one of the following arguments is required: '--json', '--yaml'
@@ -1353,7 +1353,7 @@ command.mutually_exclusive(excl^)
 command.one_required(req^)
 ```
 
-```bash
+```shell
 myapp --json               # OK
 myapp --yaml               # OK
 myapp                      # Error: At least one of the following arguments is required: '--json', '--yaml'
@@ -1370,7 +1370,7 @@ command.add_argument(Argument("stdin", help="Read from stdin").long["stdin"]().f
 command.one_required(["input", "stdin"])
 ```
 
-```bash
+```shell
 myapp --input data.txt     # OK
 myapp --stdin              # OK
 myapp                      # Error: At least one of the following arguments is required: '--input', '--stdin'
@@ -1387,7 +1387,7 @@ command.one_required(["json", "yaml"])
 command.one_required(["input", "stdin"])
 ```
 
-```bash
+```shell
 myapp --json --input f.txt   # OK (both groups satisfied)
 myapp --json                 # Error (source group unsatisfied)
 ```
@@ -1421,7 +1421,7 @@ command.required_together(group^)
 
 ---
 
-```bash
+```shell
 myapp --username admin --password secret   # OK — both provided
 myapp                                      # OK — neither provided
 myapp --username admin                     # Error: Arguments required together:
@@ -1445,7 +1445,7 @@ var net_group: List[String] = ["host", "port", "proto"]
 command.required_together(net_group^)
 ```
 
-```bash
+```shell
 myapp --host localhost --port 8080 --proto https   # OK
 myapp --host localhost                             # Error: '--port', '--proto' required when '--host' is provided
 ```
@@ -1491,7 +1491,7 @@ command.required_if("output", "save")
 
 This means: **if `--save` is provided, then `--output` must also be provided.**
 
-```bash
+```shell
 myapp --save --output out.txt   # OK — both present
 myapp --save                    # Error: '--output' is required when '--save' is provided
 myapp --output file.txt         # OK — condition not triggered
@@ -1517,7 +1517,7 @@ Each rule is checked independently after parsing.
 
 Error messages use `--long` display names when available:
 
-```bash
+```console
 Error: Argument '--output' is required when '--save' is provided
 ```
 
@@ -1548,7 +1548,7 @@ command.implies("debug", "verbose")
 
 This means: **if `--debug` is provided, `--verbose` is automatically set too.**
 
-```bash
+```shell
 myapp --debug          # OK — --verbose is auto-set
 myapp --debug -v       # OK — --verbose already set, no conflict
 myapp --verbose        # OK — --debug is NOT set (one-directional)
@@ -1661,7 +1661,7 @@ app.add_subcommand(init^)
 var result = app.parse()
 ```
 
-```bash
+```shell
 app search "fn main" --max-depth 3
 app init my-project
 ```
@@ -1670,7 +1670,7 @@ app init my-project
 
 **Root-level flags before the subcommand token** are parsed as part of the root command:
 
-```bash
+```shell
 app --verbose search "fn main"
 # verbose = True (root flag), subcommand = "search"
 ```
@@ -1698,7 +1698,7 @@ Commands:
 
 **Child help** shows the full command path in the usage line:
 
-```bash
+```shell
 app search --help
 ```
 
@@ -1720,7 +1720,7 @@ Options:
 
 **The `--` stop marker** prevents subcommand dispatch. After `--`, all tokens become positional arguments for the root command:
 
-```bash
+```shell
 app -- search
 # "search" is a root positional, NOT a subcommand dispatch
 ```
@@ -1787,7 +1787,7 @@ app.add_subcommand(search^)
 
 **Both positions work**
 
-```bash
+```shell
 app --verbose search "fn main"     # flag BEFORE subcommand
 app search --verbose "fn main"     # flag AFTER subcommand  (same result)
 app -v search -o json "fn main"    # short forms work too
@@ -1863,7 +1863,7 @@ app.add_argument(
 
 When you call `add_subcommand()` for the first time, ArgMojo automatically registers a `help` subcommand. This mirrors the behaviour of `git help`, `cargo help`, and `kubectl help`.
 
-```bash
+```shell
 app help search    # equivalent to: app search --help
 app help init      # equivalent to: app init --help
 app help           # shows root help (same as: app --help)
@@ -1894,7 +1894,7 @@ clone.command_aliases(aliases^)
 app.add_subcommand(clone^)
 ```
 
-```bash
+```shell
 app cl https://example.com/repo.git   # dispatches to "clone"
 app clone https://example.com/repo.git # still works
 ```
@@ -1918,7 +1918,7 @@ Aliases are also included in shell-completion scripts and typo suggestions.
 
 When the root command has subcommands registered **and `allow_positional_with_subcommands()` has not been called**, an unrecognised token triggers an error listing available commands:
 
-```bash
+```shell
 app foobar
 # error: app: Unknown command 'foobar'. Available commands: search, init
 ```
@@ -2001,7 +2001,7 @@ Please seriously **think twice** before doing this — it's usually better to de
 
 **Error path prefix** — errors inside child parsing include the full command path for clarity:
 
-```bash
+```shell
 app search --unknown-flag
 # error: app search: Unknown option '--unknown-flag'
 ```
@@ -2031,14 +2031,14 @@ command.add_argument(
 
 **Help output (before):**
 
-```bash
+```console
   -o, --output <output>       Output file path
   -d, --max-depth <max-depth> Maximum directory depth
 ```
 
 **Help output (after `.value_name()` — wrapped by default):**
 
-```bash
+```console
   -o, --output <FILE>         Output file path
   -d, --max-depth <N>         Maximum directory depth
 ```
@@ -2052,7 +2052,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```console
       --point COORD COORD COORD    A 3D coordinate
 ```
 
@@ -2069,7 +2069,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --debug-index    # Works — flag is set to True
 myapp --help           # --debug-index does NOT appear in the help text
 ```
@@ -2094,7 +2094,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp --format-old csv
 # stderr: Warning: '--format-old' is deprecated: Use --format instead
 # parsing continues: format_old = "csv"
@@ -2112,7 +2112,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 myapp -C
 # stderr: Warning: '-C' is deprecated: Will be removed in 2.0
 ```
@@ -2122,7 +2122,7 @@ myapp -C
 **Help display** — deprecated arguments show the deprecation
 message in the help text:
 
-```bash
+```console
 Options:
   --format-old <format_old>    Legacy output format [deprecated: Use --format instead]
 ```
@@ -2168,14 +2168,14 @@ command.add_argument(
 
 **Help display** — the optional value is shown in brackets:
 
-```bash
+```console
 Options:
       --compress[=<compress>]    Compression algorithm
 ```
 
 With `.value_name["ALGO"]()`:
 
-```bash
+```console
 Options:
       --compress[=ALGO]          Compression algorithm
 ```
@@ -2204,7 +2204,7 @@ command.add_argument(
 
 **Help display** — the `=` is shown in the help:
 
-```bash
+```console
 Options:
   -o, --output=<output>    Output file
 ```
@@ -2236,7 +2236,7 @@ command.add_argument(
 
 **Help output:**
 
-```bash
+```console
 Options:
   -v, --verbose              Increase verbosity
   -h, --help                 Show this help message
@@ -2262,7 +2262,7 @@ Output:
 
 Every command automatically supports `--help` (or `-h` or `-?`). The help text is generated from the registered argument definitions.
 
-```bash
+```shell
 myapp --help
 myapp -h
 myapp '-?'     # quote needed: ? is a shell glob wildcard
@@ -2270,7 +2270,7 @@ myapp '-?'     # quote needed: ? is a shell glob wildcard
 
 **Example output:**
 
-```bash
+```console
 A CJK-aware text search tool
 
 Usage: myapp <pattern> [path] [OPTIONS]
@@ -2367,7 +2367,7 @@ ArgMojo respects the [`NO_COLOR`](https://no-color.org/) convention. When the `N
 - Warning messages (`_warn()`)
 - Error messages (`_error()` and `_error_with_usage()`)
 
-```bash
+```console
 NO_COLOR=1 myapp --help    # plain-text help, no colours
 NO_COLOR= myapp --help     # also suppressed (empty string counts as "set")
 myapp --help               # coloured output (NO_COLOR is unset)
@@ -2388,7 +2388,7 @@ command.help_on_no_arguments()
 var result = command.parse()
 ```
 
-```bash
+```shell
 myapp          # prints help and exits
 myapp --file x # normal parsing
 ```
@@ -2437,14 +2437,14 @@ Multiple tips can be added; each is displayed on its own line prefixed with `Tip
 
 Every command automatically supports `--version` (or `-V`).
 
-```bash
+```shell
 myapp --version
 myapp -V
 ```
 
 **Output:**
 
-```bash
+```console
 myapp 1.0.0
 ```
 
@@ -2510,7 +2510,7 @@ CJK users frequently forget to switch input methods, accidentally typing **fullw
 
 ArgMojo automatically detects and corrects these characters **before parsing**, printing a coloured warning to stderr:
 
-```bash
+```console
 warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
 ```
 
@@ -2574,7 +2574,7 @@ var command = Command("calc", "Calculator")
 command.add_argument(Argument("operand", help="A number").positional().required())
 ```
 
-```bash
+```shell
 calc -9876543        # operand = "-9876543" (auto-detected as a number)
 calc -3.14           # operand = "-3.14"
 calc -.5             # operand = "-.5"
@@ -2592,7 +2592,7 @@ Recognised patterns: `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-Ne+X`, `-Ne-X` (wh
 
 The `--` stop marker forces everything after it to be treated as positional. This is the most universal approach and works regardless of any configuration.
 
-```bash
+```shell
 calc -- -10.18         # operand = "-10.18"
 calc -- -3e4         # operand = "-3e4"
 ```
@@ -2618,7 +2618,7 @@ command.add_argument(
 command.add_argument(Argument("operand", help="A number").positional().required())
 ```
 
-```bash
+```shell
 calc --triple -3.14   # triple = True, operand = "-3.14"
 calc -3               # operand = "-3" (NOT the -3 flag!)
 ```
@@ -2655,7 +2655,7 @@ command.add_argument(Argument("verbose", help="Verbose output").long["verbose"](
 command.add_argument(Argument("output",  help="Output file").long["output"]().short["o"]())
 ```
 
-```bash
+```shell
 myapp --verb               # resolves to --verbose
 myapp --out file.txt       # resolves to --output file.txt
 myapp --out=file.txt       # resolves to --output=file.txt
@@ -2672,7 +2672,7 @@ command.add_argument(Argument("verbose",      help="Verbose").long["verbose"]().
 command.add_argument(Argument("version-info", help="Version info").long["version-info"]().flag())
 ```
 
-```bash
+```shell
 myapp --ver
 # Error: Ambiguous option '--ver' could match: '--verbose', '--version-info'
 ```
@@ -2688,7 +2688,7 @@ command.add_argument(Argument("color",    help="Color mode").long["color"]().fla
 command.add_argument(Argument("colorize", help="Colorize output").long["colorize"]().flag())
 ```
 
-```bash
+```shell
 myapp --color       # exact match → color (not ambiguous with colorize)
 myapp --col         # ambiguous → error
 ```
@@ -2699,7 +2699,7 @@ myapp --col         # ambiguous → error
 
 Prefix matching also applies to `--no-X` negation:
 
-```bash
+```shell
 myapp --no-col      # resolves to --no-color (if color is the only negatable match)
 ```
 
@@ -2707,7 +2707,7 @@ myapp --no-col      # resolves to --no-color (if color is the only negatable mat
 
 This feature is always enabled — no configuration needed. It is most useful for long option names where typing the full name is cumbersome:
 
-```bash
+```shell
 myapp --max 5       # instead of --max-depth 5
 myapp --ig          # instead of --ignore-case
 ```
@@ -2723,7 +2723,7 @@ command.add_argument(Argument("ling", help="Use Lingming encoding").long["ling"]
 command.add_argument(Argument("pattern", help="Search pattern").positional().required())
 ```
 
-```bash
+```shell
 myapp -- --ling
 # ling = False  (the -- stopped option parsing)
 # pattern = "--ling"  (treated as a positional value)
@@ -2731,7 +2731,7 @@ myapp -- --ling
 
 This is especially useful for patterns or file paths that look like options:
 
-```bash
+```shell
 myapp --ling -- "-v is not a flag here" ./src
 # ling = True  (parsed before --)
 # pattern = "-v is not a flag here"
@@ -2740,7 +2740,7 @@ myapp --ling -- "-v is not a flag here" ./src
 
 A common use-case is passing **negative numbers** as positional arguments:
 
-```bash
+```shell
 myapp -- -10.18
 # pattern = "-10.18"
 ```
@@ -2763,7 +2763,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 runner myapp --verbose -x --output=foo.txt
 # program = "myapp"
 # args    = ["--verbose", "-x", "--output=foo.txt"]
@@ -2794,7 +2794,7 @@ command.add_argument(
 )
 ```
 
-```bash
+```shell
 cat -        # file = "-"  (stdin convention)
 cat input.txt  # file = "input.txt"
 ```
@@ -2828,7 +2828,7 @@ var unknown = result.get_unknown_args()
 # e.g., ["--color", "-x", "--threads=4"]
 ```
 
-```bash
+```shell
 wrapper input.txt --verbose --color -x --threads=4
 # verbose = True
 # file    = "input.txt"
@@ -2875,14 +2875,14 @@ src/main.mojo
 src/utils.mojo
 ```
 
-```bash
+```shell
 mytool @args.txt
 # equivalent to: mytool --verbose --output=build/release --jobs=4 src/main.mojo src/utils.mojo
 ```
 
 Response file arguments can be mixed freely with direct CLI arguments:
 
-```bash
+```shell
 mytool --debug @args.txt --extra-flag
 ```
 
@@ -2890,7 +2890,7 @@ mytool --debug @args.txt --extra-flag
 
 To pass a literal token that starts with `@` (e.g., an email address), double the prefix:
 
-```bash
+```shell
 mytool @@user@example.com
 # parsed as: @user@example.com
 ```
@@ -2916,7 +2916,7 @@ Response files may reference other response files:
 --output=build/release
 ```
 
-```bash
+```shell
 mytool @build-args.txt
 # expands to: mytool --verbose --output=build/release
 ```
@@ -3028,8 +3028,8 @@ Server region [us/eu/ap] (us): ap
 
 #### All arguments provided — no prompting at all
 
-```console
-$ ./login --user alice --token secret-123 --region eu
+```shell
+./login --user alice --token secret-123 --region eu
 ```
 
 No prompts appear. The CLI values are used directly.
@@ -3103,8 +3103,8 @@ Enable verbose output [y/n]:        ← flag prompt
 ### Interaction with Other Features
 
 - **`.required()`**: Prompting happens *before* validation. If the user provides a value via the prompt, the required check passes. `.prompt()` does **not** require `.required()` — it works on any argument.
-- **`.default[]()` **: If the user presses Enter (empty input), the default is applied by the normal default-filling phase.
-- **`.choice[]()` **: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
+- **`.default[]()`**: If the user presses Enter (empty input), the default is applied by the normal default-filling phase.
+- **`.choice[]()`**: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
 - **Subcommands**: Each subcommand can have its own prompt-enabled arguments.
 - **Persistent flags**: Persistent arguments with `.prompt()` are prompted at the level where they are missing.
 - **`help_on_no_arguments()`**: Cannot be combined with `.prompt()` on the same command. When no arguments are given, `help_on_no_arguments()` prints help and exits *before* prompting runs, making prompt-enabled arguments unreachable. ArgMojo raises a registration-time error if you attempt this combination.
@@ -3113,16 +3113,16 @@ Enable verbose output [y/n]:        ← flag prompt
 
 When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the `input()` call raises on EOF. ArgMojo catches this gracefully and stops prompting — any values collected so far are preserved, defaults are then applied normally, and validation proceeds as usual.
 
-```console
-$ echo "" | ./login --user alice --token secret
+```shell
+echo "" | ./login --user alice --token secret
 ```
 
 Prompts are still printed to stdout, but `input()` reads from the pipe. Once the pipe is exhausted, `input()` raises and prompting stops. `--region` gets its default `"us"`.
 
 To avoid prompting entirely, always provide all arguments on the command line:
 
-```console
-$ ./login --user alice --token secret --region eu
+```shell
+./login --user alice --token secret --region eu
 ```
 
 ## Argument Parents and Inheritance
@@ -3297,8 +3297,8 @@ When stdin is not a terminal, the echo-control calls return `False` (harmless), 
 
 To bypass the prompt entirely, provide the value on the command line:
 
-```console
-$ ./login --username alice --password s3cret
+```shell
+./login --username alice --password s3cret
 ```
 
 ## Confirmation Option
@@ -3399,7 +3399,7 @@ def main() raises:
     var result = cmd.parse()
 ```
 
-The custom string appears as-is after `Usage: ` in both `--help` output and error messages:
+The custom string appears as-is after `Usage:` in both `--help` output and error messages:
 
 ```sh
 $ ./git --help
@@ -3442,7 +3442,7 @@ var result = app.parse()
 
 Users run:
 
-```bash
+```shell
 myapp --completions bash   # prints Bash completion script and exits
 myapp --completions zsh    # prints Zsh completion script and exits
 myapp --completions fish   # prints Fish completion script and exits
@@ -3450,7 +3450,7 @@ myapp --completions fish   # prints Fish completion script and exits
 
 The `--completions` option is shown in the help output alongside `--help` and `--version`:
 
-```bash
+```console
 Options:
   --help                  Show this help message and exit
   --version               Show the version and exit
@@ -3536,7 +3536,7 @@ myapp --completions bash > ~/.bash_completion.d/myapp
 
 **Zsh:**
 
-```bash
+```zsh
 # Place in your fpath (file must be named _myapp)
 myapp --completions zsh > ~/.zsh/completions/_myapp
 
@@ -3549,7 +3549,7 @@ myapp --completions zsh > ~/.zsh/completions/_myapp
 
 **Fish:**
 
-```bash
+```shell
 # Fish auto-loads from this directory
 myapp --completions fish > ~/.config/fish/completions/myapp.fish
 ```
@@ -3733,7 +3733,7 @@ def main() raises:
 
 See [`examples/declarative/deploy.mojo`](../examples/declarative/deploy.mojo) for a complete example.
 
-### Split Parse — Declarative + Extra Builder Fields
+### Full Parse — Declarative + Extra Builder Fields
 
 When some arguments are too complex for the struct, add them via builder methods and retrieve both the typed struct and the raw `ParseResult`:
 
@@ -3744,7 +3744,7 @@ def main() raises:
         Argument("format", help="Output format")
         .long["format"]().choice["json"]().choice["yaml"]().default["json"]()
     )
-    var (args, raw) = Convert.parse_with_command(cmd^)
+    var (args, raw) = Convert.parse_full_from_command(cmd^)
     print(args.input.value)              # typed — from struct
     print(raw.get_string("format"))      # untyped — from builder
 ```
@@ -3776,11 +3776,13 @@ struct MyGit(Parsable):
     def description() -> String: return "A mini git tool."
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(Clone.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(Clone.to_command())
+        return subs^
 
 def main() raises:
-    var (git_args, result) = MyGit.parse_split()
+    var (git_args, result) = MyGit.parse_full()
     if git_args.verbose:
         print("Verbose mode on")
     if result.subcommand == "clone":
@@ -3804,15 +3806,25 @@ Fields wrapped in `Positional[...]` don't get auto-generated long names.
 
 ### API Summary
 
-| Method                        | Returns                 | Purpose                                                      |
-| ----------------------------- | ----------------------- | ------------------------------------------------------------ |
-| `T.parse()`                   | `T`                     | Build + parse `sys.argv()` + typed result                    |
-| `T.parse_args(args)`          | `T`                     | Parse explicit arg list (testing)                            |
-| `T.to_command()`              | `Command`               | Reflect struct → owned `Command` for customisation           |
-| `T.parse_from_command(cmd^)`  | `T`                     | Parse a customised `Command` → typed struct                  |
-| `T.parse_split()`             | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
-| `T.parse_with_command(cmd^)`  | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
-| `T.from_parse_result(result)` | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+| Method                            | Returns                 | Purpose                                                      |
+| --------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| `T.parse()`                       | `T`                     | Build + parse `sys.argv()` + typed result                    |
+| `T.parse_args(args)`              | `T`                     | Parse explicit arg list (testing)                            |
+| `T.to_command()`                  | `Command`               | Reflect struct → owned `Command` for customisation           |
+| `T.parse_from_command(cmd^)`      | `T`                     | Parse a customised `Command` → typed struct                  |
+| `T.parse_full()`                  | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
+| `T.parse_full_from_command(cmd^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
+| `T.from_parse_result(result)`     | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+
+The four parsing methods follow a 2×2 naming convention:
+
+|                 | `sys.argv()`   | from `Command`                  |
+| --------------- | -------------- | ------------------------------- |
+| returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
+| returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
+
+- **`full`** means dual return — you get both the typed struct and the raw `ParseResult`.
+- **`from_command`** means parsing from a pre-configured `Command` (created via `to_command()` + builder customisation).
 
 ## Cross-Library Method Name Reference
 

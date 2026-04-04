@@ -25,7 +25,7 @@ A feature-rich command-line argument parser library for Mojo, with both builder 
 
 ## Overview
 
-ArgMojo provides two complementary styles for defining and parsing command-line arguments in Mojo: a **builder API** for maximum control (`Command` + `Argument` chains) and an optional **struct-based declarative API** inspired by Swift's [swift-argument-parser](https://github.com/apple/swift-argument-parser) (define a `Parsable` struct, call `MyArgs.parse()`, get typed results). Both styles can be mixed freely — declare 80% of your arguments in a struct, then reach for builder methods for the rest.
+ArgMojo provides two complementary styles for defining and parsing command-line arguments in Mojo: a **builder API** for maximum control (`Command` + `Argument` chains) and an optional **struct-based declarative API** inspired by Swift's [swift-argument-parser](https://github.com/apple/swift-argument-parser) (define a `Parsable` struct, call `MyArgs.parse()`, get typed results). You can mix both freely — put most of your arguments in a struct and drop down to builder methods whenever you need finer control.
 
 ArgMojo currently supports:
 
@@ -208,7 +208,16 @@ cmd.implies("force", "validated")
 var deploy = Deploy.parse_from_command(cmd^)     # Command → typed struct
 ```
 
-See `examples/declarative/` for more patterns: pure declarative, hybrid, split parse, and subcommands.
+The `Parsable` trait provides four parsing methods:
+
+|                  | `sys.argv()`     | from `Command`                  |
+| ---------------- | ---------------- | ------------------------------- |
+| returns `Self`   | `parse()`        | `parse_from_command(cmd^)`      |
+| returns `Tuple`  | `parse_full()`   | `parse_full_from_command(cmd^)` |
+
+Plus: `parse_args(args)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
+
+See `examples/declarative/` for more patterns: pure declarative, hybrid, full parse, and subcommands.
 
 ## Usage Examples
 
@@ -225,7 +234,7 @@ ArgMojo ships with two complete example CLIs:
 | **Declarative examples**    |                                     |                                                                                                                                                                                                                                                                                                                                   |
 | `search` — pure declarative | `examples/declarative/search.mojo`  | Positional args, flags, count flags, choices, range clamping, append/collect — all via `Parsable` struct                                                                                                                                                                                                                          |
 | `deploy` — hybrid           | `examples/declarative/deploy.mojo`  | Declarative struct + builder customisation (`mutually_exclusive`, `implies`, tips, colours)                                                                                                                                                                                                                                       |
-| `convert` — split parse     | `examples/declarative/convert.mojo` | Declarative fields + extra builder args; `parse_with_command()` dual return                                                                                                                                                                                                                                                       |
+| `convert` — full parse      | `examples/declarative/convert.mojo` | Declarative fields + extra builder args; `parse_full_from_command()` dual return                                                                                                                                                                                                                                                  |
 | `jomo` — subcommands        | `examples/declarative/jomo.mojo`    | Declarative root + mix of declarative and builder subcommands; `subcommands()` hook, `from_parse_result()` dispatch                                                                                                                                                                                                               |
 
 Build both example binaries:
@@ -322,7 +331,7 @@ argmojo/
 │   └── declarative/                   # Declarative API examples
 │       ├── search.mojo                # Pure declarative (simple tool)
 │       ├── deploy.mojo                # Hybrid (declarative + builder)
-│       ├── convert.mojo               # Split parse (dual return)
+│       ├── convert.mojo               # Full parse (dual return)
 │       └── jomo.mojo                  # Subcommands (Mojo CLI lookalike)
 ├── src/
 │   └── argmojo/                       # Main package

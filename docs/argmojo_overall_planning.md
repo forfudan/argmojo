@@ -688,7 +688,7 @@ These features use capabilities already available in Mojo 0.26.2 and can be expe
 
 - **Layered on builder** — `parser.mojo` is a consumer of `Command` + `Argument`; no new parsing engine.
 - **Swift-inspired** — Parametric wrapper types (`Option[T, ...]`, `Flag[...]`, `Positional[T, ...]`, `Count[...]`) mirror Swift's property wrappers (`@Option`, `@Flag`, `@Argument`). `Parsable` trait mirrors `ParsableCommand`.
-- **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level tweaks (groups, implications, coloured help); (2) `parse_split()` returns both typed struct + `ParseResult` for hybrid workflows.
+- **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level tweaks (groups, implications, coloured help); (2) `parse_full()` returns both typed struct + `ParseResult` for hybrid workflows.
 - **Optional** — Users who prefer the builder API are completely unaffected. Zero change to existing code.
 
 **Pre/Post run hooks** — Straightforward callback mechanism (`def(ParseResult) raises`). No special language features needed; just needs API design and a decision on execution order with subcommands.

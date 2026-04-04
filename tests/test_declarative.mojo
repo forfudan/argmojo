@@ -169,7 +169,7 @@ def test_split_return() raises:
     # Parse into a raw ParseResult.
     var result = cmd.parse_arguments(args)
 
-    # Typed write-back (same as what parse_split returns as element 0).
+    # Typed write-back (same as what parse_full returns as element 0).
     var grep = Grep.from_parse_result(result)
 
     # Verify typed access.
@@ -178,7 +178,7 @@ def test_split_return() raises:
     assert_true(grep.pattern.value == "split_pattern", "split typed pattern")
     assert_true(grep.debug_level.value == 2, "split typed debug_level")
 
-    # Verify raw ParseResult access (same as what parse_split returns as element 1).
+    # Verify raw ParseResult access (same as what parse_full returns as element 1).
     assert_true(result.get_string("output") == "split.txt", "split raw output")
     assert_true(result.get_flag("verbose"), "split raw verbose")
     assert_true(

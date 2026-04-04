@@ -3,10 +3,6 @@
 from std.sys import exit, stderr
 
 
-comptime Arg = Argument
-"""Shorthand alias for ``Argument``."""
-
-
 struct Argument(Copyable, Movable, Writable):
     """A command-line argument with its metadata and constraints.
 

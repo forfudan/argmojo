@@ -44,7 +44,7 @@ trait Parsable(Defaultable, Movable):
     """
 
     def __init__(out self):
-        """Default-initialise all fields via reflection.
+        """Default-initialises all fields via reflection.
 
         Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
         compiler's definite-assignment check, then placement-news each
@@ -80,7 +80,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def description() -> String:
-        """Return the command description for --help.
+        """Returns the command description for --help.
 
         Returns:
             The description string.
@@ -89,7 +89,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def version() -> String:
-        """Return the version string for --version.
+        """Returns the version string for --version.
 
         Override to change from the default ``"0.1.0"``.
 
@@ -100,7 +100,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def name() -> String:
-        """Return the command name.
+        """Returns the command name.
 
         Override to provide a custom command name.
         An empty string (the default) means ``"command"`` is used.
@@ -112,7 +112,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def subcommands() raises -> List[Command]:
-        """Return a list of child subcommands.
+        """Returns a list of child subcommands.
 
         Called automatically by ``to_command()`` to register children.
         Override to declare declarative subcommands:
@@ -136,7 +136,7 @@ trait Parsable(Defaultable, Movable):
         return List[Command]()
 
     def run(self) raises:
-        """Execute this command's logic after parsing.
+        """Executes this command's logic after parsing.
 
         Override in leaf commands. The default does nothing.
         """
@@ -146,7 +146,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def parse() raises -> Self:
-        """Build, parse sys.argv(), and return a populated Self.
+        """Builds, parses sys.argv(), and returns a populated Self.
 
         This is the primary entry point for pure-declarative usage.
 
@@ -159,7 +159,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def parse_args(args: List[String]) raises -> Self:
-        """Build, parse the given argument list, and return a populated Self.
+        """Builds, parses the given argument list, and returns a populated Self.
 
         Useful for testing without touching sys.argv().
 
@@ -177,13 +177,13 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def to_command() raises -> Command:
-        """Reflect over Self's fields, register them, and return a configured Command.
+        """Reflects over Self's fields, registers them, and returns a configured Command.
 
         Iterates Self's fields via reflection and registers
         ArgumentLike-conforming ones as Arguments on the Command.
         Automatically calls ``subcommands()`` to register child commands.
         Users can modify the returned Command with builder methods
-        before calling ``parse_from_command()`` or ``parse_with_command()``.
+        before calling ``parse_from_command()`` or ``parse_full_from_command()``.
 
         Returns:
             A fully configured Command.
@@ -219,7 +219,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def parse_from_command(var cmd: Command) raises -> Self:
-        """Parse using a pre-configured Command and return a populated Self.
+        """Parses using a pre-configured Command and returns a populated Self.
 
         Use after ``to_command()`` + builder customisations.
 
@@ -235,8 +235,8 @@ trait Parsable(Defaultable, Movable):
     # ── Dual return ──
 
     @staticmethod
-    def parse_split() raises -> Tuple[Self, ParseResult]:
-        """Build, parse argv, and return both Self and raw ParseResult.
+    def parse_full() raises -> Tuple[Self, ParseResult]:
+        """Builds, parses argv, and returns both Self and raw ParseResult.
 
         Use when you need both typed fields and subcommand dispatch.
 
@@ -249,8 +249,10 @@ trait Parsable(Defaultable, Movable):
         return Tuple[Self, ParseResult](args^, result^)
 
     @staticmethod
-    def parse_with_command(var cmd: Command) raises -> Tuple[Self, ParseResult]:
-        """Parse using a pre-configured Command and return both Self and ParseResult.
+    def parse_full_from_command(
+        var cmd: Command,
+    ) raises -> Tuple[Self, ParseResult]:
+        """Parses using a pre-configured Command and returns both Self and ParseResult.
 
         Essential for subcommand dispatch: the typed Self gives
         root-level flags, ParseResult gives subcommand name + fields.
@@ -269,7 +271,7 @@ trait Parsable(Defaultable, Movable):
 
     @staticmethod
     def from_parse_result(result: ParseResult) raises -> Self:
-        """Populate Self from an existing ParseResult (no parsing).
+        """Populates Self from an existing ParseResult (no parsing).
 
         Useful for subcommand dispatch — after the parent parses,
         extract child fields from the subcommand result.

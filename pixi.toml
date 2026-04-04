@@ -10,7 +10,7 @@ license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]
 readme = "README.md"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies]
 mojo = "==0.26.2.0"
@@ -39,7 +39,8 @@ test = """\
     && mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
     && mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
     && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo"""
+    && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
 # is temporarily disabled to work around a Mojo compiler deadlock
 # with -D ASSERT=all.  Re-enable when the compiler bug is fixed.
@@ -60,6 +61,7 @@ t = """\
   mojo run -I src -D ASSERT=all tests/test_declarative.mojo &             pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_hybrid.mojo &                  pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo & pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_wrappers.mojo &                pids+=($!);
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
@@ -70,7 +72,10 @@ build = """pixi run package && bash -c '\
   mojo build -I src examples/mgit.mojo  -o mgit  & pids+=($!); \
   mojo build -I src examples/demo.mojo  -o demo  & pids+=($!); \
   mojo build -I src examples/yu.mojo    -o yu    & pids+=($!); \
-  mojo build -I src examples/jomo.mojo  -o jomo  & pids+=($!); \
+  mojo build -I src examples/declarative/search.mojo  -o search  & pids+=($!); \
+  mojo build -I src examples/declarative/deploy.mojo   -o deploy  & pids+=($!); \
+  mojo build -I src examples/declarative/convert.mojo  -o convert & pids+=($!); \
+  mojo build -I src examples/declarative/jomo.mojo     -o jomo    & pids+=($!); \
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 
@@ -107,7 +112,7 @@ d = """pixi run package && bash -c '\
 """
 
 # clean build artifacts
-clean = "rm -f argmojo.mojopkg mgrep mgit demo yu search deploy convert jomo"
+clean = "rm -f argmojo.mojopkg mgrep mgit demo yu jomo search deploy convert"
 
 # Run all
 all = """

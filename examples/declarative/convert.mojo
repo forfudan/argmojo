@@ -1,4 +1,4 @@
-"""Example: Split Parse (declarative + extra builder fields)
+"""Example: Full Parse (declarative + extra builder fields)
 
 Try it out with:
 
@@ -47,8 +47,8 @@ def main() raises:
     command.header_color["GREEN"]()  # Set the help header color to green
     command.help_on_no_arguments()  # Show help if no arguments are provided
 
-    # parse_with_command() returns BOTH the typed struct AND the raw ParseResult
-    var result = Convert.parse_with_command(command^)
+    # parse_full_from_command() returns BOTH the typed struct AND the raw ParseResult
+    var result = Convert.parse_full_from_command(command^)
     ref args = result[0]  # typed Convert
     ref raw = result[1]  # untyped ParseResult
 
