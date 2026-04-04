@@ -13,7 +13,7 @@ Covers:
   - Extra builder args accessible via ParseResult
   - configure() free function pattern
 
-Note: parse_from_command(), parse_split(), and parse_with_command() call
+Note: parse_from_command(), parse_full(), and parse_full_from_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  Their logic is identical
 to to_command() + parse_arguments() + from_parse_result() which IS tested.
@@ -283,7 +283,7 @@ def test_implies_chain() raises:
 
 
 # =======================================================================
-# 5. Extra builder args + parse_split / dual return
+# 5. Extra builder args + parse_full / dual return
 # =======================================================================
 
 
@@ -341,12 +341,13 @@ def test_extra_builder_args_defaults() raises:
 
 
 # =======================================================================
-# 6. parse_with_command trait static method pattern
+# 6. parse_full_from_command trait static method pattern
 # =======================================================================
 
 
-def test_parse_with_command_manual() raises:
-    """Simulate parse_with_command: to_command → customise → parse → both."""
+def test_parse_full_from_command_manual() raises:
+    """Simulate parse_full_from_command: to_command → customise → parse → both.
+    """
     var cmd = Deploy.to_command()
     cmd.add_tip("Verify before deploying")
 

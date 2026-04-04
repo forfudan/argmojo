@@ -7,7 +7,7 @@ Tests Parsable structs as subcommand participants:
   - run() dispatch pattern for leaf command execution
   - Child.from_parse_result() write-back from subcommand ParseResult
 
-Note: parse_from_command(), parse_split(), and parse_with_command() call
+Note: parse_from_command(), parse_full(), and parse_full_from_command() call
 cmd.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  The testable equivalents
 (to_command + parse_arguments + from_parse_result) exercise identical logic.
@@ -472,7 +472,7 @@ def test_root_customization_builder_child() raises:
 
 
 def test_dual_return_root_and_subcommand() raises:
-    """Simulate parse_split: get typed root + raw result for dispatch."""
+    """Simulate parse_full: get typed root + raw result for dispatch."""
     var cmd = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose", "search", "hello"]
     var result = cmd.parse_arguments(args)

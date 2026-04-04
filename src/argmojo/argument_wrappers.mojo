@@ -1,6 +1,6 @@
-"""Declarative wrapper types for CLI arguments.
+"""Declares wrapper types for CLI arguments.
 
-Four wrapper structs that encode argument metadata as compile-time
+Four wrapper structs encode argument metadata as compile-time
 parameters.  Each wraps a runtime ``value`` field and carries all
 configuration (long name, short name, help text, choices, ...) in its
 type signature so that reflection-based ``to_command`` can
@@ -31,14 +31,14 @@ from .parse_result import ParseResult
 
 
 trait ArgumentLike:
-    """Trait for wrapper types that can register themselves on a Command
-    and write back parsed values from a ParseResult.
+    """Provides hooks for registering an argument on a Command
+    and writing back parsed values from a ParseResult.
 
     Implemented by Option, Flag, Positional, and Count.
     """
 
     def add_to_command(self, field_name: String, mut cmd: Command) raises:
-        """Translate compile-time parameters into an Argument and add to cmd.
+        """Translates compile-time parameters into an Argument and adds it to cmd.
 
         Args:
             field_name: The struct field name (used as default long name).
@@ -49,7 +49,7 @@ trait ArgumentLike:
     def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
-        """Populate self.value from a ParseResult.
+        """Populates self.value from a ParseResult.
 
         Args:
             field_name: The struct field name (used as lookup key).
@@ -163,11 +163,11 @@ struct Option[
     """The runtime value populated by parsing."""
 
     def __init__(out self):
-        """Default-initialise with ``T()``."""
+        """Default-initialises with ``T()``."""
         self.value = Self.T()
 
     def __init__(out self, *, copy: Self):
-        """Copy from an existing instance.
+        """Copies from an existing instance.
 
         Args:
             copy: The Option to copy from.
@@ -175,7 +175,7 @@ struct Option[
         self.value = copy.value.copy()
 
     def __init__(out self, *, deinit take: Self):
-        """Move from an existing instance.
+        """Moves from an existing instance.
 
         Args:
             take: The Option to move from.
@@ -183,6 +183,12 @@ struct Option[
         self.value = take.value^
 
     def add_to_command(self, field_name: String, mut cmd: Command) raises:
+        """Translates compile-time parameters into an Argument and adds it to the Command.
+
+        Args:
+            field_name: The struct field name (used as default long name).
+            cmd: The Command to register the argument on.
+        """
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -243,6 +249,12 @@ struct Option[
     def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
+        """Populates self.value from the ParseResult.
+
+        Args:
+            field_name: The struct field name (used as lookup key).
+            result: The ParseResult containing parsed values.
+        """
         if not result.has(field_name):
             return
         comptime type_name = get_type_name[Self.T]()
@@ -315,11 +327,11 @@ struct Flag[
     """The runtime value populated by parsing."""
 
     def __init__(out self):
-        """Default-initialise to ``False``."""
+        """Default-initialises to ``False``."""
         self.value = False
 
     def __init__(out self, val: Bool):
-        """Initialise with an explicit value.
+        """Initialises with an explicit value.
 
         Args:
             val: The initial boolean value.
@@ -327,7 +339,7 @@ struct Flag[
         self.value = val
 
     def __init__(out self, *, copy: Self):
-        """Copy from an existing instance.
+        """Copies from an existing instance.
 
         Args:
             copy: The Flag to copy from.
@@ -335,7 +347,7 @@ struct Flag[
         self.value = copy.value
 
     def __init__(out self, *, deinit take: Self):
-        """Move from an existing instance.
+        """Moves from an existing instance.
 
         Args:
             take: The Flag to move from.
@@ -343,7 +355,7 @@ struct Flag[
         self.value = take.value
 
     def __bool__(self) -> Bool:
-        """Implicit conversion to ``Bool`` for convenience.
+        """Converts to ``Bool`` implicitly for convenience.
 
         Allows ``if args.verbose:`` rather than ``if args.verbose.value:``.
 
@@ -353,6 +365,12 @@ struct Flag[
         return self.value
 
     def add_to_command(self, field_name: String, mut cmd: Command) raises:
+        """Translates compile-time parameters into a flag Argument and adds it to the Command.
+
+        Args:
+            field_name: The struct field name (used as default long name).
+            cmd: The Command to register the flag on.
+        """
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -375,6 +393,12 @@ struct Flag[
     def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
+        """Populates self.value from the ParseResult.
+
+        Args:
+            field_name: The struct field name (used as lookup key).
+            result: The ParseResult containing parsed values.
+        """
         self.value = result.get_flag(field_name)
 
 
@@ -433,11 +457,11 @@ struct Positional[
     """The runtime value populated by parsing."""
 
     def __init__(out self):
-        """Default-initialise with ``T()``."""
+        """Default-initialises with ``T()``."""
         self.value = Self.T()
 
     def __init__(out self, *, copy: Self):
-        """Copy from an existing instance.
+        """Copies from an existing instance.
 
         Args:
             copy: The Positional to copy from.
@@ -445,7 +469,7 @@ struct Positional[
         self.value = copy.value.copy()
 
     def __init__(out self, *, deinit take: Self):
-        """Move from an existing instance.
+        """Moves from an existing instance.
 
         Args:
             take: The Positional to move from.
@@ -453,6 +477,12 @@ struct Positional[
         self.value = take.value^
 
     def add_to_command(self, field_name: String, mut cmd: Command) raises:
+        """Translates compile-time parameters into a positional Argument and adds it to the Command.
+
+        Args:
+            field_name: The struct field name (used as the argument name).
+            cmd: The Command to register the positional on.
+        """
         var arg = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
             arg._is_remainder = True
@@ -474,6 +504,12 @@ struct Positional[
     def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
+        """Populates self.value from the ParseResult.
+
+        Args:
+            field_name: The struct field name (used as lookup key).
+            result: The ParseResult containing parsed values.
+        """
         if not result.has(field_name):
             return
         comptime type_name = get_type_name[Self.T]()
@@ -540,11 +576,11 @@ struct Count[
     """The runtime value populated by parsing."""
 
     def __init__(out self):
-        """Default-initialise to ``0``."""
+        """Default-initialises to ``0``."""
         self.value = 0
 
     def __init__(out self, val: Int):
-        """Initialise with an explicit value.
+        """Initialises with an explicit value.
 
         Args:
             val: The initial count value.
@@ -552,7 +588,7 @@ struct Count[
         self.value = val
 
     def __init__(out self, *, copy: Self):
-        """Copy from an existing instance.
+        """Copies from an existing instance.
 
         Args:
             copy: The Count to copy from.
@@ -560,7 +596,7 @@ struct Count[
         self.value = copy.value
 
     def __init__(out self, *, deinit take: Self):
-        """Move from an existing instance.
+        """Moves from an existing instance.
 
         Args:
             take: The Count to move from.
@@ -568,6 +604,12 @@ struct Count[
         self.value = take.value
 
     def add_to_command(self, field_name: String, mut cmd: Command) raises:
+        """Translates compile-time parameters into a count Argument and adds it to the Command.
+
+        Args:
+            field_name: The struct field name (used as default long name).
+            cmd: The Command to register the count on.
+        """
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -589,4 +631,10 @@ struct Count[
     def read_from_result(
         mut self, field_name: String, result: ParseResult
     ) raises:
+        """Populates self.value from the ParseResult.
+
+        Args:
+            field_name: The struct field name (used as lookup key).
+            result: The ParseResult containing parsed values.
+        """
         self.value = result.get_count(field_name)

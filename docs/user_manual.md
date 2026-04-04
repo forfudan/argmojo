@@ -120,7 +120,7 @@ from argmojo import Argument, Command
   - [The `Parsable` Trait](#the-parsable-trait)
   - [Pure Declarative — One-Line Parse](#pure-declarative--one-line-parse)
   - [Hybrid — Declarative + Builder Customisation](#hybrid--declarative--builder-customisation)
-  - [Split Parse — Declarative + Extra Builder Fields](#split-parse--declarative--extra-builder-fields)
+  - [Full Parse — Declarative + Extra Builder Fields](#full-parse--declarative--extra-builder-fields)
   - [Subcommands](#subcommands-1)
   - [Auto-Naming Convention](#auto-naming-convention)
   - [API Summary](#api-summary)
@@ -3029,7 +3029,7 @@ Server region [us/eu/ap] (us): ap
 #### All arguments provided — no prompting at all
 
 ```console
-$ ./login --user alice --token secret-123 --region eu
+./login --user alice --token secret-123 --region eu
 ```
 
 No prompts appear. The CLI values are used directly.
@@ -3103,8 +3103,8 @@ Enable verbose output [y/n]:        ← flag prompt
 ### Interaction with Other Features
 
 - **`.required()`**: Prompting happens *before* validation. If the user provides a value via the prompt, the required check passes. `.prompt()` does **not** require `.required()` — it works on any argument.
-- **`.default[]()` **: If the user presses Enter (empty input), the default is applied by the normal default-filling phase.
-- **`.choice[]()` **: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
+- **`.default[]()`**: If the user presses Enter (empty input), the default is applied by the normal default-filling phase.
+- **`.choice[]()`**: Choices are displayed in the prompt. If the user enters an invalid choice, a validation error is raised after prompting.
 - **Subcommands**: Each subcommand can have its own prompt-enabled arguments.
 - **Persistent flags**: Persistent arguments with `.prompt()` are prompted at the level where they are missing.
 - **`help_on_no_arguments()`**: Cannot be combined with `.prompt()` on the same command. When no arguments are given, `help_on_no_arguments()` prints help and exits *before* prompting runs, making prompt-enabled arguments unreachable. ArgMojo raises a registration-time error if you attempt this combination.
@@ -3114,7 +3114,7 @@ Enable verbose output [y/n]:        ← flag prompt
 When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the `input()` call raises on EOF. ArgMojo catches this gracefully and stops prompting — any values collected so far are preserved, defaults are then applied normally, and validation proceeds as usual.
 
 ```console
-$ echo "" | ./login --user alice --token secret
+echo "" | ./login --user alice --token secret
 ```
 
 Prompts are still printed to stdout, but `input()` reads from the pipe. Once the pipe is exhausted, `input()` raises and prompting stops. `--region` gets its default `"us"`.
@@ -3122,7 +3122,7 @@ Prompts are still printed to stdout, but `input()` reads from the pipe. Once the
 To avoid prompting entirely, always provide all arguments on the command line:
 
 ```console
-$ ./login --user alice --token secret --region eu
+./login --user alice --token secret --region eu
 ```
 
 ## Argument Parents and Inheritance
@@ -3298,7 +3298,7 @@ When stdin is not a terminal, the echo-control calls return `False` (harmless), 
 To bypass the prompt entirely, provide the value on the command line:
 
 ```console
-$ ./login --username alice --password s3cret
+./login --username alice --password s3cret
 ```
 
 ## Confirmation Option
@@ -3399,7 +3399,7 @@ def main() raises:
     var result = cmd.parse()
 ```
 
-The custom string appears as-is after `Usage: ` in both `--help` output and error messages:
+The custom string appears as-is after `Usage:` in both `--help` output and error messages:
 
 ```sh
 $ ./git --help
@@ -3733,7 +3733,7 @@ def main() raises:
 
 See [`examples/declarative/deploy.mojo`](../examples/declarative/deploy.mojo) for a complete example.
 
-### Split Parse — Declarative + Extra Builder Fields
+### Full Parse — Declarative + Extra Builder Fields
 
 When some arguments are too complex for the struct, add them via builder methods and retrieve both the typed struct and the raw `ParseResult`:
 
@@ -3744,7 +3744,7 @@ def main() raises:
         Argument("format", help="Output format")
         .long["format"]().choice["json"]().choice["yaml"]().default["json"]()
     )
-    var (args, raw) = Convert.parse_with_command(cmd^)
+    var (args, raw) = Convert.parse_full_from_command(cmd^)
     print(args.input.value)              # typed — from struct
     print(raw.get_string("format"))      # untyped — from builder
 ```
@@ -3776,11 +3776,13 @@ struct MyGit(Parsable):
     def description() -> String: return "A mini git tool."
 
     @staticmethod
-    def subcommands(mut cmd: Command) raises:
-        cmd.add_subcommand(Clone.to_command())
+    def subcommands() raises -> List[Command]:
+        var subs = List[Command]()
+        subs.append(Clone.to_command())
+        return subs^
 
 def main() raises:
-    var (git_args, result) = MyGit.parse_split()
+    var (git_args, result) = MyGit.parse_full()
     if git_args.verbose:
         print("Verbose mode on")
     if result.subcommand == "clone":
@@ -3804,15 +3806,25 @@ Fields wrapped in `Positional[...]` don't get auto-generated long names.
 
 ### API Summary
 
-| Method                        | Returns                 | Purpose                                                      |
-| ----------------------------- | ----------------------- | ------------------------------------------------------------ |
-| `T.parse()`                   | `T`                     | Build + parse `sys.argv()` + typed result                    |
-| `T.parse_args(args)`          | `T`                     | Parse explicit arg list (testing)                            |
-| `T.to_command()`              | `Command`               | Reflect struct → owned `Command` for customisation           |
-| `T.parse_from_command(cmd^)`  | `T`                     | Parse a customised `Command` → typed struct                  |
-| `T.parse_split()`             | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
-| `T.parse_with_command(cmd^)`  | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
-| `T.from_parse_result(result)` | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+| Method                            | Returns                 | Purpose                                                      |
+| --------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| `T.parse()`                       | `T`                     | Build + parse `sys.argv()` + typed result                    |
+| `T.parse_args(args)`              | `T`                     | Parse explicit arg list (testing)                            |
+| `T.to_command()`                  | `Command`               | Reflect struct → owned `Command` for customisation           |
+| `T.parse_from_command(cmd^)`      | `T`                     | Parse a customised `Command` → typed struct                  |
+| `T.parse_full()`                  | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
+| `T.parse_full_from_command(cmd^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
+| `T.from_parse_result(result)`     | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+
+The four parsing methods follow a 2×2 naming convention:
+
+|                 | `sys.argv()`   | from `Command`                  |
+| --------------- | -------------- | ------------------------------- |
+| returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
+| returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
+
+- **`full`** means dual return — you get both the typed struct and the raw `ParseResult`.
+- **`from_command`** means parsing from a pre-configured `Command` (created via `to_command()` + builder customisation).
 
 ## Cross-Library Method Name Reference
 
