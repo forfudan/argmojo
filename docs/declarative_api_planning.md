@@ -154,7 +154,7 @@ What I think argmojo can add beyond Swift:
 │  var args = MyArgs.parse_from_command(cmd^)                                  │
 │                                                                              │
 │  # Dual return:                                                              │
-│  var result = MyArgs.parse_full()                                           │
+│  var result = MyArgs.parse_full()                                            │
 │  print(result[0].name.value)   # typed                                       │
 │  print(result[1].get_string("extra"))  # untyped                             │
 │                                                                              │
@@ -164,7 +164,7 @@ What I think argmojo can add beyond Swift:
 │  Parsable.to_command()  → Command   (reflect Self → builder calls)           │
 │  Parsable.parse()       → Self      (to_command + parse + write-back)        │
 │  Parsable.parse_from_command() → Self  (parse from pre-configured Command)   │
-│  Parsable.parse_full() → (Self, ParseResult)  (dual return)                 │
+│  Parsable.parse_full() → (Self, ParseResult)  (dual return)                  │
 │  Parsable.parse_args()  → Self      (parse from explicit arg list)           │
 │  Parsable.validate()    → None      (post-parse cross-field validation)      │  ← Phase 4, not yet implemented
 │  (wrapper types are auto-initialised by Parsable — no manual __init__)       │
