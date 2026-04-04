@@ -1,4 +1,4 @@
-"""Example: Split Parse (declarative + extra builder fields)
+"""Example: Full Parse (declarative + extra builder fields)
 
 Try it out with:
 

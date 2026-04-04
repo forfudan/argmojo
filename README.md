@@ -331,7 +331,7 @@ argmojo/
 │   └── declarative/                   # Declarative API examples
 │       ├── search.mojo                # Pure declarative (simple tool)
 │       ├── deploy.mojo                # Hybrid (declarative + builder)
-│       ├── convert.mojo               # Split parse (dual return)
+│       ├── convert.mojo               # Full parse (dual return)
 │       └── jomo.mojo                  # Subcommands (Mojo CLI lookalike)
 ├── src/
 │   └── argmojo/                       # Main package

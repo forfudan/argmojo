@@ -3,8 +3,42 @@
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
 <!--
-Comment out unreleased changes here. This file will be edited just before each release to reflect the final changelog for that version.
+Unreleased changes should be commented out from here. This file will be edited just before each release to reflect the final changelog for that version. Otherwise, the users would be confused.
 -->
+
+## 20260404 (v0.5.0)
+
+ArgMojo v0.5.0 introduces the **struct-based declarative API** — define a `Parsable` struct with typed wrapper fields (`Option`, `Flag`, `Positional`, `Count`), call `MyArgs.parse()`, and get typed results. The declarative API coexists with the existing builder API and bridges between them via `to_command()` / `parse_from_command()`. This release also adds asterisk-masked password input and reorganises internal modules.
+
+ArgMojo v0.5.0 targets Mojo v0.26.2.
+
+### ⭐️ New in v0.5.0
+
+1. **Declarative API core** — `Parsable` trait with compile-time reflection over wrapper-typed fields. Conforming structs need only declare fields and provide `description()`; all parsing, Command-building, and write-back methods are provided as trait defaults (PR #34, #35, #37, #40).
+2. **Wrapper types** — `Option[T, ...]`, `Flag[...]`, `Positional[T, ...]`, `Count[...]` parametric structs encode CLI metadata as compile-time parameters. Conform to the internal `ArgumentLike` trait with `add_to_command()` / `read_from_result()` hooks (PR #34).
+3. **Auto-initialisation** — `Parsable.__init__` uses `mark_initialized` + `comptime for` + `UnsafePointer.init_pointee_move` to default-construct all fields via reflection. Users never need to write `__init__` (PR #37).
+4. **Hybrid bridge** — `to_command()` reflects a `Parsable` struct into an owned `Command` for builder-level customisation; `parse_from_command(cmd^)` parses back into a typed struct (PR #35, #40).
+5. **Dual-return parsing** — `parse_full()` returns `Tuple[Self, ParseResult]` for workflows that need both typed struct fields and raw `ParseResult` access (e.g. subcommand dispatch). `parse_full_from_command(cmd^)` does the same from a pre-configured Command (PR #40, #42).
+6. **Subcommand support** — `subcommands()` hook on `Parsable` returns `List[Command]`; called automatically by `to_command()` for recursive tree assembly. `run(self)` method for leaf command execution. `from_parse_result()` for typed write-back from subcommand results (PR #39, #43).
+7. **Asterisk-masked password input** — `.password[True]()` on `Argument` echoes `*` for each keystroke (sudo-rs style), complementing the existing `.password()` which hides input entirely. Uses raw terminal mode with ICANON/ISIG disabled (PR #32).
+
+### 🦋 Changed in v0.5.0
+
+1. Remove `Arg` alias for `Argument` and drop `ArgumentLike` from the public export list. The public API now exports: `Argument`, `Command`, `ParseResult`, `Parsable`, `Option`, `Flag`, `Positional`, `Count` (PR #42).
+2. `subcommands()` hook signature changed from `subcommands(mut cmd: Command) raises` to `subcommands() raises -> List[Command]` — returns a list of Commands instead of mutating one (PR #43).
+3. Reorganise `Argument` and `Command` source files into clearly grouped internal sections for readability (PR #33).
+
+### 📚 Documentation and testing in v0.5.0
+
+- Add `docs/declarative_api_planning.md` — comprehensive design document for the declarative API (PR #33).
+- Add 4 declarative examples: `search.mojo` (pure declarative), `deploy.mojo` (hybrid), `convert.mojo` (full parse + extra builder args), `jomo.mojo` (subcommands with hybrid tree) (PR #41).
+- Add 4 test modules: `test_wrappers.mojo` (wrapper defaults, copy/move, `Flag.__bool__`), `test_declarative.mojo` (to_command, parse_args, from_parse_result), `test_hybrid.mojo` (builder customisation, mutually exclusive, implies, configure pattern), `test_subcommands_declarative.mojo` (flat/nested subcommands, run() dispatch, dual return) (PR #38, #39).
+- Add `test_interactive.mojo` for interactive prompting edge cases (PR #33).
+- Add method matrix table to README, user manual, and planning doc.
+- Update README with declarative API Quick Start, examples table, and project structure.
+- Update user manual with declarative API usage guide, full-parse section, and API summary.
+
+---
 
 ## 20260321 (v0.4.0)
 
