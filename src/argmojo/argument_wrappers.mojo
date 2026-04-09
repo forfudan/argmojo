@@ -191,14 +191,19 @@ struct Option[
         """
 
         # == Compile-time schema validation ==
-        # 1. The short name must be exactly 1 character if provided.
-        # 2. If a range is specified, min must be <= max.
-        # 3. If choices and default are both specified, default must be one of the choices.
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
+        # - If a range is specified, min must be <= max.
+        # - If choices and default are both specified, default must be one of the choices.
         comptime if Self.short != "":
             comptime assert len(Self.short) == 1, (
                 "Option short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Option short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
             )
         comptime if Self.has_range:
             comptime assert (
@@ -400,12 +405,17 @@ struct Flag[
         """
 
         # == Compile-time schema validation ==
-        # 1. The short name must be exactly 1 character if provided.
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
         comptime if Self.short != "":
             comptime assert len(Self.short) == 1, (
                 "Flag short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Flag short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
             )
 
         # == Translate fields of the wrapper struct into Argument properties ==
@@ -665,12 +675,17 @@ struct Count[
         """
 
         # == Compile-time schema validation ==
-        # 1. The short name must be exactly 1 character if provided.
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
         comptime if Self.short != "":
             comptime assert len(Self.short) == 1, (
                 "Count short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Count short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
             )
 
         # == Translate fields of the wrapper struct into Argument properties ==

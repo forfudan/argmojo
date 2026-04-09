@@ -551,7 +551,7 @@ struct Command(Copyable, Movable, Writable):
                     + self.name
                     + "'"
                 )
-        # Guard: duplicate long name.
+        # Guard: duplicate long name (including alias collisions).
         if argument._long_name:
             for _di in range(len(self.args)):
                 if (
@@ -569,6 +569,54 @@ struct Command(Copyable, Movable, Writable):
                         + self.name
                         + "'"
                     )
+                # Check new argument's long name against existing aliases.
+                for _ai in range(len(self.args[_di]._alias_names)):
+                    if self.args[_di]._alias_names[_ai] == argument._long_name:
+                        raise Error(
+                            "Argument '"
+                            + argument.name
+                            + "': long flag '--"
+                            + argument._long_name
+                            + "' collides with alias of argument '"
+                            + self.args[_di].name
+                            + "' on '"
+                            + self.name
+                            + "'"
+                        )
+        # Guard: new argument's aliases against existing long names and aliases.
+        for _ni in range(len(argument._alias_names)):
+            for _di in range(len(self.args)):
+                if (
+                    self.args[_di]._long_name
+                    and self.args[_di]._long_name == argument._alias_names[_ni]
+                ):
+                    raise Error(
+                        "Argument '"
+                        + argument.name
+                        + "': alias '--"
+                        + argument._alias_names[_ni]
+                        + "' collides with long flag of argument '"
+                        + self.args[_di].name
+                        + "' on '"
+                        + self.name
+                        + "'"
+                    )
+                for _ai in range(len(self.args[_di]._alias_names)):
+                    if (
+                        self.args[_di]._alias_names[_ai]
+                        == argument._alias_names[_ni]
+                    ):
+                        raise Error(
+                            "Argument '"
+                            + argument.name
+                            + "': alias '--"
+                            + argument._alias_names[_ni]
+                            + "' collides with alias of argument '"
+                            + self.args[_di].name
+                            + "' on '"
+                            + self.name
+                            + "'"
+                        )
         # Guard: duplicate short name.
         if argument._short_name:
             for _di in range(len(self.args)):

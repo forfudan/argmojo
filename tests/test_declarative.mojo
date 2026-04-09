@@ -196,12 +196,8 @@ def test_split_return() raises:
 # on a valid schema, these tests will fail to compile.
 #
 # Invalid schemas (e.g. short="abc", default not in choices) cannot be tested
-# at runtime because they prevent compilation.  Verify manually:
-#
-#   var bad: Option[String, short="abc"]                         → compile error
-#   var bad: Option[String, choices="a,b", default="c"]          → compile error
-#   var bad: Option[Int, has_range=True, range_min=10, range_max=5]
-#                                                                → compile error
+# at runtime because they prevent compilation.  These negative cases are
+# verified by tests/check_schema_errors.sh (run automatically via `pixi run test`).
 # ==============================================================================
 
 

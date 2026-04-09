@@ -30,7 +30,7 @@ check_compile_error() {
             echo "PASS  $name"
             PASS=$((PASS + 1))
         else
-            echo "FAIL  $name — compiled failed but error message not found:"
+            echo "FAIL  $name — compilation failed but error message not found:"
             echo "      expected: $expect_msg"
             echo "      got:      $(head -5 "$TMPDIR/${name}.err")"
             FAIL=$((FAIL + 1))
