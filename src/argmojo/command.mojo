@@ -470,7 +470,7 @@ struct Command(Copyable, Movable, Writable):
             and len(self.subcommands) > 0
             and not self._allow_positional_with_subcommands
         ):
-            self._error(
+            raise Error(
                 "Cannot add positional argument '"
                 + argument.name
                 + "' to '"
@@ -482,7 +482,7 @@ struct Command(Copyable, Movable, Writable):
         if (
             argument._require_equals or argument._has_default_if_no_value
         ) and argument._number_of_values > 0:
-            self._error(
+            raise Error(
                 "Argument '"
                 + argument.name
                 + "': .require_equals() / .default_if_no_value() cannot be"
@@ -492,7 +492,7 @@ struct Command(Copyable, Movable, Writable):
         if argument._is_remainder and (
             argument._long_name or argument._short_name
         ):
-            self._error(
+            raise Error(
                 "Argument '"
                 + argument.name
                 + "': .remainder() is for positional arguments only; remove"
@@ -502,7 +502,7 @@ struct Command(Copyable, Movable, Writable):
         if argument._is_remainder:
             for _ri in range(len(self.args)):
                 if self.args[_ri]._is_remainder:
-                    self._error(
+                    raise Error(
                         "Argument '"
                         + argument.name
                         + "': only one .remainder() positional is allowed"
@@ -514,7 +514,7 @@ struct Command(Copyable, Movable, Writable):
         if argument._is_positional and not argument._is_remainder:
             for _ri in range(len(self.args)):
                 if self.args[_ri]._is_remainder:
-                    self._error(
+                    raise Error(
                         "Argument '"
                         + argument.name
                         + "': cannot add a positional argument after"
@@ -524,7 +524,7 @@ struct Command(Copyable, Movable, Writable):
                     )
         # Guard: .prompt() conflicts with help_on_no_arguments().
         if argument._prompt and self._help_on_no_arguments:
-            self._error(
+            raise Error(
                 "Argument '"
                 + argument.name
                 + "': .prompt() cannot be used on a command with"
@@ -534,7 +534,7 @@ struct Command(Copyable, Movable, Writable):
             )
         # Guard: .password() only makes sense on value-taking arguments.
         if argument._hide_input and (argument._is_flag or argument._is_count):
-            self._error(
+            raise Error(
                 "Argument '"
                 + argument.name
                 + "': .password() cannot be used on a flag or count"
@@ -543,7 +543,7 @@ struct Command(Copyable, Movable, Writable):
         # Guard: duplicate internal name.
         for _di in range(len(self.args)):
             if self.args[_di].name == argument.name:
-                self._error(
+                raise Error(
                     "Argument '"
                     + argument.name
                     + "': duplicate name — an argument with the same"
@@ -558,7 +558,7 @@ struct Command(Copyable, Movable, Writable):
                     self.args[_di]._long_name
                     and self.args[_di]._long_name == argument._long_name
                 ):
-                    self._error(
+                    raise Error(
                         "Argument '"
                         + argument.name
                         + "': duplicate long flag '--"
@@ -576,7 +576,7 @@ struct Command(Copyable, Movable, Writable):
                     self.args[_di]._short_name
                     and self.args[_di]._short_name == argument._short_name
                 ):
-                    self._error(
+                    raise Error(
                         "Argument '"
                         + argument.name
                         + "': duplicate short flag '-"
@@ -625,7 +625,7 @@ struct Command(Copyable, Movable, Writable):
         if not self._allow_positional_with_subcommands:
             for _pi in range(len(self.args)):
                 if self.args[_pi]._is_positional:
-                    self._error(
+                    raise Error(
                         "Cannot add subcommand '"
                         + sub.name
                         + "' to '"
@@ -649,7 +649,7 @@ struct Command(Copyable, Movable, Writable):
                     and ca._long_name
                     and pa._long_name == ca._long_name
                 ):
-                    self._error(
+                    raise Error(
                         "Persistent flag '--"
                         + pa._long_name
                         + "' on '"
@@ -665,7 +665,7 @@ struct Command(Copyable, Movable, Writable):
                     and ca._short_name
                     and pa._short_name == ca._short_name
                 ):
-                    self._error(
+                    raise Error(
                         "Persistent flag '-"
                         + pa._short_name
                         + "' on '"
@@ -1190,7 +1190,7 @@ struct Command(Copyable, Movable, Writable):
         # Guard: conflict with .prompt() arguments.
         for _pi in range(len(self.args)):
             if self.args[_pi]._prompt:
-                self._error(
+                raise Error(
                     "help_on_no_arguments() cannot be used on a command"
                     " that has .prompt() arguments (argument '"
                     + self.args[_pi].name
@@ -1354,12 +1354,12 @@ struct Command(Copyable, Movable, Writable):
         # Guard: reject if --yes or -y is already registered.
         for i in range(len(self.args)):
             if self.args[i]._long_name == "yes":
-                self._error(
+                raise Error(
                     "confirmation_option: a '--yes' argument is already"
                     " registered"
                 )
             if self.args[i]._short_name == "y":
-                self._error(
+                raise Error(
                     "confirmation_option: a '-y' argument is already registered"
                 )
         self._confirmation_enabled = True
