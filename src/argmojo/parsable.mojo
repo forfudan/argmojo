@@ -142,7 +142,7 @@ trait Parsable(Defaultable, Movable):
         """
         pass
 
-    # ── Core: one-line parse ──
+    # == Core: one-line parse ==
 
     @staticmethod
     def parse() raises -> Self:
@@ -173,7 +173,7 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse_arguments(args)
         return Self.from_parse_result(result)
 
-    # ── Hybrid: to_command → customise → parse_from_command ──
+    # == Hybrid: to_command → customise → parse_from_command ==
 
     @staticmethod
     def to_command() raises -> Command:
@@ -197,12 +197,34 @@ trait Parsable(Defaultable, Movable):
             version=String(Self.version()),
         )
 
-        # Register fields into Command via reflection.
+        # Register fields into Command via reflection
+        # Each field is expected to be an argument wrapper type
+        # (e.g. Option, Flag, Positional, Count) that conforms to ArgumentLike.
+        # They will be converted into Argument type and added to the Command.
+
+        # Comptime calculation of field count, types, and names
         var instance = Self()
         comptime field_count = struct_field_count[Self]()
         comptime field_types = struct_field_types[Self]()
         comptime field_names = struct_field_names[Self]()
 
+        # Compile-time schema validation: duplicate short flags
+        # [Mojo Miji]
+        # Cross-field duplicate detection (same name, long flag, or
+        # short flag) cannot be checked at compile time because Mojo's
+        # parametric StringLiteral[value] type prevents trait-level access
+        # to wrapper parameters through erased types. However, this is
+        # caught at runtime: Command.add_argument() raises on duplicate
+        # name, --long, or -short flags, so duplicates are surfaced the
+        # moment to_command() is called.
+        # TODO: Consider adding compile-time duplicate detection when
+        # Mojo supports it.
+
+        # Per-field validations (short flag length, default-in-choices,
+        # range consistency) are checked inside each wrapper's
+        # add_to_command() method.
+
+        # Register fields
         comptime for idx in range(field_count):
             comptime ftype = field_types[idx]
             comptime if conforms_to(ftype, ArgumentLike):
@@ -232,7 +254,7 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse()
         return Self.from_parse_result(result)
 
-    # ── Dual return ──
+    # == Dual return ==
 
     @staticmethod
     def parse_full() raises -> Tuple[Self, ParseResult]:
@@ -267,7 +289,7 @@ trait Parsable(Defaultable, Movable):
         var args = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
-    # ── Subcommand write-back ──
+    # == Subcommand write-back ==
 
     @staticmethod
     def from_parse_result(result: ParseResult) raises -> Self:

@@ -1372,11 +1372,14 @@ I think this is the right call — these features describe *relationships betwee
 ### Phase 4: Further enhancements
 
 - [ ] Implement `_validate_schema[T]()` compile-time checks (§6.3)
-  - [ ] Duplicate short flag detection
-  - [ ] Invalid short flag length
+  - [ ] Duplicate short flag detection (blocked: Mojo's parametric `StringLiteral` prevents accessing wrapper type parameters through trait-erased types; runtime detection already works via the builder layer)
+  - [x] Invalid short flag length (`comptime assert len(short) == 1` in `Option`, `Flag`, `Count`)
   - [ ] Positional ordering enforcement
   - [ ] Type-metadata mismatch detection
-  - [ ] Choices vs default consistency
+  - [x] Choices vs default consistency (`comptime assert` in `Option` and `Positional`)
+  - [x] Range min ≤ max (`comptime assert range_min <= range_max` in `Option`)
+  - [x] Test: positive schema validation (test_schema_validation.mojo, 5 tests)
+  - [x] Test: negative schema validation (check_schema_errors.sh, 6 compile-error tests)
 - [ ] Add `depends_on`/`conflicts_with` parameters to `Option` and `Flag` (§6.4)
   - [ ] Compile-time validation of referenced field names
   - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `to_command()`

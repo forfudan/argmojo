@@ -540,6 +540,53 @@ struct Command(Copyable, Movable, Writable):
                 + "': .password() cannot be used on a flag or count"
                 " argument — it only applies to value-taking arguments"
             )
+        # Guard: duplicate internal name.
+        for _di in range(len(self.args)):
+            if self.args[_di].name == argument.name:
+                self._error(
+                    "Argument '"
+                    + argument.name
+                    + "': duplicate name — an argument with the same"
+                    " name is already registered on '"
+                    + self.name
+                    + "'"
+                )
+        # Guard: duplicate long name.
+        if argument._long_name:
+            for _di in range(len(self.args)):
+                if (
+                    self.args[_di]._long_name
+                    and self.args[_di]._long_name == argument._long_name
+                ):
+                    self._error(
+                        "Argument '"
+                        + argument.name
+                        + "': duplicate long flag '--"
+                        + argument._long_name
+                        + "' — already used by argument '"
+                        + self.args[_di].name
+                        + "' on '"
+                        + self.name
+                        + "'"
+                    )
+        # Guard: duplicate short name.
+        if argument._short_name:
+            for _di in range(len(self.args)):
+                if (
+                    self.args[_di]._short_name
+                    and self.args[_di]._short_name == argument._short_name
+                ):
+                    self._error(
+                        "Argument '"
+                        + argument.name
+                        + "': duplicate short flag '-"
+                        + argument._short_name
+                        + "' — already used by argument '"
+                        + self.args[_di].name
+                        + "' on '"
+                        + self.name
+                        + "'"
+                    )
         self.args.append(argument^)
 
     def add_subcommand(mut self, var sub: Command) raises:
