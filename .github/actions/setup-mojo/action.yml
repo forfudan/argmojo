@@ -1,0 +1,18 @@
+name: Setup Mojo with Pixi
+description: Install pixi, activate the Mojo environment, and build the argmojo package
+
+runs:
+  using: composite
+  steps:
+    - uses: prefix-dev/setup-pixi@v0.9.5
+      with:
+        cache: true
+        activate-environment: true
+    - name: Build package (with retry)
+      shell: bash
+      run: |
+        for attempt in 1 2 3; do
+          if pixi run package; then break; fi
+          if [ "$attempt" -eq 3 ]; then exit 1; fi
+          sleep 5
+        done
