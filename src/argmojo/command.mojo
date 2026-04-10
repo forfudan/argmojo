@@ -4355,8 +4355,7 @@ struct Command(Copyable, Movable, Writable):
         if has_positional:
             if self._allow_negative_expressions:
                 tip_lines.append(
-                    "Use '--' to force option-like tokens into"
-                    " positionals:  "
+                    "Use '--' to force option-like tokens into positionals:  "
                     + self.name
                     + " -- -p"
                 )
