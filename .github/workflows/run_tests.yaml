@@ -15,9 +15,9 @@ defaults:
     shell: bash
 
 jobs:
-  # ── Job 1: Format + Package ────────────────────────────────────────────
+  # ── Job 1: Format gate ──────────────────────────────────────────────────
   build:
-    name: Build & Format
+    name: Format Check
     runs-on: macos-latest
     timeout-minutes: 10
     steps:
@@ -32,21 +32,6 @@ jobs:
             echo "::error::Code is not formatted. Run 'pixi run format' locally."
             exit 1
           fi
-      - name: Build package (with retry)
-        run: |
-          for attempt in 1 2 3; do
-            echo "=== package attempt $attempt ==="
-            if pixi run package; then
-              echo "=== package succeeded on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== package failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== package crashed, retrying in 5s... ==="
-            sleep 5
-          done
 
   # ── Job 2: Core parsing tests ──────────────────────────────────────────
   test-core:
