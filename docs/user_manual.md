@@ -2658,13 +2658,41 @@ Rules:
 
 **When to use which approach**
 
-| Scenario                                                                  | Recommended approach               |
-| ------------------------------------------------------------------------- | ---------------------------------- |
-| No digit short options registered                                         | Auto-detect (nothing to configure) |
-| You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`         |
-| You need to pass arbitrary dash-prefixed expressions (e.g. `-1/3*pi`)     | `allow_negative_expressions()`     |
-| You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                     |
-| Legacy or defensive: works in all cases                                   | `--` separator                     |
+| Scenario                                                                  | Recommended approach                     |
+| ------------------------------------------------------------------------- | ---------------------------------------- |
+| No digit short options registered                                         | Auto-detect (nothing to configure)       |
+| You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`               |
+| You need to pass arbitrary dash-prefixed expressions (e.g. `-1/3*pi`)     | `allow_negative_expressions()`           |
+| One specific argument needs to accept `-` (stdin) or dash-prefixed values | `allow_hyphen_values()` on that argument |
+| You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                           |
+| Legacy or defensive: works in all cases                                   | `--` separator                           |
+
+---
+
+**`allow_negative_expressions()` vs `allow_hyphen_values()` — how do they relate?**
+
+These two features partially overlap, especially when the command has a single positional argument. Here is a quick comparison:
+
+| Aspect                           | `allow_negative_expressions()`                     | `allow_hyphen_values()`                                  |
+| -------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| **Scope**                        | Per-command (one call covers all positionals)      | Per-argument (must be set on each argument individually) |
+| **Bare `-` (stdin)**             | Not accepted (requires 2+ chars)                   | Accepted                                                 |
+| **Expressions (e.g. `-1/3*pi`)** | Accepted                                           | Accepted                                                 |
+| **Works on options**             | No (positionals only)                              | Yes (also value-taking options like `--file`)            |
+| **Parsing priority**             | Fires after long-option and negative-number checks | Fires first — before all other dash-token checks         |
+
+With a **single positional** and no need for bare `-`, the two are nearly interchangeable. For example, `decimo "-1/pi*sin(3)" -p 10` works identically with either approach. The bare `-` (which has no mathematical meaning) is rejected by `allow_negative_expressions()` but accepted by `allow_hyphen_values()`.
+
+Choose `allow_negative_expressions()` when:
+
+- Your command has **multiple positionals** and you want a single switch for all of them.
+- You want to signal intent: "this CLI handles math expressions."
+
+Choose `allow_hyphen_values()` when:
+
+- Only **one specific argument** should accept dash-prefixed values while others should not.
+- You need the bare `-` (stdin/stdout convention).
+- The argument is an **option** (`--file`), not a positional.
 
 ---
 
