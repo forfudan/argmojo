@@ -1099,6 +1099,53 @@ def test_negative_expression_with_option() raises:
     assert_equal(result.get_string("precision"), "10")
 
 
+def test_negative_expression_attached_short_value() raises:
+    """Attached short values like -p10 still parse as options when
+    allow_negative_expressions() is set."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("precision", help="Decimal places")
+        .long["precision"]()
+        .short["p"]()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1/3*pi*sin(10)", "-p10"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-1/3*pi*sin(10)")
+    assert_equal(result.get_string("precision"), "10")
+
+
+def test_negative_expression_merged_short_options() raises:
+    """Merged short forms like -vp still expand normally when
+    allow_negative_expressions() is set."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("verbose", help="Verbose output")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("precision", help="Decimal places")
+        .long["precision"]()
+        .short["p"]()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1/3*pi*sin(10)", "-vp", "10"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-1/3*pi*sin(10)")
+    assert_true(result.get_flag("verbose"), msg="-v should be True")
+    assert_equal(result.get_string("precision"), "10")
+
+
 def test_negative_expression_single_char_no_conflict() raises:
     """A single-character token like -e is treated as positional when -e is
     not a registered short option and allow_negative_expressions() is set."""

@@ -1293,12 +1293,12 @@ struct Command(Copyable, Movable, Writable):
 
         Rules:
 
-        - If the token has **more than one** character after the hyphen
-          (e.g. ``-1/3*pi``, ``-abc``), it is always consumed as a
-          positional argument.
-        - If the token has **exactly one** character after the hyphen
-          (e.g. ``-e``), it is consumed as a positional only when that
-          character does not match any registered short option.
+        - If the first character after the hyphen does **not** match a
+          registered short option, the token is consumed as a positional
+          (e.g. ``-1/3*pi`` when ``-1`` is not registered).
+        - If the first character **does** match a registered short option,
+          the token is parsed normally (merged shorts like ``-vp`` or
+          attached values like ``-p10`` continue to work).
 
         Examples:
 
@@ -1312,6 +1312,7 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         self._allow_negative_expressions = True
+        self._allow_negative_numbers = True
 
     # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
     def response_file_prefix(mut self, prefix: String = "@"):
@@ -2119,26 +2120,22 @@ struct Command(Copyable, Movable, Writable):
                 # ────────────────────────────────────────────────────────────
                 # ── Negative-expression detection ───────────────────────────
                 # A token like "-1/3*pi" is treated as a positional when
-                # allow_negative_expressions() was called.  Multi-character
-                # payloads are always consumed; single-character payloads
-                # are consumed only when they don't match a registered short.
+                # allow_negative_expressions() was called, but only if
+                # the first character does not match a registered short
+                # option.  This preserves merged shorts (-vp) and
+                # attached values (-p10) that start with a known flag.
                 if self._allow_negative_expressions:
                     var _ne_key = String(arg[byte=1:])
-                    if len(_ne_key) > 1:
+                    var _ne_first = String(_ne_key[byte=:1])
+                    var _ne_short_conflict = False
+                    for _nei in range(len(self.args)):
+                        if self.args[_nei]._short_name == _ne_first:
+                            _ne_short_conflict = True
+                            break
+                    if not _ne_short_conflict:
                         result._positionals.append(arg)
                         i += 1
                         continue
-                    else:
-                        # Single character — only consume if not a short flag
-                        var _ne_is_short = False
-                        for _nei in range(len(self.args)):
-                            if self.args[_nei]._short_name == _ne_key:
-                                _ne_is_short = True
-                                break
-                        if not _ne_is_short:
-                            result._positionals.append(arg)
-                            i += 1
-                            continue
                 # ────────────────────────────────────────────────────────────
                 var key = String(arg[byte=1:])
                 if len(key) == 1:
@@ -2359,20 +2356,16 @@ struct Command(Copyable, Movable, Writable):
                 # ── Negative-expression detection (same as parse_arguments) ──
                 if self._allow_negative_expressions:
                     var _ne_key = String(arg[byte=1:])
-                    if len(_ne_key) > 1:
+                    var _ne_first = String(_ne_key[byte=:1])
+                    var _ne_short_conflict = False
+                    for _nei in range(len(self.args)):
+                        if self.args[_nei]._short_name == _ne_first:
+                            _ne_short_conflict = True
+                            break
+                    if not _ne_short_conflict:
                         result._positionals.append(arg)
                         i += 1
                         continue
-                    else:
-                        var _ne_is_short = False
-                        for _nei in range(len(self.args)):
-                            if self.args[_nei]._short_name == _ne_key:
-                                _ne_is_short = True
-                                break
-                        if not _ne_is_short:
-                            result._positionals.append(arg)
-                            i += 1
-                            continue
                 # ─────────────────────────────────────────────────────────────
                 try:
                     var key = String(arg[byte=1:])
@@ -4362,9 +4355,10 @@ struct Command(Copyable, Movable, Writable):
         if has_positional:
             if self._allow_negative_expressions:
                 tip_lines.append(
-                    "Use '--' to pass long options as positionals:  "
+                    "Use '--' to force option-like tokens into"
+                    " positionals:  "
                     + self.name
-                    + " -- --my-value"
+                    + " -- -p"
                 )
             else:
                 var neg_auto = self._allow_negative_numbers

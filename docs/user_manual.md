@@ -2648,8 +2648,9 @@ calc -p 10 hello         # precision = "10", expr = "hello"  (-p IS registered, 
 
 Rules:
 
-- Token with **2+ characters** after the hyphen (e.g. `-1/3*pi`, `-abc`): always treated as a positional.
-- Token with **exactly 1 character** after the hyphen (e.g. `-e`): treated as a positional only if the character is not a registered short option.
+- A single-hyphen token is treated as a positional **only when its first character after `-` does not match a registered short option**.
+  - Examples: `-1/3*pi`, `-sin(2)`, and `-e` are positional if `-1`, `-s`, and `-e` are not registered short options.
+  - If the first character **is** a registered short option, the token is parsed normally (merged shorts like `-vp` and attached values like `-p10` continue to work).
 - Long options (`--foo`) are never affected — they always parse normally.
 
 > **Note:** `allow_negative_expressions()` is a superset of `allow_negative_numbers()`. You don't need to call both.
