@@ -296,6 +296,8 @@ struct Positional[
     default: StringLiteral = "",
     required: Bool = False,
     choices: StringLiteral = "",
+    # ── Parsing behaviour ──
+    allow_hyphen: Bool = False,    # allow hyphen-prefixed values
     # ── Display & help ──
     value_name: StringLiteral = "",
     group: StringLiteral = "",
@@ -1289,21 +1291,22 @@ var (git_args, result) = MyGit.parse_full_from_command(cmd^)
 
 Some features are inherently imperative and don't fit neatly into struct declarations. I'm keeping these builder-only (accessible via `to_command()`):
 
-| Feature                    | Reason                                                             |
-| -------------------------- | ------------------------------------------------------------------ |
-| `mutually_exclusive()`     | Partially declarative via `conflicts_with` (§6.4); builder for N>2 |
-| `required_together()`      | Partially declarative via `depends_on` (§6.4); builder for N>2     |
-| `one_required()`           | Cross-field constraint on N args                                   |
-| `required_if()`            | Cross-field conditional                                            |
-| `implies()`                | Cross-field chain with cycle detection                             |
-| `confirmation_option()`    | Adds a synthetic `--yes` arg                                       |
-| `help_on_no_arguments()`   | Command-level behavior                                             |
-| `add_tip()`                | Help formatting                                                    |
-| Color config               | Command-level presentation                                         |
-| Completions config         | Command-level behavior                                             |
-| Response file config       | Command-level behavior                                             |
-| `allow_negative_numbers()` | Parser behavior flag                                               |
-| `add_parent()`             | Cross-command inheritance                                          |
+| Feature                        | Reason                                                             |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `mutually_exclusive()`         | Partially declarative via `conflicts_with` (§6.4); builder for N>2 |
+| `required_together()`          | Partially declarative via `depends_on` (§6.4); builder for N>2     |
+| `one_required()`               | Cross-field constraint on N args                                   |
+| `required_if()`                | Cross-field conditional                                            |
+| `implies()`                    | Cross-field chain with cycle detection                             |
+| `confirmation_option()`        | Adds a synthetic `--yes` arg                                       |
+| `help_on_no_arguments()`       | Command-level behavior                                             |
+| `add_tip()`                    | Help formatting                                                    |
+| Color config                   | Command-level presentation                                         |
+| Completions config             | Command-level behavior                                             |
+| Response file config           | Command-level behavior                                             |
+| `allow_negative_numbers()`     | Parser behavior flag                                               |
+| `allow_negative_expressions()` | Parser behavior flag (superset of allow_negative_numbers)          |
+| `add_parent()`                 | Cross-command inheritance                                          |
 
 I think this is the right call — these features describe *relationships between* arguments or *command-level* behavior, not individual argument metadata. Trying to force them into struct field attributes would create a confusing, non-composable API.
 

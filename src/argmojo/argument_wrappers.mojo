@@ -465,6 +465,8 @@ struct Positional[
     default: StringLiteral = "",
     required: Bool = False,
     choices: StringLiteral = "",
+    # -- Parsing behaviour --
+    allow_hyphen: Bool = False,
     # -- Display & help --
     value_name: StringLiteral = "",
     group: StringLiteral = "",
@@ -482,6 +484,7 @@ struct Positional[
         default: Default value as a string literal.
         required: If True, the positional must be provided.
         choices: Comma-separated allowed values.
+        allow_hyphen: Allow hyphen-prefixed values.
         value_name: Display name in help.
         group: Help group heading.
 
@@ -558,6 +561,8 @@ struct Positional[
         comptime if Self.choices != "":
             for c in String(Self.choices).split(","):
                 arg._choice_values.append(String(c))
+        comptime if Self.allow_hyphen:
+            arg._allow_hyphen_values = True
         comptime if Self.value_name != "":
             arg._value_name = String(Self.value_name)
         comptime if Self.group != "":

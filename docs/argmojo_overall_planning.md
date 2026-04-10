@@ -726,6 +726,8 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
     ├─ If args[i].startswith("-") and len > 1:
     │     ├─ IF _looks_like_number(token) AND (allow_negative_numbers OR no digit short opts):
     │     │     Treat as positional argument (negative number passthrough)
+    │     ├─ IF allow_negative_expressions AND first char after '-' is not a registered short:
+    │     │     Treat as positional argument (negative expression passthrough)
     │     └─ ELSE:
     │           ├─ Single char → _parse_short_single(key, raw_args, i, result) → new i
     │           └─ Multi char  → _parse_short_merged(key, raw_args, i, result) → new i

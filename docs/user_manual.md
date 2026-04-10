@@ -437,6 +437,7 @@ Argument("name", help="...")
 ╠══ Command-level configuration (called on Command) ════════════════════════════
 ║   command.help_on_no_arguments()                show help when invoked with no args
 ║   command.allow_negative_numbers()              negative tokens treated as positionals
+║   command.allow_negative_expressions()          dash-prefixed expressions as positionals
 ║   command.allow_positional_with_subcommands()   allow positionals + subcommands
 ║   command.add_tip("...")                        custom tip shown in help footer
 ║   command.command_aliases(["co"])               alternate names for this subcommand
@@ -2627,20 +2628,78 @@ calc -3               # operand = "-3" (NOT the -3 flag!)
 
 ---
 
+**Approach 4: `allow_negative_expressions()` (expressions and arbitrary tokens)**
+
+When your CLI accepts mathematical expressions that start with `-` (e.g. `-1/3*pi`, `-sin(2)`, `-e^2`), `allow_negative_numbers()` is not enough because those tokens are not pure numeric literals. Call `allow_negative_expressions()` to treat any single-hyphen token as a positional argument, provided it doesn't conflict with a registered short option.
+
+```mojo
+var command = Command("calc", "Expression calculator")
+command.allow_negative_expressions()
+command.add_argument(Argument("precision", help="Decimal places").long["precision"]().short["p"]())
+command.add_argument(Argument("expr", help="Expression").positional().required())
+```
+
+```shell
+calc "-1/3*pi" -p 10    # expr = "-1/3*pi", precision = "10"
+calc "-sin(2)"           # expr = "-sin(2)"
+calc -e                  # expr = "-e"   (because -e is not a registered short option)
+calc -p 10 hello         # precision = "10", expr = "hello"  (-p IS registered, so it's parsed as the -p short option taking 10 as its value)
+```
+
+Rules:
+
+- A single-hyphen token is treated as a positional **only when its first character after `-` does not match a registered short option**.
+  - Examples: `-1/3*pi`, `-sin(2)`, and `-e` are positional if `-1`, `-s`, and `-e` are not registered short options.
+  - If the first character **is** a registered short option, the token is parsed normally (merged shorts like `-vp` and attached values like `-p10` continue to work).
+- Long options (`--foo`) are never affected — they always parse normally.
+
+> **Note:** `allow_negative_expressions()` is a superset of `allow_negative_numbers()`. You don't need to call both.
+
+---
+
 **When to use which approach**
 
-| Scenario                                                                  | Recommended approach               |
-| ------------------------------------------------------------------------- | ---------------------------------- |
-| No digit short options registered                                         | Auto-detect (nothing to configure) |
-| You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`         |
-| You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                     |
-| Legacy or defensive: works in all cases                                   | `--` separator                     |
+| Scenario                                                                  | Recommended approach                     |
+| ------------------------------------------------------------------------- | ---------------------------------------- |
+| No digit short options registered                                         | Auto-detect (nothing to configure)       |
+| You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`               |
+| You need to pass arbitrary dash-prefixed expressions (e.g. `-1/3*pi`)     | `allow_negative_expressions()`           |
+| One specific argument needs to accept `-` (stdin) or dash-prefixed values | `allow_hyphen_values()` on that argument |
+| You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                           |
+| Legacy or defensive: works in all cases                                   | `--` separator                           |
+
+---
+
+**`allow_negative_expressions()` vs `allow_hyphen_values()` — how do they relate?**
+
+These two features partially overlap, especially when the command has a single positional argument. Here is a quick comparison:
+
+| Aspect                           | `allow_negative_expressions()`                            | `allow_hyphen_values()`                                  |
+| -------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| **Scope**                        | Per-command (one call covers all positionals)             | Per-argument (must be set on each argument individually) |
+| **Bare `-` (stdin)**             | Accepted (bare `-` never enters short-option parsing)     | Accepted                                                 |
+| **Expressions (e.g. `-1/3*pi`)** | Accepted                                                  | Accepted                                                 |
+| **Works on options**             | No (positionals only)                                     | Yes (also value-taking options like `--file`)            |
+| **Parsing behavior**             | Enables dash-prefixed expression handling for positionals | Broadens one argument to accept hyphen-prefixed values   |
+
+With a **single positional**, the two are nearly interchangeable for inputs like `-1/pi*sin(3)` — and a bare `-` is already treated as a positional token in both cases (it never enters short-option parsing). `allow_hyphen_values()` is still the better fit when one specific argument should accept arbitrary hyphen-prefixed values, especially for value-taking options.
+
+Choose `allow_negative_expressions()` when:
+
+- Your command has **multiple positionals** and you want a single switch for all of them.
+- You want to signal intent: "this CLI handles math expressions."
+
+Choose `allow_hyphen_values()` when:
+
+- Only **one specific argument** should accept dash-prefixed values while others should not.
+- You need the bare `-` (stdin/stdout convention).
+- The argument is an **option** (`--file`), not a positional.
 
 ---
 
 **What is NOT a number**
 
-Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. They will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered.
+Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. Without `allow_negative_expressions()`, they will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered. With `allow_negative_expressions()`, they are consumed as positional arguments.
 
 ### Long Option Prefix Matching
 

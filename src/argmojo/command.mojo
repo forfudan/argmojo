@@ -201,6 +201,14 @@ struct Command(Copyable, Movable, Writable):
     no registered short option uses a digit character (auto-detect).
     Enable explicitly via ``allow_negative_numbers()`` when you have a digit
     short option and still need negative-number literals to pass through."""
+    var _allow_negative_expressions: Bool
+    """When True, single-hyphen tokens that are not known short options
+    are treated as positional arguments.  This handles expressions like
+    ``-1/3*pi`` or ``-e`` (when ``-e`` is not a registered short flag).
+    For tokens with one or more characters after the hyphen, this applies
+    only when the first character after ``-`` does not match a registered
+    short option; otherwise the token continues to parse as a short option
+    sequence or short option with attached value."""
     var _allow_positional_with_subcommands: Bool
     """When True, allows mixing positional arguments with subcommands.
     By default (False), registering a positional arg on a Command that already 
@@ -303,6 +311,7 @@ struct Command(Copyable, Movable, Writable):
         # ── Parser behavior ──
         self._help_on_no_arguments = False
         self._allow_negative_numbers = False
+        self._allow_negative_expressions = False
         self._allow_positional_with_subcommands = False
         self._response_file_prefix = String("")
         self._response_file_max_depth = 10
@@ -348,6 +357,7 @@ struct Command(Copyable, Movable, Writable):
         # ── Parser behavior ──
         self._help_on_no_arguments = take._help_on_no_arguments
         self._allow_negative_numbers = take._allow_negative_numbers
+        self._allow_negative_expressions = take._allow_negative_expressions
         self._allow_positional_with_subcommands = (
             take._allow_positional_with_subcommands
         )
@@ -414,6 +424,7 @@ struct Command(Copyable, Movable, Writable):
         # ── Parser behavior ──
         self._help_on_no_arguments = copy._help_on_no_arguments
         self._allow_negative_numbers = copy._allow_negative_numbers
+        self._allow_negative_expressions = copy._allow_negative_expressions
         self._allow_positional_with_subcommands = (
             copy._allow_positional_with_subcommands
         )
@@ -1272,6 +1283,38 @@ struct Command(Copyable, Movable, Writable):
         """
         self._allow_negative_numbers = True
 
+    def allow_negative_expressions(mut self):
+        """Treats single-hyphen tokens as positional arguments when they
+        don't conflict with a known short option.
+
+        This is a superset of ``allow_negative_numbers()`` — it also
+        handles mathematical expressions like ``-1/3*pi``, ``-sin(2)``,
+        or even arbitrary dash-prefixed strings like ``-e`` (when ``-e``
+        is not a registered short option).
+
+        Rules:
+
+        - If the first character after the hyphen does **not** match a
+          registered short option, the token is consumed as a positional
+          (e.g. ``-1/3*pi`` when ``-1`` is not registered).
+        - If the first character **does** match a registered short option,
+          the token is parsed normally (merged shorts like ``-vp`` or
+          attached values like ``-p10`` continue to work).
+
+        Examples:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("calc", "Expression calculator")
+        command.allow_negative_expressions()
+        command.add_argument(Argument("expr", help="Expression").positional().required())
+        command.add_argument(Argument("precision", help="Decimal places").long["precision"]().short["p"]())
+        # Now: calc "-1/3*pi" -p 10  →  expr = "-1/3*pi", precision = "10"
+        ```
+        """
+        self._allow_negative_expressions = True
+        self._allow_negative_numbers = True
+
     # TODO: response_file_prefix[prefix: StringLiteral](mut self) for compile-time checks
     def response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
@@ -2076,6 +2119,19 @@ struct Command(Copyable, Movable, Writable):
                         i += 1
                         continue
                 # ────────────────────────────────────────────────────────────
+                # ── Negative-expression detection ───────────────────────────
+                # A token like "-1/3*pi" is treated as a positional when
+                # allow_negative_expressions() was called.  Reuse the
+                # shared _is_known_option() helper so this stays aligned
+                # with parse_known_arguments() and avoids duplicate scans.
+                if (
+                    self._allow_negative_expressions
+                    and not self._is_known_option(arg)
+                ):
+                    result._positionals.append(arg)
+                    i += 1
+                    continue
+                # ────────────────────────────────────────────────────────────
                 var key = String(arg[byte=1:])
                 if len(key) == 1:
                     i = self._parse_short_single(key, args_to_parse, i, result)
@@ -2292,6 +2348,15 @@ struct Command(Copyable, Movable, Writable):
                         result._positionals.append(arg)
                         i += 1
                         continue
+                # ── Negative-expression detection (same as parse_arguments) ──
+                if (
+                    self._allow_negative_expressions
+                    and not self._is_known_option(arg)
+                ):
+                    result._positionals.append(arg)
+                    i += 1
+                    continue
+                # ─────────────────────────────────────────────────────────────
                 try:
                     var key = String(arg[byte=1:])
                     if len(key) == 1:
@@ -4273,38 +4338,45 @@ struct Command(Copyable, Movable, Writable):
 
         # Tip: show '--' separator hint when positional args are registered.
         # When negative numbers are already handled automatically (either via
-        # explicit allow_negative_numbers() or auto-detect: no digit short
-        # options), the example changes to a generic dash-prefixed value
-        # rather than '-10.18', since that case no longer needs '--'.
+        # explicit allow_negative_numbers(), allow_negative_expressions(),
+        # or auto-detect: no digit short options), the example changes to
+        # a generic dash-prefixed value rather than '-10.18'.
         var tip_lines = List[String]()
         if has_positional:
-            var neg_auto = self._allow_negative_numbers
-            if not neg_auto:
-                var has_digit_short = False
-                for _ti in range(len(self.args)):
-                    var sc = self.args[_ti]._short_name
-                    if (
-                        len(sc) == 1
-                        and sc[byte=0:1] >= "0"
-                        and sc[byte=0:1] <= "9"
-                    ):
-                        has_digit_short = True
-                        break
-                neg_auto = not has_digit_short
-            if neg_auto:
+            if self._allow_negative_expressions:
                 tip_lines.append(
-                    "Use '--' to pass values starting with '-' as"
-                    " positionals:  "
+                    "Use '--' to force option-like tokens into positionals:  "
                     + self.name
-                    + " -- -my-value"
+                    + " -- -p"
                 )
             else:
-                tip_lines.append(
-                    "Use '--' to pass values that start with '-' (e.g.,"
-                    " negative numbers):  "
-                    + self.name
-                    + " -- -10.18"
-                )
+                var neg_auto = self._allow_negative_numbers
+                if not neg_auto:
+                    var has_digit_short = False
+                    for _ti in range(len(self.args)):
+                        var sc = self.args[_ti]._short_name
+                        if (
+                            len(sc) == 1
+                            and sc[byte=0:1] >= "0"
+                            and sc[byte=0:1] <= "9"
+                        ):
+                            has_digit_short = True
+                            break
+                    neg_auto = not has_digit_short
+                if neg_auto:
+                    tip_lines.append(
+                        "Use '--' to pass values starting with '-' as"
+                        " positionals:  "
+                        + self.name
+                        + " -- -my-value"
+                    )
+                else:
+                    tip_lines.append(
+                        "Use '--' to pass values that start with '-' (e.g.,"
+                        " negative numbers):  "
+                        + self.name
+                        + " -- -10.18"
+                    )
 
         # User-defined tips — always shown when present.
         for _ti in range(len(self._tips)):

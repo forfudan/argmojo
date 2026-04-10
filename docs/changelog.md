@@ -4,6 +4,8 @@ This document tracks all notable changes to ArgMojo, including new features, API
 
 <!--
 Unreleased changes should be commented out from here. This file will be edited just before each release to reflect the final changelog for that version. Otherwise, the users would be confused.
+
+- Add `allow_negative_expressions()` on `Command` — treats single-hyphen tokens as positional arguments when they don't conflict with registered short options. Handles mathematical expressions like `-1/3*pi`, `-sin(2)`, `-e^2`. Superset of `allow_negative_numbers()`.
 -->
 
 ## 20260404 (v0.5.0)
