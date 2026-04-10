@@ -394,15 +394,10 @@ def main() raises:
     diff.command_aliases(diff_aliases^)
     diff.add_argument(Argument("path", help="Path to diff").positional())
     diff.add_argument(
-        Argument("staged", help="Show staged changes").long["staged"]().flag()
-    )
-    # Alias for --staged
-    diff.add_argument(
-        Argument("cached", help="Synonym for --staged")
-        .long["cached"]()
-        .alias_name["staged"]()
+        Argument("staged", help="Show staged changes")
+        .long["staged"]()
+        .alias_name["cached"]()
         .flag()
-        .hidden()
     )
     diff.add_argument(
         Argument("stat", help="Show diffstat instead of patch")

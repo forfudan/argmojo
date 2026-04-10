@@ -20,7 +20,7 @@ check_compile_error() {
     local expect_msg="$3"
 
     local file="$TMPDIR/${name}.mojo"
-    echo "$code" > "$file"
+    printf '%s\n' "$code" > "$file"
 
     if pixi run mojo run -I src "$file" 2>"$TMPDIR/${name}.err"; then
         echo "FAIL  $name — expected compile error but compilation succeeded"

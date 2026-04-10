@@ -449,8 +449,10 @@ struct Command(Copyable, Movable, Writable):
 
         Raises:
             Error if adding a positional argument to a Command that already
-            has subcommands registered, unless
-            ``allow_positional_with_subcommands()`` has been called.
+            has subcommands registered (unless
+            ``allow_positional_with_subcommands()`` has been called), or if
+            the argument's name, long flag, short flag, or any alias
+            collides with an already-registered argument.
 
         Args:
             argument: The Argument to register.

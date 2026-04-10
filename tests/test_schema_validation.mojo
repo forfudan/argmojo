@@ -5,10 +5,9 @@ Negative tests cannot live here (they prevent compilation);
 see the shell script tests/check_schema_errors.sh instead.
 """
 
-from std.testing import assert_true, assert_false, assert_equal, TestSuite
+from std.testing import assert_true, TestSuite
 
 from argmojo import (
-    Command,
     Parsable,
     Option,
     Flag,
