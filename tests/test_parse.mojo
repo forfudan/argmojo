@@ -1063,5 +1063,136 @@ def test_invalid_numeric_form_still_errors() raises:
     assert_true(raised, msg="'-1abc' is not a number and should raise an error")
 
 
+# ── Negative expressions ─────────────────────────────────────────────────────
+
+
+def test_negative_expression_multi_char() raises:
+    """A multi-character expression like -1/3*pi is treated as a positional
+    when allow_negative_expressions() is set."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1/3*pi"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-1/3*pi")
+
+
+def test_negative_expression_with_option() raises:
+    """Expressions coexist with registered options."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("precision", help="Decimal places")
+        .long["precision"]()
+        .short["p"]()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1/3*pi*sin(10)", "-p", "10"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-1/3*pi*sin(10)")
+    assert_equal(result.get_string("precision"), "10")
+
+
+def test_negative_expression_single_char_no_conflict() raises:
+    """A single-character token like -e is treated as positional when -e is
+    not a registered short option and allow_negative_expressions() is set."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-e"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-e")
+
+
+def test_negative_expression_single_char_conflict() raises:
+    """A single-character token like -p is parsed as a short flag when -p
+    IS a registered short option, even with allow_negative_expressions()."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("precision", help="Decimal places")
+        .long["precision"]()
+        .short["p"]()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "hello", "-p", "10"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "hello")
+    assert_equal(result.get_string("precision"), "10")
+
+
+def test_negative_expression_complex_math() raises:
+    """Complex mathematical expressions with hyphen prefix are treated as
+    positionals: -sin(2), -3/2, -e^2, etc."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var exprs = List[String]()
+    exprs.append("-sin(2)")
+    exprs.append("-3/2")
+    exprs.append("-e^2")
+    exprs.append("-1+2i")
+    exprs.append("-abc")
+    for idx in range(len(exprs)):
+        var args: List[String] = ["test", exprs[idx]]
+        var result = command.parse_arguments(args)
+        assert_equal(result.get_string("expr"), exprs[idx])
+
+
+def test_negative_expression_also_handles_numbers() raises:
+    """Superset of allow_negative_numbers — negative numbers also work."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("triple", help="Triple mode")
+        .long["triple"]()
+        .short["3"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    # Multi-char expression: always positional
+    var args: List[String] = ["test", "-3.14"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("expr"), "-3.14")
+
+
+def test_negative_expression_long_option_unaffected() raises:
+    """Long options (--foo) are never absorbed as positionals."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "--verbose", "-1/3"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("verbose"))
+    assert_equal(result.get_string("expr"), "-1/3")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

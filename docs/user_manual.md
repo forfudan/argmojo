@@ -437,6 +437,7 @@ Argument("name", help="...")
 ╠══ Command-level configuration (called on Command) ════════════════════════════
 ║   command.help_on_no_arguments()                show help when invoked with no args
 ║   command.allow_negative_numbers()              negative tokens treated as positionals
+║   command.allow_negative_expressions()          dash-prefixed expressions as positionals
 ║   command.allow_positional_with_subcommands()   allow positionals + subcommands
 ║   command.add_tip("...")                        custom tip shown in help footer
 ║   command.command_aliases(["co"])               alternate names for this subcommand
@@ -2627,12 +2628,41 @@ calc -3               # operand = "-3" (NOT the -3 flag!)
 
 ---
 
+**Approach 4: `allow_negative_expressions()` (expressions and arbitrary tokens)**
+
+When your CLI accepts mathematical expressions that start with `-` (e.g. `-1/3*pi`, `-sin(2)`, `-e^2`), `allow_negative_numbers()` is not enough because those tokens are not pure numeric literals. Call `allow_negative_expressions()` to treat any single-hyphen token as a positional argument, provided it doesn't conflict with a registered short option.
+
+```mojo
+var command = Command("calc", "Expression calculator")
+command.allow_negative_expressions()
+command.add_argument(Argument("precision", help="Decimal places").long["precision"]().short["p"]())
+command.add_argument(Argument("expr", help="Expression").positional().required())
+```
+
+```shell
+calc "-1/3*pi" -p 10    # expr = "-1/3*pi", precision = "10"
+calc "-sin(2)"           # expr = "-sin(2)"
+calc -e                  # expr = "-e"   (because -e is not a registered short option)
+calc -p 10 hello         # precision = "10", expr = "hello"  (-p IS registered, so it's parsed as a flag)
+```
+
+Rules:
+
+- Token with **2+ characters** after the hyphen (e.g. `-1/3*pi`, `-abc`): always treated as a positional.
+- Token with **exactly 1 character** after the hyphen (e.g. `-e`): treated as a positional only if the character is not a registered short option.
+- Long options (`--foo`) are never affected — they always parse normally.
+
+> **Note:** `allow_negative_expressions()` is a superset of `allow_negative_numbers()`. You don't need to call both.
+
+---
+
 **When to use which approach**
 
 | Scenario                                                                  | Recommended approach               |
 | ------------------------------------------------------------------------- | ---------------------------------- |
 | No digit short options registered                                         | Auto-detect (nothing to configure) |
 | You have digit short options (`-3`, `-5`, etc.) and need negative numbers | `allow_negative_numbers()`         |
+| You need to pass arbitrary dash-prefixed expressions (e.g. `-1/3*pi`)     | `allow_negative_expressions()`     |
 | You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                     |
 | Legacy or defensive: works in all cases                                   | `--` separator                     |
 
@@ -2640,7 +2670,7 @@ calc -3               # operand = "-3" (NOT the -3 flag!)
 
 **What is NOT a number**
 
-Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. They will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered.
+Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. Without `allow_negative_expressions()`, they will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered. With `allow_negative_expressions()`, they are consumed as positional arguments.
 
 ### Long Option Prefix Matching
 
