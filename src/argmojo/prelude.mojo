@@ -16,4 +16,4 @@ from .parse_result import ParseResult
 
 # Declarative API
 from .parsable import Parsable
-from .argument_wrappers import ArgumentLike, Option, Flag, Positional, Count
+from .argument_wrappers import Option, Flag, Positional, Count
