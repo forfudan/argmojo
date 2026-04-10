@@ -79,9 +79,9 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_parse.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_options.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_groups.mojo; then
+            if pixi run mojo run -I src -D ASSERT=all tests/test_parse.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_options.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_groups.mojo; then
               echo "=== tests passed on attempt $attempt ==="
               break
             fi
@@ -119,10 +119,10 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_help.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
-            && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo; then
+            if pixi run mojo run -I src -D ASSERT=all tests/test_help.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_completion.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_wrappers.mojo; then
               echo "=== tests passed on attempt $attempt ==="
               break
             fi
@@ -160,11 +160,11 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
+            if pixi run mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
+            && pixi run mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
             && bash tests/check_schema_errors.sh; then
               echo "=== tests passed on attempt $attempt ==="
               break
