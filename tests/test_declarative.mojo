@@ -267,6 +267,32 @@ def test_choices_without_default() raises:
     assert_true(len(cmd.args[0]._choice_values) == 4, "4 choices")
 
 
+struct HyphenPos(Parsable):
+    """Positional that accepts hyphen-prefixed values."""
+
+    var expr: Positional[
+        String, help="Expression", required=True, allow_hyphen=True
+    ]
+
+    @staticmethod
+    def description() -> String:
+        return String("Hyphen-positional test.")
+
+
+def test_positional_allow_hyphen() raises:
+    """Test that Positional allow_hyphen=True sets _allow_hyphen_values."""
+    var cmd = HyphenPos.to_command()
+    assert_true(
+        cmd.args[0]._allow_hyphen_values, "allow_hyphen_values on positional"
+    )
+
+    var args_list = List[String]()
+    args_list.append(String("hp"))
+    args_list.append(String("-1+2*sin(x)"))
+    var args = HyphenPos.parse_args(args_list)
+    assert_equal(args.expr.value, "-1+2*sin(x)")
+
+
 # =======================================================================
 # Main
 # =======================================================================

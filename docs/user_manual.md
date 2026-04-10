@@ -2643,7 +2643,7 @@ command.add_argument(Argument("expr", help="Expression").positional().required()
 calc "-1/3*pi" -p 10    # expr = "-1/3*pi", precision = "10"
 calc "-sin(2)"           # expr = "-sin(2)"
 calc -e                  # expr = "-e"   (because -e is not a registered short option)
-calc -p 10 hello         # precision = "10", expr = "hello"  (-p IS registered, so it's parsed as a flag)
+calc -p 10 hello         # precision = "10", expr = "hello"  (-p IS registered, so it's parsed as the -p short option taking 10 as its value)
 ```
 
 Rules:
@@ -2674,15 +2674,15 @@ Rules:
 
 These two features partially overlap, especially when the command has a single positional argument. Here is a quick comparison:
 
-| Aspect                           | `allow_negative_expressions()`                     | `allow_hyphen_values()`                                  |
-| -------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
-| **Scope**                        | Per-command (one call covers all positionals)      | Per-argument (must be set on each argument individually) |
-| **Bare `-` (stdin)**             | Not accepted (requires 2+ chars)                   | Accepted                                                 |
-| **Expressions (e.g. `-1/3*pi`)** | Accepted                                           | Accepted                                                 |
-| **Works on options**             | No (positionals only)                              | Yes (also value-taking options like `--file`)            |
-| **Parsing priority**             | Fires after long-option and negative-number checks | Fires first — before all other dash-token checks         |
+| Aspect                           | `allow_negative_expressions()`                            | `allow_hyphen_values()`                                  |
+| -------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| **Scope**                        | Per-command (one call covers all positionals)             | Per-argument (must be set on each argument individually) |
+| **Bare `-` (stdin)**             | Accepted (bare `-` never enters short-option parsing)     | Accepted                                                 |
+| **Expressions (e.g. `-1/3*pi`)** | Accepted                                                  | Accepted                                                 |
+| **Works on options**             | No (positionals only)                                     | Yes (also value-taking options like `--file`)            |
+| **Parsing behavior**             | Enables dash-prefixed expression handling for positionals | Broadens one argument to accept hyphen-prefixed values   |
 
-With a **single positional** and no need for bare `-`, the two are nearly interchangeable. For example, `decimo "-1/pi*sin(3)" -p 10` works identically with either approach. The bare `-` (which has no mathematical meaning) is rejected by `allow_negative_expressions()` but accepted by `allow_hyphen_values()`.
+With a **single positional**, the two are nearly interchangeable for inputs like `-1/pi*sin(3)` — and a bare `-` is already treated as a positional token in both cases (it never enters short-option parsing). `allow_hyphen_values()` is still the better fit when one specific argument should accept arbitrary hyphen-prefixed values, especially for value-taking options.
 
 Choose `allow_negative_expressions()` when:
 

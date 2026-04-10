@@ -296,6 +296,8 @@ struct Positional[
     default: StringLiteral = "",
     required: Bool = False,
     choices: StringLiteral = "",
+    # ── Parsing behaviour ──
+    allow_hyphen: Bool = False,    # allow hyphen-prefixed values
     # ── Display & help ──
     value_name: StringLiteral = "",
     group: StringLiteral = "",

@@ -1241,5 +1241,28 @@ def test_negative_expression_long_option_unaffected() raises:
     assert_equal(result.get_string("expr"), "-1/3")
 
 
+def test_negative_expression_parse_known() raises:
+    """Dash-prefixed expressions are captured as positionals (not as unknown)
+    when allow_negative_expressions() is set via parse_known_arguments()."""
+    var command = Command("test", "Test app")
+    command.allow_negative_expressions()
+    command.add_argument(
+        Argument("precision", help="Decimal places")
+        .long["precision"]()
+        .short["p"]()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression").positional().required()
+    )
+
+    var args: List[String] = ["test", "-1/3*pi", "-p", "10", "--color"]
+    var result = command.parse_known_arguments(args)
+    assert_equal(result.get_string("expr"), "-1/3*pi")
+    assert_equal(result.get_string("precision"), "10")
+    var unknown = result.get_unknown_args()
+    assert_equal(len(unknown), 1)
+    assert_equal(unknown[0], "--color")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

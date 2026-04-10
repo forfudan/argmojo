@@ -205,9 +205,10 @@ struct Command(Copyable, Movable, Writable):
     """When True, single-hyphen tokens that are not known short options
     are treated as positional arguments.  This handles expressions like
     ``-1/3*pi`` or ``-e`` (when ``-e`` is not a registered short flag).
-    Tokens with more than one character after the hyphen are always
-    consumed as positionals; single-character tokens (``-x``) are only
-    consumed if ``x`` does not match a registered short option."""
+    For tokens with one or more characters after the hyphen, this applies
+    only when the first character after ``-`` does not match a registered
+    short option; otherwise the token continues to parse as a short option
+    sequence or short option with attached value."""
     var _allow_positional_with_subcommands: Bool
     """When True, allows mixing positional arguments with subcommands.
     By default (False), registering a positional arg on a Command that already 
@@ -2120,22 +2121,16 @@ struct Command(Copyable, Movable, Writable):
                 # ────────────────────────────────────────────────────────────
                 # ── Negative-expression detection ───────────────────────────
                 # A token like "-1/3*pi" is treated as a positional when
-                # allow_negative_expressions() was called, but only if
-                # the first character does not match a registered short
-                # option.  This preserves merged shorts (-vp) and
-                # attached values (-p10) that start with a known flag.
-                if self._allow_negative_expressions:
-                    var _ne_key = String(arg[byte=1:])
-                    var _ne_first = String(_ne_key[byte=:1])
-                    var _ne_short_conflict = False
-                    for _nei in range(len(self.args)):
-                        if self.args[_nei]._short_name == _ne_first:
-                            _ne_short_conflict = True
-                            break
-                    if not _ne_short_conflict:
-                        result._positionals.append(arg)
-                        i += 1
-                        continue
+                # allow_negative_expressions() was called.  Reuse the
+                # shared _is_known_option() helper so this stays aligned
+                # with parse_known_arguments() and avoids duplicate scans.
+                if (
+                    self._allow_negative_expressions
+                    and not self._is_known_option(arg)
+                ):
+                    result._positionals.append(arg)
+                    i += 1
+                    continue
                 # ────────────────────────────────────────────────────────────
                 var key = String(arg[byte=1:])
                 if len(key) == 1:
@@ -2354,18 +2349,13 @@ struct Command(Copyable, Movable, Writable):
                         i += 1
                         continue
                 # ── Negative-expression detection (same as parse_arguments) ──
-                if self._allow_negative_expressions:
-                    var _ne_key = String(arg[byte=1:])
-                    var _ne_first = String(_ne_key[byte=:1])
-                    var _ne_short_conflict = False
-                    for _nei in range(len(self.args)):
-                        if self.args[_nei]._short_name == _ne_first:
-                            _ne_short_conflict = True
-                            break
-                    if not _ne_short_conflict:
-                        result._positionals.append(arg)
-                        i += 1
-                        continue
+                if (
+                    self._allow_negative_expressions
+                    and not self._is_known_option(arg)
+                ):
+                    result._positionals.append(arg)
+                    i += 1
+                    continue
                 # ─────────────────────────────────────────────────────────────
                 try:
                     var key = String(arg[byte=1:])
