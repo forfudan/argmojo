@@ -2,6 +2,8 @@
 
 A feature-rich command-line argument parser library for Mojo, with both builder and struct-based declarative APIs. Inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, and Swift's `swift-argument-parser`.
 
+ArgMojo has been successfully deployed in production in [Decimo](https://github.com/forfudan/decimo), an arbitrary-precision integer and decimal library for Mojo. You can see the [code of Decimo CLI calculator](https://github.com/forfudan/decimo/blob/main/src/cli/main.mojo) as a real-world example of ArgMojo usage.
+
 <!-- 
 > **A**rguments **R**esolved and **G**rouped into **M**eaningful **O**ptions and **J**oined **O**bjects
  -->
@@ -210,10 +212,10 @@ var deploy = Deploy.parse_from_command(cmd^)     # Command → typed struct
 
 The `Parsable` trait provides four parsing methods:
 
-|                  | `sys.argv()`     | from `Command`                  |
-| ---------------- | ---------------- | ------------------------------- |
-| returns `Self`   | `parse()`        | `parse_from_command(cmd^)`      |
-| returns `Tuple`  | `parse_full()`   | `parse_full_from_command(cmd^)` |
+|                 | `sys.argv()`   | from `Command`                  |
+| --------------- | -------------- | ------------------------------- |
+| returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
+| returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
 
 Plus: `parse_args(args)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
 

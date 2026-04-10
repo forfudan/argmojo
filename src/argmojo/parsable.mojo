@@ -142,7 +142,7 @@ trait Parsable(Defaultable, Movable):
         """
         pass
 
-    # ── Core: one-line parse ──
+    # == Core: one-line parse ==
 
     @staticmethod
     def parse() raises -> Self:
@@ -173,7 +173,7 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse_arguments(args)
         return Self.from_parse_result(result)
 
-    # ── Hybrid: to_command → customise → parse_from_command ──
+    # == Hybrid: to_command → customise → parse_from_command ==
 
     @staticmethod
     def to_command() raises -> Command:
@@ -197,19 +197,41 @@ trait Parsable(Defaultable, Movable):
             version=String(Self.version()),
         )
 
-        # Register fields into Command via reflection.
+        # Register fields into Command via reflection
+        # Each field is expected to be an argument wrapper type
+        # (e.g. Option, Flag, Positional, Count) that conforms to ArgumentLike.
+        # They will be converted into Argument type and added to the Command.
+
+        # Comptime calculation of field count, types, and names
         var instance = Self()
         comptime field_count = struct_field_count[Self]()
         comptime field_types = struct_field_types[Self]()
         comptime field_names = struct_field_names[Self]()
 
-        comptime for idx in range(field_count):
-            comptime ftype = field_types[idx]
-            comptime if conforms_to(ftype, ArgumentLike):
-                ref field = __struct_field_ref(idx, instance)
-                comptime fname = field_names[idx]
+        # Runtime duplicate detection
+        # [Mojo Miji]
+        # Cross-field duplicate detection (same name, long flag, or
+        # short flag) cannot be checked at compile time because Mojo's
+        # parametric StringLiteral[value] type prevents trait-level access
+        # to wrapper parameters through erased types. Instead, this is
+        # enforced at runtime: Command.add_argument() raises on duplicate
+        # name, --long, alias, or -short flags, so duplicates are
+        # surfaced the moment to_command() is called.
+        # TODO: Revisit when Mojo supports accessing parametric values
+        # through trait-erased types.
+
+        # Per-field validations (short flag length, default-in-choices,
+        # range consistency) are checked inside each wrapper's
+        # add_to_command() method.
+
+        # Register fields
+        comptime for field_index in range(field_count):
+            comptime field_type = field_types[field_index]
+            comptime if conforms_to(field_type, ArgumentLike):
+                ref field = __struct_field_ref(field_index, instance)
+                comptime field_name = field_names[field_index]
                 trait_downcast[ArgumentLike](field).add_to_command(
-                    String(fname), cmd
+                    String(field_name), cmd
                 )
 
         var subs = Self.subcommands()
@@ -232,7 +254,7 @@ trait Parsable(Defaultable, Movable):
         var result = cmd.parse()
         return Self.from_parse_result(result)
 
-    # ── Dual return ──
+    # == Dual return ==
 
     @staticmethod
     def parse_full() raises -> Tuple[Self, ParseResult]:
@@ -267,7 +289,7 @@ trait Parsable(Defaultable, Movable):
         var args = Self.from_parse_result(result)
         return Tuple[Self, ParseResult](args^, result^)
 
-    # ── Subcommand write-back ──
+    # == Subcommand write-back ==
 
     @staticmethod
     def from_parse_result(result: ParseResult) raises -> Self:
@@ -287,13 +309,13 @@ trait Parsable(Defaultable, Movable):
         comptime field_types = struct_field_types[Self]()
         comptime field_names = struct_field_names[Self]()
 
-        comptime for idx in range(field_count):
-            comptime ftype = field_types[idx]
-            comptime if conforms_to(ftype, ArgumentLike):
-                ref field = __struct_field_ref(idx, out)
-                comptime fname = field_names[idx]
+        comptime for field_index in range(field_count):
+            comptime field_type = field_types[field_index]
+            comptime if conforms_to(field_type, ArgumentLike):
+                ref field = __struct_field_ref(field_index, out)
+                comptime field_name = field_names[field_index]
                 trait_downcast[ArgumentLike](field).read_from_result(
-                    String(fname), result
+                    String(field_name), result
                 )
 
         return out^

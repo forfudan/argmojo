@@ -187,6 +187,86 @@ def test_split_return() raises:
     assert_true(result.get_count("debug_level") == 2, "split raw debug_level")
 
 
+# ==============================================================================
+# Schema validation: valid schemas compile and work correctly.
+#
+# Compile-time schema validation is enforced via ``comptime assert`` in each
+# wrapper's ``add_to_command()``.  The checks below exercise code paths that
+# touch every validated property — if any ``comptime assert`` fires erroneously
+# on a valid schema, these tests will fail to compile.
+#
+# Invalid schemas (e.g. short="abc", default not in choices) cannot be tested
+# at runtime because they prevent compilation.  These negative cases are
+# verified by tests/check_schema_errors.sh (run automatically via `pixi run test`).
+# ==============================================================================
+
+
+struct ValidChoicesDefault(Parsable):
+    """Schema where default is one of the choices — should compile fine."""
+
+    var fmt: Option[
+        String,
+        long="format",
+        short="f",
+        choices="json,yaml,csv",
+        default="json",
+    ]
+
+    @staticmethod
+    def description() -> String:
+        return String("Valid choices+default test.")
+
+
+def test_valid_choices_default() raises:
+    """Test that a valid choices+default schema compiles and parses."""
+    var cmd = ValidChoicesDefault.to_command()
+    assert_true(len(cmd.args) == 1, "expected 1 arg")
+    assert_true(cmd.args[0]._long_name == "format", "long name")
+    assert_true(len(cmd.args[0]._choice_values) == 3, "3 choices")
+
+
+struct ValidRange(Parsable):
+    """Schema with valid range (min <= max) — should compile fine."""
+
+    var port: Option[
+        Int,
+        long="port",
+        short="p",
+        has_range=True,
+        range_min=1,
+        range_max=65535,
+    ]
+
+    @staticmethod
+    def description() -> String:
+        return String("Valid range test.")
+
+
+def test_valid_range() raises:
+    """Test that a valid range schema compiles and parses."""
+    var cmd = ValidRange.to_command()
+    assert_true(len(cmd.args) == 1, "expected 1 arg")
+    assert_true(cmd.args[0]._has_range, "has_range set")
+    assert_true(cmd.args[0]._range_min == 1, "range_min")
+    assert_true(cmd.args[0]._range_max == 65535, "range_max")
+
+
+struct ChoicesNoDefault(Parsable):
+    """Schema with choices but no default — should compile fine."""
+
+    var level: Option[String, long="level", choices="debug,info,warn,error"]
+
+    @staticmethod
+    def description() -> String:
+        return String("Choices without default test.")
+
+
+def test_choices_without_default() raises:
+    """Test that choices without default compiles correctly."""
+    var cmd = ChoicesNoDefault.to_command()
+    assert_true(len(cmd.args[0]._choice_values) == 4, "4 choices")
+
+
 # =======================================================================
 # Main
 # =======================================================================

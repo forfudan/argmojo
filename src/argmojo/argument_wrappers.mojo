@@ -189,6 +189,38 @@ struct Option[
             field_name: The struct field name (used as default long name).
             cmd: The Command to register the argument on.
         """
+
+        # == Compile-time schema validation ==
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
+        # - If a range is specified, min must be <= max.
+        # - If choices and default are both specified, default must be one of the choices.
+        comptime if Self.short != "":
+            comptime assert len(Self.short) == 1, (
+                "Option short flag must be exactly 1 character, got '"
+                + Self.short
+                + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Option short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
+            )
+        comptime if Self.has_range:
+            comptime assert (
+                Self.range_min <= Self.range_max
+            ), "Option range_min must be <= range_max"
+        comptime if Self.choices != "" and Self.default != "":
+            comptime assert ("," + Self.choices + ",").find(
+                "," + Self.default + ","
+            ) >= 0, (
+                "Option default '"
+                + Self.default
+                + "' is not in choices '"
+                + Self.choices
+                + "'"
+            )
+
+        # == Translate fields of the wrapper struct into Argument properties ==
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -371,6 +403,22 @@ struct Flag[
             field_name: The struct field name (used as default long name).
             cmd: The Command to register the flag on.
         """
+
+        # == Compile-time schema validation ==
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
+        comptime if Self.short != "":
+            comptime assert len(Self.short) == 1, (
+                "Flag short flag must be exactly 1 character, got '"
+                + Self.short
+                + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Flag short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
+            )
+
+        # == Translate fields of the wrapper struct into Argument properties ==
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
@@ -483,6 +531,21 @@ struct Positional[
             field_name: The struct field name (used as the argument name).
             cmd: The Command to register the positional on.
         """
+
+        # == Compile-time schema validation ==
+        # 1. If choices and default are both specified, default must be one of the choices.
+        comptime if Self.choices != "" and Self.default != "":
+            comptime assert ("," + Self.choices + ",").find(
+                "," + Self.default + ","
+            ) >= 0, (
+                "Positional default '"
+                + Self.default
+                + "' is not in choices '"
+                + Self.choices
+                + "'"
+            )
+
+        # == Translate fields of the wrapper struct into Argument properties ==
         var arg = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
             arg._is_remainder = True
@@ -610,6 +673,22 @@ struct Count[
             field_name: The struct field name (used as default long name).
             cmd: The Command to register the count on.
         """
+
+        # == Compile-time schema validation ==
+        # - The short name must be exactly 1 character if provided.
+        # - The short name must not be '-' (conflicts with '--' end-of-options marker).
+        comptime if Self.short != "":
+            comptime assert len(Self.short) == 1, (
+                "Count short flag must be exactly 1 character, got '"
+                + Self.short
+                + "'"
+            )
+            comptime assert Self.short != "-", (
+                "Count short flag must not be '-' — it conflicts with"
+                " the '--' end-of-options marker"
+            )
+
+        # == Translate fields of the wrapper struct into Argument properties ==
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
