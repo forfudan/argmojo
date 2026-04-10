@@ -10,44 +10,37 @@ permissions:
   contents: read
   pull-requests: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  testing-argmojo:
-    name: Test with ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["macos-latest"]
-
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-
-    defaults:
-      run:
-        shell: bash
-    env:
-      DEBIAN_FRONTEND: noninteractive
-
+  # ── Job 1: Format + Package ────────────────────────────────────────────
+  build:
+    name: Build & Format
+    runs-on: macos-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Install pixi
-        run: |
-          curl -fsSL https://pixi.sh/install.sh | sh
-
+        run: curl -fsSL https://pixi.sh/install.sh | sh
       - name: Add pixi to PATH
         run: |
           echo "PIXI_HOME=$HOME/.pixi" >> $GITHUB_ENV
-          echo "$HOME/.pixi/bin"  >> $GITHUB_PATH
-
-      - name: Pixi install
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+      - name: pixi install
+        run: pixi install
+      - name: Format check
         run: |
-          pixi install
-
-      - name: Build package (with retry for Mojo compiler intermittent crashes)
+          pixi run format
+          if ! git diff --exit-code; then
+            echo "::error::Code is not formatted. Run 'pixi run format' locally."
+            exit 1
+          fi
+      - name: Build package (with retry)
         run: |
           for attempt in 1 2 3; do
-            echo "=== mojo package attempt $attempt ==="
+            echo "=== package attempt $attempt ==="
             if pixi run package; then
               echo "=== package succeeded on attempt $attempt ==="
               break
@@ -60,11 +53,35 @@ jobs:
             sleep 5
           done
 
-      - name: Run tests (with retry for Mojo compiler intermittent crashes)
+  # ── Job 2: Core parsing tests ──────────────────────────────────────────
+  test-core:
+    name: "Test: Core Parsing"
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pixi
+        run: curl -fsSL https://pixi.sh/install.sh | sh
+      - name: Add pixi to PATH
+        run: |
+          echo "PIXI_HOME=$HOME/.pixi" >> $GITHUB_ENV
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+      - name: pixi install
+        run: pixi install
+      - name: Build package (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            if pixi run package; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Run core tests (with retry)
         run: |
           for attempt in 1 2 3; do
             echo "=== test attempt $attempt ==="
-            if pixi run test; then
+            if mojo run -I src -D ASSERT=all tests/test_parse.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_options.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_groups.mojo; then
               echo "=== tests passed on attempt $attempt ==="
               break
             fi
@@ -76,7 +93,113 @@ jobs:
             sleep 5
           done
 
-      - name: Run example binaries in debug mode (catches developer-facing validation errors)
+  # ── Job 3: Feature tests ───────────────────────────────────────────────
+  test-features:
+    name: "Test: Features"
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pixi
+        run: curl -fsSL https://pixi.sh/install.sh | sh
+      - name: Add pixi to PATH
+        run: |
+          echo "PIXI_HOME=$HOME/.pixi" >> $GITHUB_ENV
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+      - name: pixi install
+        run: pixi install
+      - name: Build package (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            if pixi run package; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Run feature tests (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== test attempt $attempt ==="
+            if mojo run -I src -D ASSERT=all tests/test_help.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
+            && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo; then
+              echo "=== tests passed on attempt $attempt ==="
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "=== tests failed after 3 attempts ==="
+              exit 1
+            fi
+            echo "=== test run crashed, retrying in 5s... ==="
+            sleep 5
+          done
+
+  # ── Job 4: Declarative API tests ───────────────────────────────────────
+  test-declarative:
+    name: "Test: Declarative API"
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pixi
+        run: curl -fsSL https://pixi.sh/install.sh | sh
+      - name: Add pixi to PATH
+        run: |
+          echo "PIXI_HOME=$HOME/.pixi" >> $GITHUB_ENV
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+      - name: pixi install
+        run: pixi install
+      - name: Build package (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            if pixi run package; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Run declarative tests (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== test attempt $attempt ==="
+            if mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
+            && bash tests/check_schema_errors.sh; then
+              echo "=== tests passed on attempt $attempt ==="
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "=== tests failed after 3 attempts ==="
+              exit 1
+            fi
+            echo "=== test run crashed, retrying in 5s... ==="
+            sleep 5
+          done
+
+  # ── Job 5: Example binaries ────────────────────────────────────────────
+  test-examples:
+    name: "Test: Examples"
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pixi
+        run: curl -fsSL https://pixi.sh/install.sh | sh
+      - name: Add pixi to PATH
+        run: |
+          echo "PIXI_HOME=$HOME/.pixi" >> $GITHUB_ENV
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+      - name: pixi install
+        run: pixi install
+      - name: Build package (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            if pixi run package; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Run example binaries (with retry)
         run: |
           for attempt in 1 2 3; do
             echo "=== debug attempt $attempt ==="
