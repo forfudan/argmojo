@@ -8,126 +8,6 @@ All code examples below assume that you have imported the mojo at the top of you
 from argmojo import Argument, Command
 ```
 
-- [Getting Started](#getting-started)
-  - [Creating a Command](#creating-a-command)
-  - [Reading Parsed Results](#reading-parsed-results)
-- [Defining Arguments](#defining-arguments)
-  - [Positional Arguments](#positional-arguments)
-  - [Long Options](#long-options)
-  - [Short Options](#short-options)
-  - [Boolean Flags](#boolean-flags)
-  - [Default Values](#default-values)
-  - [Required Arguments](#required-arguments)
-  - [Aliases](#aliases)
-- [Builder Method Compatibility](#builder-method-compatibility)
-  - [ASCII Tree](#ascii-tree)
-  - [Compatibility Table](#compatibility-table)
-- [Short Option Details](#short-option-details)
-  - [Short Flag Merging](#short-flag-merging)
-  - [Attached Short Values](#attached-short-values)
-- [Flag Variants](#flag-variants)
-  - [Count Flags](#count-flags)
-  - [Count Ceiling (`.max[N]()`)](#count-ceiling-maxn)
-  - [Negatable Flags](#negatable-flags)
-- [Collecting Multiple Values](#collecting-multiple-values)
-  - [Append / Collect Action](#append--collect-action)
-  - [Value Delimiter](#value-delimiter)
-  - [Multi-Value Options (nargs)](#multi-value-options-nargs)
-  - [Key-Value Map Options](#key-value-map-options)
-- [Value Validation](#value-validation)
-  - [Choices Validation](#choices-validation)
-  - [Positional Argument Count Validation](#positional-argument-count-validation)
-  - [Numeric Range Validation](#numeric-range-validation)
-  - [Range Clamping (`.clamp()`)](#range-clamping-clamp)
-- [Group Constraints](#group-constraints)
-  - [Mutually Exclusive Groups](#mutually-exclusive-groups)
-  - [One-Required Groups](#one-required-groups)
-  - [Required-Together Groups](#required-together-groups)
-  - [Conditional Requirements](#conditional-requirements)
-  - [Mutual Implication](#mutual-implication)
-- [Subcommands](#subcommands)
-  - [Defining Subcommands](#defining-subcommands)
-  - [Parsing Subcommand Results](#parsing-subcommand-results)
-  - [Persistent (Global) Flags](#persistent-global-flags)
-  - [The help Subcommand](#the-help-subcommand)
-  - [Subcommand Aliases](#subcommand-aliases)
-  - [Unknown Subcommand Error](#unknown-subcommand-error)
-  - [Hidden Subcommands](#hidden-subcommands)
-  - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
-- [Help \& Display](#help--display)
-  - [Value Name](#value-name)
-  - [Hidden Arguments](#hidden-arguments)
-  - [Deprecated Arguments](#deprecated-arguments)
-  - [Default-if-no-value](#default-if-no-value)
-  - [Require Equals Syntax](#require-equals-syntax)
-  - [Argument Groups](#argument-groups)
-  - [Auto-generated Help](#auto-generated-help)
-  - [Custom Tips](#custom-tips)
-  - [Version Display](#version-display)
-  - [CJK-Aware Help Alignment](#cjk-aware-help-alignment)
-  - [Full-Width → Half-Width Auto-Correction](#full-width--half-width-auto-correction)
-- [Parsing Behaviour](#parsing-behaviour)
-  - [Negative Number Passthrough](#negative-number-passthrough)
-  - [Long Option Prefix Matching](#long-option-prefix-matching)
-  - [The `--` Stop Marker](#the----stop-marker)
-  - [Remainder Positional (`.remainder()`)](#remainder-positional-remainder)
-  - [Allow Hyphen Values (`.allow_hyphen_values()`)](#allow-hyphen-values-allow_hyphen_values)
-  - [Partial Parsing (`parse_known_arguments()`)](#partial-parsing-parse_known_arguments)
-- [Interactive Prompting](#interactive-prompting)
-  - [Setup Example](#setup-example)
-  - [Enabling Prompting](#enabling-prompting)
-  - [Interactive Session Examples](#interactive-session-examples)
-    - [All arguments missing — full prompting](#all-arguments-missing--full-prompting)
-    - [Partial arguments — only missing ones are prompted](#partial-arguments--only-missing-ones-are-prompted)
-    - [All arguments provided — no prompting at all](#all-arguments-provided--no-prompting-at-all)
-    - [Empty input with a default — default value is used](#empty-input-with-a-default--default-value-is-used)
-    - [Flag argument — y/n prompt](#flag-argument--yn-prompt)
-    - [Argument with choices — choices are shown](#argument-with-choices--choices-are-shown)
-  - [Prompt Format](#prompt-format)
-  - [Interaction with Other Features](#interaction-with-other-features)
-  - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
-- [Argument Parents and Inheritance](#argument-parents-and-inheritance)
-  - [Defining Shared Arguments](#defining-shared-arguments)
-  - [What Gets Inherited](#what-gets-inherited)
-  - [Multiple Parents](#multiple-parents)
-  - [Using with Subcommands](#using-with-subcommands)
-  - [Notes](#notes)
-- [Password / Masked Input](#password--masked-input)
-  - [Basic Usage](#basic-usage)
-  - [Custom Prompt Text](#custom-prompt-text)
-  - [Restrictions](#restrictions)
-  - [Non-Interactive Use](#non-interactive-use)
-- [Confirmation Option](#confirmation-option)
-  - [Basic Usage](#basic-usage-1)
-  - [Custom Prompt Text](#custom-prompt-text-1)
-  - [Using with Subcommands](#using-with-subcommands-1)
-  - [Non-Interactive Use](#non-interactive-use-1)
-- [Usage Line Customisation](#usage-line-customisation)
-- [Shell Completion](#shell-completion)
-  - [Built-in `--completions` Flag](#built-in---completions-flag)
-  - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
-  - [Customising the Trigger Name](#customising-the-trigger-name)
-  - [Using a Subcommand Instead of an Option](#using-a-subcommand-instead-of-an-option)
-  - [Generating a Script Programmatically](#generating-a-script-programmatically)
-  - [Installing Completions](#installing-completions)
-  - [What Gets Completed](#what-gets-completed)
-- [Developer Validation](#developer-validation)
-  - [Compile-Time Validation](#compile-time-validation)
-  - [Runtime Registration Validation](#runtime-registration-validation)
-  - [Recommended Workflow](#recommended-workflow)
-- [Declarative API (Struct-Based)](#declarative-api-struct-based)
-  - [Wrapper Types](#wrapper-types)
-  - [The `Parsable` Trait](#the-parsable-trait)
-  - [Pure Declarative — One-Line Parse](#pure-declarative--one-line-parse)
-  - [Hybrid — Declarative + Builder Customisation](#hybrid--declarative--builder-customisation)
-  - [Full Parse — Declarative + Extra Builder Fields](#full-parse--declarative--extra-builder-fields)
-  - [Subcommands](#subcommands-1)
-  - [Auto-Naming Convention](#auto-naming-convention)
-  - [API Summary](#api-summary)
-- [Cross-Library Method Name Reference](#cross-library-method-name-reference)
-  - [Argument-Level Builder Methods](#argument-level-builder-methods)
-  - [Command-Level Constraint Methods](#command-level-constraint-methods)
-  - [Notes](#notes-1)
 <!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
 - [Response Files](#response-files)
   - [Enabling Response Files](#enabling-response-files)
@@ -1752,6 +1632,174 @@ elif result.subcommand == "init":
 | `result.get_subcommand_result()` | `ParseResult` | The child command's parsed result.           |
 
 All standard `ParseResult` methods (`get_flag()`, `get_string()`, `get_int()`, `get_list()`, `get_map()`, `get_count()`, `has()`) work on the subcommand result.
+
+### Auto-Dispatch with `set_run_function` / `execute`
+
+#### The problem: manual subcommand routing
+
+When a CLI has subcommands (like `git clone`, `git push`, `git remote add`), the `ParseResult` tells you *which* subcommand was selected — but you must route to the right handler yourself:
+
+```mojo
+var result = app.parse()
+
+if result.subcommand == "clone":
+    handle_clone(result.get_subcommand_result())
+elif result.subcommand == "push":
+    handle_push(result.get_subcommand_result())
+elif result.subcommand == "remote":
+    var sub = result.get_subcommand_result()
+    if sub.subcommand == "add":
+        handle_remote_add(sub.get_subcommand_result())
+    elif sub.subcommand == "remove":
+        handle_remote_remove(sub.get_subcommand_result())
+```
+
+This is tedious. Every time you add a subcommand, you update the router. With nested subcommands the `if/elif` tree gets deeper. A typo in `"clone"` vs `"cloen"` silently breaks routing.
+
+#### The solution: auto-dispatch
+
+With auto-dispatch, you register a handler *on the command itself*. ArgMojo then parses the arguments **and** routes to the correct handler in one call:
+
+```mojo
+clone.set_run_function(handle_clone)
+push.set_run_function(handle_push)
+remote_add.set_run_function(handle_remote_add)
+app.execute()   # parse sys.argv() → walk the subcommand tree → call the right handler
+```
+
+No `if/elif` boilerplate. This is the pattern [Cobra](https://github.com/spf13/cobra) (Go's most popular CLI framework) pioneered: every command carries its own handler, and `Execute()` walks the tree automatically.
+
+---
+
+#### Step 1 — Define handler functions
+
+Each handler is a free function with signature `def (ParseResult) raises`. It receives the parsed arguments for the command it is attached to. It is a procedure — it does work but returns nothing.
+
+```mojo
+from argmojo import Command, Argument, ParseResult
+
+def handle_search(result: ParseResult) raises:
+    print("Searching for: " + result.get_string("pattern"))
+
+def handle_init(result: ParseResult) raises:
+    print("Initialising project: " + result.get_string("name"))
+```
+
+> **Why free functions?** Mojo does not yet support storing closures (functions that capture variables from their enclosing scope) as struct fields. Handlers must be module-level `def` functions. If you need to pass state to a handler, encode it in the parsed arguments or use module-level constants.
+
+#### Step 2 — Register handlers with `set_run_function()`
+
+```mojo
+def main() raises:
+    var app = Command("app", "My CLI tool", version="1.0.0")
+
+    var search = Command("search", "Search for patterns")
+    search.add_argument(Argument("pattern", help="Search pattern").positional().required())
+    search.set_run_function(handle_search)     # ← "when 'search' is selected, call handle_search"
+    app.add_subcommand(search^)
+
+    var init = Command("init", "Initialise a new project")
+    init.add_argument(Argument("name", help="Project name").positional().required())
+    init.set_run_function(handle_init)         # ← "when 'init' is selected, call handle_init"
+    app.add_subcommand(init^)
+
+    app.execute()  # Parse sys.argv() → find matching subcommand → call its handler
+```
+
+Running `myapp search hello` calls `handle_search` with `pattern="hello"`.
+Running `myapp init myproject` calls `handle_init` with `name="myproject"`.
+
+---
+
+#### Method reference
+
+| Method                              | Description                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| `cmd.set_run_function(handler)`     | Registers a `def (ParseResult) raises` handler on `cmd`.                         |
+| `cmd.execute()`                     | Parses `sys.argv()`, walks the subcommand chain, and calls the matching handler. |
+| `cmd._execute_with_arguments(args)` | Testing helper. Same as `execute()` but takes an explicit `List[String]`.        |
+
+**`set_run_function(handler)`** — Stores the handler function pointer on the command. You can call it again to replace a previous handler. Think of it as labelling a mailbox: "when mail arrives here, this person handles it."
+
+**`execute()`** — The main entry point for production code. It does three things in one call:
+
+1. Reads the command line from `sys.argv()`.
+2. Parses it (calling `self.parse()` internally).
+3. Walks the subcommand chain and invokes the matching handler.
+
+If no handler is registered on the resolved command, an `Error` is raised.
+
+**`_execute_with_arguments(args)`** — A **testing helper** (prefixed with `_` to indicate internal use). Identical to `execute()`, but accepts an explicit `List[String]` instead of reading `sys.argv()`. In tests you cannot control the real command line, so you pass arguments directly. Production code should always call `execute()`.
+
+---
+
+#### How dispatch walks the tree
+
+Given `app remote add origin`, the internal dispatch chain is:
+
+```
+app._dispatch({subcommand: "remote", ...})
+  → find child "remote"
+  → remote._dispatch({subcommand: "add", ...})
+    → find child "add"
+    → add._dispatch({subcommand: "", name: "origin"})
+      → no subcommand → call add's handler → handle_remote_add({name: "origin"})
+```
+
+At each level:
+- **Has subcommand?** Find the matching child command and recurse.
+- **No subcommand?** This is the leaf — call its registered handler.
+- **No handler?** Raise `Error("No run function registered for command '…'")`.
+
+---
+
+#### Nested subcommands
+
+The dispatch recursion handles arbitrary nesting depth:
+
+```mojo
+def handle_remote_add(result: ParseResult) raises:
+    print("Adding remote: " + result.get_string("name"))
+
+def main() raises:
+    var app = Command("app", "My CLI")
+
+    var remote = Command("remote", "Manage remotes")
+    # Note: 'remote' itself has no set_run_function — it is just a grouping command.
+    # Only its children have handlers.
+
+    var remote_add = Command("add", "Add a remote")
+    remote_add.add_argument(Argument("name", help="Remote name").positional().required())
+    remote_add.set_run_function(handle_remote_add)
+    remote.add_subcommand(remote_add^)
+
+    app.add_subcommand(remote^)
+
+    app.execute()  # "app remote add origin" → handle_remote_add()
+```
+
+The `remote` command does not need a handler — it exists only to group `add`, `remove`, and other child commands. If a user types just `app remote` with no child subcommand, an error is raised (because `remote` has no handler).
+
+---
+
+#### Testing with `_execute_with_arguments()`
+
+In tests, pass explicit argument lists instead of relying on `sys.argv()`:
+
+```mojo
+# Test that "app search hello" calls the search handler correctly
+var args: List[String] = ["app", "search", "hello"]
+app._execute_with_arguments(args)  # Calls handle_search with pattern="hello"
+```
+
+#### When to use auto-dispatch vs manual parsing
+
+| Scenario                            | Recommended approach                           |
+| ----------------------------------- | ---------------------------------------------- |
+| CLI with 2+ subcommands             | Auto-dispatch (`set_run_function` + `execute`) |
+| Simple CLI, no subcommands          | Either works; `parse()` is fine too            |
+| Need `ParseResult` for custom logic | Manual `parse()` + your own routing            |
+| Integration testing                 | `_execute_with_arguments(args)`                |
 
 ### Persistent (Global) Flags
 
@@ -3925,20 +3973,80 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
 | `.prompt["msg"]()`              | —                                 | `prompt="msg"`                           | —                               | —                              |
 | `.password()`                   | —                                 | `hide_input=True`                        | —                               | —                              |
+| `.group["name"]()`              | — (manual section formatting)     | —                                        | `.help_heading("name")`         | — (manual grouping)            |
 
-### Command-Level Constraint Methods
+### Command-Level Methods
+
+#### Registration & Structure
+
+| ArgMojo method                        | argparse                         | click                                 | clap (Rust)                        | cobra / pflag (Go)         |
+| ------------------------------------- | -------------------------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
+| `add_argument(arg)`                   | `add_argument(…)`                | `@click.option` / `@click.argument`   | `Arg::new(…)` via derive / builder | `cmd.Flags().…`            |
+| `add_subcommand(sub)`                 | `add_subparsers().add_parser(…)` | `@group.command()` / `.add_command()` | `.subcommand(Command::new(…))`     | `parent.AddCommand(child)` |
+| `add_parent(parent)`                  | `parents=[parent]`               | —                                     | —                                  | —                          |
+| `command_aliases(names)`              | — (use multiple names)           | —                                     | `.visible_aliases([…])`            | `Aliases: []string{…}`     |
+| `hidden()` (command)                  | —                                | `hidden=True`                         | `.hide(true)`                      | `Hidden: true`             |
+| `disable_help_subcommand()`           | —                                | —                                     | `.disable_help_subcommand(true)`   | —                          |
+| `allow_positional_with_subcommands()` | —                                | —                                     | —                                  | `TraverseChildren`         |
+
+#### Group Constraints
 
 | ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
 | --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
 | `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` ⁹ | `.conflicts_with("x")` per arg | — ⁴                             |
-| `one_required(…)`           | group + `required=True`          | —                               | `.group["G"]().required(true)` | — ⁴                             |
+| `one_required(…)`           | group + `required=True`          | —                               | `.group("G").required(true)`   | — ⁴                             |
 | `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
-| `parse_known_arguments()`   | `parse_known_args()`             | —                               | — ¹¹                           | `FParseErrWhitelist` ¹²         |
-| `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
-| `add_parent(parent)`        | `parents=[parent]`               | —                               | —                              | —                               |
-| `confirmation_option()`     | —                                | `confirmation_option`           | —                              | —                               |
+
+#### Parser Behaviour
+
+| ArgMojo method                     | argparse                    | click                          | clap (Rust)                     | cobra / pflag (Go)      |
+| ---------------------------------- | --------------------------- | ------------------------------ | ------------------------------- | ----------------------- |
+| `help_on_no_arguments()`           | —                           | `invoke_without_command=False` | `.arg_required_else_help(true)` | auto (shows usage)      |
+| `allow_negative_numbers()`         | —                           | —                              | `.allow_negative_numbers(true)` | —                       |
+| `allow_negative_expressions()`     | —                           | —                              | —                               | —                       |
+| `parse_known_arguments()`          | `parse_known_args()`        | —                              | — ¹¹                            | `FParseErrWhitelist` ¹² |
+| `response_file_prefix()`           | `fromfile_prefix_chars="@"` | —                              | —                               | —                       |
+| `response_file_max_depth[N]()`     | —                           | —                              | —                               | —                       |
+| `confirmation_option()`            | —                           | `confirmation_option`          | —                               | —                       |
+| `disable_fullwidth_correction()`   | —                           | —                              | —                               | —                       |
+| `disable_punctuation_correction()` | —                           | —                              | —                               | —                       |
+
+#### Help & Display
+
+| ArgMojo method         | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
+| ---------------------- | ------------ | ------------ | ---------------------- | ------------------ |
+| `usage(text)`          | `usage="…"`  | —            | `.override_usage("…")` | `Use: "…"`         |
+| `add_tip(tip)`         | `epilog="…"` | `epilog="…"` | `.after_help("…")`     | `Example: "…"`     |
+| `header_color[name]()` | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `arg_color[name]()`    | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `warn_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `error_color[name]()`  | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+
+#### Shell Completions
+
+| ArgMojo method                  | argparse | click            | clap (Rust)                        | cobra / pflag (Go)         |
+| ------------------------------- | -------- | ---------------- | ---------------------------------- | -------------------------- |
+| `disable_default_completions()` | —        | —                | —                                  | `DisableAutoGenTag` field  |
+| `completions_name(name)`        | —        | —                | —                                  | —                          |
+| `completions_as_subcommand()`   | —        | —                | `clap_complete` subcommand pattern | default (subcommand)       |
+| `generate_completion(shell)`    | —        | `shell_complete` | `clap_complete::generate()`        | `GenBashCompletion()` etc. |
+
+#### Auto-Dispatch
+
+| ArgMojo method                  | argparse | click                         | clap (Rust) | cobra / pflag (Go) |
+| ------------------------------- | -------- | ----------------------------- | ----------- | ------------------ |
+| `set_run_function(handler)`     | —        | callback param on `@command`  | —           | `Run: func(…)` ¹⁵  |
+| `execute()`                     | —        | implicit via `cli()`          | —           | `cmd.Execute()`    |
+| `_execute_with_arguments(args)` | —        | `runner.invoke(cli, args)` ¹⁶ | —           | —                  |
+
+#### Parse
+
+| ArgMojo method          | argparse           | click           | clap (Rust)               | cobra / pflag (Go) |
+| ----------------------- | ------------------ | --------------- | ------------------------- | ------------------ |
+| `parse()`               | `parse_args()`     | implicit        | `.get_matches()`          | implicit           |
+| `parse_arguments(args)` | `parse_args(args)` | `.main(args=…)` | `.get_matches_from(args)` | —                  |
 
 ### Notes
 
@@ -3954,3 +4062,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 10. clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
 11. clap uses `.trailing_var_arg(true)` on the command (not the argument) for remainder-like behaviour. For `parse_known_arguments`, clap has no direct equivalent; use `allow_external_subcommands`.
 12. Cobra uses `TraverseChildren` for remainder-like behaviour. For partial parsing, Cobra's `FParseErrWhitelist{UnknownFlags: true}` ignores unknown flags.
+13. click uses `click.style()` and `click.echo()` for coloured output, not per-section colour configuration. Colour is applied manually per string, not as a command-level setting.
+14. clap uses `Styles::styled()` with `AnsiColor` enum values for header, literal, placeholder, and error colours. Applied at the `Command` level.
+15. Cobra's `Run` is a struct field of type `func(cmd *Command, args []string)`. Unlike ArgMojo, the handler receives both the command and positional args (not a `ParseResult`).
+16. click's test runner (`CliRunner.invoke()`) captures stdout and returns a `Result` object, rather than dispatching through the normal execution path.

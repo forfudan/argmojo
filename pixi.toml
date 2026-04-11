@@ -41,6 +41,7 @@ test = """\
     && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
     && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
     && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_dispatch.mojo \
     && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
     && bash tests/check_schema_errors.sh"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
@@ -64,24 +65,16 @@ t = """\
   mojo run -I src -D ASSERT=all tests/test_hybrid.mojo &                  pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo & pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_wrappers.mojo &                pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_dispatch.mojo &                pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo &       pids+=($!);
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; \
   bash tests/check_schema_errors.sh || rc=1; exit $rc'
 """
 
-# build example binaries (parallel, fail if any build fails)
-build = """pixi run package && bash -c '\
-  pids=(); \
-  mojo build -I src examples/mgrep.mojo -o mgrep & pids+=($!); \
-  mojo build -I src examples/mgit.mojo  -o mgit  & pids+=($!); \
-  mojo build -I src examples/demo.mojo  -o demo  & pids+=($!); \
-  mojo build -I src examples/yu.mojo    -o yu    & pids+=($!); \
-  mojo build -I src examples/declarative/search.mojo  -o search  & pids+=($!); \
-  mojo build -I src examples/declarative/deploy.mojo   -o deploy  & pids+=($!); \
-  mojo build -I src examples/declarative/convert.mojo  -o convert & pids+=($!); \
-  mojo build -I src examples/declarative/jomo.mojo     -o jomo    & pids+=($!); \
-  rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
-"""
+# build example binaries (with timing); pass a name to build one only
+# Usage: pixi run build         (all examples)
+#        pixi run build mgit    (mgit only)
+build = "bash examples/build.sh"
 
 # run (debug mode) example binaries
 # Uses --help so examples with required positional args exit cleanly.

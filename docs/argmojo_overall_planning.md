@@ -85,7 +85,8 @@ These features appear across multiple libraries and depend only on string operat
 | Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
 | Comptime `StringLiteral` params    | —        | —     | —     | ✓    | ✓     | clap derive macros           | **Done**      |
 | Registration-time name validation  | —        | —     | —     | ✓    | ✓     | clap panic on unknown ID     | **Done**      |
-| Struct-based schema (reflection)   | —        | —     | —     | —    | ✓     | swift-argument-parser        | Phase 7a      |
+| Struct-based schema (reflection)   | —        | —     | —     | —    | ✓     | swift-argument-parser        | **Done**      |
+| Auto-dispatch (run functions)      | —        | —     | ✓     | —    | ✓     | Cobra / swift                | **Done**      |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    | —     | Cobra                        | Phase 7a      |
 | Derive (macro/decorator-based)     | —        | —     | —     | ✓    | —     | clap `#[derive(Parser)]`     | Phase 7b      |
 | Enum → type mapping (real enums)   | —        | —     | —     | ✓    | ✓     | Requires reflection          | Phase 7b      |
@@ -569,7 +570,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
 - [x] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [x] **Confirmation option** — `confirmation_option()` or `confirmation_option["prompt"]()` auto-registers `--yes`/`-y` flag; prompts user for confirmation after parsing; aborts on decline or non-interactive stdin (Click `confirmation_option`) (PR #26)
-- [ ] **Pre/Post run hooks** — callbacks before/after main logic (cobra `PreRun`/`PostRun`)
+- [x] **Pre/Post run hooks** — **Auto-dispatch implemented:** `set_run_function(handler)` registers a `def (ParseResult) raises` function pointer on a `Command`; `execute()` parses and walks the subcommand chain to invoke the matching handler; `_execute_with_arguments(args)` provides the same dispatch for testing. **Lifecycle hooks** (PersistentPreRun/PreRun/PostRun/PersistentPostRun) are not yet implemented — they depend on auto-dispatch and will be added in a future release.
 - [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens (including `-` prefixed); at most one per command, must be last positional (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
 - [x] **Allow hyphen values** — `.allow_hyphen_values()` on positional accepts dash-prefixed tokens as values without `--`; remainder enables this automatically (clap `allow_hyphen_values`) (PR #13)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
@@ -679,10 +680,11 @@ The features below are **not part of the core builder API**. They are split into
 
 These features use capabilities already available in Mojo 0.26.2 and can be experimented with immediately.
 
-| Feature                        | Inspiration                | Status        | Planning doc                                               |
-| ------------------------------ | -------------------------- | ------------- | ---------------------------------------------------------- |
-| Declarative / struct-based API | swift-argument-parser      | Investigating | [declarative_api_planning.md](declarative_api_planning.md) |
-| Pre/Post run hooks             | cobra `PreRun` / `PostRun` | Investigating | TBD                                                        |
+| Feature                        | Inspiration                 | Status   | Planning doc                                               |
+| ------------------------------ | --------------------------- | -------- | ---------------------------------------------------------- |
+| Declarative / struct-based API | swift-argument-parser       | **Done** | [declarative_api_planning.md](declarative_api_planning.md) |
+| Auto-dispatch (run functions)  | cobra `Run` / swift `run()` | **Done** | Implemented in command.mojo                                |
+| Pre/Post lifecycle hooks       | cobra `PreRun` / `PostRun`  | Planned  | Depends on auto-dispatch (now available)                   |
 
 **Declarative API summary** (see [full design doc](declarative_api_planning.md)):
 
@@ -691,7 +693,9 @@ These features use capabilities already available in Mojo 0.26.2 and can be expe
 - **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying `Command` for builder-level tweaks (groups, implications, coloured help); (2) `parse_full()` returns both typed struct + `ParseResult` for hybrid workflows.
 - **Optional** — Users who prefer the builder API are completely unaffected. Zero change to existing code.
 
-**Pre/Post run hooks** — Straightforward callback mechanism (`def(ParseResult) raises`). No special language features needed; just needs API design and a decision on execution order with subcommands.
+**Auto-dispatch** — Implemented via `set_run_function()` + `execute()`. Registers a non-capturing function pointer (`def (ParseResult) raises`) on each `Command`. `execute()` parses `sys.argv()`, walks the subcommand chain, and invokes the leaf handler. `_execute_with_arguments(args)` provides the same dispatch for testing with explicit argument lists. Works with aliases, nested subcommands, and persistent flags. Closures cannot be stored as struct fields in Mojo 0.26.2 (only non-capturing function pointers via the `def (...) raises` type), so handlers must be free functions.
+
+**Pre/Post lifecycle hooks** — Now unblocked by auto-dispatch. Straightforward extension: add `_pre_run_function` / `_post_run_function` fields with the same function pointer type. Execution order: PersistentPreRun → PreRun → Run → PostRun → PersistentPostRun. Will be implemented in a future release.
 
 #### Phase 7b: Blocked on Mojo Language Features
 

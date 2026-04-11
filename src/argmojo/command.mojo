@@ -275,6 +275,14 @@ struct Command(Copyable, Movable, Writable):
     option.  Default False → ``--completions``.  Call
     ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
 
+    # === Private fields — Auto-dispatch ===
+    var _run_function: Optional[def(ParseResult) raises]
+    """Optional run function for auto-dispatch.  When set via
+    ``set_run_function()``, the ``execute()`` method will call this
+    function with the parsed result.  For commands with subcommands,
+    ``execute()`` walks the subcommand chain and invokes the matching
+    handler."""
+
     # ===------------------------------------------------------------------=== #
     # Life cycle methods
     # ===------------------------------------------------------------------=== #
@@ -331,6 +339,8 @@ struct Command(Copyable, Movable, Writable):
         self._completions_enabled = True
         self._completions_name = String("completions")
         self._completions_is_subcommand = False
+        # ── Auto-dispatch ──
+        self._run_function = None
 
     def __init__(out self, *, deinit take: Self):
         """Moves a Command, transferring ownership of all fields.
@@ -381,6 +391,8 @@ struct Command(Copyable, Movable, Writable):
         self._completions_enabled = take._completions_enabled
         self._completions_name = take._completions_name^
         self._completions_is_subcommand = take._completions_is_subcommand
+        # ── Auto-dispatch ──
+        self._run_function = take._run_function^
 
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
@@ -448,6 +460,8 @@ struct Command(Copyable, Movable, Writable):
         self._completions_enabled = copy._completions_enabled
         self._completions_name = copy._completions_name
         self._completions_is_subcommand = copy._completions_is_subcommand
+        # ── Auto-dispatch ──
+        self._run_function = copy._run_function
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the command
@@ -1873,6 +1887,140 @@ struct Command(Copyable, Movable, Writable):
             s += " <COMMAND>"
         s += " [OPTIONS]"
         return s
+
+    # ===------------------------------------------------------------------=== #
+    # Auto-dispatch: set_run_function / execute
+    # ===------------------------------------------------------------------=== #
+
+    def set_run_function(mut self, handler: def(ParseResult) raises):
+        """Registers a run function for auto-dispatch via ``execute()``.
+
+        When ``execute()`` is called, the command tree is parsed and the
+        matching handler is invoked automatically — no manual ``if/elif``
+        dispatch is needed.
+
+        The handler receives the ``ParseResult`` for the command it is
+        attached to.  For a root command without subcommands, that is the
+        full result; for a subcommand, it is the sub-result obtained via
+        ``get_subcommand_result()``.
+
+        Args:
+            handler: A function ``def (ParseResult) raises`` to
+                call when this command is selected.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Command, Argument, ParseResult
+
+        def handle_build(result: ParseResult) raises:
+            print("Building target: " + result.get_string("target"))
+
+        def main() raises:
+            var app = Command("app", "My CLI")
+            var build = Command("build", "Build the project")
+            build.add_argument(
+                Argument("target", help="Build target").positional()
+            )
+            build.set_run_function(handle_build)
+            app.add_subcommand(build^)
+            app.execute()
+        ```
+        """
+        self._run_function = handler
+
+    def execute(self) raises:
+        """Parses ``sys.argv()`` and auto-dispatches to the appropriate run
+        function.
+
+        Walks the subcommand chain from root to leaf, finds the deepest
+        command with a matching subcommand, and invokes its ``_run_function``
+        handler.  If no handler is registered on the matched command, an
+        error is raised.
+
+        This method combines ``parse()`` + dispatch in a single call,
+        replacing the common pattern::
+
+            var result = app.parse()
+            if result.subcommand == "build":
+                handle_build(result.get_subcommand_result())
+            elif result.subcommand == "test":
+                handle_test(result.get_subcommand_result())
+
+        with simply::
+
+            app.execute()
+
+        Raises:
+            Error if no run function is registered for the resolved command.
+        """
+        var result = self.parse()
+        self._dispatch(result)
+
+    def _execute_with_arguments(self, raw_args: List[String]) raises:
+        """Parses the given argument list and auto-dispatches to the
+        appropriate run function.
+
+        This is a **testing helper** — it behaves identically to
+        ``execute()`` but accepts an explicit argument list instead of
+        reading from ``sys.argv()``.  In tests you cannot control the
+        real command line, so pass the arguments directly::
+
+            var args: List[String] = ["app", "build", "mylib"]
+            app._execute_with_arguments(args)
+
+        The leading underscore marks this method as internal.  Production
+        code should call ``execute()``; only test code should call this.
+
+        Args:
+            raw_args: The raw argument strings (including program name at
+                index 0).
+
+        Raises:
+            Error if parsing fails or no run function is registered for the
+            resolved command.
+        """
+        var result = self.parse_arguments(raw_args)
+        self._dispatch(result)
+
+    def _dispatch(self, result: ParseResult) raises:
+        """Walks the subcommand chain and invokes the matching run function.
+
+        Internal auto-dispatch.
+
+        Args:
+            result: The ParseResult from parsing.
+
+        Raises:
+            Error if the resolved command has no run function registered.
+        """
+        if result.subcommand != "":
+            # Find the matching subcommand and recurse.
+            for i in range(len(self.subcommands)):
+                if self.subcommands[i].name == result.subcommand:
+                    if result.has_subcommand_result():
+                        self.subcommands[i]._dispatch(
+                            result.get_subcommand_result()
+                        )
+                    elif self.subcommands[i]._run_function:
+                        self.subcommands[i]._run_function.value()(result)
+                    else:
+                        raise Error(
+                            "No run function registered for command '"
+                            + result.subcommand
+                            + "'"
+                        )
+                    return
+            raise Error(
+                "No matching subcommand for '" + result.subcommand + "'"
+            )
+        # No subcommand — execute this command's handler.
+        if self._run_function:
+            self._run_function.value()(result)
+        else:
+            raise Error(
+                "No run function registered for command '" + self.name + "'"
+            )
 
     # ===------------------------------------------------------------------=== #
     # Public parse methods

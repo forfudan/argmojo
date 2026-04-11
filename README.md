@@ -83,6 +83,7 @@ ArgMojo currently supports:
 - **Partial parsing**: `parse_known_arguments()` collects unrecognised options instead of erroring
 - **Compile-time validation**: builder parameters validated at `mojo build` time via `comptime assert`
 - **Registration-time validation**: group constraint typos caught when the program starts, not when the user runs it
+- **Auto-dispatch**: `set_run_function(handler)` + `execute()` for Cobra-style automatic subcommand dispatch — no manual `if/elif` chains
 
 ---
 
