@@ -48,6 +48,7 @@ from argmojo import Argument, Command
 - [Subcommands](#subcommands)
   - [Defining Subcommands](#defining-subcommands)
   - [Parsing Subcommand Results](#parsing-subcommand-results)
+  - [Auto-Dispatch with `set_run_function` / `execute`](#auto-dispatch-with-set_run_function--execute)
   - [Persistent (Global) Flags](#persistent-global-flags)
   - [The help Subcommand](#the-help-subcommand)
   - [Subcommand Aliases](#subcommand-aliases)
@@ -77,12 +78,6 @@ from argmojo import Argument, Command
   - [Setup Example](#setup-example)
   - [Enabling Prompting](#enabling-prompting)
   - [Interactive Session Examples](#interactive-session-examples)
-    - [All arguments missing — full prompting](#all-arguments-missing--full-prompting)
-    - [Partial arguments — only missing ones are prompted](#partial-arguments--only-missing-ones-are-prompted)
-    - [All arguments provided — no prompting at all](#all-arguments-provided--no-prompting-at-all)
-    - [Empty input with a default — default value is used](#empty-input-with-a-default--default-value-is-used)
-    - [Flag argument — y/n prompt](#flag-argument--yn-prompt)
-    - [Argument with choices — choices are shown](#argument-with-choices--choices-are-shown)
   - [Prompt Format](#prompt-format)
   - [Interaction with Other Features](#interaction-with-other-features)
   - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
@@ -98,10 +93,10 @@ from argmojo import Argument, Command
   - [Restrictions](#restrictions)
   - [Non-Interactive Use](#non-interactive-use)
 - [Confirmation Option](#confirmation-option)
-  - [Basic Usage](#basic-usage-1)
-  - [Custom Prompt Text](#custom-prompt-text-1)
-  - [Using with Subcommands](#using-with-subcommands-1)
-  - [Non-Interactive Use](#non-interactive-use-1)
+  - [Basic Usage (Confirmation Option)](#basic-usage-confirmation-option)
+  - [Custom Prompt Text (Confirmation Option)](#custom-prompt-text-confirmation-option)
+  - [Using with Subcommands (Confirmation Option)](#using-with-subcommands-confirmation-option)
+  - [Non-Interactive Use (Confirmation Option)](#non-interactive-use-confirmation-option)
 - [Usage Line Customisation](#usage-line-customisation)
 - [Shell Completion](#shell-completion)
   - [Built-in `--completions` Flag](#built-in---completions-flag)
@@ -121,21 +116,15 @@ from argmojo import Argument, Command
   - [Pure Declarative — One-Line Parse](#pure-declarative--one-line-parse)
   - [Hybrid — Declarative + Builder Customisation](#hybrid--declarative--builder-customisation)
   - [Full Parse — Declarative + Extra Builder Fields](#full-parse--declarative--extra-builder-fields)
-  - [Subcommands](#subcommands-1)
+  - [Subcommands in Declarative API](#subcommands-in-declarative-api)
   - [Auto-Naming Convention](#auto-naming-convention)
   - [API Summary](#api-summary)
 - [Cross-Library Method Name Reference](#cross-library-method-name-reference)
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
-  - [Command-Level Constraint Methods](#command-level-constraint-methods)
-  - [Notes](#notes-1)
-<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
-- [Response Files](#response-files)
-  - [Enabling Response Files](#enabling-response-files)
-  - [File Format](#file-format)
-  - [Escaping the Prefix](#escaping-the-prefix)
-  - [Recursive Response Files](#recursive-response-files)
-  - [Custom Prefix](#custom-prefix)
--->
+  - [Command-Level Methods](#command-level-methods)
+  - [Notes (Cross-Library Method Name Reference)](#notes-cross-library-method-name-reference)
+
+<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all) -->
 
 ## Getting Started
 
@@ -158,7 +147,7 @@ def main() raises:
 
 ---
 
-**`parse()` vs `parse_arguments()`**
+#### `parse()` vs `parse_arguments()` <!-- omit from toc -->
 
 - **`command.parse()`** reads the real command-line via `sys.argv()`.
 - **`command.parse_arguments(args)`** accepts a `List[String]` — useful for testing without a real binary. Note that `args[0]` is expected to be the program name and will be skipped, so the actual arguments should start from index 1.
@@ -223,7 +212,7 @@ myapp "hello" ./src
 
 Positional arguments are assigned in the order they are registered with `add_argument()`. If fewer values are provided than defined arguments, the remaining ones use their default values (if any). If more are provided, an error is raised (see [Positional Argument Count Validation](#positional-argument-count-validation)).
 
-**Retrieving:**
+#### Retrieving: <!-- omit from toc -->
 
 ```mojo
 var pattern = result.get_string("pattern")  # "hello"
@@ -294,7 +283,7 @@ myapp -v           # verbose = True
 myapp              # verbose = False (default)
 ```
 
-**Retrieving:**
+#### Retrieving: (Flags) <!-- omit from toc -->
 
 ```mojo
 var verbose = result.get_flag("verbose")  # Bool
@@ -584,7 +573,7 @@ myapp -v --verbose   # verbose = 2  (short + long both increment)
 myapp                # verbose = 0  (default)
 ```
 
-**Retrieving:**
+#### Retrieving: (Count) <!-- omit from toc -->
 
 ```mojo
 var level = result.get_count("verbose")  # Int
@@ -630,7 +619,7 @@ This replaces the manual pattern of defining two separate flags (`--color` and `
 
 ---
 
-**Defining a negatable flag**
+#### Defining a negatable flag <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -651,7 +640,7 @@ Use `result.has("color")` to distinguish between "user explicitly disabled colou
 
 ---
 
-**Help output**
+#### Help output <!-- omit from toc -->
 
 Negatable flags are displayed as a paired form:
 
@@ -661,9 +650,9 @@ Negatable flags are displayed as a paired form:
 
 ---
 
-**Comparison with manual approach**
+#### Comparison with manual approach <!-- omit from toc -->
 
-**Before (two flags + mutually exclusive):**
+#### Before (two flags + mutually exclusive): <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("color", help="Force colored output").long["color"]().flag())
@@ -672,7 +661,7 @@ var group: List[String] = ["color", "no-color"]
 command.mutually_exclusive(group^)
 ```
 
-**After (single negatable flag):**
+#### After (single negatable flag): <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -704,7 +693,7 @@ This is a common pattern for options like `--include`, `--tag`, or `--define` wh
 
 ---
 
-**Defining an append option**
+#### Defining an append option <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -736,7 +725,7 @@ All value syntaxes (space-separated, equals, attached short) work with append op
 
 ---
 
-**Retrieving**
+#### Retrieving <!-- omit from toc -->
 
 ```mojo
 var tags = result.get_list("tag")  # List[String]
@@ -748,7 +737,7 @@ for i in range(len(tags)):
 
 ---
 
-**Help output**
+#### Help output (Append) <!-- omit from toc -->
 
 Append options show a `...` suffix to indicate they are repeatable:
 
@@ -770,7 +759,7 @@ command.add_argument(
 
 ---
 
-**Combining with choices**
+#### Combining with choices <!-- omit from toc -->
 
 Choices validation is applied to each individual value:
 
@@ -794,7 +783,7 @@ This is similar to Go cobra's `StringSliceVar` and Rust clap's `value_delimiter`
 
 ---
 
-**Defining a delimiter option**
+#### Defining a delimiter option <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -831,7 +820,7 @@ Trailing delimiters are ignored — `--env a,b,` produces `["a", "b"]`, not `["a
 
 ---
 
-**Retrieving**
+#### Retrieving (Delimiter) <!-- omit from toc -->
 
 ```mojo
 var envs = result.get_list("env")  # List[String]
@@ -841,7 +830,7 @@ for i in range(len(envs)):
 
 ---
 
-**Combining with choices**
+#### Combining with choices (Delimiter) <!-- omit from toc -->
 
 Choices are validated per piece after splitting:
 
@@ -859,7 +848,7 @@ myapp --env dev,local      # Error: Invalid value 'local' for argument 'env'
 
 ---
 
-**Other delimiters**
+#### Other delimiters <!-- omit from toc -->
 
 The allowed delimiters are `,` `;` `:` `|`. When fullwidth correction is enabled (the default), fullwidth equivalents in user input (e.g. `，` `；` `：` `｜`) are auto-corrected before splitting:
 
@@ -877,7 +866,7 @@ myapp --path "/usr/lib;/opt/lib;/home/lib"
 
 ---
 
-**Combining with append**
+#### Combining with append <!-- omit from toc -->
 
 When a delimiter option is used multiple times, all split values accumulate:
 
@@ -902,7 +891,7 @@ This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 
 ---
 
-**Defining a multi-value option**
+#### Defining a multi-value option <!-- omit from toc -->
 
 Use `.number_of_values[N]()` to specify how many values the option consumes:
 
@@ -926,7 +915,7 @@ myapp --rgb 255 128 0
 
 ---
 
-**Repeated occurrences**
+#### Repeated occurrences <!-- omit from toc -->
 
 Each occurrence consumes N more values, all accumulating in the same list:
 
@@ -937,7 +926,7 @@ myapp --point 1 2 --point 3 4
 
 ---
 
-**Short options**
+#### Short options <!-- omit from toc -->
 
 nargs works with short options too:
 
@@ -948,7 +937,7 @@ myapp -c 255 128 0
 
 ---
 
-**Retrieving values**
+#### Retrieving values <!-- omit from toc -->
 
 ```mojo
 var result = command.parse()
@@ -958,7 +947,7 @@ var coords = result.get_list("point")
 
 ---
 
-**Choices validation**
+#### Choices validation <!-- omit from toc -->
 
 Choices are validated for **each** value individually:
 
@@ -976,7 +965,7 @@ myapp --route north up      # ✗ 'up' is not a valid choice
 
 ---
 
-**Help output**
+#### Help output (Multi-Value) <!-- omit from toc -->
 
 nargs options show the placeholder repeated N times:
 
@@ -991,7 +980,7 @@ options show exactly N placeholders — making the expected arity clear.
 
 ---
 
-**Limitations**
+#### Limitations <!-- omit from toc -->
 
 - **Equals syntax is not supported**: `--point=10 20` will raise an error.
   Use space-separated values: `--point 10 20`.
@@ -1072,7 +1061,7 @@ dictionary just like `get_list()` returns an empty list.
 **Help placeholder** — map options automatically show
 `<key=value>` instead of the default `<name>` placeholder:
 
-```
+```console
 Options:
   -D, --define <key=value>...    Define a variable
 ```
@@ -1102,7 +1091,7 @@ myapp --log-level trace    # Error: Invalid value 'trace' for argument 'log-leve
   --log-level {debug,info,warn,error}  Log level
 ```
 
-**Combining with short options and attached values:**
+#### Combining with short options and attached values: <!-- omit from toc -->
 
 ```shell
 myapp -ldebug              # (if short name is "l") OK
@@ -1244,7 +1233,7 @@ This is useful when two options are logically contradictory, such as `--json` vs
 
 ---
 
-**Defining a group**
+#### Defining a group <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
@@ -1267,7 +1256,7 @@ myapp --json --csv     # Error: Arguments are mutually exclusive: '--json', '--c
 
 ---
 
-**Works with value-taking options too**
+#### Works with value-taking options too <!-- omit from toc -->
 
 The group members don't have to be flags — they can be any kind of argument:
 
@@ -1287,7 +1276,7 @@ myapp --input data.csv --stdin # Error: mutually exclusive
 
 ---
 
-**Multiple groups**
+#### Multiple groups <!-- omit from toc -->
 
 You can register more than one exclusive group on the same command:
 
@@ -1320,7 +1309,7 @@ This mirrors Go cobra's `MarkFlagsOneRequired` and Rust clap's `ArgGroup::requir
 
 ---
 
-**Defining a one-required group**
+#### Defining a one-required group <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
@@ -1342,7 +1331,7 @@ Note that `one_required` only checks that **at least one** is present. It does n
 
 ---
 
-**Exactly-one pattern (one-required + mutually exclusive)**
+#### Exactly-one pattern (one-required + mutually exclusive) <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("json", help="Output as JSON").long["json"]().flag())
@@ -1363,7 +1352,7 @@ myapp --json --yaml        # Error: Arguments are mutually exclusive: '--json', 
 
 ---
 
-**Works with value-taking options**
+#### Works with value-taking options <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("input", help="Input file").long["input"]().short["i"]())
@@ -1379,7 +1368,7 @@ myapp                      # Error: At least one of the following arguments is r
 
 ---
 
-**Multiple one-required groups**
+#### Multiple one-required groups <!-- omit from toc -->
 
 You can declare multiple groups. Each is validated independently:
 
@@ -1410,7 +1399,7 @@ This is useful for sets of arguments that only make sense as a group — for exa
 
 ---
 
-**Defining a group**
+#### Defining a group (Required-Together) <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("username", help="Auth username").long["username"]().short["u"]())
@@ -1433,7 +1422,7 @@ myapp --password secret                    # Error: Arguments required together:
 
 ---
 
-**Three or more arguments**
+#### Three or more arguments <!-- omit from toc -->
 
 Groups can contain any number of arguments:
 
@@ -1453,7 +1442,7 @@ myapp --host localhost                             # Error: '--port', '--proto' 
 
 ---
 
-**Combining with mutually exclusive groups**
+#### Combining with mutually exclusive groups <!-- omit from toc -->
 
 Required-together and mutually exclusive can coexist on the same command:
 
@@ -1501,7 +1490,7 @@ myapp                           # OK — neither present
 
 ---
 
-**Multiple conditional rules**
+#### Multiple conditional rules <!-- omit from toc -->
 
 You can declare multiple conditional requirements on the same command:
 
@@ -1514,7 +1503,7 @@ Each rule is checked independently after parsing.
 
 ---
 
-**Error messages**
+#### Error messages <!-- omit from toc -->
 
 Error messages use `--long` display names when available:
 
@@ -1558,7 +1547,7 @@ myapp                  # OK — neither set
 
 ---
 
-**Chained implications**
+#### Chained implications <!-- omit from toc -->
 
 Implications can be chained. If A implies B and B implies C, then setting A will also set C:
 
@@ -1570,7 +1559,7 @@ command.implies("verbose", "log")
 
 ---
 
-**Multiple implications from one trigger**
+#### Multiple implications from one trigger <!-- omit from toc -->
 
 A single argument can imply multiple targets:
 
@@ -1582,7 +1571,7 @@ command.implies("debug", "log")
 
 ---
 
-**Works with count arguments**
+#### Works with count arguments <!-- omit from toc -->
 
 When the implied argument is a count (`.count()`), it is set to 1 if not already present. Explicit counts are preserved:
 
@@ -1595,7 +1584,7 @@ command.implies("debug", "verbose")
 
 ---
 
-**Cycle detection**
+#### Cycle detection <!-- omit from toc -->
 
 Circular implications are detected at registration time and raise an error:
 
@@ -1608,7 +1597,7 @@ This also catches indirect cycles (A → B → C → A).
 
 ---
 
-**Integration with other constraints**
+#### Integration with other constraints <!-- omit from toc -->
 
 Implications are applied *after* defaults and *before* validation, so implied arguments participate in all subsequent constraint checks:
 
@@ -1753,6 +1742,176 @@ elif result.subcommand == "init":
 
 All standard `ParseResult` methods (`get_flag()`, `get_string()`, `get_int()`, `get_list()`, `get_map()`, `get_count()`, `has()`) work on the subcommand result.
 
+### Auto-Dispatch with `set_run_function` / `execute`
+
+#### The problem: manual subcommand routing <!-- omit from toc -->
+
+When a CLI has subcommands (like `git clone`, `git push`, `git remote add`), the `ParseResult` tells you *which* subcommand was selected — but you must route to the right handler yourself:
+
+```mojo
+var result = app.parse()
+
+if result.subcommand == "clone":
+    handle_clone(result.get_subcommand_result())
+elif result.subcommand == "push":
+    handle_push(result.get_subcommand_result())
+elif result.subcommand == "remote":
+    var sub = result.get_subcommand_result()
+    if sub.subcommand == "add":
+        handle_remote_add(sub.get_subcommand_result())
+    elif sub.subcommand == "remove":
+        handle_remote_remove(sub.get_subcommand_result())
+```
+
+This is tedious. Every time you add a subcommand, you update the router. With nested subcommands the `if/elif` tree gets deeper. A typo in `"clone"` vs `"cloen"` silently breaks routing.
+
+#### The solution: auto-dispatch <!-- omit from toc -->
+
+With auto-dispatch, you register a handler *on the command itself*. ArgMojo then parses the arguments **and** routes to the correct handler in one call:
+
+```mojo
+clone.set_run_function(handle_clone)
+push.set_run_function(handle_push)
+remote_add.set_run_function(handle_remote_add)
+app.execute()   # parse sys.argv() → walk the subcommand tree → call the right handler
+```
+
+No `if/elif` boilerplate. This is the pattern [Cobra](https://github.com/spf13/cobra) (Go's most popular CLI framework) pioneered: every command carries its own handler, and `Execute()` walks the tree automatically.
+
+---
+
+#### Step 1 — Define handler functions <!-- omit from toc -->
+
+Each handler is a free function with signature `def (ParseResult) raises`. It receives the parsed arguments for the command it is attached to. It is a procedure — it does work but returns nothing.
+
+```mojo
+from argmojo import Command, Argument, ParseResult
+
+def handle_search(result: ParseResult) raises:
+    print("Searching for: " + result.get_string("pattern"))
+
+def handle_init(result: ParseResult) raises:
+    print("Initialising project: " + result.get_string("name"))
+```
+
+> **Why free functions?** Mojo does not yet support storing closures (functions that capture variables from their enclosing scope) as struct fields. Handlers must be module-level `def` functions. If you need to pass state to a handler, encode it in the parsed arguments or use module-level constants.
+
+#### Step 2 — Register handlers with `set_run_function()` <!-- omit from toc -->
+
+```mojo
+def main() raises:
+    var app = Command("app", "My CLI tool", version="1.0.0")
+
+    var search = Command("search", "Search for patterns")
+    search.add_argument(Argument("pattern", help="Search pattern").positional().required())
+    search.set_run_function(handle_search)     # ← "when 'search' is selected, call handle_search"
+    app.add_subcommand(search^)
+
+    var init = Command("init", "Initialise a new project")
+    init.add_argument(Argument("name", help="Project name").positional().required())
+    init.set_run_function(handle_init)         # ← "when 'init' is selected, call handle_init"
+    app.add_subcommand(init^)
+
+    app.execute()  # Parse sys.argv() → find matching subcommand → call its handler
+```
+
+Running `myapp search hello` calls `handle_search` with `pattern="hello"`.
+Running `myapp init myproject` calls `handle_init` with `name="myproject"`.
+
+---
+
+#### Method reference <!-- omit from toc -->
+
+| Method                              | Description                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `cmd.set_run_function(handler)`     | Registers a `def (ParseResult) raises` handler on `cmd`.                                                               |
+| `cmd.execute()`                     | Parses `sys.argv()`, walks the subcommand chain, and calls the matching handler.                                       |
+| `cmd._execute_with_arguments(args)` | Testing helper. Like `execute()` but takes an explicit `List[String]` and raises on parse errors (instead of exiting). |
+
+**`set_run_function(handler)`** — Stores the handler function pointer on the command. You can call it again to replace a previous handler. Think of it as labelling a mailbox: "when mail arrives here, this person handles it."
+
+**`execute()`** — The main entry point for production code. It does three things in one call:
+
+1. Reads the command line from `sys.argv()`.
+2. Parses it (calling `self.parse()` internally).
+3. Walks the subcommand chain and invokes the matching handler.
+
+If no handler is registered on the resolved command, an `Error` is raised.
+
+**`_execute_with_arguments(args)`** — A **testing helper** (prefixed with `_` to indicate internal use). Like `execute()`, but accepts an explicit `List[String]` instead of reading `sys.argv()`. Unlike `execute()`, parse errors **raise** instead of calling `exit(2)`, making it suitable for tests that need to catch and inspect errors. Production code should always call `execute()`.
+
+---
+
+#### How dispatch walks the tree <!-- omit from toc -->
+
+Given `app remote add origin`, the internal dispatch chain is:
+
+```console
+app._dispatch({subcommand: "remote", ...})
+  → find child "remote"
+  → remote._dispatch({subcommand: "add", ...})
+    → find child "add"
+    → add._dispatch({subcommand: "", name: "origin"})
+      → no subcommand → call add's handler → handle_remote_add({name: "origin"})
+```
+
+At each level:
+
+- **Has subcommand?** Find the matching child command and recurse.
+- **No subcommand?** This is the leaf — call its registered handler.
+- **Grouping command (has subcommands, no handler)?** Show help instead of raising — matching Cobra's behaviour.
+- **No handler, no subcommands?** Raise `Error("No run function registered for command '…'")`.
+
+---
+
+#### Nested subcommands <!-- omit from toc -->
+
+The dispatch recursion handles arbitrary nesting depth:
+
+```mojo
+def handle_remote_add(result: ParseResult) raises:
+    print("Adding remote: " + result.get_string("name"))
+
+def main() raises:
+    var app = Command("app", "My CLI")
+
+    var remote = Command("remote", "Manage remotes")
+    # Note: 'remote' itself has no set_run_function — it is just a grouping command.
+    # Only its children have handlers.
+
+    var remote_add = Command("add", "Add a remote")
+    remote_add.add_argument(Argument("name", help="Remote name").positional().required())
+    remote_add.set_run_function(handle_remote_add)
+    remote.add_subcommand(remote_add^)
+
+    app.add_subcommand(remote^)
+
+    app.execute()  # "app remote add origin" → handle_remote_add()
+```
+
+The `remote` command does not need a handler — it exists only to group `add`, `remove`, and other child commands. If a user types just `app remote` with no child subcommand, the help for `remote` is shown automatically (matching Cobra's behaviour for grouping commands).
+
+---
+
+#### Testing with `_execute_with_arguments()` <!-- omit from toc -->
+
+In tests, pass explicit argument lists instead of relying on `sys.argv()`:
+
+```mojo
+# Test that "app search hello" calls the search handler correctly
+var args: List[String] = ["app", "search", "hello"]
+app._execute_with_arguments(args)  # Calls handle_search with pattern="hello"
+```
+
+#### When to use auto-dispatch vs manual parsing <!-- omit from toc -->
+
+| Scenario                            | Recommended approach                           |
+| ----------------------------------- | ---------------------------------------------- |
+| CLI with 2+ subcommands             | Auto-dispatch (`set_run_function` + `execute`) |
+| Simple CLI, no subcommands          | Either works; `parse()` is fine too            |
+| Need `ParseResult` for custom logic | Manual `parse()` + your own routing            |
+| Integration testing                 | `_execute_with_arguments(args)`                |
+
 ### Persistent (Global) Flags
 
 A **persistent** flag is declared on the parent command but is automatically available in every subcommand. The user can place it either **before** or **after** the subcommand token — both work identically.
@@ -1761,7 +1920,7 @@ This is inspired by Go cobra's `PersistentFlags()` and is useful for cross-cutti
 
 ---
 
-**Defining persistent flags**
+#### Defining persistent flags <!-- omit from toc -->
 
 ```mojo
 var app = Command("app", "My app")
@@ -1786,7 +1945,7 @@ app.add_subcommand(search^)
 
 ---
 
-**Both positions work**
+#### Both positions work <!-- omit from toc -->
 
 ```shell
 app --verbose search "fn main"     # flag BEFORE subcommand
@@ -1874,7 +2033,7 @@ The auto-registered `help` subcommand is excluded from the **Commands** section 
 
 ---
 
-**Disabling the help subcommand**
+#### Disabling the help subcommand <!-- omit from toc -->
 
 If you don't want the auto-registered `help` subcommand (e.g., you want to use `help` as a real subcommand name), call `disable_help_subcommand()`:
 
@@ -1907,7 +2066,7 @@ print(result.subcommand)  # always "clone", even if user typed "cl"
 
 Aliases appear in help output alongside the primary name:
 
-```
+```console
 Commands:
   clone, cl    Clone a repository
   commit, ci   Record changes to the repository
@@ -2030,14 +2189,14 @@ command.add_argument(
 )
 ```
 
-**Help output (before):**
+#### Help output (before): <!-- omit from toc -->
 
 ```console
   -o, --output <output>       Output file path
   -d, --max-depth <max-depth> Maximum directory depth
 ```
 
-**Help output (after `.value_name()` — wrapped by default):**
+#### Help output (after `.value_name()` — wrapped by default): <!-- omit from toc -->
 
 ```console
   -o, --output <FILE>         Output file path
@@ -2075,7 +2234,7 @@ myapp --debug-index    # Works — flag is set to True
 myapp --help           # --debug-index does NOT appear in the help text
 ```
 
-**Typical use cases:**
+#### Typical use cases: <!-- omit from toc -->
 
 - Internal debugging flags that end users shouldn't need.
 - Features that are experimental or not yet stable.
@@ -2143,7 +2302,7 @@ command.add_argument(
 )
 ```
 
-**Behaviour:**
+#### Behaviour: <!-- omit from toc -->
 
 | Syntax             | Value                                              |
 | ------------------ | -------------------------------------------------- |
@@ -2153,7 +2312,7 @@ command.add_argument(
 | `-c`               | `"gzip"` (default-if-no-value)                     |
 | `-cbzip2`          | `"bzip2"` (attached)                               |
 
-**Combined with `.default()`:**
+#### Combined with `.default()`: <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -2194,7 +2353,7 @@ command.add_argument(
 )
 ```
 
-**Behaviour:**
+#### Behaviour: (Require-Equals) <!-- omit from toc -->
 
 | Syntax              | Result                                           |
 | ------------------- | ------------------------------------------------ |
@@ -2235,7 +2394,7 @@ command.add_argument(
 )
 ```
 
-**Help output:**
+#### Help output: <!-- omit from toc -->
 
 ```console
 Options:
@@ -2250,7 +2409,7 @@ Output:
   -o, --output <FILE>    Output file path
 ```
 
-**Key behaviours:**
+#### Key behaviours: <!-- omit from toc -->
 
 - **Ungrouped arguments** remain under "Options:".
 - **Group headings** appear in first-appearance order after "Options:".
@@ -2269,7 +2428,7 @@ myapp -h
 myapp '-?'     # quote needed: ? is a shell glob wildcard
 ```
 
-**Example output:**
+#### Example output: <!-- omit from toc -->
 
 ```console
 A CJK-aware text search tool
@@ -2295,7 +2454,7 @@ Help text columns are **dynamically aligned**: the padding between the option na
 
 ---
 
-**Coloured Output**
+#### Coloured Output <!-- omit from toc -->
 
 Help output uses **ANSI colour codes** by default to enhance readability.
 
@@ -2316,7 +2475,7 @@ var help_plain   = command._generate_help(color=False)   # no ANSI codes
 
 ---
 
-**Custom Colours**
+#### Custom Colours <!-- omit from toc -->
 
 The **header colour**, **argument-name colour**, **deprecation warning colour**, and **parse error colour** are all customisable.  Section headers always keep the **bold + underline** style; only the colour changes.
 
@@ -2346,7 +2505,7 @@ An unrecognised colour name is caught at **compile time** — the program will n
 
 Padding calculation is always based on the **plain-text width** (without escape codes), so columns remain correctly aligned regardless of whether colour is enabled.
 
-**What controls the output:**
+#### What controls the output: <!-- omit from toc -->
 
 | Builder method       | Effect on help                                        |
 | -------------------- | ----------------------------------------------------- |
@@ -2360,7 +2519,7 @@ After printing help, the program exits cleanly with exit code 0.
 
 ---
 
-**`NO_COLOR` Environment Variable**
+#### `NO_COLOR` Environment Variable <!-- omit from toc -->
 
 ArgMojo respects the [`NO_COLOR`](https://no-color.org/) convention. When the `NO_COLOR` environment variable is **set** (any value, including an empty string), all ANSI colour codes are suppressed in:
 
@@ -2378,7 +2537,7 @@ This takes priority over the `color=True` default but does **not** override an e
 
 ---
 
-**Show Help When No Arguments Provided**
+#### Show Help When No Arguments Provided <!-- omit from toc -->
 
 Use `help_on_no_arguments()` to automatically display help when the user invokes the command with no arguments (like `git`, `docker`, or `cargo`):
 
@@ -2443,7 +2602,7 @@ myapp --version
 myapp -V
 ```
 
-**Output:**
+#### Output: <!-- omit from toc -->
 
 ```console
 myapp 1.0.0
@@ -2465,7 +2624,7 @@ ArgMojo's help formatter uses **display width** (East Asian Width) to compute pa
 
 See the [Unicode East Asian Width specification](https://www.unicode.org/reports/tr11/) for details on CJK character ranges and properties.
 
-**Example — mixed ASCII and CJK options:**
+#### Example — mixed ASCII and CJK options: <!-- omit from toc -->
 
 ```mojo
 var command = Command("工具", "一個命令行工具")
@@ -2483,7 +2642,7 @@ Options:
       --編碼 <編碼>        設定編碼
 ```
 
-**Example — CJK subcommands:**
+#### Example — CJK subcommands: <!-- omit from toc -->
 
 ```mojo
 var app = Command("工具", "一個命令行工具")
@@ -2515,13 +2674,13 @@ ArgMojo automatically detects and corrects these characters **before parsing**, 
 warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
 ```
 
-**What gets corrected:**
+#### What gets corrected: <!-- omit from toc -->
 
 - Fullwidth ASCII characters (`U+FF01`–`U+FF5E`) are converted to their halfwidth equivalents (`U+0021`–`U+007E`) by subtracting `0xFEE0`.
 - Fullwidth spaces (`U+3000`) are converted to regular spaces (`U+0020`). When a single token contains embedded fullwidth spaces (e.g., `--name\u3000yuhao\u3000--verbose` as one argv token), it is split into multiple arguments.
 - All tokens containing fullwidth ASCII are normalized (converted to halfwidth). Only tokens that start with `-` after correction are treated as options and trigger a warning. Positional values are also converted but no warning is emitted.
 
-**Example — fullwidth flag:**
+#### Example — fullwidth flag: <!-- omit from toc -->
 
 ```mojo
 var app = Command("myapp", "My CLI")
@@ -2531,7 +2690,7 @@ var result = app.parse_arguments(["myapp", "－－ｖｅｒｂｏｓｅ"])
 # stderr: warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
 ```
 
-**Example — fullwidth equals syntax:**
+#### Example — fullwidth equals syntax: <!-- omit from toc -->
 
 ```mojo
 var app = Command("myapp", "My CLI")
@@ -2540,7 +2699,7 @@ var result = app.parse_arguments(["myapp", "－－ｏｕｔｐｕｔ＝ｆｉｌ
 # result.get_string("output") == "file.txt"
 ```
 
-**Disabling auto-correction:**
+#### Disabling auto-correction: <!-- omit from toc -->
 
 Call `disable_fullwidth_correction()` if you prefer strict parsing:
 
@@ -2550,7 +2709,7 @@ app.disable_fullwidth_correction()
 # Now: fullwidth characters are NOT corrected
 ```
 
-**Whitespace handling:**
+#### Whitespace handling: <!-- omit from toc -->
 
 By default, only fullwidth space (`U+3000`) triggers token splitting. Other Unicode whitespace characters (for example, EM SPACE `U+2003`) are treated as regular characters and do **not** cause tokens to be split.
 
@@ -2566,7 +2725,7 @@ ArgMojo provides three complementary approaches to handle this, inspired by Pyth
 
 ---
 
-**Approach 1: Auto-detect (zero configuration)**
+#### Approach 1: Auto-detect (zero configuration) <!-- omit from toc -->
 
 When no registered short option uses a **digit character** as its name, ArgMojo automatically recognises numeric-looking tokens and treats them as positional arguments instead of options.
 
@@ -2589,7 +2748,7 @@ Recognised patterns: `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-Ne+X`, `-Ne-X` (wh
 
 ---
 
-**Approach 2: The `--` separator (always works)**
+#### Approach 2: The `--` separator (always works) <!-- omit from toc -->
 
 The `--` stop marker forces everything after it to be treated as positional. This is the most universal approach and works regardless of any configuration.
 
@@ -2606,7 +2765,7 @@ Tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc
 
 ---
 
-**Approach 3: `allow_negative_numbers()` (explicit opt-in)**
+#### Approach 3: `allow_negative_numbers()` (explicit opt-in) <!-- omit from toc -->
 
 If you have a registered short option that uses a digit character (e.g., `-3` for `--triple`), the auto-detect is suppressed to avoid ambiguity. In this case, call `allow_negative_numbers()` to force all numeric-looking tokens to be treated as positionals.
 
@@ -2628,7 +2787,7 @@ calc -3               # operand = "-3" (NOT the -3 flag!)
 
 ---
 
-**Approach 4: `allow_negative_expressions()` (expressions and arbitrary tokens)**
+#### Approach 4: `allow_negative_expressions()` (expressions and arbitrary tokens) <!-- omit from toc -->
 
 When your CLI accepts mathematical expressions that start with `-` (e.g. `-1/3*pi`, `-sin(2)`, `-e^2`), `allow_negative_numbers()` is not enough because those tokens are not pure numeric literals. Call `allow_negative_expressions()` to treat any single-hyphen token as a positional argument, provided it doesn't conflict with a registered short option.
 
@@ -2657,7 +2816,7 @@ Rules:
 
 ---
 
-**When to use which approach**
+#### When to use which approach <!-- omit from toc -->
 
 | Scenario                                                                  | Recommended approach                     |
 | ------------------------------------------------------------------------- | ---------------------------------------- |
@@ -2670,7 +2829,7 @@ Rules:
 
 ---
 
-**`allow_negative_expressions()` vs `allow_hyphen_values()` — how do they relate?**
+#### `allow_negative_expressions()` vs `allow_hyphen_values()` — how do they relate? <!-- omit from toc -->
 
 These two features partially overlap, especially when the command has a single positional argument. Here is a quick comparison:
 
@@ -2697,7 +2856,7 @@ Choose `allow_hyphen_values()` when:
 
 ---
 
-**What is NOT a number**
+#### What is NOT a number <!-- omit from toc -->
 
 Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. Without `allow_negative_expressions()`, they will still be parsed as short-option strings and may raise "Unknown option" errors if unregistered. With `allow_negative_expressions()`, they are consumed as positional arguments.
 
@@ -2722,7 +2881,7 @@ myapp --out=file.txt       # resolves to --output=file.txt
 
 ---
 
-**Ambiguous prefixes**
+#### Ambiguous prefixes <!-- omit from toc -->
 
 If the prefix matches more than one option, an error is raised:
 
@@ -2738,7 +2897,7 @@ myapp --ver
 
 ---
 
-**Exact match always wins**
+#### Exact match always wins <!-- omit from toc -->
 
 If the user's input is an **exact match** for one option, it is chosen even if it is also a prefix of another option:
 
@@ -2754,7 +2913,7 @@ myapp --col         # ambiguous → error
 
 ---
 
-**Works with negatable flags**
+#### Works with negatable flags <!-- omit from toc -->
 
 Prefix matching also applies to `--no-X` negation:
 
@@ -2830,7 +2989,7 @@ runner myapp --verbose -x --output=foo.txt
 
 The remainder positional automatically implies `.positional()` and `.append()`. In help output, it is displayed as `args...` (with trailing ellipsis).
 
-**Rules:**
+#### Rules: <!-- omit from toc -->
 
 - `.remainder()` must not have `.long()` or `.short()` — it is positional-only.
 - At most **one** remainder positional is allowed per command.
@@ -3060,7 +3219,7 @@ Argument("token", help="API token").long["token"]().prompt["Enter your API token
 
 ### Interactive Session Examples
 
-#### All arguments missing — full prompting
+#### All arguments missing — full prompting <!-- omit from toc -->
 
 When none of the prompt-enabled arguments are provided, the user is prompted for each one in order:
 
@@ -3073,7 +3232,7 @@ Server region [us/eu/ap] (us): eu
 
 The parsed result contains `user="alice"`, `token="secret-123"`, `region="eu"`.
 
-#### Partial arguments — only missing ones are prompted
+#### Partial arguments — only missing ones are prompted <!-- omit from toc -->
 
 When some arguments are already provided on the command line, only the missing ones trigger a prompt:
 
@@ -3085,7 +3244,7 @@ Server region [us/eu/ap] (us): ap
 
 `--user` was given on the CLI, so `Username:` is **not** asked.
 
-#### All arguments provided — no prompting at all
+#### All arguments provided — no prompting at all <!-- omit from toc -->
 
 ```shell
 ./login --user alice --token secret-123 --region eu
@@ -3093,7 +3252,7 @@ Server region [us/eu/ap] (us): ap
 
 No prompts appear. The CLI values are used directly.
 
-#### Empty input with a default — default value is used
+#### Empty input with a default — default value is used <!-- omit from toc -->
 
 When the user presses Enter without typing anything and the argument has a `.default[]()`, the default is applied:
 
@@ -3106,7 +3265,7 @@ Server region [us/eu/ap] (us):
 
 The user pressed Enter at `Server region`, so `region` gets the default value `"us"`.
 
-#### Flag argument — y/n prompt
+#### Flag argument — y/n prompt <!-- omit from toc -->
 
 Flag arguments accept `y`/`n`/`yes`/`no` (case-insensitive):
 
@@ -3124,7 +3283,7 @@ Enable verbose output [y/n]: y
 
 Answering `y` or `yes` sets the flag to `True`. Answering `n` or `no` sets it to `False`.
 
-#### Argument with choices — choices are shown
+#### Argument with choices — choices are shown <!-- omit from toc -->
 
 When a prompt-enabled argument has `.choice[]()` values, they are displayed in brackets. If a default exists, it is shown in parentheses:
 
@@ -3364,7 +3523,7 @@ To bypass the prompt entirely, provide the value on the command line:
 
 Some commands are destructive or irreversible — dropping databases, deleting files, deploying to production. The **confirmation option** adds a built-in `--yes` / `-y` flag that lets users skip an interactive confirmation prompt. This is equivalent to Click's `confirmation_option` decorator.
 
-### Basic Usage
+### Basic Usage (Confirmation Option)
 
 ```mojo
 from argmojo import Command, Argument
@@ -3397,7 +3556,7 @@ $ ./drop mydb --yes
 Dropping database: mydb
 ```
 
-### Custom Prompt Text
+### Custom Prompt Text (Confirmation Option)
 
 Use the compile-time parameter overload to set a custom prompt:
 
@@ -3411,7 +3570,7 @@ This changes the prompt to:
 Drop the database? This cannot be undone. [y/N]: 
 ```
 
-### Using with Subcommands
+### Using with Subcommands (Confirmation Option)
 
 Confirmation works naturally with subcommands. The `--yes` flag is registered on the command that calls `confirmation_option()`:
 
@@ -3427,7 +3586,7 @@ var result = app.parse()
 # app --yes deploy prod  →  skips confirmation
 ```
 
-### Non-Interactive Use
+### Non-Interactive Use (Confirmation Option)
 
 When stdin is not available (piped input, CI environments, `/dev/null`), the confirmation prompt cannot be displayed. In this case, the command **aborts with an error** unless `--yes` is passed. This ensures that destructive commands never run silently without explicit opt-in:
 
@@ -3580,7 +3739,7 @@ After generating a script, users `source` it or place it in a shell-specific dir
 
 ---
 
-**Bash:**
+#### Bash: <!-- omit from toc -->
 
 ```bash
 # One-shot (current session only)
@@ -3593,7 +3752,7 @@ myapp --completions bash > ~/.bash_completion.d/myapp
 
 ---
 
-**Zsh:**
+#### Zsh: <!-- omit from toc -->
 
 ```zsh
 # Place in your fpath (file must be named _myapp)
@@ -3606,7 +3765,7 @@ myapp --completions zsh > ~/.zsh/completions/_myapp
 
 ---
 
-**Fish:**
+#### Fish: <!-- omit from toc -->
 
 ```shell
 # Fish auto-loads from this directory
@@ -3810,7 +3969,7 @@ def main() raises:
 
 See [`examples/declarative/convert.mojo`](../examples/declarative/convert.mojo) for a complete example.
 
-### Subcommands
+### Subcommands in Declarative API
 
 Every level in the command tree is a `Parsable` struct. Register children via the `subcommands()` hook:
 
@@ -3925,22 +4084,82 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
 | `.prompt["msg"]()`              | —                                 | `prompt="msg"`                           | —                               | —                              |
 | `.password()`                   | —                                 | `hide_input=True`                        | —                               | —                              |
+| `.group["name"]()`              | — (manual section formatting)     | —                                        | `.help_heading("name")`         | — (manual grouping)            |
 
-### Command-Level Constraint Methods
+### Command-Level Methods
+
+#### Registration & Structure <!-- omit from toc -->
+
+| ArgMojo method                        | argparse                         | click                                 | clap (Rust)                        | cobra / pflag (Go)         |
+| ------------------------------------- | -------------------------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
+| `add_argument(arg)`                   | `add_argument(…)`                | `@click.option` / `@click.argument`   | `Arg::new(…)` via derive / builder | `cmd.Flags().…`            |
+| `add_subcommand(sub)`                 | `add_subparsers().add_parser(…)` | `@group.command()` / `.add_command()` | `.subcommand(Command::new(…))`     | `parent.AddCommand(child)` |
+| `add_parent(parent)`                  | `parents=[parent]`               | —                                     | —                                  | —                          |
+| `command_aliases(names)`              | — (use multiple names)           | —                                     | `.visible_aliases([…])`            | `Aliases: []string{…}`     |
+| `hidden()` (command)                  | —                                | `hidden=True`                         | `.hide(true)`                      | `Hidden: true`             |
+| `disable_help_subcommand()`           | —                                | —                                     | `.disable_help_subcommand(true)`   | —                          |
+| `allow_positional_with_subcommands()` | —                                | —                                     | —                                  | `TraverseChildren`         |
+
+#### Group Constraints <!-- omit from toc -->
 
 | ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
 | --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
 | `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` ⁹ | `.conflicts_with("x")` per arg | — ⁴                             |
-| `one_required(…)`           | group + `required=True`          | —                               | `.group["G"]().required(true)` | — ⁴                             |
+| `one_required(…)`           | group + `required=True`          | —                               | `.group("G").required(true)`   | — ⁴                             |
 | `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
-| `parse_known_arguments()`   | `parse_known_args()`             | —                               | — ¹¹                           | `FParseErrWhitelist` ¹²         |
-| `response_file_prefix()`    | `fromfile_prefix_chars="@"`      | —                               | —                              | —                               |
-| `add_parent(parent)`        | `parents=[parent]`               | —                               | —                              | —                               |
-| `confirmation_option()`     | —                                | `confirmation_option`           | —                              | —                               |
 
-### Notes
+#### Parser Behaviour <!-- omit from toc -->
+
+| ArgMojo method                     | argparse                    | click                          | clap (Rust)                     | cobra / pflag (Go)      |
+| ---------------------------------- | --------------------------- | ------------------------------ | ------------------------------- | ----------------------- |
+| `help_on_no_arguments()`           | —                           | `invoke_without_command=False` | `.arg_required_else_help(true)` | auto (shows usage)      |
+| `allow_negative_numbers()`         | —                           | —                              | `.allow_negative_numbers(true)` | —                       |
+| `allow_negative_expressions()`     | —                           | —                              | —                               | —                       |
+| `parse_known_arguments()`          | `parse_known_args()`        | —                              | — ¹¹                            | `FParseErrWhitelist` ¹² |
+| `response_file_prefix()`           | `fromfile_prefix_chars="@"` | —                              | —                               | —                       |
+| `response_file_max_depth[N]()`     | —                           | —                              | —                               | —                       |
+| `confirmation_option()`            | —                           | `confirmation_option`          | —                               | —                       |
+| `disable_fullwidth_correction()`   | —                           | —                              | —                               | —                       |
+| `disable_punctuation_correction()` | —                           | —                              | —                               | —                       |
+
+#### Help & Display <!-- omit from toc -->
+
+| ArgMojo method         | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
+| ---------------------- | ------------ | ------------ | ---------------------- | ------------------ |
+| `usage(text)`          | `usage="…"`  | —            | `.override_usage("…")` | `Use: "…"`         |
+| `add_tip(tip)`         | `epilog="…"` | `epilog="…"` | `.after_help("…")`     | `Example: "…"`     |
+| `header_color[name]()` | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `arg_color[name]()`    | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `warn_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `error_color[name]()`  | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+
+#### Shell Completions <!-- omit from toc -->
+
+| ArgMojo method                  | argparse | click            | clap (Rust)                        | cobra / pflag (Go)         |
+| ------------------------------- | -------- | ---------------- | ---------------------------------- | -------------------------- |
+| `disable_default_completions()` | —        | —                | —                                  | `DisableAutoGenTag` field  |
+| `completions_name(name)`        | —        | —                | —                                  | —                          |
+| `completions_as_subcommand()`   | —        | —                | `clap_complete` subcommand pattern | default (subcommand)       |
+| `generate_completion(shell)`    | —        | `shell_complete` | `clap_complete::generate()`        | `GenBashCompletion()` etc. |
+
+#### Auto-Dispatch <!-- omit from toc -->
+
+| ArgMojo method                  | argparse | click                         | clap (Rust) | cobra / pflag (Go) |
+| ------------------------------- | -------- | ----------------------------- | ----------- | ------------------ |
+| `set_run_function(handler)`     | —        | callback param on `@command`  | —           | `Run: func(…)` ¹⁵  |
+| `execute()`                     | —        | implicit via `cli()`          | —           | `cmd.Execute()`    |
+| `_execute_with_arguments(args)` | —        | `runner.invoke(cli, args)` ¹⁶ | —           | —                  |
+
+#### Parse <!-- omit from toc -->
+
+| ArgMojo method          | argparse           | click           | clap (Rust)               | cobra / pflag (Go) |
+| ----------------------- | ------------------ | --------------- | ------------------------- | ------------------ |
+| `parse()`               | `parse_args()`     | implicit        | `.get_matches()`          | implicit           |
+| `parse_arguments(args)` | `parse_args(args)` | `.main(args=…)` | `.get_matches_from(args)` | —                  |
+
+### Notes (Cross-Library Method Name Reference)
 
 1. Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command, not builder-chaining on the flag definition.
 2. clap positional args are defined by `.index(1)`, `.index(2)`, etc., or by omitting `.long()` / `.short()`.
@@ -3954,3 +4173,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 10. clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
 11. clap uses `.trailing_var_arg(true)` on the command (not the argument) for remainder-like behaviour. For `parse_known_arguments`, clap has no direct equivalent; use `allow_external_subcommands`.
 12. Cobra uses `TraverseChildren` for remainder-like behaviour. For partial parsing, Cobra's `FParseErrWhitelist{UnknownFlags: true}` ignores unknown flags.
+13. click uses `click.style()` and `click.echo()` for coloured output, not per-section colour configuration. Colour is applied manually per string, not as a command-level setting.
+14. clap uses `Styles::styled()` with `AnsiColor` enum values for header, literal, placeholder, and error colours. Applied at the `Command` level.
+15. Cobra's `Run` is a struct field of type `func(cmd *Command, args []string)`. Unlike ArgMojo, the handler receives both the command and positional args (not a `ParseResult`).
+16. click's test runner (`CliRunner.invoke()`) captures stdout and returns a `Result` object, rather than dispatching through the normal execution path.

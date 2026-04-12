@@ -3,28 +3,453 @@
 Simulates the interface of git.  Only argument parsing is performed;
 no actual version-control operations are implemented.
 
-Showcases: subcommands, persistent (global) flags, per-command positional
-args, boolean flags, count flags, negatable flags, choices, default values,
-required arguments, value_name, hidden arguments, append/collect, value
-delimiter, mutually exclusive groups, required-together groups, conditional
-requirements, numeric range validation, aliases, deprecated arguments,
-Commands section in help, Global Options heading, full command path in
-child help/errors, unknown subcommand error, custom tips, and shell
-completion script generation.
+Showcases: auto-dispatch (set_run_function / execute), subcommands,
+sub-subcommands (remote, stash, config), persistent (global) flags,
+per-command positional args, boolean flags, count flags, negatable flags,
+choices, default values, required arguments, value_name, hidden arguments,
+append/collect, value delimiter, mutually exclusive groups,
+required-together groups, conditional requirements, numeric range
+validation, aliases, deprecated arguments, Commands section in help,
+Global Options heading, full command path in child help/errors, unknown
+subcommand error, custom tips, and shell completion script generation.
 
 Try these:
-  git --help                        # root help (Commands + Global Options)
-  git --version
-  git clone --help                  # child help with full path
-  git clone https://example.com/repo.git my-project --depth 1
-  git commit -am "initial commit"
-  git log --oneline -n 20 --author "Alice"
-  git remote add origin https://example.com/repo.git
-  git -v push origin main --force --tags
-  git --completions bash           # shell completion script (built-in)
+  mgit --help                          # root help (Commands + Global Options)
+  mgit --version
+  mgit clone --help                    # child help with full path
+  mgit clone https://example.com/repo.git my-project --depth 1
+  mgit commit -am "initial commit"
+  mgit log --oneline -n 20 --author "Alice"
+  mgit remote add origin https://example.com/repo.git
+  mgit -v push origin main --force --tags
+  mgit stash push -m "wip"            # stash sub-subcommand
+  mgit stash pop                       # stash pop
+  mgit config set user.name "Alice"    # config sub-subcommand
+  mgit config get user.name
+  mgit --completions bash              # shell completion script (built-in)
 """
 
-from argmojo import Argument, Command
+from argmojo import Argument, Command, ParseResult
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Handler functions — called automatically by execute() via auto-dispatch
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def handle_clone(result: ParseResult) raises:
+    """Handler for 'mgit clone'."""
+    var repo = result.get_string("repository")
+    var msg = String("Cloning into '")
+    try:
+        msg += result.get_string("directory")
+    except:
+        # Use the last segment of the URL as directory name.
+        var parts = repo.split("/")
+        var last = parts[len(parts) - 1]
+        if last.endswith(".git"):
+            msg += last[byte = : len(last) - 4]
+        else:
+            msg += last
+    msg += "'..."
+    print(msg)
+    print("  remote: " + repo)
+    try:
+        var depth = result.get_int("depth")
+        print("  shallow clone: depth " + String(depth))
+    except:
+        pass
+    if result.get_flag("bare"):
+        print("  creating bare repository")
+    try:
+        print("  branch: " + result.get_string("branch"))
+    except:
+        pass
+    if result.get_flag("recurse-submodules"):
+        print("  recursing into submodules")
+    print("done.")
+
+
+def handle_init(result: ParseResult) raises:
+    """Handler for 'mgit init'."""
+    var dir = result.get_string("directory")
+    if result.get_flag("bare"):
+        print("Initialized empty bare Git repository in " + dir + "/")
+    else:
+        print("Initialized empty Git repository in " + dir + "/.git/")
+    try:
+        print("  template: " + result.get_string("template"))
+    except:
+        pass
+    try:
+        print("  initial branch: " + result.get_string("initial-branch"))
+    except:
+        pass
+
+
+def handle_add(result: ParseResult) raises:
+    """Handler for 'mgit add'."""
+    if result.get_flag("dry-run"):
+        print("dry run — nothing will be staged")
+    if result.get_flag("all"):
+        print("Adding all changed files to the index")
+    else:
+        try:
+            print("Adding '" + result.get_string("pathspec") + "' to the index")
+        except:
+            print("Adding files to the index")
+    if result.get_flag("force"):
+        print("  (including ignored files)")
+    if result.get_flag("patch"):
+        print("  entering interactive patch mode...")
+
+
+def handle_commit(result: ParseResult) raises:
+    """Handler for 'mgit commit'."""
+    var msg = result.get_string("message")
+    if result.get_flag("amend"):
+        print("[main abc1234] (amended) " + msg)
+    else:
+        print("[main def5678] " + msg)
+    if result.get_flag("all"):
+        print("  auto-staged modified and deleted files")
+    try:
+        print("  author: " + result.get_string("author"))
+    except:
+        pass
+    if result.get_flag("no-verify"):
+        print("  (hooks skipped)")
+    print(" 3 files changed, 42 insertions(+), 7 deletions(-)")
+
+
+def handle_push(result: ParseResult) raises:
+    """Handler for 'mgit push'."""
+    var remote = result.get_string("remote")
+    var refspec = String("HEAD")
+    try:
+        refspec = result.get_string("refspec")
+    except:
+        pass
+    if result.get_flag("dry-run"):
+        print("(dry run) ", end="")
+    if result.get_flag("force"):
+        print("Force pushing to " + remote + "/" + refspec + "...")
+    elif result.get_flag("force-with-lease"):
+        print("Force-with-lease pushing to " + remote + "/" + refspec + "...")
+    else:
+        print("Pushing to " + remote + "/" + refspec + "...")
+    if result.get_flag("set-upstream"):
+        print(
+            "  branch '"
+            + refspec
+            + "' set up to track '"
+            + remote
+            + "/"
+            + refspec
+            + "'"
+        )
+    if result.get_flag("tags"):
+        print("  including all tags")
+    print("  Everything up-to-date")
+
+
+def handle_pull(result: ParseResult) raises:
+    """Handler for 'mgit pull'."""
+    var remote = result.get_string("remote")
+    var branch = String("main")
+    try:
+        branch = result.get_string("branch")
+    except:
+        pass
+    print("Pulling from " + remote + "/" + branch + "...")
+    if result.get_flag("autostash"):
+        print("  auto-stashing local changes")
+    if result.get_flag("rebase"):
+        print("  rebasing on top of upstream")
+    elif result.get_flag("no-rebase"):
+        print("  merging upstream changes")
+    print("  Already up to date.")
+
+
+def handle_log(result: ParseResult) raises:
+    """Handler for 'mgit log'."""
+    var n = 5
+    try:
+        n = result.get_int("number")
+    except:
+        pass
+    var oneline = result.get_flag("oneline")
+    var graph = result.get_flag("graph")
+    try:
+        print("Filtering by author: " + result.get_string("author"))
+    except:
+        pass
+    try:
+        print("Since: " + result.get_string("since"))
+    except:
+        pass
+    try:
+        print("Until: " + result.get_string("until"))
+    except:
+        pass
+    var patterns = result.get_list("grep")
+    if len(patterns) > 0:
+        for i in range(len(patterns)):
+            print("Grep: " + patterns[i])
+    # Simulated log output.
+    var commits: List[String] = [
+        "abc1234 Initial commit",
+        "def5678 Add README.md",
+        "789abcd Implement feature X",
+        "012efgh Fix bug in parser",
+        "345ijkl Refactor module Y",
+        "678mnop Add unit tests",
+        "901qrst Update documentation",
+    ]
+    var limit = n if n < len(commits) else len(commits)
+    for i in range(limit):
+        if graph:
+            print("* ", end="")
+        if oneline:
+            print(commits[i])
+        else:
+            var parts = commits[i].split(" ", 1)
+            print("commit " + parts[0])
+            print("    " + parts[1])
+            print()
+
+
+def handle_branch(result: ParseResult) raises:
+    """Handler for 'mgit branch'."""
+    var name = String("")
+    try:
+        name = result.get_string("name")
+    except:
+        pass
+    if name != "" and result.get_flag("delete"):
+        print("Deleted branch " + name + " (was abc1234).")
+    elif name != "" and result.get_flag("force-delete"):
+        print("Force-deleted branch " + name + " (was abc1234).")
+    elif name != "" and result.get_flag("move"):
+        print("Renamed branch to '" + name + "'")
+    elif name != "":
+        print("Created branch '" + name + "' at abc1234")
+    else:
+        # List branches.
+        var show_all = result.get_flag("all-branches")
+        print("* main")
+        print("  develop")
+        print("  feature/auto-dispatch")
+        if show_all:
+            print("  remotes/origin/main")
+            print("  remotes/origin/develop")
+
+
+def handle_diff(result: ParseResult) raises:
+    """Handler for 'mgit diff'."""
+    var path = String("")
+    try:
+        path = result.get_string("path")
+    except:
+        pass
+    if result.get_flag("staged"):
+        print("Changes staged for commit", end="")
+    else:
+        print("Changes not staged for commit", end="")
+    if path != "":
+        print(" (" + path + ")")
+    else:
+        print("")
+    if result.get_flag("stat"):
+        print(" src/main.mojo | 12 ++++++------")
+        print(" 1 file changed, 6 insertions(+), 6 deletions(-)")
+    elif result.get_flag("name-only"):
+        print(" src/main.mojo")
+    else:
+        print("diff --git a/src/main.mojo b/src/main.mojo")
+        print("--- a/src/main.mojo")
+        print("+++ b/src/main.mojo")
+        print("@@ -10,3 +10,3 @@")
+        print("-    old_line()")
+        print("+    new_line()")
+
+
+def handle_tag(result: ParseResult) raises:
+    """Handler for 'mgit tag'."""
+    var name = String("")
+    try:
+        name = result.get_string("tagname")
+    except:
+        pass
+    if result.get_flag("tag-list") or name == "":
+        print("v0.1.0")
+        print("v0.2.0")
+        print("v0.5.0")
+        return
+    if result.get_flag("tag-delete"):
+        print("Deleted tag '" + name + "' (was abc1234)")
+        return
+    if result.get_flag("annotate"):
+        var msg = String("Release " + name)
+        try:
+            msg = result.get_string("tag-message")
+        except:
+            pass
+        print("Created annotated tag '" + name + "': " + msg)
+    else:
+        print("Created lightweight tag '" + name + "' at abc1234")
+
+
+# ── remote sub-subcommand handlers ──────────────────────────────────────
+
+
+def handle_remote_add(result: ParseResult) raises:
+    """Handler for 'mgit remote add'."""
+    var name = result.get_string("name")
+    var url = result.get_string("url")
+    print("Added remote '" + name + "' -> " + url)
+    if result.get_flag("fetch"):
+        print("Fetching from " + name + "...")
+        print("  * [new branch]  main -> " + name + "/main")
+
+
+def handle_remote_remove(result: ParseResult) raises:
+    """Handler for 'mgit remote remove'."""
+    print("Removed remote '" + result.get_string("name") + "'")
+
+
+def handle_remote_rename(result: ParseResult) raises:
+    """Handler for 'mgit remote rename'."""
+    print(
+        "Renamed remote '"
+        + result.get_string("old")
+        + "' to '"
+        + result.get_string("new")
+        + "'"
+    )
+
+
+def handle_remote_show(result: ParseResult) raises:
+    """Handler for 'mgit remote show'."""
+    var name = result.get_string("name")
+    print("* remote " + name)
+    print("  Fetch URL: https://example.com/repo.git")
+    print("  Push  URL: https://example.com/repo.git")
+    print("  HEAD branch: main")
+    print("  Remote branches:")
+    print("    main    tracked")
+    print("    develop tracked")
+
+
+# ── stash sub-subcommand handlers ───────────────────────────────────────
+
+
+def handle_stash_push(result: ParseResult) raises:
+    """Handler for 'mgit stash push'."""
+    var msg = String("WIP on main")
+    try:
+        msg = result.get_string("stash-message")
+    except:
+        pass
+    print("Saved working directory and index state: " + msg)
+    if result.get_flag("keep-index"):
+        print("  (staged changes kept in index)")
+    if result.get_flag("include-untracked"):
+        print("  (including untracked files)")
+
+
+def handle_stash_pop(result: ParseResult) raises:
+    """Handler for 'mgit stash pop'."""
+    var index = String("0")
+    try:
+        index = result.get_string("stash-index")
+    except:
+        pass
+    print("Popping stash@{" + index + "}...")
+    print("On branch main")
+    print("Changes restored from stash.")
+    print("Dropped stash@{" + index + "}")
+
+
+def handle_stash_list(result: ParseResult) raises:
+    """Handler for 'mgit stash list'."""
+    _ = result
+    print("stash@{0}: WIP on main: abc1234 Fix parser bug")
+    print("stash@{1}: On develop: def5678 Half-done feature")
+
+
+def handle_stash_drop(result: ParseResult) raises:
+    """Handler for 'mgit stash drop'."""
+    var index = String("0")
+    try:
+        index = result.get_string("stash-index")
+    except:
+        pass
+    print("Dropped stash@{" + index + "} (abc1234)")
+
+
+def handle_stash_apply(result: ParseResult) raises:
+    """Handler for 'mgit stash apply'."""
+    var index = String("0")
+    try:
+        index = result.get_string("stash-index")
+    except:
+        pass
+    print("Applying stash@{" + index + "}...")
+    print("On branch main")
+    print("Changes restored from stash.")
+
+
+# ── config sub-subcommand handlers ──────────────────────────────────────
+
+
+def handle_config_get(result: ParseResult) raises:
+    """Handler for 'mgit config get'."""
+    var key = result.get_string("key")
+    # Simulated config values.
+    if key == "user.name":
+        print("Alice")
+    elif key == "user.email":
+        print("alice@example.com")
+    elif key == "core.editor":
+        print("vim")
+    else:
+        print("(not set)")
+
+
+def handle_config_set(result: ParseResult) raises:
+    """Handler for 'mgit config set'."""
+    var key = result.get_string("key")
+    var value = result.get_string("value")
+    if result.get_flag("global"):
+        print("Set global config: " + key + " = " + value)
+    else:
+        print("Set local config: " + key + " = " + value)
+
+
+def handle_config_list(result: ParseResult) raises:
+    """Handler for 'mgit config list'."""
+    _ = result
+    print("user.name=Alice")
+    print("user.email=alice@example.com")
+    print("core.editor=vim")
+    print("core.autocrlf=input")
+    print("remote.origin.url=https://example.com/repo.git")
+    print("remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*")
+
+
+def handle_config_unset(result: ParseResult) raises:
+    """Handler for 'mgit config unset'."""
+    var key = result.get_string("key")
+    if result.get_flag("global"):
+        print("Unset global config: " + key)
+    else:
+        print("Unset local config: " + key)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Command tree construction
+# ═══════════════════════════════════════════════════════════════════════════
 
 
 def main() raises:
@@ -62,7 +487,7 @@ def main() raises:
     )
 
     # ── Custom tips ──────────────────────────────────────────────────────
-    app.add_tip("Run 'git <command> --help' for detailed help on a command.")
+    app.add_tip("Run 'mgit <command> --help' for detailed help on a command.")
 
     # ── clone ────────────────────────────────────────────────────────────
     var clone = Command("clone", "Clone a repository into a new directory")
@@ -96,6 +521,7 @@ def main() raises:
     clone.help_on_no_arguments()
     var clone_aliases: List[String] = ["cl"]
     clone.command_aliases(clone_aliases^)
+    clone.set_run_function(handle_clone)
     app.add_subcommand(clone^)
 
     # ── init ─────────────────────────────────────────────────────────────
@@ -121,6 +547,7 @@ def main() raises:
         .short["b"]()
         .default["main"]()
     )
+    init.set_run_function(handle_init)
     app.add_subcommand(init^)
 
     # ── add ──────────────────────────────────────────────────────────────
@@ -150,6 +577,7 @@ def main() raises:
         .short["p"]()
         .flag()
     )
+    add.set_run_function(handle_add)
     app.add_subcommand(add^)
 
     # ── commit ───────────────────────────────────────────────────────────
@@ -190,6 +618,7 @@ def main() raises:
     )
     var commit_aliases: List[String] = ["ci"]
     commit.command_aliases(commit_aliases^)
+    commit.set_run_function(handle_commit)
     app.add_subcommand(commit^)
 
     # ── push ─────────────────────────────────────────────────────────────
@@ -229,6 +658,7 @@ def main() raises:
     )
     var force_group: List[String] = ["force", "force-with-lease"]
     push.mutually_exclusive(force_group^)
+    push.set_run_function(handle_push)
     app.add_subcommand(push^)
 
     # ── pull ─────────────────────────────────────────────────────────────
@@ -255,6 +685,7 @@ def main() raises:
         .long["autostash"]()
         .flag()
     )
+    pull.set_run_function(handle_pull)
     app.add_subcommand(pull^)
 
     # ── log ──────────────────────────────────────────────────────────────
@@ -306,11 +737,12 @@ def main() raises:
         .choice["full"]()
         .choice["fuller"]()
     )
+    log.set_run_function(handle_log)
     app.add_subcommand(log^)
 
-    # ── remote ───────────────────────────────────────────────────────────
+    # ── remote (with sub-subcommands) ────────────────────────────────────
     var remote = Command("remote", "Manage set of tracked repositories")
-    # remote itself has subcommands: add, remove, rename, show
+
     var remote_add = Command("add", "Add a new remote")
     remote_add.add_argument(
         Argument("name", help="Remote name").positional().required()
@@ -325,6 +757,7 @@ def main() raises:
         .flag()
     )
     remote_add.help_on_no_arguments()
+    remote_add.set_run_function(handle_remote_add)
     remote.add_subcommand(remote_add^)
 
     var remote_remove = Command("remove", "Remove a remote")
@@ -332,6 +765,7 @@ def main() raises:
         Argument("name", help="Remote name to remove").positional().required()
     )
     remote_remove.help_on_no_arguments()
+    remote_remove.set_run_function(handle_remote_remove)
     remote.add_subcommand(remote_remove^)
 
     var remote_rename = Command("rename", "Rename a remote")
@@ -342,6 +776,7 @@ def main() raises:
         Argument("new", help="New remote name").positional().required()
     )
     remote_rename.help_on_no_arguments()
+    remote_rename.set_run_function(handle_remote_rename)
     remote.add_subcommand(remote_rename^)
 
     var remote_show = Command("show", "Show information about a remote")
@@ -349,6 +784,7 @@ def main() raises:
         Argument("name", help="Remote name").positional().required()
     )
     remote_show.help_on_no_arguments()
+    remote_show.set_run_function(handle_remote_show)
     remote.add_subcommand(remote_show^)
 
     remote.help_on_no_arguments()
@@ -386,6 +822,7 @@ def main() raises:
         .short["m"]()
         .flag()
     )
+    branch.set_run_function(handle_branch)
     app.add_subcommand(branch^)
 
     # ── diff ─────────────────────────────────────────────────────────────
@@ -416,6 +853,7 @@ def main() raises:
         .short["U"]()
         .value_name["N"]()
     )
+    diff.set_run_function(handle_diff)
     app.add_subcommand(diff^)
 
     # ── tag ──────────────────────────────────────────────────────────────
@@ -450,34 +888,131 @@ def main() raises:
         .short["f"]()
         .flag()
     )
+    tag.set_run_function(handle_tag)
     app.add_subcommand(tag^)
 
-    # ── stash ────────────────────────────────────────────────────────────
+    # ── stash (with sub-subcommands) ─────────────────────────────────────
     var stash = Command("stash", "Stash changes in working directory")
     var stash_aliases: List[String] = ["st"]
     stash.command_aliases(stash_aliases^)
-    stash.add_argument(
+
+    var stash_push = Command("push", "Save local modifications to a new stash")
+    stash_push.add_argument(
         Argument("stash-message", help="Stash message")
         .long["message"]()
         .short["m"]()
     )
-    stash.add_argument(
+    stash_push.add_argument(
         Argument("keep-index", help="Keep staged changes in the index")
         .long["keep-index"]()
         .short["k"]()
         .flag()
     )
-    stash.add_argument(
+    stash_push.add_argument(
         Argument("include-untracked", help="Also stash untracked files")
         .long["include-untracked"]()
         .short["u"]()
         .flag()
     )
+    stash_push.set_run_function(handle_stash_push)
+    stash.add_subcommand(stash_push^)
+
+    var stash_pop = Command("pop", "Apply and remove the top stash entry")
+    stash_pop.add_argument(
+        Argument("stash-index", help="Stash index to pop")
+        .positional()
+        .default["0"]()
+    )
+    stash_pop.set_run_function(handle_stash_pop)
+    stash.add_subcommand(stash_pop^)
+
+    var stash_list = Command("list", "List all stash entries")
+    stash_list.set_run_function(handle_stash_list)
+    stash.add_subcommand(stash_list^)
+
+    var stash_drop = Command("drop", "Remove a single stash entry")
+    stash_drop.add_argument(
+        Argument("stash-index", help="Stash index to drop")
+        .positional()
+        .default["0"]()
+    )
+    stash_drop.set_run_function(handle_stash_drop)
+    stash.add_subcommand(stash_drop^)
+
+    var stash_apply = Command("apply", "Apply a stash without removing it")
+    stash_apply.add_argument(
+        Argument("stash-index", help="Stash index to apply")
+        .positional()
+        .default["0"]()
+    )
+    stash_apply.set_run_function(handle_stash_apply)
+    stash.add_subcommand(stash_apply^)
+
+    stash.help_on_no_arguments()
     app.add_subcommand(stash^)
+
+    # ── config (with sub-subcommands) ────────────────────────────────────
+    var config = Command("config", "Get and set repository or global options")
+
+    var config_get = Command("get", "Get a configuration value")
+    config_get.add_argument(
+        Argument("key", help="Configuration key (e.g. user.name)")
+        .positional()
+        .required()
+    )
+    config_get.help_on_no_arguments()
+    config_get.set_run_function(handle_config_get)
+    config.add_subcommand(config_get^)
+
+    var config_set = Command("set", "Set a configuration value")
+    config_set.add_argument(
+        Argument("key", help="Configuration key (e.g. user.name)")
+        .positional()
+        .required()
+    )
+    config_set.add_argument(
+        Argument("value", help="Value to set").positional().required()
+    )
+    config_set.add_argument(
+        Argument("global", help="Write to global config instead of local")
+        .long["global"]()
+        .flag()
+    )
+    config_set.help_on_no_arguments()
+    config_set.set_run_function(handle_config_set)
+    config.add_subcommand(config_set^)
+
+    var config_list = Command("list", "List all configuration entries")
+    config_list.set_run_function(handle_config_list)
+    config.add_subcommand(config_list^)
+
+    var config_unset = Command("unset", "Remove a configuration entry")
+    config_unset.add_argument(
+        Argument("key", help="Configuration key to remove")
+        .positional()
+        .required()
+    )
+    config_unset.add_argument(
+        Argument("global", help="Remove from global config instead of local")
+        .long["global"]()
+        .flag()
+    )
+    config_unset.help_on_no_arguments()
+    config_unset.set_run_function(handle_config_unset)
+    config.add_subcommand(config_unset^)
+
+    config.help_on_no_arguments()
+    app.add_subcommand(config^)
 
     # ── Show help when invoked with no arguments ─────────────────────────
     app.help_on_no_arguments()
 
-    # ── Parse & display ──────────────────────────────────────────────────
-    var result = app.parse()
-    result.print_summary()
+    # ── Auto-dispatch ────────────────────────────────────────────────────
+    # Replaces the old pattern:
+    #   var result = app.parse()
+    #   if result.subcommand == "clone": handle_clone(...)
+    #   elif result.subcommand == "commit": handle_commit(...)
+    #   ...
+    # With a single call that walks the command tree and invokes the
+    # matching handler automatically:
+    app.execute()
