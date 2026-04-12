@@ -1986,10 +1986,33 @@ struct Command(Copyable, Movable, Writable):
     def _dispatch(self, result: ParseResult) raises:
         """Walks the subcommand chain and invokes the matching run function.
 
-        Internal auto-dispatch.
+        Internal auto-dispatch.  Delegates to ``_dispatch_with_path`` with
+        the root command name as the initial path segment.
 
         Args:
             result: The ParseResult from parsing.
+
+        Raises:
+            Error if the resolved command has no run function registered.
+        """
+        self._dispatch_with_path(result, self.name)
+
+    def _dispatch_with_path(
+        self, result: ParseResult, command_path: String
+    ) raises:
+        """Walks the subcommand chain using a fully-qualified command path.
+
+        Uses the accumulated ``command_path`` in error messages so that
+        nested failures include the full command path (e.g.
+        ``"app remote add"`` instead of just ``"add"``).
+
+        When a command has subcommands but no registered handler and no
+        subcommand was selected, help is printed instead of raising —
+        matching Cobra's behaviour for grouping commands.
+
+        Args:
+            result: The ParseResult from parsing.
+            command_path: The resolved command path up to ``self``.
 
         Raises:
             Error if the resolved command has no run function registered.
@@ -1998,28 +2021,41 @@ struct Command(Copyable, Movable, Writable):
             # Find the matching subcommand and recurse.
             for i in range(len(self.subcommands)):
                 if self.subcommands[i].name == result.subcommand:
-                    if result.has_subcommand_result():
-                        self.subcommands[i]._dispatch(
-                            result.get_subcommand_result()
+                    var subcommand_path = result.subcommand
+                    if command_path != "":
+                        subcommand_path = (
+                            command_path + " " + result.subcommand
                         )
-                    elif self.subcommands[i]._run_function:
-                        self.subcommands[i]._run_function.value()(result)
+                    if result.has_subcommand_result():
+                        self.subcommands[i]._dispatch_with_path(
+                            result.get_subcommand_result(), subcommand_path
+                        )
                     else:
+                        # Invariant: the parser always creates a child
+                        # ParseResult when a subcommand is matched.
                         raise Error(
-                            "No run function registered for command '"
-                            + result.subcommand
+                            "Missing parse result for subcommand '"
+                            + subcommand_path
                             + "'"
                         )
                     return
+            var missing_path = result.subcommand
+            if command_path != "":
+                missing_path = command_path + " " + result.subcommand
             raise Error(
-                "No matching subcommand for '" + result.subcommand + "'"
+                "No matching subcommand for '" + missing_path + "'"
             )
         # No subcommand — execute this command's handler.
         if self._run_function:
             self._run_function.value()(result)
+        elif len(self.subcommands) > 0:
+            # Grouping command with no handler — show help (Cobra behaviour).
+            print(self._generate_help())
         else:
             raise Error(
-                "No run function registered for command '" + self.name + "'"
+                "No run function registered for command '"
+                + command_path
+                + "'"
             )
 
     # ===------------------------------------------------------------------=== #

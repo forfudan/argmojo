@@ -570,7 +570,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
 - [x] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
 - [x] **Confirmation option** — `confirmation_option()` or `confirmation_option["prompt"]()` auto-registers `--yes`/`-y` flag; prompts user for confirmation after parsing; aborts on decline or non-interactive stdin (Click `confirmation_option`) (PR #26)
-- [x] **Pre/Post run hooks** — **Auto-dispatch implemented:** `set_run_function(handler)` registers a `def (ParseResult) raises` function pointer on a `Command`; `execute()` parses and walks the subcommand chain to invoke the matching handler; `_execute_with_arguments(args)` provides the same dispatch for testing. **Lifecycle hooks** (PersistentPreRun/PreRun/PostRun/PersistentPostRun) are not yet implemented — they depend on auto-dispatch and will be added in a future release.
+- [x] **Auto-dispatch** — `set_run_function(handler)` registers a `def (ParseResult) raises` function pointer on a `Command`; `execute()` parses and walks the subcommand chain to invoke the matching handler; `_execute_with_arguments(args)` provides the same dispatch for testing. **Lifecycle hooks** (PersistentPreRun/PreRun/PostRun/PersistentPostRun) are not yet implemented — they depend on auto-dispatch and will be added in a future release.
 - [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens (including `-` prefixed); at most one per command, must be last positional (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
 - [x] **Allow hyphen values** — `.allow_hyphen_values()` on positional accepts dash-prefixed tokens as values without `--`; remainder enables this automatically (clap `allow_hyphen_values`) (PR #13)
 - [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value format (no major library has this)
@@ -581,6 +581,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **`NO_COLOR` env variable** — honour the [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set (any value, including empty), suppress all ANSI colour output; lower priority than explicit `.color(False)` API call (PR #9)
 - [x] **Value-name wrapping control** — `.value_name[wrapped: Bool = True]("NAME")` displays custom value names in `<NAME>` by default (matching clap/cargo/pixi/git convention); pass `False` for bare display (PR #17)
 - [ ] **Extend `implies()`** - support value-taking options with a default value, e.g., `cmd.implies("debug", "output", "debug.log")` — when `--debug` is set, auto-set `--output` to `"debug.log"`. Currently `implies()` only supports flag/count targets (same as cobra in Go). Revisit when there is a concrete use case.
+- [ ] **80-character help formatting** — wrap help descriptions at 80 columns with proper indentation (no major library does this by default; users typically pipe through `less` or rely on terminal wrapping)
 
 #### Explicitly Out of Scope in This Phase
 

@@ -1747,9 +1747,11 @@ app._dispatch({subcommand: "remote", ...})
 ```
 
 At each level:
+
 - **Has subcommand?** Find the matching child command and recurse.
 - **No subcommand?** This is the leaf — call its registered handler.
-- **No handler?** Raise `Error("No run function registered for command '…'")`.
+- **Grouping command (has subcommands, no handler)?** Show help instead of raising — matching Cobra's behaviour.
+- **No handler, no subcommands?** Raise `Error("No run function registered for command '…'")`.
 
 ---
 
@@ -1778,7 +1780,7 @@ def main() raises:
     app.execute()  # "app remote add origin" → handle_remote_add()
 ```
 
-The `remote` command does not need a handler — it exists only to group `add`, `remove`, and other child commands. If a user types just `app remote` with no child subcommand, an error is raised (because `remote` has no handler).
+The `remote` command does not need a handler — it exists only to group `add`, `remove`, and other child commands. If a user types just `app remote` with no child subcommand, the help for `remote` is shown automatically (matching Cobra's behaviour for grouping commands).
 
 ---
 

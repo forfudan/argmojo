@@ -218,6 +218,28 @@ def test_no_handler_on_subcommand_raises_error() raises:
     assert_true(caught, "Expected error for missing handler on subcommand")
 
 
+def test_grouping_command_without_handler_shows_help() raises:
+    """Grouping command (has subcommands, no handler) shows help instead
+    of raising — matching Cobra behaviour."""
+    var app = Command("app", "Test app")
+
+    var remote = Command("remote", "Manage remotes")
+
+    var remote_add = Command("add", "Add a remote")
+    remote_add.add_argument(
+        Argument("name", help="Remote name").positional().required()
+    )
+    remote_add.set_run_function(_handler_noop)
+    remote.add_subcommand(remote_add^)
+
+    app.add_subcommand(remote^)
+
+    # Running "app remote" with no child subcommand should NOT raise.
+    # (remote is a grouping command — it shows help instead.)
+    var args: List[String] = ["app", "remote"]
+    app._execute_with_arguments(args)  # Should succeed (shows help, no error)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # set_run_function replaces previous handler
 # ═══════════════════════════════════════════════════════════════════════════════
