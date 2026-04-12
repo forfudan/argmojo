@@ -142,13 +142,16 @@ def main() raises:
     )
 
     app.add_argument(
-        Argument("漢字", help="要查詢的漢字（可以輸入多個漢字）").positional().required()
+        Argument("漢字", help="要查詢的漢字\n（可以輸入多個漢字）").positional().required()
     )
     app.add_argument(
-        Argument("joy", help="使用卿雲編碼（預設為靈明）").long["joy"]().short["j"]().flag()
+        Argument("joy", help="使用卿雲編碼\n（預設為靈明）")
+        .long["joy"]()
+        .short["j"]()
+        .flag()
     )
     app.add_argument(
-        Argument("star", help="使用星陳編碼（預設為靈明）")
+        Argument("star", help="使用星陳編碼\n（預設為靈明）")
         .long["star"]()
         .short["s"]()
         .flag()

@@ -633,12 +633,12 @@ def test_generated_by_comment() raises:
 
 
 def test_fish_builtin_completions() raises:
-    """Tests that Fish script includes the built-in --completions option."""
+    """Tests that Fish script includes the built-in --comp option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["fish"]()
     assert_true(
-        "-l completions" in script,
-        msg="Fish script should include -l completions",
+        "-l comp" in script,
+        msg="Fish script should include -l comp",
     )
     assert_true(
         "bash zsh fish" in script,
@@ -647,12 +647,12 @@ def test_fish_builtin_completions() raises:
 
 
 def test_zsh_builtin_completions() raises:
-    """Tests that Zsh script includes the built-in --completions option."""
+    """Tests that Zsh script includes the built-in --comp option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["zsh"]()
     assert_true(
-        "--completions" in script,
-        msg="Zsh script should include --completions",
+        "--comp" in script,
+        msg="Zsh script should include --comp",
     )
     assert_true(
         "(bash zsh fish)" in script,
@@ -661,12 +661,12 @@ def test_zsh_builtin_completions() raises:
 
 
 def test_bash_builtin_completions() raises:
-    """Tests that Bash script includes the built-in --completions option."""
+    """Tests that Bash script includes the built-in --comp option."""
     var command = Command("myapp", "A test app")
     var script = command.generate_completion["bash"]()
     assert_true(
-        "--completions" in script,
-        msg="Bash script should include --completions",
+        "--comp" in script,
+        msg="Bash script should include --comp",
     )
     assert_true(
         "bash zsh fish" in script,
@@ -675,7 +675,7 @@ def test_bash_builtin_completions() raises:
 
 
 def test_disable_default_completions_not_in_script() raises:
-    """Tests that disable_default_completions() removes --completions from all scripts.
+    """Tests that disable_default_completions() removes --comp from all scripts.
     """
     var command = Command("myapp", "A test app")
     command.disable_default_completions()
@@ -683,55 +683,55 @@ def test_disable_default_completions_not_in_script() raises:
     var zsh = command.generate_completion["zsh"]()
     var bash = command.generate_completion["bash"]()
     assert_false(
-        "-l completions" in fish,
+        "-l comp" in fish,
         msg=(
-            "Fish script should NOT include -l completions after"
+            "Fish script should NOT include -l comp after"
             " disable_default_completions()"
         ),
     )
     assert_false(
-        "--completions" in zsh,
+        "--comp" in zsh,
         msg=(
-            "Zsh script should NOT include --completions after"
+            "Zsh script should NOT include --comp after"
             " disable_default_completions()"
         ),
     )
     assert_false(
-        "--completions" in bash,
+        "--comp" in bash,
         msg=(
-            "Bash script should NOT include --completions after"
+            "Bash script should NOT include --comp after"
             " disable_default_completions()"
         ),
     )
 
 
 def test_disable_default_completions_not_in_help() raises:
-    """Tests that disable_default_completions() hides --completions from help.
+    """Tests that disable_default_completions() hides --comp from help.
     """
     var command = Command("myapp", "A test app")
     command.disable_default_completions()
     var help_text = command._generate_help(color=False)
     assert_false(
-        "--completions" in help_text,
+        "--comp" in help_text,
         msg=(
-            "Help text should NOT include --completions after"
+            "Help text should NOT include --comp after"
             " disable_default_completions()"
         ),
     )
 
 
 def test_completions_in_help_by_default() raises:
-    """Tests that --completions appears in the Options section of help by default.
+    """Tests that --comp appears in the Options section of help by default.
     """
     var command = Command("myapp", "A test app")
     var help_text = command._generate_help(color=False)
     assert_true(
-        "--completions" in help_text,
-        msg="Help text should include --completions by default",
+        "--comp" in help_text,
+        msg="Help text should include --comp by default",
     )
     assert_true(
-        "bash,zsh,fish" in help_text or "{bash,zsh,fish}" in help_text,
-        msg="Help text should show shell choices for --completions",
+        "<SHELL>" in help_text,
+        msg="Help text should show <SHELL> placeholder for --comp",
     )
 
 
@@ -752,8 +752,8 @@ def test_completions_custom_name_in_scripts() raises:
         msg="Fish script should use '-l autocomp' after completions_name()",
     )
     assert_false(
-        "-l completions" in fish,
-        msg="Fish script should NOT have '-l completions' after rename",
+        "-l comp" in fish,
+        msg="Fish script should NOT have '-l comp' after rename",
     )
     assert_true(
         "--autocomp[" in zsh,
@@ -764,8 +764,8 @@ def test_completions_custom_name_in_scripts() raises:
         msg="Bash script should use '--autocomp' after completions_name()",
     )
     assert_false(
-        "--completions" in bash,
-        msg="Bash script should NOT have '--completions' after rename",
+        "--comp" in bash,
+        msg="Bash script should NOT have '--comp' after rename",
     )
 
 
@@ -779,8 +779,8 @@ def test_completions_custom_name_in_help() raises:
         msg="Help text should show '--autocomp' after completions_name()",
     )
     assert_false(
-        "--completions" in help_text,
-        msg="Help text should NOT show '--completions' after rename",
+        "--comp" in help_text,
+        msg="Help text should NOT show '--comp' after rename",
     )
 
 
@@ -794,8 +794,8 @@ def test_completions_custom_name_in_bash_prev() raises:
         msg="Bash prev-case should use '--gen-comp)' after rename",
     )
     assert_false(
-        "--completions)" in bash,
-        msg="Bash prev-case should NOT have '--completions)' after rename",
+        "--comp)" in bash,
+        msg="Bash prev-case should NOT have '--comp)' after rename",
     )
 
 
@@ -812,19 +812,19 @@ def test_completions_as_subcommand_in_help() raises:
     command.add_subcommand(sub^)
     command.completions_as_subcommand()
     var help_text = command._generate_help(color=False)
-    # Should NOT appear in Options section as --completions.
+    # Should NOT appear in Options section as --comp.
     assert_false(
-        "--completions" in help_text,
+        "--comp" in help_text,
         msg=(
-            "Help text should NOT show '--completions' in Options"
+            "Help text should NOT show '--comp' in Options"
             " when using subcommand mode"
         ),
     )
     # Should appear in Commands section.
     assert_true(
-        "completions" in help_text,
+        "comp" in help_text,
         msg=(
-            "Help text should show 'completions' in Commands section"
+            "Help text should show 'comp' in Commands section"
             " when using subcommand mode"
         ),
     )
@@ -839,17 +839,17 @@ def test_completions_as_subcommand_in_fish() raises:
     var fish = command.generate_completion["fish"]()
     # Should NOT appear as an option.
     assert_false(
-        "-l completions" in fish,
+        "-l comp" in fish,
         msg=(
-            "Fish script should NOT have '-l completions' option"
+            "Fish script should NOT have '-l comp' option"
             " in subcommand mode"
         ),
     )
     # Should appear as a subcommand candidate.
     assert_true(
-        "-a 'completions'" in fish,
+        "-a 'comp'" in fish,
         msg=(
-            "Fish script should include '-a completions' as subcommand"
+            "Fish script should include '-a comp' as subcommand"
             " in subcommand mode"
         ),
     )
@@ -864,18 +864,18 @@ def test_completions_as_subcommand_in_zsh() raises:
     var zsh = command.generate_completion["zsh"]()
     # Should appear in commands array.
     assert_true(
-        "'completions:" in zsh,
-        msg="Zsh script should include completions in commands array",
+        "'comp:" in zsh,
+        msg="Zsh script should include comp in commands array",
     )
     # Should NOT appear as an option.
     assert_false(
-        "'--completions[" in zsh,
-        msg="Zsh script should NOT have '--completions[' option in sub mode",
+        "'--comp[" in zsh,
+        msg="Zsh script should NOT have '--comp[' option in sub mode",
     )
     # Should have a subcommand handler.
     assert_true(
-        "completions)" in zsh,
-        msg="Zsh script should have completions) case handler",
+        "comp)" in zsh,
+        msg="Zsh script should have comp) case handler",
     )
 
 
@@ -886,19 +886,19 @@ def test_completions_as_subcommand_in_bash() raises:
     command.add_subcommand(sub^)
     command.completions_as_subcommand()
     var bash = command.generate_completion["bash"]()
-    # Should NOT appear as --completions option.
+    # Should NOT appear as --comp option.
     assert_false(
-        " --completions" in bash,
+        " --comp" in bash,
         msg=(
-            "Bash script should NOT list '--completions' option"
+            "Bash script should NOT list '--comp' option"
             " in subcommand mode"
         ),
     )
-    # Subcommand names should include completions.
+    # Subcommand names should include comp.
     assert_true(
-        "completions" in bash,
+        "comp" in bash,
         msg=(
-            "Bash script should include 'completions' in subcommand"
+            "Bash script should include 'comp' in subcommand"
             " names in subcommand mode"
         ),
     )
