@@ -2023,9 +2023,7 @@ struct Command(Copyable, Movable, Writable):
                 if self.subcommands[i].name == result.subcommand:
                     var subcommand_path = result.subcommand
                     if command_path != "":
-                        subcommand_path = (
-                            command_path + " " + result.subcommand
-                        )
+                        subcommand_path = command_path + " " + result.subcommand
                     if result.has_subcommand_result():
                         self.subcommands[i]._dispatch_with_path(
                             result.get_subcommand_result(), subcommand_path
@@ -2042,9 +2040,7 @@ struct Command(Copyable, Movable, Writable):
             var missing_path = result.subcommand
             if command_path != "":
                 missing_path = command_path + " " + result.subcommand
-            raise Error(
-                "No matching subcommand for '" + missing_path + "'"
-            )
+            raise Error("No matching subcommand for '" + missing_path + "'")
         # No subcommand — execute this command's handler.
         if self._run_function:
             self._run_function.value()(result)
@@ -2053,9 +2049,7 @@ struct Command(Copyable, Movable, Writable):
             print(self._generate_help())
         else:
             raise Error(
-                "No run function registered for command '"
-                + command_path
-                + "'"
+                "No run function registered for command '" + command_path + "'"
             )
 
     # ===------------------------------------------------------------------=== #
