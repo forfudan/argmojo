@@ -290,14 +290,14 @@ Positional arguments and named options are validated **independently** — a com
 
 #### Per-Dimension Behavior
 
-**Positional arguments:**
+##### Positional arguments
 
 | Command config ↓ \ User input → | Enough positionals provided | Not enough positionals provided |
 | ------------------------------- | --------------------------- | ------------------------------- |
 | **Has required positional(s)**  | ✓ Proceed                   | ✗ Error + usage                 |
 | **No required positional(s)**   | ✓ Proceed                   | N/A — always "enough"           |
 
-**Named options:**
+##### Named options
 
 | Command config ↓ \ User input → | Enough options provided | Not enough options provided |
 | ------------------------------- | ----------------------- | --------------------------- |
@@ -608,7 +608,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
   --ling           使用宇浩靈明編碼           ← CJK chars each take 2 columns, misaligned
 ```
 
-**Implementation:**
+##### Implementation (CJK alignment)
 
 - [x] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing each code point:
   - CJK Unified Ideographs, CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms → width 2
@@ -625,7 +625,7 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 - `－－ｖｅｒｂｏｓｅ` instead of `--verbose`
 - `＝` instead of `=`
 
-**Implementation:**
+##### Implementation (fullwidth correction)
 
 - [x] Implement `_fullwidth_to_halfwidth(token: String) -> String` in `utils.mojo`:
   - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get half-width
@@ -654,7 +654,7 @@ Note that the following punctuation characters are already handled by the full-w
 - `——verbose` (em-dash `U+2014` × 2) instead of `--verbose`
 - `--key：value` (full-width colon `U+FF1A`) instead of `--key=value`
 
-**Implementation:**
+##### Implementation (CJK punctuation)
 
 - [x] Integrate with typo suggestion system — when a token fails to match any known option, check for common CJK punctuation patterns before running Levenshtein:
   - `——` (`U+2014 U+2014`, 破折號) → `--` (note that `U+FF0D` full-width hyphen-minus is already handled by the full-width correction step)
