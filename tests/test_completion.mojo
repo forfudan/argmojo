@@ -706,8 +706,7 @@ def test_disable_default_completions_not_in_script() raises:
 
 
 def test_disable_default_completions_not_in_help() raises:
-    """Tests that disable_default_completions() hides --comp from help.
-    """
+    """Tests that disable_default_completions() hides --comp from help."""
     var command = Command("myapp", "A test app")
     command.disable_default_completions()
     var help_text = command._generate_help(color=False)
@@ -721,8 +720,7 @@ def test_disable_default_completions_not_in_help() raises:
 
 
 def test_completions_in_help_by_default() raises:
-    """Tests that --comp appears in the Options section of help by default.
-    """
+    """Tests that --comp appears in the Options section of help by default."""
     var command = Command("myapp", "A test app")
     var help_text = command._generate_help(color=False)
     assert_true(
@@ -840,10 +838,7 @@ def test_completions_as_subcommand_in_fish() raises:
     # Should NOT appear as an option.
     assert_false(
         "-l comp" in fish,
-        msg=(
-            "Fish script should NOT have '-l comp' option"
-            " in subcommand mode"
-        ),
+        msg="Fish script should NOT have '-l comp' option in subcommand mode",
     )
     # Should appear as a subcommand candidate.
     assert_true(
@@ -889,10 +884,7 @@ def test_completions_as_subcommand_in_bash() raises:
     # Should NOT appear as --comp option.
     assert_false(
         " --comp" in bash,
-        msg=(
-            "Bash script should NOT list '--comp' option"
-            " in subcommand mode"
-        ),
+        msg="Bash script should NOT list '--comp' option in subcommand mode",
     )
     # Subcommand names should include comp.
     assert_true(
