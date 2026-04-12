@@ -8,14 +8,123 @@ All code examples below assume that you have imported the mojo at the top of you
 from argmojo import Argument, Command
 ```
 
-<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all)
-- [Response Files](#response-files)
-  - [Enabling Response Files](#enabling-response-files)
-  - [File Format](#file-format)
-  - [Escaping the Prefix](#escaping-the-prefix)
-  - [Recursive Response Files](#recursive-response-files)
-  - [Custom Prefix](#custom-prefix)
--->
+- [Getting Started](#getting-started)
+  - [Creating a Command](#creating-a-command)
+  - [Reading Parsed Results](#reading-parsed-results)
+- [Defining Arguments](#defining-arguments)
+  - [Positional Arguments](#positional-arguments)
+  - [Long Options](#long-options)
+  - [Short Options](#short-options)
+  - [Boolean Flags](#boolean-flags)
+  - [Default Values](#default-values)
+  - [Required Arguments](#required-arguments)
+  - [Aliases](#aliases)
+- [Builder Method Compatibility](#builder-method-compatibility)
+  - [ASCII Tree](#ascii-tree)
+  - [Compatibility Table](#compatibility-table)
+- [Short Option Details](#short-option-details)
+  - [Short Flag Merging](#short-flag-merging)
+  - [Attached Short Values](#attached-short-values)
+- [Flag Variants](#flag-variants)
+  - [Count Flags](#count-flags)
+  - [Count Ceiling (`.max[N]()`)](#count-ceiling-maxn)
+  - [Negatable Flags](#negatable-flags)
+- [Collecting Multiple Values](#collecting-multiple-values)
+  - [Append / Collect Action](#append--collect-action)
+  - [Value Delimiter](#value-delimiter)
+  - [Multi-Value Options (nargs)](#multi-value-options-nargs)
+  - [Key-Value Map Options](#key-value-map-options)
+- [Value Validation](#value-validation)
+  - [Choices Validation](#choices-validation)
+  - [Positional Argument Count Validation](#positional-argument-count-validation)
+  - [Numeric Range Validation](#numeric-range-validation)
+  - [Range Clamping (`.clamp()`)](#range-clamping-clamp)
+- [Group Constraints](#group-constraints)
+  - [Mutually Exclusive Groups](#mutually-exclusive-groups)
+  - [One-Required Groups](#one-required-groups)
+  - [Required-Together Groups](#required-together-groups)
+  - [Conditional Requirements](#conditional-requirements)
+  - [Mutual Implication](#mutual-implication)
+- [Subcommands](#subcommands)
+  - [Defining Subcommands](#defining-subcommands)
+  - [Parsing Subcommand Results](#parsing-subcommand-results)
+  - [Auto-Dispatch with `set_run_function` / `execute`](#auto-dispatch-with-set_run_function--execute)
+  - [Persistent (Global) Flags](#persistent-global-flags)
+  - [The help Subcommand](#the-help-subcommand)
+  - [Subcommand Aliases](#subcommand-aliases)
+  - [Unknown Subcommand Error](#unknown-subcommand-error)
+  - [Hidden Subcommands](#hidden-subcommands)
+  - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
+- [Help \& Display](#help--display)
+  - [Value Name](#value-name)
+  - [Hidden Arguments](#hidden-arguments)
+  - [Deprecated Arguments](#deprecated-arguments)
+  - [Default-if-no-value](#default-if-no-value)
+  - [Require Equals Syntax](#require-equals-syntax)
+  - [Argument Groups](#argument-groups)
+  - [Auto-generated Help](#auto-generated-help)
+  - [Custom Tips](#custom-tips)
+  - [Version Display](#version-display)
+  - [CJK-Aware Help Alignment](#cjk-aware-help-alignment)
+  - [Full-Width → Half-Width Auto-Correction](#full-width--half-width-auto-correction)
+- [Parsing Behaviour](#parsing-behaviour)
+  - [Negative Number Passthrough](#negative-number-passthrough)
+  - [Long Option Prefix Matching](#long-option-prefix-matching)
+  - [The `--` Stop Marker](#the----stop-marker)
+  - [Remainder Positional (`.remainder()`)](#remainder-positional-remainder)
+  - [Allow Hyphen Values (`.allow_hyphen_values()`)](#allow-hyphen-values-allow_hyphen_values)
+  - [Partial Parsing (`parse_known_arguments()`)](#partial-parsing-parse_known_arguments)
+- [Interactive Prompting](#interactive-prompting)
+  - [Setup Example](#setup-example)
+  - [Enabling Prompting](#enabling-prompting)
+  - [Interactive Session Examples](#interactive-session-examples)
+  - [Prompt Format](#prompt-format)
+  - [Interaction with Other Features](#interaction-with-other-features)
+  - [Non-Interactive Use (CI / Piped Input)](#non-interactive-use-ci--piped-input)
+- [Argument Parents and Inheritance](#argument-parents-and-inheritance)
+  - [Defining Shared Arguments](#defining-shared-arguments)
+  - [What Gets Inherited](#what-gets-inherited)
+  - [Multiple Parents](#multiple-parents)
+  - [Using with Subcommands](#using-with-subcommands)
+  - [Notes](#notes)
+- [Password / Masked Input](#password--masked-input)
+  - [Basic Usage](#basic-usage)
+  - [Custom Prompt Text](#custom-prompt-text)
+  - [Restrictions](#restrictions)
+  - [Non-Interactive Use](#non-interactive-use)
+- [Confirmation Option](#confirmation-option)
+  - [Basic Usage](#basic-usage-1)
+  - [Custom Prompt Text](#custom-prompt-text-1)
+  - [Using with Subcommands](#using-with-subcommands-1)
+  - [Non-Interactive Use](#non-interactive-use-1)
+- [Usage Line Customisation](#usage-line-customisation)
+- [Shell Completion](#shell-completion)
+  - [Built-in `--completions` Flag](#built-in---completions-flag)
+  - [Disabling the Built-in Flag](#disabling-the-built-in-flag)
+  - [Customising the Trigger Name](#customising-the-trigger-name)
+  - [Using a Subcommand Instead of an Option](#using-a-subcommand-instead-of-an-option)
+  - [Generating a Script Programmatically](#generating-a-script-programmatically)
+  - [Installing Completions](#installing-completions)
+  - [What Gets Completed](#what-gets-completed)
+- [Developer Validation](#developer-validation)
+  - [Compile-Time Validation](#compile-time-validation)
+  - [Runtime Registration Validation](#runtime-registration-validation)
+  - [Recommended Workflow](#recommended-workflow)
+- [Declarative API (Struct-Based)](#declarative-api-struct-based)
+  - [Wrapper Types](#wrapper-types)
+  - [The `Parsable` Trait](#the-parsable-trait)
+  - [Pure Declarative — One-Line Parse](#pure-declarative--one-line-parse)
+  - [Hybrid — Declarative + Builder Customisation](#hybrid--declarative--builder-customisation)
+  - [Full Parse — Declarative + Extra Builder Fields](#full-parse--declarative--extra-builder-fields)
+  - [Subcommands](#subcommands-1)
+  - [Auto-Naming Convention](#auto-naming-convention)
+  - [API Summary](#api-summary)
+- [Cross-Library Method Name Reference](#cross-library-method-name-reference)
+  - [Argument-Level Builder Methods](#argument-level-builder-methods)
+  - [Command-Level Methods](#command-level-methods)
+  - [Notes](#notes-1)
+
+<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all) -->
 
 ## Getting Started
 
@@ -1635,7 +1744,7 @@ All standard `ParseResult` methods (`get_flag()`, `get_string()`, `get_int()`, `
 
 ### Auto-Dispatch with `set_run_function` / `execute`
 
-#### The problem: manual subcommand routing
+#### The problem: manual subcommand routing <!-- omit from toc -->
 
 When a CLI has subcommands (like `git clone`, `git push`, `git remote add`), the `ParseResult` tells you *which* subcommand was selected — but you must route to the right handler yourself:
 
@@ -1656,7 +1765,7 @@ elif result.subcommand == "remote":
 
 This is tedious. Every time you add a subcommand, you update the router. With nested subcommands the `if/elif` tree gets deeper. A typo in `"clone"` vs `"cloen"` silently breaks routing.
 
-#### The solution: auto-dispatch
+#### The solution: auto-dispatch <!-- omit from toc -->
 
 With auto-dispatch, you register a handler *on the command itself*. ArgMojo then parses the arguments **and** routes to the correct handler in one call:
 
@@ -1671,7 +1780,7 @@ No `if/elif` boilerplate. This is the pattern [Cobra](https://github.com/spf13/c
 
 ---
 
-#### Step 1 — Define handler functions
+#### Step 1 — Define handler functions <!-- omit from toc -->
 
 Each handler is a free function with signature `def (ParseResult) raises`. It receives the parsed arguments for the command it is attached to. It is a procedure — it does work but returns nothing.
 
@@ -1687,7 +1796,7 @@ def handle_init(result: ParseResult) raises:
 
 > **Why free functions?** Mojo does not yet support storing closures (functions that capture variables from their enclosing scope) as struct fields. Handlers must be module-level `def` functions. If you need to pass state to a handler, encode it in the parsed arguments or use module-level constants.
 
-#### Step 2 — Register handlers with `set_run_function()`
+#### Step 2 — Register handlers with `set_run_function()` <!-- omit from toc -->
 
 ```mojo
 def main() raises:
@@ -1711,13 +1820,13 @@ Running `myapp init myproject` calls `handle_init` with `name="myproject"`.
 
 ---
 
-#### Method reference
+#### Method reference <!-- omit from toc -->
 
-| Method                              | Description                                                                      |
-| ----------------------------------- | -------------------------------------------------------------------------------- |
-| `cmd.set_run_function(handler)`     | Registers a `def (ParseResult) raises` handler on `cmd`.                         |
-| `cmd.execute()`                     | Parses `sys.argv()`, walks the subcommand chain, and calls the matching handler. |
-| `cmd._execute_with_arguments(args)` | Testing helper. Same as `execute()` but takes an explicit `List[String]`.        |
+| Method                              | Description                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `cmd.set_run_function(handler)`     | Registers a `def (ParseResult) raises` handler on `cmd`.                                                               |
+| `cmd.execute()`                     | Parses `sys.argv()`, walks the subcommand chain, and calls the matching handler.                                       |
+| `cmd._execute_with_arguments(args)` | Testing helper. Like `execute()` but takes an explicit `List[String]` and raises on parse errors (instead of exiting). |
 
 **`set_run_function(handler)`** — Stores the handler function pointer on the command. You can call it again to replace a previous handler. Think of it as labelling a mailbox: "when mail arrives here, this person handles it."
 
@@ -1729,11 +1838,11 @@ Running `myapp init myproject` calls `handle_init` with `name="myproject"`.
 
 If no handler is registered on the resolved command, an `Error` is raised.
 
-**`_execute_with_arguments(args)`** — A **testing helper** (prefixed with `_` to indicate internal use). Identical to `execute()`, but accepts an explicit `List[String]` instead of reading `sys.argv()`. In tests you cannot control the real command line, so you pass arguments directly. Production code should always call `execute()`.
+**`_execute_with_arguments(args)`** — A **testing helper** (prefixed with `_` to indicate internal use). Like `execute()`, but accepts an explicit `List[String]` instead of reading `sys.argv()`. Unlike `execute()`, parse errors **raise** instead of calling `exit(2)`, making it suitable for tests that need to catch and inspect errors. Production code should always call `execute()`.
 
 ---
 
-#### How dispatch walks the tree
+#### How dispatch walks the tree <!-- omit from toc -->
 
 Given `app remote add origin`, the internal dispatch chain is:
 
@@ -1755,7 +1864,7 @@ At each level:
 
 ---
 
-#### Nested subcommands
+#### Nested subcommands <!-- omit from toc -->
 
 The dispatch recursion handles arbitrary nesting depth:
 
@@ -1784,7 +1893,7 @@ The `remote` command does not need a handler — it exists only to group `add`, 
 
 ---
 
-#### Testing with `_execute_with_arguments()`
+#### Testing with `_execute_with_arguments()` <!-- omit from toc -->
 
 In tests, pass explicit argument lists instead of relying on `sys.argv()`:
 
@@ -1794,7 +1903,7 @@ var args: List[String] = ["app", "search", "hello"]
 app._execute_with_arguments(args)  # Calls handle_search with pattern="hello"
 ```
 
-#### When to use auto-dispatch vs manual parsing
+#### When to use auto-dispatch vs manual parsing <!-- omit from toc -->
 
 | Scenario                            | Recommended approach                           |
 | ----------------------------------- | ---------------------------------------------- |
@@ -3110,7 +3219,7 @@ Argument("token", help="API token").long["token"]().prompt["Enter your API token
 
 ### Interactive Session Examples
 
-#### All arguments missing — full prompting
+#### All arguments missing — full prompting <!-- omit from toc -->
 
 When none of the prompt-enabled arguments are provided, the user is prompted for each one in order:
 
@@ -3123,7 +3232,7 @@ Server region [us/eu/ap] (us): eu
 
 The parsed result contains `user="alice"`, `token="secret-123"`, `region="eu"`.
 
-#### Partial arguments — only missing ones are prompted
+#### Partial arguments — only missing ones are prompted <!-- omit from toc -->
 
 When some arguments are already provided on the command line, only the missing ones trigger a prompt:
 
@@ -3135,7 +3244,7 @@ Server region [us/eu/ap] (us): ap
 
 `--user` was given on the CLI, so `Username:` is **not** asked.
 
-#### All arguments provided — no prompting at all
+#### All arguments provided — no prompting at all <!-- omit from toc -->
 
 ```shell
 ./login --user alice --token secret-123 --region eu
@@ -3143,7 +3252,7 @@ Server region [us/eu/ap] (us): ap
 
 No prompts appear. The CLI values are used directly.
 
-#### Empty input with a default — default value is used
+#### Empty input with a default — default value is used <!-- omit from toc -->
 
 When the user presses Enter without typing anything and the argument has a `.default[]()`, the default is applied:
 
@@ -3156,7 +3265,7 @@ Server region [us/eu/ap] (us):
 
 The user pressed Enter at `Server region`, so `region` gets the default value `"us"`.
 
-#### Flag argument — y/n prompt
+#### Flag argument — y/n prompt <!-- omit from toc -->
 
 Flag arguments accept `y`/`n`/`yes`/`no` (case-insensitive):
 
@@ -3174,7 +3283,7 @@ Enable verbose output [y/n]: y
 
 Answering `y` or `yes` sets the flag to `True`. Answering `n` or `no` sets it to `False`.
 
-#### Argument with choices — choices are shown
+#### Argument with choices — choices are shown <!-- omit from toc -->
 
 When a prompt-enabled argument has `.choice[]()` values, they are displayed in brackets. If a default exists, it is shown in parentheses:
 
@@ -3979,7 +4088,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 ### Command-Level Methods
 
-#### Registration & Structure
+#### Registration & Structure <!-- omit from toc -->
 
 | ArgMojo method                        | argparse                         | click                                 | clap (Rust)                        | cobra / pflag (Go)         |
 | ------------------------------------- | -------------------------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
@@ -3991,7 +4100,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `disable_help_subcommand()`           | —                                | —                                     | `.disable_help_subcommand(true)`   | —                          |
 | `allow_positional_with_subcommands()` | —                                | —                                     | —                                  | `TraverseChildren`         |
 
-#### Group Constraints
+#### Group Constraints <!-- omit from toc -->
 
 | ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
 | --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
@@ -4001,7 +4110,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
 | `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
 
-#### Parser Behaviour
+#### Parser Behaviour <!-- omit from toc -->
 
 | ArgMojo method                     | argparse                    | click                          | clap (Rust)                     | cobra / pflag (Go)      |
 | ---------------------------------- | --------------------------- | ------------------------------ | ------------------------------- | ----------------------- |
@@ -4015,7 +4124,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `disable_fullwidth_correction()`   | —                           | —                              | —                               | —                       |
 | `disable_punctuation_correction()` | —                           | —                              | —                               | —                       |
 
-#### Help & Display
+#### Help & Display <!-- omit from toc -->
 
 | ArgMojo method         | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
 | ---------------------- | ------------ | ------------ | ---------------------- | ------------------ |
@@ -4026,7 +4135,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `warn_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
 | `error_color[name]()`  | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
 
-#### Shell Completions
+#### Shell Completions <!-- omit from toc -->
 
 | ArgMojo method                  | argparse | click            | clap (Rust)                        | cobra / pflag (Go)         |
 | ------------------------------- | -------- | ---------------- | ---------------------------------- | -------------------------- |
@@ -4035,7 +4144,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `completions_as_subcommand()`   | —        | —                | `clap_complete` subcommand pattern | default (subcommand)       |
 | `generate_completion(shell)`    | —        | `shell_complete` | `clap_complete::generate()`        | `GenBashCompletion()` etc. |
 
-#### Auto-Dispatch
+#### Auto-Dispatch <!-- omit from toc -->
 
 | ArgMojo method                  | argparse | click                         | clap (Rust) | cobra / pflag (Go) |
 | ------------------------------- | -------- | ----------------------------- | ----------- | ------------------ |
@@ -4043,7 +4152,7 @@ The table below maps every ArgMojo builder method / command-level method to its 
 | `execute()`                     | —        | implicit via `cli()`          | —           | `cmd.Execute()`    |
 | `_execute_with_arguments(args)` | —        | `runner.invoke(cli, args)` ¹⁶ | —           | —                  |
 
-#### Parse
+#### Parse <!-- omit from toc -->
 
 | ArgMojo method          | argparse           | click           | clap (Rust)               | cobra / pflag (Go) |
 | ----------------------- | ------------------ | --------------- | ------------------------- | ------------------ |

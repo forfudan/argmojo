@@ -42,6 +42,12 @@ def _handler_assert_target_default(result: ParseResult) raises:
     assert_equal(result.get_string("target"), "all")
 
 
+def _handler_assert_target_and_verbose(result: ParseResult) raises:
+    """Handler that asserts both target positional and verbose flag."""
+    assert_equal(result.get_string("target"), "mylib")
+    assert_true(result.get_flag("verbose"), "Expected verbose=True")
+
+
 def _handler_assert_filter(result: ParseResult) raises:
     """Handler that asserts filter option."""
     assert_equal(result.get_string("filter"), "unit_*")
@@ -281,7 +287,7 @@ def test_persistent_flags_in_subcommand_dispatch() raises:
     build.add_argument(
         Argument("target", help="Target").positional().default["all"]()
     )
-    build.set_run_function(_handler_assert_target)
+    build.set_run_function(_handler_assert_target_and_verbose)
     app.add_subcommand(build^)
 
     # --verbose before subcommand

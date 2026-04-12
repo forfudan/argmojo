@@ -1961,16 +1961,21 @@ struct Command(Copyable, Movable, Writable):
         """Parses the given argument list and auto-dispatches to the
         appropriate run function.
 
-        This is a **testing helper** — it behaves identically to
-        ``execute()`` but accepts an explicit argument list instead of
-        reading from ``sys.argv()``.  In tests you cannot control the
-        real command line, so pass the arguments directly::
+        This is a **testing helper** that accepts an explicit argument
+        list instead of reading from ``sys.argv()``.  In tests you
+        cannot control the real command line, so pass the arguments
+        directly:
 
             var args: List[String] = ["app", "build", "mylib"]
             app._execute_with_arguments(args)
 
         The leading underscore marks this method as internal.  Production
         code should call ``execute()``; only test code should call this.
+
+        **Difference from ``execute()``:** ``execute()`` calls ``parse()``
+        which catches parse errors and calls ``exit(2)``; this method
+        calls ``parse_arguments()`` which **raises** on parse errors,
+        making it suitable for tests that need to catch and inspect errors.
 
         Args:
             raw_args: The raw argument strings (including program name at
