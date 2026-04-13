@@ -4900,8 +4900,7 @@ struct Command(Copyable, Movable, Writable):
             The escaped text with ``'`` replaced by ``\\'``.
         """
         var result = String("")
-        for i in range(len(text)):
-            var ch = text[byte = i : i + 1]
+        for ch in text.codepoint_slices():
             if ch == "'":
                 result += "\\'"
             else:
@@ -5138,16 +5137,15 @@ struct Command(Copyable, Movable, Writable):
             The escaped text.
         """
         var result = String("")
-        for i in range(len(text)):
-            var ch = text[byte = i : i + 1]
+        for ch in text.codepoint_slices():
             if ch == "[" or ch == "]":
-                result += "\\" + ch
+                result += "\\" + String(ch)
             elif ch == "'":
                 result += "'\"'\"'"
             elif ch == ":":
                 result += "\\:"
             else:
-                result += ch
+                result += String(ch)
         return result
 
     def _completion_bash(self) -> String:
