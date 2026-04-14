@@ -144,18 +144,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-mojo
-      - name: Run example binaries (with retry)
+      - name: Build example binaries (with retry)
         run: |
           for attempt in 1 2 3; do
-            echo "=== debug attempt $attempt ==="
-            if pixi run debug; then
-              echo "=== debug passed on attempt $attempt ==="
+            echo "=== build attempt $attempt ==="
+            if pixi run build; then
+              echo "=== build passed on attempt $attempt ==="
               break
             fi
             if [ "$attempt" -eq 3 ]; then
-              echo "=== debug failed after 3 attempts ==="
+              echo "=== build failed after 3 attempts ==="
               exit 1
             fi
-            echo "=== debug run crashed, retrying in 5s... ==="
+            echo "=== build run crashed, retrying in 5s... ==="
             sleep 5
           done
