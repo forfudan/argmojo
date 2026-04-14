@@ -31,7 +31,6 @@ from .utils import (
     _section_desc_layout,
     _split_on_fullwidth_spaces,
     _suggest_similar,
-    _wrap_description,
     _wrap_text_at,
 )
 
@@ -346,7 +345,7 @@ struct Command(Copyable, Movable, Writable):
         self._tips = List[String]()
         # ── Shell completions ──
         self._completions_enabled = True
-        self._completions_name = String("comp")
+        self._completions_name = String("completions")
         self._completions_is_subcommand = False
         # ── Auto-dispatch ──
         self._run_function = None

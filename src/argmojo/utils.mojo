@@ -23,7 +23,8 @@ comptime _DEFAULT_WARN_COLOR = _ORANGE
 comptime _DEFAULT_ERROR_COLOR = _RED
 
 # ── Help formatting layout constants ─────────────────────────────────────────
-# This design is based on my personal aesthetic taste and the typical terminal width of 80 columns.
+# Fixed layout values for the two-column help formatter, optimized for
+# readable output on standard 80-column terminals.
 # Per-section layout: INDENT + min(longest, OPT_WIDTH) + GAP + desc + TRAIL = LINE_WIDTH
 comptime _HELP_LINE_WIDTH: Int = 80
 comptime _HELP_INDENT: Int = 2

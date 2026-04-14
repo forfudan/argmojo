@@ -537,7 +537,7 @@ Some features shipped in v0.3.0, others completed in the unreleased update branc
 
 Note that this phase is long-term polish and enhancement. If I find any other important or interesting features during development, I may add them here as well.
 
-On contrary, Phase 6 and Phase 7 are more about specific topics (e.g., CJK, declarative API, auto dispatch...) that require some dedicated design and implementation work. There might be standalone planning documents for these topics.
+On the contrary, Phase 6 and Phase 7 are more about specific topics (e.g., CJK, declarative API, auto dispatch...) that require some dedicated design and implementation work. There might be standalone planning documents for these topics.
 
 #### Pre-requisite refactor
 
@@ -622,6 +622,18 @@ ArgMojo's differentiating features — no other CLI library addresses CJK-specif
 - [x] Add tests with mixed CJK/ASCII help text verifying column alignment
 
 **References:** POSIX `wcwidth(3)`, Python `unicodedata.east_asian_width()`, Rust `unicode-width` crate.
+
+##### CJK-aware word wrapping (TODO)
+
+The current `_wrap_text_at` and `_wrap_description` helpers only split on ASCII spaces. This means:
+
+- CJK text without spaces (e.g. continuous Chinese/Japanese) will never be broken and may exceed the 80-column width.
+- Unicode whitespace characters (e.g. `U+3000` ideographic space, `U+2003` em space) are not recognized as split points.
+
+Improvements needed:
+
+- [ ] Split on all Unicode whitespace (not just ASCII space)
+- [ ] Add fallback to break long CJK tokens by codepoint/display-width when a single token exceeds the target width
 
 #### 6.2 Full-width → half-width auto-correction ✓
 
