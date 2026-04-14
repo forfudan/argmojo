@@ -195,7 +195,8 @@ def test_dynamic_padding_short_options() raises:
 
 
 def test_dynamic_padding_long_options() raises:
-    """Tests that padding grows when a very long option is present."""
+    """Tests that a very long option overflows and its description wraps
+    to the next line, aligned at the fixed description column."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("very-long-option-name", help="Description").long[
@@ -208,15 +209,18 @@ def test_dynamic_padding_long_options() raises:
 
     var help = command._generate_help(color=False)
     # The longest user arg is "--very-long-option-name <very-long-option-name>"
-    # The help descriptions should still be aligned.
+    # which overflows the 32-char option column.  Its description should
+    # appear on the next line, aligned with other descriptions at column 38.
     var desc_col_long: Int = -1
     var desc_col_short: Int = -1
     var lines = help.splitlines()
     for idx in range(len(lines)):
         if "--very-long-option-name" in lines[idx]:
-            desc_col_long = lines[idx].find("Description")
+            # Description overflows to next line.
+            if idx + 1 < len(lines):
+                desc_col_long = String(lines[idx + 1]).find("Description")
         if "-s, --short" in lines[idx]:
-            desc_col_short = lines[idx].find("Short one")
+            desc_col_short = String(lines[idx]).find("Short one")
     assert_true(
         desc_col_long > 0,
         msg="Description should appear in long option line",

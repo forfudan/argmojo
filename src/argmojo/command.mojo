@@ -13,17 +13,25 @@ from .utils import (
     _DEFAULT_ARG_COLOR,
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
+    _HELP_LINE_WIDTH,
+    _HELP_INDENT,
+    _HELP_OPT_WIDTH,
+    _HELP_GAP,
+    _HELP_TRAIL,
     _correct_cjk_punctuation,
     _disable_echo,
     _display_width,
+    _format_two_column_line,
     _read_password_asterisk,
     _restore_echo,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _looks_like_number,
     _resolve_color,
+    _section_desc_layout,
     _split_on_fullwidth_spaces,
     _suggest_similar,
+    _wrap_text_at,
 )
 
 
@@ -4004,7 +4012,7 @@ struct Command(Copyable, Movable, Writable):
         """
         var s = String("")
         if self.description:
-            s += self.description + "\n\n"
+            s += _wrap_text_at(self.description, _HELP_LINE_WIDTH) + "\n\n"
 
         # Usage line.
         if self._custom_usage:
@@ -4014,6 +4022,10 @@ struct Command(Copyable, Movable, Writable):
         s += header_color + "Usage:" + reset_code + " "
         s += arg_color + self.name + reset_code
 
+        # Collect usage tokens (plain and coloured) for wrapping.
+        var usage_tokens_plain = List[String]()
+        var usage_tokens_colored = List[String]()
+
         # Show positional args in usage line.
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
@@ -4021,9 +4033,15 @@ struct Command(Copyable, Movable, Writable):
                 if self.args[i]._is_remainder:
                     display += "..."
                 if self.args[i]._is_required:
-                    s += " " + arg_color + "<" + display + ">" + reset_code
+                    usage_tokens_plain.append("<" + display + ">")
+                    usage_tokens_colored.append(
+                        arg_color + "<" + display + ">" + reset_code
+                    )
                 else:
-                    s += " " + arg_color + "[" + display + "]" + reset_code
+                    usage_tokens_plain.append("[" + display + "]")
+                    usage_tokens_colored.append(
+                        arg_color + "[" + display + "]" + reset_code
+                    )
 
         # Show <COMMAND> placeholder when subcommands are registered.
         var has_subcommands = False
@@ -4035,9 +4053,47 @@ struct Command(Copyable, Movable, Writable):
                 has_subcommands = True
                 break
         if has_subcommands:
-            s += " " + arg_color + "<COMMAND>" + reset_code
+            usage_tokens_plain.append("<COMMAND>")
+            usage_tokens_colored.append(arg_color + "<COMMAND>" + reset_code)
 
-        s += " " + arg_color + "[OPTIONS]" + reset_code + "\n\n"
+        usage_tokens_plain.append("[OPTIONS]")
+        usage_tokens_colored.append(arg_color + "[OPTIONS]" + reset_code)
+
+        # Build the usage line with wrapping at _HELP_LINE_WIDTH.
+        var prefix_plain = "Usage: " + self.name
+        var prefix_width = _display_width(prefix_plain)
+        var indent = String("")
+        for _ in range(prefix_width):
+            indent += " "
+
+        # Check if everything fits on one line.
+        var total_plain = prefix_plain
+        for ti in range(len(usage_tokens_plain)):
+            total_plain += " " + usage_tokens_plain[ti]
+
+        if _display_width(total_plain) <= _HELP_LINE_WIDTH:
+            # Single line — append coloured tokens directly.
+            for ti in range(len(usage_tokens_colored)):
+                s += " " + usage_tokens_colored[ti]
+        else:
+            # Multi-line: wrap tokens with " \" continuation.
+            var line_width = prefix_width  # current line width (plain)
+            for ti in range(len(usage_tokens_plain)):
+                var tw = _display_width(usage_tokens_plain[ti])
+                # +1 for the preceding space, +2 for " \" if not last token.
+                var is_last = ti == len(usage_tokens_plain) - 1
+                var trail = 0 if is_last else 2  # reserve for " \"
+                if (
+                    line_width + 1 + tw + trail > _HELP_LINE_WIDTH
+                    and line_width > prefix_width
+                ):
+                    # Wrap: end current line, start new indented line.
+                    s += " \\\n" + indent
+                    line_width = prefix_width
+                s += " " + usage_tokens_colored[ti]
+                line_width += 1 + tw
+
+        s += "\n\n"
         return s
 
     def _help_positionals_section(
@@ -4085,23 +4141,24 @@ struct Command(Copyable, Movable, Writable):
                 pos_colors.append(colored)
                 pos_helps.append(self.args[i].help_text)
 
-        var pos_max: Int = 0
-        for k in range(len(pos_plains)):
-            var w = _display_width(pos_plains[k])
-            if w > pos_max:
-                pos_max = w
-        var pos_pad = pos_max + 4
-
         var s = header_color + "Arguments:" + reset_code + "\n"
+        var pos_indices = List[Int]()
         for k in range(len(pos_plains)):
-            var line = pos_colors[k]
-            if pos_helps[k]:
-                # Pad based on plain-text width.
-                var padding = pos_pad - _display_width(pos_plains[k])
-                for _p in range(padding):
-                    line += " "
-                line += pos_helps[k]
-            s += line + "\n"
+            pos_indices.append(k)
+        var pos_layout = _section_desc_layout(pos_plains, pos_indices)
+        var pos_ds = pos_layout[0]
+        var pos_dw = pos_layout[1]
+        for k in range(len(pos_plains)):
+            s += (
+                _format_two_column_line(
+                    pos_colors[k],
+                    pos_plains[k],
+                    pos_helps[k],
+                    pos_ds,
+                    pos_dw,
+                )
+                + "\n"
+            )
         s += "\n"
         return s
 
@@ -4309,24 +4366,26 @@ struct Command(Copyable, Movable, Writable):
         opt_helps.append(String("Show version"))
         if self._completions_enabled and not self._completions_is_subcommand:
             var comp_plain = String(
-                "  --" + self._completions_name + " {bash,zsh,fish}"
+                "      --" + self._completions_name + " <SHELL>"
             )
             var comp_colored = (
-                "  "
+                "      "
                 + arg_color
                 + "--"
                 + self._completions_name
                 + reset_code
                 + " "
                 + arg_color
-                + "{bash,zsh,fish}"
+                + "<SHELL>"
                 + reset_code
             )
             opt_plains.append(comp_plain)
             opt_colors.append(comp_colored)
             opt_persistent.append(False)
             opt_groups.append(String(""))
-            opt_helps.append(String("Generate shell completion script"))
+            opt_helps.append(
+                String("Generate shell completion (bash, zsh, fish)")
+            )
 
         # Check if there are any persistent (global) options.
         var has_global = False
@@ -4347,76 +4406,76 @@ struct Command(Copyable, Movable, Writable):
                 if not found:
                     group_names.append(opt_groups[k])
 
-        # --- Helper: compute max display width for a subset of options ---
-        def _section_pad(
-            plains: List[String],
-            persistent: List[Bool],
-            groups: List[String],
-            want_persistent: Bool,
-            want_group: String,
-        ) -> Int:
-            var mx: Int = 0
-            for idx in range(len(plains)):
-                if persistent[idx] != want_persistent:
-                    continue
-                if groups[idx] != want_group:
-                    continue
-                var w = _display_width(plains[idx])
-                if w > mx:
-                    mx = w
-            return mx + 4
+        # --- Per-section dynamic padding (capped at _HELP_OPT_WIDTH) ---
 
         # --- Ungrouped local options (Options:) ---
-        var ungrouped_pad = _section_pad(
-            opt_plains, opt_persistent, opt_groups, False, String("")
-        )
-        var s = header_color + "Options:" + reset_code + "\n"
+        var ungrouped_idx = List[Int]()
         for k in range(len(opt_plains)):
             if not opt_persistent[k] and not opt_groups[k]:
-                var line = opt_colors[k]
-                if opt_helps[k]:
-                    var padding = ungrouped_pad - _display_width(opt_plains[k])
-                    for _p in range(padding):
-                        line += " "
-                    line += opt_helps[k]
-                s += line + "\n"
+                ungrouped_idx.append(k)
+        var ug_layout = _section_desc_layout(opt_plains, ungrouped_idx)
+        var ug_ds = ug_layout[0]
+        var ug_dw = ug_layout[1]
+        var s = header_color + "Options:" + reset_code + "\n"
+        for ki in range(len(ungrouped_idx)):
+            var k = ungrouped_idx[ki]
+            s += (
+                _format_two_column_line(
+                    opt_colors[k],
+                    opt_plains[k],
+                    opt_helps[k],
+                    ug_ds,
+                    ug_dw,
+                )
+                + "\n"
+            )
 
         # --- Grouped local options (one section per group) ---
         for g in range(len(group_names)):
             var gname = group_names[g]
-            var gpad = _section_pad(
-                opt_plains, opt_persistent, opt_groups, False, gname
-            )
-            s += "\n" + header_color + gname + ":" + reset_code + "\n"
+            var grp_idx = List[Int]()
             for k in range(len(opt_plains)):
                 if not opt_persistent[k] and opt_groups[k] == gname:
-                    var line = opt_colors[k]
-                    if opt_helps[k]:
-                        var padding = gpad - _display_width(opt_plains[k])
-                        for _p in range(padding):
-                            line += " "
-                        line += opt_helps[k]
-                    s += line + "\n"
+                    grp_idx.append(k)
+            var g_layout = _section_desc_layout(opt_plains, grp_idx)
+            var g_ds = g_layout[0]
+            var g_dw = g_layout[1]
+            s += "\n" + header_color + gname + ":" + reset_code + "\n"
+            for ki in range(len(grp_idx)):
+                var k = grp_idx[ki]
+                s += (
+                    _format_two_column_line(
+                        opt_colors[k],
+                        opt_plains[k],
+                        opt_helps[k],
+                        g_ds,
+                        g_dw,
+                    )
+                    + "\n"
+                )
 
         # Global (persistent) options — shown under a separate heading.
         if has_global:
-            var global_max: Int = 0
+            var gl_idx = List[Int]()
             for k in range(len(opt_plains)):
                 if opt_persistent[k]:
-                    var w = _display_width(opt_plains[k])
-                    if w > global_max:
-                        global_max = w
-            var global_pad = global_max + 4
+                    gl_idx.append(k)
+            var gl_layout = _section_desc_layout(opt_plains, gl_idx)
+            var gl_ds = gl_layout[0]
+            var gl_dw = gl_layout[1]
             s += "\n" + header_color + "Global Options:" + reset_code + "\n"
-            for k in range(len(opt_plains)):
-                if opt_persistent[k]:
-                    var line = opt_colors[k]
-                    if opt_helps[k]:
-                        var padding = global_pad - _display_width(opt_plains[k])
-                        for _p in range(padding):
-                            line += " "
-                        line += opt_helps[k]
-                    s += line + "\n"
+            for ki in range(len(gl_idx)):
+                var k = gl_idx[ki]
+                s += (
+                    _format_two_column_line(
+                        opt_colors[k],
+                        opt_plains[k],
+                        opt_helps[k],
+                        gl_ds,
+                        gl_dw,
+                    )
+                    + "\n"
+                )
 
         return s
 
@@ -4476,24 +4535,26 @@ struct Command(Copyable, Movable, Writable):
             cmd_plains.append(plain)
             cmd_colors.append(colored)
             cmd_helps.append(
-                String("Generate shell completion script (bash, zsh, fish)")
+                String("Generate shell completion (bash, zsh, fish)")
             )
-        # Compute padding.
-        var cmd_max: Int = 0
+        var cmd_indices = List[Int]()
         for k in range(len(cmd_plains)):
-            var w = _display_width(cmd_plains[k])
-            if w > cmd_max:
-                cmd_max = w
-        var cmd_pad = cmd_max + 4
+            cmd_indices.append(k)
+        var cmd_layout = _section_desc_layout(cmd_plains, cmd_indices)
+        var cmd_ds = cmd_layout[0]
+        var cmd_dw = cmd_layout[1]
         var s = "\n" + header_color + "Commands:" + reset_code + "\n"
         for k in range(len(cmd_plains)):
-            var line = cmd_colors[k]
-            if cmd_helps[k]:
-                var padding = cmd_pad - _display_width(cmd_plains[k])
-                for _p in range(padding):
-                    line += " "
-                line += cmd_helps[k]
-            s += line + "\n"
+            s += (
+                _format_two_column_line(
+                    cmd_colors[k],
+                    cmd_plains[k],
+                    cmd_helps[k],
+                    cmd_ds,
+                    cmd_dw,
+                )
+                + "\n"
+            )
 
         return s
 
@@ -4838,8 +4899,7 @@ struct Command(Copyable, Movable, Writable):
             The escaped text with ``'`` replaced by ``\\'``.
         """
         var result = String("")
-        for i in range(len(text)):
-            var ch = text[byte = i : i + 1]
+        for ch in text.codepoint_slices():
             if ch == "'":
                 result += "\\'"
             else:
@@ -5076,16 +5136,15 @@ struct Command(Copyable, Movable, Writable):
             The escaped text.
         """
         var result = String("")
-        for i in range(len(text)):
-            var ch = text[byte = i : i + 1]
+        for ch in text.codepoint_slices():
             if ch == "[" or ch == "]":
-                result += "\\" + ch
+                result += "\\" + String(ch)
             elif ch == "'":
                 result += "'\"'\"'"
             elif ch == ":":
                 result += "\\:"
             else:
-                result += ch
+                result += String(ch)
         return result
 
     def _completion_bash(self) -> String:

@@ -730,8 +730,8 @@ def test_completions_in_help_by_default() raises:
         msg="Help text should include --completions by default",
     )
     assert_true(
-        "bash,zsh,fish" in help_text or "{bash,zsh,fish}" in help_text,
-        msg="Help text should show shell choices for --completions",
+        "<SHELL>" in help_text,
+        msg="Help text should show <SHELL> placeholder for --completions",
     )
 
 
@@ -841,8 +841,8 @@ def test_completions_as_subcommand_in_fish() raises:
     assert_false(
         "-l completions" in fish,
         msg=(
-            "Fish script should NOT have '-l completions' option"
-            " in subcommand mode"
+            "Fish script should NOT have '-l completions' option in subcommand"
+            " mode"
         ),
     )
     # Should appear as a subcommand candidate.
@@ -890,8 +890,8 @@ def test_completions_as_subcommand_in_bash() raises:
     assert_false(
         " --completions" in bash,
         msg=(
-            "Bash script should NOT list '--completions' option"
-            " in subcommand mode"
+            "Bash script should NOT list '--completions' option in subcommand"
+            " mode"
         ),
     )
     # Subcommand names should include completions.

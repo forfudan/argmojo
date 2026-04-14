@@ -22,6 +22,16 @@ comptime _DEFAULT_ARG_COLOR = _MAGENTA
 comptime _DEFAULT_WARN_COLOR = _ORANGE
 comptime _DEFAULT_ERROR_COLOR = _RED
 
+# ── Help formatting layout constants ─────────────────────────────────────────
+# Fixed layout values for the two-column help formatter, optimized for
+# readable output on standard 80-column terminals.
+# Per-section layout: INDENT + min(longest, OPT_WIDTH) + GAP + desc + TRAIL = LINE_WIDTH
+comptime _HELP_LINE_WIDTH: Int = 80
+comptime _HELP_INDENT: Int = 2
+comptime _HELP_OPT_WIDTH: Int = 32
+comptime _HELP_GAP: Int = 2
+comptime _HELP_TRAIL: Int = 2
+
 
 # ── Utility functions ────────────────────────────────────────────────────────
 
@@ -188,6 +198,169 @@ def _display_width(s: String) -> Int:
         else:
             width += 1
     return width
+
+
+def _wrap_text_at(text: String, max_width: Int) -> String:
+    """Word-wrap plain text so no line exceeds *max_width* columns.
+
+    Splits on whitespace; preserves explicit ``\\n`` line breaks.
+
+    Args:
+        text: The text to wrap.
+        max_width: Maximum terminal columns per line.
+
+    Returns:
+        The wrapped text string.
+    """
+    if not text:
+        return ""
+    var result = String("")
+    var paragraphs = text.split("\n")
+    for pi in range(len(paragraphs)):
+        if pi > 0:
+            result += "\n"
+        var paragraph = String(paragraphs[pi])
+        var words = paragraph.split(" ")
+        var current_width = 0
+        var first_word = True
+        for wi in range(len(words)):
+            var word = String(words[wi])
+            if not word:
+                continue
+            var ww = _display_width(word)
+            if first_word:
+                result += word
+                current_width = ww
+                first_word = False
+            elif current_width + 1 + ww <= max_width:
+                result += " " + word
+                current_width += 1 + ww
+            else:
+                result += "\n" + word
+                current_width = ww
+    return result
+
+
+def _wrap_description(text: String, desc_width: Int, align_col: Int) -> String:
+    """Word-wrap a description for the two-column help layout.
+
+    Handles explicit ``\\n`` in *text* as forced line breaks.  Each
+    continuation line is indented to *align_col* columns.
+
+    Args:
+        text: The description text (may contain newlines).
+        desc_width: Maximum width for description text.
+        align_col: Column position where description starts.
+
+    Returns:
+        The wrapped description.  The first segment has **no** leading
+        indent (the caller positions it); continuation lines begin with
+        *align_col* spaces.
+    """
+    if not text:
+        return ""
+    var align = String("")
+    for _ in range(align_col):
+        align += " "
+    var result = String("")
+    var paragraphs = text.split("\n")
+    for pi in range(len(paragraphs)):
+        if pi > 0:
+            result += "\n" + align
+        var paragraph = String(paragraphs[pi])
+        var words = paragraph.split(" ")
+        var current_width = 0
+        var first_word = True
+        for wi in range(len(words)):
+            var word = String(words[wi])
+            if not word:
+                continue
+            var ww = _display_width(word)
+            if first_word:
+                result += word
+                current_width = ww
+                first_word = False
+            elif current_width + 1 + ww <= desc_width:
+                result += " " + word
+                current_width += 1 + ww
+            else:
+                result += "\n" + align + word
+                current_width = ww
+    return result
+
+
+def _section_desc_layout(
+    plains: List[String],
+    indices: List[Int],
+) -> Tuple[Int, Int]:
+    """Compute description start column and width for a help section.
+
+    Finds the longest option in the section (by display width, minus
+    indent).  The option column is capped at ``_HELP_OPT_WIDTH``.
+
+    Args:
+        plains: All plain-text option strings in the parent list.
+        indices: Indices into *plains* that belong to this section.
+
+    Returns:
+        A tuple ``(desc_start, desc_width)``.
+    """
+    var mx: Int = 0
+    for i in range(len(indices)):
+        var w = _display_width(plains[indices[i]]) - _HELP_INDENT
+        if w > mx:
+            mx = w
+    var capped = mx if mx <= _HELP_OPT_WIDTH else _HELP_OPT_WIDTH
+    var desc_start = _HELP_INDENT + capped + _HELP_GAP
+    var desc_width = _HELP_LINE_WIDTH - desc_start - _HELP_TRAIL
+    return (desc_start, desc_width)
+
+
+def _format_two_column_line(
+    colored: String,
+    plain: String,
+    help_text: String,
+    desc_start: Int,
+    desc_width: Int,
+) -> String:
+    """Format a single two-column help line.
+
+    If the option text (after indent) exceeds the section's effective
+    option column, the description is placed on the next line, aligned
+    at *desc_start*.
+
+    Args:
+        colored: The option text with ANSI colour codes.
+        plain: The option text without colour (for width measurement).
+        help_text: The description text.
+        desc_start: Column where descriptions begin.
+        desc_width: Maximum width for the description.
+
+    Returns:
+        One or more lines of formatted text (no trailing newline).
+    """
+    var line = colored
+
+    if not help_text:
+        return line
+
+    var wrapped_desc = _wrap_description(help_text, desc_width, desc_start)
+    var plain_width = _display_width(plain)
+
+    if desc_start - plain_width < _HELP_GAP:
+        # Option overflows — description on next line.
+        var align = String("")
+        for _ in range(desc_start):
+            align += " "
+        line += "\n" + align + wrapped_desc
+    else:
+        # Pad to description start position.
+        var padding = desc_start - plain_width
+        for _ in range(padding):
+            line += " "
+        line += wrapped_desc
+
+    return line
 
 
 def _looks_like_number(token: String) -> Bool:

@@ -1109,8 +1109,16 @@ def test_help_deprecated_tag() raises:
 
     var help = command._generate_help(color=False)
     assert_true(
-        "[deprecated: Use --new instead]" in help,
-        msg="help should contain deprecated tag",
+        "[deprecated:" in help,
+        msg="help should contain deprecated tag opening",
+    )
+    assert_true(
+        "--new" in help,
+        msg="help should reference replacement option",
+    )
+    assert_true(
+        "instead]" in help,
+        msg="help should contain deprecated message closing",
     )
 
 
