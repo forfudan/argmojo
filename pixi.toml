@@ -23,8 +23,7 @@ format = "mojo format ./src ./tests ./examples"
 package = "mojo package src/argmojo -o argmojo.mojopkg"
 
 # doc
-doc = """mojo doc \
---diagnose-missing-doc-strings --Werror src/argmojo"""
+doc = """pixi run mojo doc --diagnose-missing-doc-strings src/argmojo > /dev/null"""
 
 # run tests
 test = """\

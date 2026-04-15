@@ -938,8 +938,8 @@ def test_unknown_subcommand_error_no_positionals() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "unrecognized command" in msg,
-            msg="Should mention unrecognized command",
+            "unrecognized subcommand" in msg,
+            msg="Should mention unrecognized subcommand",
         )
         assert_true("foo" in msg, msg="Should mention 'foo'")
     assert_true(caught, msg="Should have raised for unknown subcommand")
@@ -999,10 +999,10 @@ def test_unknown_subcommand_error_excludes_help_sub() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "unrecognized command" in msg,
-            msg="Should mention unrecognized command",
+            "unrecognized subcommand" in msg,
+            msg="Should mention unrecognized subcommand",
         )
-        # The error message now only contains the unrecognized command name,
+        # The error message now only contains the unrecognized subcommand name,
         # not an "Available commands:" list, so 'help' cannot leak.
         assert_false(
             "help" in msg,

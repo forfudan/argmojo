@@ -5,6 +5,7 @@ from std.ffi import external_call
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
 comptime _BOLD_UL = "\x1b[1;4m"  # bold + underline (no colour)
+comptime _UNDERLINE = "\x1b[4m"  # underline only (no bold, no colour)
 
 # Bright foreground colours.
 comptime _RED = "\x1b[91m"
@@ -37,15 +38,49 @@ comptime _DEFAULT_POSITIONAL_COLOR = _BOLD_GREEN
 comptime _DEFAULT_COMMAND_COLOR = _BOLD_CYAN
 
 # ── Help formatting layout constants ─────────────────────────────────────────
-# Fixed layout values for the two-column help formatter.
-# Aligned with Python argparse defaults (max_help_position=24):
+# Aligned with Python argparse defaults (max_help_position=24, width=columns-2).
 # INDENT + min(longest, OPT_WIDTH) + GAP gives a maximum description
 # start column of 28, close to argparse's default of 24.
-comptime _HELP_LINE_WIDTH: Int = 80
 comptime _HELP_INDENT: Int = 2
 comptime _HELP_OPT_WIDTH: Int = 24
 comptime _HELP_GAP: Int = 2
 comptime _HELP_TRAIL: Int = 2
+
+# TIOCGWINSZ ioctl number (platform-specific).
+comptime _TIOCGWINSZ_MACOS: Int = 0x40087468
+comptime _TIOCGWINSZ_LINUX: Int = 0x5413
+
+
+def _help_line_width() -> Int:
+    """Returns the help line width: ``min(terminal_columns - 2, 120)``.
+
+    Queries the terminal via ``ioctl(TIOCGWINSZ)`` on stdout (fd 1).
+    Falls back to 80 if the terminal width cannot be determined.
+    The result is clamped to [40, 120] and then reduced by 2
+    (matching argparse's ``width = columns - 2``).
+    """
+    # struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; }
+    # = 8 bytes total.  We only need ws_col (bytes 2-3).
+    var buf = List[UInt8](length=8, fill=0)
+    var ptr = buf.unsafe_ptr()
+    # Try macOS ioctl number first, then Linux.
+    var rc = external_call["ioctl", Int, Int, Int, Int](
+        1, _TIOCGWINSZ_MACOS, Int(ptr)
+    )
+    if rc != 0:
+        rc = external_call["ioctl", Int, Int, Int, Int](
+            1, _TIOCGWINSZ_LINUX, Int(ptr)
+        )
+    if rc == 0:
+        # ws_col is at offset 2 (little-endian unsigned short).
+        var cols = Int(buf[2]) | (Int(buf[3]) << 8)
+        if cols > 0:
+            var clamped = cols if cols >= 40 else 40
+            if clamped > 120:
+                clamped = 120
+            return clamped - 2
+
+    return 80  # ultimate fallback
 
 
 # ── Utility functions ────────────────────────────────────────────────────────
@@ -307,6 +342,7 @@ def _wrap_description(text: String, desc_width: Int, align_col: Int) -> String:
 def _section_desc_layout(
     plains: List[String],
     indices: List[Int],
+    line_width: Int = 0,
 ) -> Tuple[Int, Int]:
     """Compute description start column and width for a help section.
 
@@ -316,10 +352,12 @@ def _section_desc_layout(
     Args:
         plains: All plain-text option strings in the parent list.
         indices: Indices into *plains* that belong to this section.
+        line_width: Total line width (0 = auto-detect via terminal).
 
     Returns:
         A tuple ``(desc_start, desc_width)``.
     """
+    var w_line = line_width if line_width > 0 else _help_line_width()
     var mx: Int = 0
     for i in range(len(indices)):
         var w = _display_width(plains[indices[i]]) - _HELP_INDENT
@@ -327,7 +365,7 @@ def _section_desc_layout(
             mx = w
     var capped = mx if mx <= _HELP_OPT_WIDTH else _HELP_OPT_WIDTH
     var desc_start = _HELP_INDENT + capped + _HELP_GAP
-    var desc_width = _HELP_LINE_WIDTH - desc_start - _HELP_TRAIL
+    var desc_width = w_line - desc_start - _HELP_TRAIL
     return (desc_start, desc_width)
 
 

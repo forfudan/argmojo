@@ -1303,8 +1303,8 @@ def test_typo_hidden_subcommand_not_suggested() raises:
     # But the error message no longer contains available commands (they are
     # printed to stderr in multi-line format instead).
     assert_true(
-        "unrecognized command" in err_msg,
-        msg="Should mention unrecognized command",
+        "unrecognized subcommand" in err_msg,
+        msg="Should mention unrecognized subcommand",
     )
     assert_true(
         "debu" in err_msg,

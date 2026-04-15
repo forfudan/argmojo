@@ -11,6 +11,7 @@ from .utils import (
     _BOLD_UL,
     _BOLD_YELLOW,
     _BOLD_CYAN,
+    _UNDERLINE,
     _DEFAULT_HEADER_COLOR,
     _DEFAULT_ARGUMENT_COLOR,
     _DEFAULT_WARN_COLOR,
@@ -21,7 +22,7 @@ from .utils import (
     _DEFAULT_VALUE_COLOR,
     _DEFAULT_POSITIONAL_COLOR,
     _DEFAULT_COMMAND_COLOR,
-    _HELP_LINE_WIDTH,
+    _help_line_width,
     _HELP_INDENT,
     _HELP_OPT_WIDTH,
     _HELP_GAP,
@@ -1990,11 +1991,11 @@ struct Command(Copyable, Movable, Writable):
     def _plain_usage(self) -> String:
         """Returns a plain-text usage line (no ANSI colours).
 
-        Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
+        Example output: ``usage: git clone <repository> [directory] [OPTIONS]``
         """
         if self._custom_usage:
-            return String("Usage: ") + self._custom_usage
-        var s = String("Usage: ") + self.name
+            return String("usage: ") + self._custom_usage
+        var s = String("usage: ") + self.name
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
                 var display = self.args[i].name
@@ -2015,6 +2016,49 @@ struct Command(Copyable, Movable, Writable):
         if has_subcommands:
             s += " <COMMAND>"
         s += " [OPTIONS]"
+        return s
+
+    def _colored_usage(self) -> String:
+        """Returns a coloured usage line for error output.
+
+        Uses the same colour scheme as help output.  Falls back to
+        plain usage when ``NO_COLOR`` is set.
+
+        Example output: ``usage: prog <COMMAND> [OPTIONS]`` with colours.
+        """
+        if Self._no_color_env():
+            return self._plain_usage()
+
+        var hc = self._header_color
+        var pc = self._prog_color
+        var vc = self._value_color
+        var lc = self._long_opt_color
+        var rc = _RESET
+
+        if self._custom_usage:
+            return hc + "usage:" + rc + " " + self._custom_usage
+
+        var s = hc + "usage:" + rc + " " + pc + self.name + rc
+        for i in range(len(self.args)):
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                var display = self.args[i].name
+                if self.args[i]._is_remainder:
+                    display += "..."
+                if self.args[i]._is_required:
+                    s += " " + vc + "<" + display + ">" + rc
+                else:
+                    s += " " + vc + "[" + display + "]" + rc
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " " + vc + "<COMMAND>" + rc
+        s += " " + lc + "[OPTIONS]" + rc
         return s
 
     # ===------------------------------------------------------------------=== #
@@ -3191,54 +3235,62 @@ struct Command(Copyable, Movable, Writable):
                             )
                 var suggestion = _suggest_similar(arg, sub_names)
 
-                # Multi-line error (pixi / argparse style):
-                #   error: prog: unrecognized command 'foo'
+                # Multi-line error (pixi style):
+                #   error: unrecognized subcommand 'foo'
                 #
-                #     tip: a similar command exists: 'bar'
+                #     tip: a similar subcommand exists: 'bar'
                 #
-                #   Usage: prog <COMMAND> [OPTIONS]
-                var err_msg = "unrecognized command '" + arg + "'"
+                #   usage: prog <COMMAND> [OPTIONS]
+                var err_msg = "unrecognized subcommand '" + arg + "'"
                 if suggestion:
                     err_msg += ". Did you mean '" + suggestion + "'?"
                 if Self._no_color_env():
                     print(
-                        "error: " + self.name + ": " + err_msg,
+                        "error: " + err_msg,
                         file=stderr,
                     )
                     if suggestion:
                         print(file=stderr)
                         print(
-                            "  tip: a similar command exists: '"
+                            "  tip: a similar subcommand exists: '"
                             + suggestion
                             + "'",
                             file=stderr,
                         )
                 else:
+                    # error: unrecognized subcommand 'foo'
+                    # "error:" in red, message in plain, bad arg in red.
                     print(
                         self._error_color
-                        + "error: "
-                        + self.name
-                        + ": "
-                        + err_msg
-                        + _RESET,
+                        + "error:"
+                        + _RESET
+                        + " unrecognized subcommand '"
+                        + self._error_color
+                        + arg
+                        + _RESET
+                        + "'",
                         file=stderr,
                     )
                     if suggestion:
                         print(file=stderr)
+                        #   tip: a similar subcommand exists: 'build'
+                        # "tip:" underlined, suggestion underlined.
                         print(
                             "  "
                             + _BOLD_YELLOW
-                            + "tip: "
+                            + _UNDERLINE
+                            + "tip:"
                             + _RESET
-                            + "a similar command exists: '"
-                            + _BOLD_CYAN
+                            + " a similar subcommand exists: '"
+                            + _BOLD_YELLOW
+                            + _UNDERLINE
                             + suggestion
                             + _RESET
                             + "'",
                             file=stderr,
                         )
                 print(file=stderr)
-                print(self._plain_usage(), file=stderr)
+                print(self._colored_usage(), file=stderr)
                 raise Error(err_msg)
             return -1
 
@@ -4133,6 +4185,9 @@ struct Command(Copyable, Movable, Writable):
         var command_color = self._cmd_color if use_color else ""
         var reset_code = _RESET if use_color else ""
 
+        # Dynamic line width (terminal columns − 2, capped at 120).
+        var line_width = _help_line_width()
+
         var s = String("")
         s += self._help_usage_line(
             program_color,
@@ -4142,12 +4197,14 @@ struct Command(Copyable, Movable, Writable):
             positional_color,
             header_color,
             reset_code,
+            line_width,
         )
         s += self._help_positionals_section(
             positional_color,
             value_color,
             header_color,
             reset_code,
+            line_width,
         )
         s += self._help_options_section(
             short_option_color,
@@ -4155,9 +4212,13 @@ struct Command(Copyable, Movable, Writable):
             value_color,
             header_color,
             reset_code,
+            line_width,
         )
         s += self._help_commands_section(
-            command_color, header_color, reset_code
+            command_color,
+            header_color,
+            reset_code,
+            line_width,
         )
         s += self._help_tips_section(header_color, reset_code)
         return s
@@ -4171,6 +4232,7 @@ struct Command(Copyable, Movable, Writable):
         positional_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
         """Generates the description and usage line of help output.
 
@@ -4182,20 +4244,22 @@ struct Command(Copyable, Movable, Writable):
             positional_color: ANSI colour code for positional arg names in summary.
             header_color: ANSI colour code for section headers (empty if colour off).
             reset_code: ANSI reset code (empty if colour off).
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The description (if any) and usage line string.
         """
+        var w_line = line_width if line_width > 0 else _help_line_width()
         var s = String("")
         if self.description:
-            s += _wrap_text_at(self.description, _HELP_LINE_WIDTH) + "\n\n"
+            s += _wrap_text_at(self.description, w_line) + "\n\n"
 
         # Usage line.
         if self._custom_usage:
-            s += header_color + "Usage:" + reset_code + " "
+            s += header_color + "usage:" + reset_code + " "
             s += self._custom_usage + "\n\n"
             return s
-        s += header_color + "Usage:" + reset_code + " "
+        s += header_color + "usage:" + reset_code + " "
         s += program_color + self.name + reset_code
 
         # Collect usage tokens (plain and coloured) for wrapping.
@@ -4239,7 +4303,7 @@ struct Command(Copyable, Movable, Writable):
             long_option_color + "[OPTIONS]" + reset_code
         )
 
-        # Build the usage line with wrapping at _HELP_LINE_WIDTH.
+        # Build the usage line with wrapping at the detected line width.
         var prefix_plain = "usage: " + self.name
         var prefix_width = _display_width(prefix_plain)
         var indent = String("")
@@ -4251,27 +4315,27 @@ struct Command(Copyable, Movable, Writable):
         for ti in range(len(usage_tokens_plain)):
             total_plain += " " + usage_tokens_plain[ti]
 
-        if _display_width(total_plain) <= _HELP_LINE_WIDTH:
+        if _display_width(total_plain) <= w_line:
             # Single line — append coloured tokens directly.
             for ti in range(len(usage_tokens_colored)):
                 s += " " + usage_tokens_colored[ti]
         else:
             # Multi-line: wrap tokens with " \" continuation.
-            var line_width = prefix_width  # current line width (plain)
+            var cur_width = prefix_width  # current line width (plain)
             for ti in range(len(usage_tokens_plain)):
                 var tw = _display_width(usage_tokens_plain[ti])
                 # +1 for the preceding space, +2 for " \" if not last token.
                 var is_last = ti == len(usage_tokens_plain) - 1
                 var trail = 0 if is_last else 2  # reserve for " \"
                 if (
-                    line_width + 1 + tw + trail > _HELP_LINE_WIDTH
-                    and line_width > prefix_width
+                    cur_width + 1 + tw + trail > w_line
+                    and cur_width > prefix_width
                 ):
                     # Wrap: end current line, start new indented line.
                     s += " \\\n" + indent
-                    line_width = prefix_width
+                    cur_width = prefix_width
                 s += " " + usage_tokens_colored[ti]
-                line_width += 1 + tw
+                cur_width += 1 + tw
 
         s += "\n\n"
         return s
@@ -4282,8 +4346,9 @@ struct Command(Copyable, Movable, Writable):
         value_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Arguments:' section listing positional arguments.
+        """Generates the 'arguments:' section listing positional arguments.
 
         Uses a two-pass approach: first collects plain and coloured text
         to compute dynamic column padding, then assembles the final lines.
@@ -4294,6 +4359,7 @@ struct Command(Copyable, Movable, Writable):
                 but kept for signature consistency).
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The positional arguments section, or empty string if none.
@@ -4324,11 +4390,13 @@ struct Command(Copyable, Movable, Writable):
                 pos_colors.append(colored)
                 pos_helps.append(self.args[i].help_text)
 
-        var s = header_color + "Arguments:" + reset_code + "\n"
+        var s = header_color + "arguments:" + reset_code + "\n"
         var pos_indices = List[Int]()
         for k in range(len(pos_plains)):
             pos_indices.append(k)
-        var pos_layout = _section_desc_layout(pos_plains, pos_indices)
+        var pos_layout = _section_desc_layout(
+            pos_plains, pos_indices, line_width
+        )
         var pos_ds = pos_layout[0]
         var pos_dw = pos_layout[1]
         for k in range(len(pos_plains)):
@@ -4352,8 +4420,9 @@ struct Command(Copyable, Movable, Writable):
         value_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Options:', group, and 'Global Options:' sections.
+        """Generates the 'options:', group, and 'global options:' sections.
 
         Separates local options from persistent (global) options and
         displays them under distinct headings.  Options with a ``.group()``
@@ -4366,6 +4435,7 @@ struct Command(Copyable, Movable, Writable):
             value_color: ANSI colour code for value names / metavar.
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The options section string.
@@ -4521,7 +4591,7 @@ struct Command(Copyable, Movable, Writable):
                     help += "[deprecated: " + self.args[i]._deprecated_msg + "]"
                 opt_helps.append(help)
 
-        # Built-in options (always shown under local ungrouped "Options:" section).
+        # Built-in options (always shown under local ungrouped "options:" section).
         var help_plain = String("  -h, --help")
         var help_colored = (
             "  "
@@ -4598,15 +4668,17 @@ struct Command(Copyable, Movable, Writable):
 
         # --- Per-section dynamic padding (capped at _HELP_OPT_WIDTH) ---
 
-        # --- Ungrouped local options (Options:) ---
+        # --- Ungrouped local options (options:) ---
         var ungrouped_idx = List[Int]()
         for k in range(len(opt_plains)):
             if not opt_persistent[k] and not opt_groups[k]:
                 ungrouped_idx.append(k)
-        var ug_layout = _section_desc_layout(opt_plains, ungrouped_idx)
+        var ug_layout = _section_desc_layout(
+            opt_plains, ungrouped_idx, line_width
+        )
         var ug_ds = ug_layout[0]
         var ug_dw = ug_layout[1]
-        var s = header_color + "Options:" + reset_code + "\n"
+        var s = header_color + "options:" + reset_code + "\n"
         for ki in range(len(ungrouped_idx)):
             var k = ungrouped_idx[ki]
             s += (
@@ -4627,7 +4699,7 @@ struct Command(Copyable, Movable, Writable):
             for k in range(len(opt_plains)):
                 if not opt_persistent[k] and opt_groups[k] == gname:
                     grp_idx.append(k)
-            var g_layout = _section_desc_layout(opt_plains, grp_idx)
+            var g_layout = _section_desc_layout(opt_plains, grp_idx, line_width)
             var g_ds = g_layout[0]
             var g_dw = g_layout[1]
             s += "\n" + header_color + gname + ":" + reset_code + "\n"
@@ -4650,10 +4722,10 @@ struct Command(Copyable, Movable, Writable):
             for k in range(len(opt_plains)):
                 if opt_persistent[k]:
                     gl_idx.append(k)
-            var gl_layout = _section_desc_layout(opt_plains, gl_idx)
+            var gl_layout = _section_desc_layout(opt_plains, gl_idx, line_width)
             var gl_ds = gl_layout[0]
             var gl_dw = gl_layout[1]
-            s += "\n" + header_color + "Global Options:" + reset_code + "\n"
+            s += "\n" + header_color + "global options:" + reset_code + "\n"
             for ki in range(len(gl_idx)):
                 var k = gl_idx[ki]
                 s += (
@@ -4674,13 +4746,15 @@ struct Command(Copyable, Movable, Writable):
         command_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Commands:' section listing registered subcommands.
+        """Generates the 'commands:' section listing registered subcommands.
 
         Args:
             command_color: ANSI colour code for subcommand names.
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The commands section string, or empty string if no subcommands.
@@ -4730,10 +4804,12 @@ struct Command(Copyable, Movable, Writable):
         var cmd_indices = List[Int]()
         for k in range(len(cmd_plains)):
             cmd_indices.append(k)
-        var cmd_layout = _section_desc_layout(cmd_plains, cmd_indices)
+        var cmd_layout = _section_desc_layout(
+            cmd_plains, cmd_indices, line_width
+        )
         var cmd_ds = cmd_layout[0]
         var cmd_dw = cmd_layout[1]
-        var s = "\n" + header_color + "Commands:" + reset_code + "\n"
+        var s = "\n" + header_color + "commands:" + reset_code + "\n"
         for k in range(len(cmd_plains)):
             s += (
                 _format_two_column_line(
@@ -4819,7 +4895,7 @@ struct Command(Copyable, Movable, Writable):
         if len(tip_lines) == 0:
             return ""
 
-        var s = "\n" + header_color + "Tips:" + reset_code + "\n"
+        var s = "\n" + header_color + "tips:" + reset_code + "\n"
         for _ti in range(len(tip_lines)):
             s += "  " + tip_lines[_ti] + "\n"
         return s
