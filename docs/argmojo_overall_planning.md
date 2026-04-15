@@ -587,6 +587,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Extend `implies()`** - support value-taking options with a default value, e.g., `cmd.implies("debug", "output", "debug.log")` — when `--debug` is set, auto-set `--output` to `"debug.log"`. Currently `implies()` only supports flag/count targets (same as cobra in Go). Revisit when there is a concrete use case.
 - [x] **80-character help formatting** — wrap help descriptions at 80 columns with proper indentation (no major library does this by default; users typically pipe through `less` or rely on terminal wrapping)
 - [ ] **Comptime string concatenation** — 將 String 的拼接 comptime 化，避免在運行時進行多次拼接（例如錯誤消息、幫助文本等），提升性能。
+- [ ] **Even more beautiful and colourful help output** — add more colour options (e.g., `argparse` provides different colours for option short, long, and value names). Maybe also make the formatting of the help text to be closer to that of `argparse` so Python users feel more at home. Nevertheless, the main theme colours should be purple~pink and yellow~orange. 讓幫助信息不僅實用，還賞心悦目！
 
 #### Explicitly Out of Scope in This Phase
 

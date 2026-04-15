@@ -16,11 +16,25 @@ comptime _CYAN = "\x1b[96m"
 comptime _WHITE = "\x1b[97m"
 comptime _ORANGE = "\x1b[33m"  # dark yellow — renders as orange on most terminals
 
+# Bold foreground colours (for argparse-like detailed help coloring).
+comptime _BOLD_GREEN = "\x1b[1;32m"
+comptime _BOLD_CYAN = "\x1b[1;36m"
+comptime _BOLD_YELLOW = "\x1b[1;33m"
+comptime _BOLD_MAGENTA = "\x1b[1;35m"
+
 # Default colours.
 comptime _DEFAULT_HEADER_COLOR = _YELLOW
 comptime _DEFAULT_ARG_COLOR = _MAGENTA
 comptime _DEFAULT_WARN_COLOR = _ORANGE
 comptime _DEFAULT_ERROR_COLOR = _RED
+
+# Default colours for detailed help fields (argparse-like differentiation).
+comptime _DEFAULT_PROG_COLOR = _BOLD_MAGENTA
+comptime _DEFAULT_SHORT_OPT_COLOR = _BOLD_GREEN
+comptime _DEFAULT_LONG_OPT_COLOR = _BOLD_CYAN
+comptime _DEFAULT_VALUE_COLOR = _BOLD_YELLOW
+comptime _DEFAULT_POS_COLOR = _BOLD_GREEN
+comptime _DEFAULT_CMD_COLOR = _BOLD_CYAN
 
 # ── Help formatting layout constants ─────────────────────────────────────────
 # Fixed layout values for the two-column help formatter, optimized for

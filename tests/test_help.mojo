@@ -423,14 +423,28 @@ def test_custom_both_colors() raises:
 
 
 def test_default_colors_unchanged() raises:
-    """Without any setter, help uses default yellow headers + magenta args."""
+    """Without any setter, help uses default yellow headers + distinct arg colors."""
     var command = Command("app", "My app")
     command.add_argument(Argument("name", help="Your name").long["name"]())
 
     var help = command._generate_help(color=True)
-    # Default header = yellow \x1b[93m , default arg = magenta \x1b[95m
+    # Default header = yellow \x1b[93m
     assert_true("\x1b[93m" in help, msg="Default header should be yellow (93)")
-    assert_true("\x1b[95m" in help, msg="Default arg should be magenta (95)")
+    # Default short_opt = bold green \x1b[1;32m
+    assert_true(
+        "\x1b[1;32m" in help,
+        msg="Default short opt should be bold green (1;32)",
+    )
+    # Default long_opt = bold cyan \x1b[1;36m
+    assert_true(
+        "\x1b[1;36m" in help,
+        msg="Default long opt should be bold cyan (1;36)",
+    )
+    # Default prog = bold magenta \x1b[1;35m
+    assert_true(
+        "\x1b[1;35m" in help,
+        msg="Default prog should be bold magenta (1;35)",
+    )
 
 
 def test_color_uppercase_only() raises:
