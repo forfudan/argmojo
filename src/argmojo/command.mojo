@@ -10,7 +10,6 @@ from .utils import (
     _RESET,
     _BOLD_UL,
     _BOLD_YELLOW,
-    _BOLD_CYAN,
     _UNDERLINE,
     _DEFAULT_HEADER_COLOR,
     _DEFAULT_ARGUMENT_COLOR,
@@ -289,7 +288,7 @@ struct Command(Copyable, Movable, Writable):
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
-    prefixed with the same bold ``Tip:`` label as the built-in hint."""
+    prefixed with the same bold ``tip:`` label as the built-in hint."""
 
     # === Private fields — Shell completions ===
     var _completions_enabled: Bool
@@ -1570,10 +1569,10 @@ struct Command(Copyable, Movable, Writable):
 
         By default, ArgMojo generates a usage line like::
 
-            Usage: myapp <file> [OPTIONS]
+            usage: myapp <file> [OPTIONS]
 
         Call this method to override it with a completely custom string.
-        The string should **not** include the ``Usage:`` prefix — it will
+        The string should **not** include the ``usage:`` prefix — it will
         be added automatically.
 
         Args:
@@ -1587,7 +1586,7 @@ struct Command(Copyable, Movable, Writable):
         var cmd = Command("git", "The stupid content tracker")
         cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
         # --help will show:
-        #   Usage: git [-v | --version] [-C <path>] <command> [<args>]
+        #   usage: git [-v | --version] [-C <path>] <command> [<args>]
         ```
         """
         self._custom_usage = text
@@ -1596,7 +1595,7 @@ struct Command(Copyable, Movable, Writable):
         """Adds a custom tip line to the bottom of the help message.
 
         Each tip is printed on its own line below the built-in ``--``
-        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
+        separator hint, prefixed with a bold ``tip:`` label.  Useful for
         documenting shell idioms, environment variables, or any other
         usage notes that don't fit in argument help strings.
 
@@ -1637,7 +1636,7 @@ struct Command(Copyable, Movable, Writable):
         """
         self._header_color = _resolve_color[name]()
 
-    def arg_color[name: StringLiteral](mut self):
+    def argument_color[name: StringLiteral](mut self):
         """Sets a single colour for ALL option and argument names in help.
 
         This is a convenience method that sets ``program_color``,
@@ -1657,7 +1656,7 @@ struct Command(Copyable, Movable, Writable):
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.arg_color["GREEN"]()
+        command.argument_color["GREEN"]()
         ```
         """
         var c = _resolve_color[name]()
@@ -2021,8 +2020,10 @@ struct Command(Copyable, Movable, Writable):
     def _colored_usage(self) -> String:
         """Returns a coloured usage line for error output.
 
-        Uses the same colour scheme as help output.  Falls back to
-        plain usage when ``NO_COLOR`` is set.
+        Uses the command's colour settings but with a lighter style than
+        help output — the ``usage:`` label uses ``_header_color`` without
+        bold/underline, matching the subdued diagnostic style of pixi/cargo.
+        Falls back to plain usage when ``NO_COLOR`` is set.
 
         Example output: ``usage: prog <COMMAND> [OPTIONS]`` with colours.
         """
@@ -2031,7 +2032,7 @@ struct Command(Copyable, Movable, Writable):
 
         var hc = self._header_color
         var pc = self._prog_color
-        var vc = self._value_color
+        var posc = self._pos_color
         var lc = self._long_opt_color
         var rc = _RESET
 
@@ -2045,9 +2046,9 @@ struct Command(Copyable, Movable, Writable):
                 if self.args[i]._is_remainder:
                     display += "..."
                 if self.args[i]._is_required:
-                    s += " " + vc + "<" + display + ">" + rc
+                    s += " " + posc + "<" + display + ">" + rc
                 else:
-                    s += " " + vc + "[" + display + "]" + rc
+                    s += " " + posc + "[" + display + "]" + rc
         var has_subcommands = False
         for i in range(len(self.subcommands)):
             if (
@@ -2057,7 +2058,7 @@ struct Command(Copyable, Movable, Writable):
                 has_subcommands = True
                 break
         if has_subcommands:
-            s += " " + vc + "<COMMAND>" + rc
+            s += " " + posc + "<COMMAND>" + rc
         s += " " + lc + "[OPTIONS]" + rc
         return s
 
@@ -4827,7 +4828,7 @@ struct Command(Copyable, Movable, Writable):
     def _help_tips_section(
         self, header_color: String, reset_code: String
     ) -> String:
-        """Generates the 'Tips:' section with hints and user-defined tips.
+        """Generates the 'tips:' section with hints and user-defined tips.
 
         Automatically adds a ``--`` separator hint when positional
         arguments are registered.  User-defined tips (added via

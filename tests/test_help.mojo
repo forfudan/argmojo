@@ -1,6 +1,6 @@
 """Tests for argmojo help and display features:
   • Help output formatting (hidden args, value_name, padding, alignment)
-  • ANSI colour customisation (header_color, arg_color, etc.)
+  • ANSI colour customisation (header_color, argument_color, etc.)
   • Subcommand help (Commands section, aliases, hidden subs, tips)
   • CJK-aware help alignment (_display_width)
   • NO_COLOR environment variable
@@ -386,12 +386,12 @@ def test_custom_header_color() raises:
 
 
 def test_custom_arg_color() raises:
-    """Setting arg_color changes the arg-name ANSI code in help output."""
+    """Setting argument_color changes the arg-name ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(
         Argument("verbose", help="Be verbose").long["verbose"]().flag()
     )
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     # GREEN = \x1b[92m
@@ -407,11 +407,11 @@ def test_custom_arg_color() raises:
 
 
 def test_custom_both_colors() raises:
-    """Setting both header_color and arg_color at the same time."""
+    """Setting both header_color and argument_color at the same time."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input").long["file"]())
     command.header_color["BLUE"]()
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     assert_true("\x1b[94m" in help, msg="Header should be blue (94)")
@@ -461,7 +461,7 @@ def test_pink_alias_for_magenta() raises:
     """'PINK' is an alias for MAGENTA (\\x1b[95m)."""
     var command = Command("app", "My app")
     command.add_argument(Argument("f", help="File").long["file"]())
-    command.arg_color["PINK"]()
+    command.argument_color["PINK"]()
 
     var help = command._generate_help(color=True)
     assert_true(
@@ -478,7 +478,7 @@ def test_invalid_color_caught_at_compile_time() raises:
     """
     var command = Command("app", "My app")
     command.header_color["RED"]()
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
     command.warn_color["YELLOW"]()
     command.error_color["MAGENTA"]()
 
@@ -510,7 +510,7 @@ def test_custom_color_plain_mode_unaffected() raises:
     var command = Command("app", "My app")
     command.add_argument(Argument("x", help="X option").long["x"]())
     command.header_color["RED"]()
-    command.arg_color["BLUE"]()
+    command.argument_color["BLUE"]()
 
     var help = command._generate_help(color=False)
     assert_false("\x1b" in help, msg="Plain mode should have no ANSI codes")

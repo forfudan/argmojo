@@ -36,18 +36,18 @@ ArgMojo currently supports:
 - **Boolean flags**: options that take no value
 - **Positional arguments**: matched by position
 - **Default values**: fallback when an argument is not provided
-- **Required arguments**: validation that mandatory args are present
-- **Auto-generated help**: `--help` / `-h` / `-?` with dynamic column alignment, pixi-style ANSI colours, and customisable header/arg colours
-- **Help on no args**: optionally show help when invoked with no arguments
+- **Required arguments**: validation that mandatory arguments are present
+- **Auto-generated help**: `--help` / `-h` / `-?` with dynamic column alignment, pixi-style ANSI colours, and customisable header/argument colours
+- **Help on no arguments**: optionally show help when invoked with no arguments
 - **Version display**: `--version` / `-V` (also auto-generated)
 - **`--` stop marker**: everything after `--` is treated as positional
 - **Short flag merging**: `-abc` expands to `-a -b -c`
 - **Attached short values**: `-ofile.txt` means `-o file.txt`
 - **Choices validation**: restrict values to a set (e.g., `json`, `csv`, `table`)
 - **Value name**: custom display name for values in help text
-- **Hidden arguments**: exclude internal args from `--help` output
+- **Hidden arguments**: exclude internal arguments from `--help` output
 - **Count flags**: `-vvv` → `get_count("verbose") == 3`
-- **Positional arg count validation**: reject extra positional args
+- **Positional argument count validation**: reject extra positional arguments
 - **Negatable flags**: `--color` / `--no-color` paired flags with `.negatable()`
 - **Mutually exclusive groups**: prevent conflicting flags (e.g., `--json` vs `--yaml`)
 - **Required-together groups**: enforce that related flags are provided together (e.g., `--username` + `--password`)
@@ -195,11 +195,11 @@ struct Search(Parsable):
 
 
 def main() raises:
-    var args = Search.parse()    # one line — typed results
+    var arguments = Search.parse()    # one line — typed results
     
-    print("pattern:", args.pattern.value)
-    print("format: ", args.format.value)
-    print("verbose:", args.verbose.value)
+    print("pattern:", arguments.pattern.value)
+    print("format: ", arguments.format.value)
+    print("verbose:", arguments.verbose.value)
 ```
 
 Need builder-level features (mutually exclusive groups, implications, custom help colours) on top of a declarative struct? Use the hybrid bridge:
@@ -218,7 +218,7 @@ The `Parsable` trait provides four parsing methods:
 | returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
 | returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
 
-Plus: `parse_args(args)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
+Plus: `parse_args(arguments)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
 
 See `examples/declarative/` for more patterns: pure declarative, hybrid, full parse, and subcommands.
 
@@ -228,17 +228,17 @@ For detailed explanations and more examples of every feature, see the **[User Ma
 
 ArgMojo ships with two complete example CLIs:
 
-| Example                     | File                                | Features                                                                                                                                                                                                                                                                                                                          |
-| --------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mgrep` — simulated grep    | `examples/mgrep.mojo`               | Positional args, flags, count flags, negatable flags, choices, value_name, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated args, hidden args, negative-number passthrough, `--` stop marker, custom tips |
-| `mgit` — simulated git      | `examples/mgit.mojo`                | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command args, mutually exclusive groups, choices, aliases, deprecated args, custom tips, shell completion script generation                                    |
-| `demo` — feature showcase   | `examples/demo.mojo`                | Comprehensive showcase of all ArgMojo features in a single CLI                                                                                                                                                                                                                                                                    |
-| `yu` — Chinese CLI          | `examples/yu.mojo`                  | CJK-aware help formatting, full-width auto-correction, CJK punctuation detection                                                                                                                                                                                                                                                  |
-| **Declarative examples**    |                                     |                                                                                                                                                                                                                                                                                                                                   |
-| `search` — pure declarative | `examples/declarative/search.mojo`  | Positional args, flags, count flags, choices, range clamping, append/collect — all via `Parsable` struct                                                                                                                                                                                                                          |
-| `deploy` — hybrid           | `examples/declarative/deploy.mojo`  | Declarative struct + builder customisation (`mutually_exclusive`, `implies`, tips, colours)                                                                                                                                                                                                                                       |
-| `convert` — full parse      | `examples/declarative/convert.mojo` | Declarative fields + extra builder args; `parse_full_from_command()` dual return                                                                                                                                                                                                                                                  |
-| `jomo` — subcommands        | `examples/declarative/jomo.mojo`    | Declarative root + mix of declarative and builder subcommands; `subcommands()` hook, `from_parse_result()` dispatch                                                                                                                                                                                                               |
+| Example                     | File                                | Features                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mgrep` — simulated grep    | `examples/mgrep.mojo`               | Positional arguments, flags, count flags, negatable flags, choices, value_name, append/collect, value delimiter, nargs, mutually exclusive groups, required-together groups, conditional requirements, numeric range, key-value map, aliases, deprecated arguments, hidden arguments, negative-number passthrough, `--` stop marker, custom tips |
+| `mgit` — simulated git      | `examples/mgit.mojo`                | Subcommands (clone/init/add/commit/push/pull/log/remote/branch/diff/tag/stash), nested subcommands (remote add/remove/rename/show), persistent (global) flags, per-command arguments, mutually exclusive groups, choices, aliases, deprecated arguments, custom tips, shell completion script generation                                         |
+| `demo` — feature showcase   | `examples/demo.mojo`                | Comprehensive showcase of all ArgMojo features in a single CLI                                                                                                                                                                                                                                                                                   |
+| `yu` — Chinese CLI          | `examples/yu.mojo`                  | CJK-aware help formatting, full-width auto-correction, CJK punctuation detection                                                                                                                                                                                                                                                                 |
+| **Declarative examples**    |                                     |                                                                                                                                                                                                                                                                                                                                                  |
+| `search` — pure declarative | `examples/declarative/search.mojo`  | Positional arguments, flags, count flags, choices, range clamping, append/collect — all via `Parsable` struct                                                                                                                                                                                                                                    |
+| `deploy` — hybrid           | `examples/declarative/deploy.mojo`  | Declarative struct + builder customisation (`mutually_exclusive`, `implies`, tips, colours)                                                                                                                                                                                                                                                      |
+| `convert` — full parse      | `examples/declarative/convert.mojo` | Declarative fields + extra builder arguments; `parse_full_from_command()` dual return                                                                                                                                                                                                                                                            |
+| `jomo` — subcommands        | `examples/declarative/jomo.mojo`    | Declarative root + mix of declarative and builder subcommands; `subcommands()` hook, `from_parse_result()` dispatch                                                                                                                                                                                                                              |
 
 Build both example binaries:
 

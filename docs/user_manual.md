@@ -56,6 +56,10 @@ from argmojo import Argument, Command
   - [Hidden Subcommands](#hidden-subcommands)
   - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
   - [Compile-Time Best Practice: Split Large Command Trees](#compile-time-best-practice-split-large-command-trees)
+    - [Why monolithic functions compile slowly](#why-monolithic-functions-compile-slowly)
+    - [The pattern](#the-pattern)
+    - [Real-world measurement](#real-world-measurement)
+    - [Rule of thumb](#rule-of-thumb)
 - [Help \& Display](#help--display)
   - [Value Name](#value-name)
   - [Hidden Arguments](#hidden-arguments)
@@ -435,7 +439,13 @@ Argument("name", help="...")
 ║   command.disable_help_subcommand()             opt out of auto-added help subcommand
 ║   ├── Colour customisation
 ║   │   command.header_color["CYAN"]()            section header colour
-║   │   command.arg_color["GREEN"]()              argument name colour
+║   │   command.argument_color["GREEN"]()              all argument name colours at once
+║   │   command.program_color["MAGENTA"]()        program name in usage line
+║   │   command.short_option_color["GREEN"]()     short option names (-h, -p)
+║   │   command.long_option_color["CYAN"]()       long option names (--help)
+║   │   command.value_color["YELLOW"]()           value names / metavar
+║   │   command.positional_color["GREEN"]()       positional argument names
+║   │   command.command_color["CYAN"]()           subcommand names
 ║   │   command.warn_color["YELLOW"]()            deprecation warning colour
 ║   │   command.error_color["RED"]()              error message colour
 ║   ├── Shell completion
@@ -971,7 +981,7 @@ myapp --route north up      # ✗ 'up' is not a valid choice
 nargs options show the placeholder repeated N times:
 
 ```txt
-Options:
+options:
   --point <point> <point>    X Y coordinates
   --rgb N N N                RGB colour        (with .value_name["N"]())
 ```
@@ -1063,7 +1073,7 @@ dictionary just like `get_list()` returns an empty list.
 `<key=value>` instead of the default `<name>` placeholder:
 
 ```console
-Options:
+options:
   -D, --define <key=value>...    Define a variable
 ```
 
@@ -1673,14 +1683,14 @@ app --verbose search "fn main"
 ```text
 My CLI tool
 
-Usage: app <COMMAND> [OPTIONS]
+usage: app <COMMAND> [OPTIONS]
 
-Options:
+options:
   -v, --verbose    Verbose output
   -h, --help       Show this help message
   -V, --version    Show version
 
-Commands:
+commands:
   search    Search for patterns
   init      Initialise a new project
 ```
@@ -1696,12 +1706,12 @@ app search --help
 ```text
 Search for patterns
 
-Usage: app search <pattern> [OPTIONS]
+usage: app search <pattern> [OPTIONS]
 
-Arguments:
+arguments:
   pattern    Search pattern
 
-Options:
+options:
   -d, --max-depth N    Max depth
   -h, --help           Show this help message
   -V, --version        Show version
@@ -1973,20 +1983,20 @@ print(sub.get_flag("verbose"))      # True
 
 ```text
 # Root help (app --help)
-Options:
+options:
   -h, --help       Show this help message
   -V, --version    Show version
 
-Global Options:
+global options:
   -v, --verbose               Verbose output
   -o, --output {json,text,yaml}    Output format
 
 # Child help (app search --help)
-Options:
+options:
   -h, --help    Show this help message
   -V, --version Show version
 
-Global Options:
+global options:
   -v, --verbose               Verbose output
   -o, --output {json,text,yaml}    Output format
 ```
@@ -2068,7 +2078,7 @@ print(result.subcommand)  # always "clone", even if user typed "cl"
 Aliases appear in help output alongside the primary name:
 
 ```console
-Commands:
+commands:
   clone, cl    Clone a repository
   commit, ci   Record changes to the repository
 ```
@@ -2369,7 +2379,7 @@ myapp -C
 message in the help text:
 
 ```console
-Options:
+options:
   --format-old <format_old>    Legacy output format [deprecated: Use --format instead]
 ```
 
@@ -2415,14 +2425,14 @@ command.add_argument(
 **Help display** — the optional value is shown in brackets:
 
 ```console
-Options:
+options:
       --compress[=<compress>]    Compression algorithm
 ```
 
 With `.value_name["ALGO"]()`:
 
 ```console
-Options:
+options:
       --compress[=ALGO]          Compression algorithm
 ```
 
@@ -2451,7 +2461,7 @@ command.add_argument(
 **Help display** — the `=` is shown in the help:
 
 ```console
-Options:
+options:
   -o, --output=<output>    Output file
 ```
 
@@ -2483,7 +2493,7 @@ command.add_argument(
 #### Help output: <!-- omit from toc -->
 
 ```console
-Options:
+options:
   -v, --verbose              Increase verbosity
   -h, --help                 Show this help message
 
@@ -2519,13 +2529,13 @@ myapp '-?'     # quote needed: ? is a shell glob wildcard
 ```console
 A CJK-aware text search tool
 
-Usage: myapp <pattern> [path] [OPTIONS]
+usage: myapp <pattern> [path] [OPTIONS]
 
-Arguments:
+arguments:
   pattern    Search pattern
   path       Search path
 
-Options:
+options:
   -l, --ling                        Use Lingming IME for encoding
   -i, --ignore-case                 Case-insensitive search
   -v, --verbose                     Increase verbosity (-v, -vv, -vvv)
@@ -2544,13 +2554,18 @@ Help text columns are **dynamically aligned**: the padding between the option na
 
 Help output uses **ANSI colour codes** by default to enhance readability.
 
-| Element                 | Default style                        | ANSI code      |
-| ----------------------- | ------------------------------------ | -------------- |
-| Section headers         | **bold + underline + bright yellow** | `\x1b[1;4;93m` |
-| Option / argument names | bright magenta                       | `\x1b[95m`     |
-| Deprecation warnings    | **orange** (dark yellow)             | `\x1b[33m`     |
-| Parse errors            | **bright red**                       | `\x1b[91m`     |
-| Description text        | default terminal colour              | —              |
+| Element               | Default style                        | ANSI code      |
+| --------------------- | ------------------------------------ | -------------- |
+| Section headers       | **bold + underline + bright yellow** | `\x1b[1;4;93m` |
+| Program name          | **bold magenta**                     | `\x1b[1;35m`   |
+| Short option names    | **bold green**                       | `\x1b[1;32m`   |
+| Long option names     | **bold cyan**                        | `\x1b[1;36m`   |
+| Value names / metavar | **bold yellow**                      | `\x1b[1;33m`   |
+| Positional arg names  | **bold green**                       | `\x1b[1;32m`   |
+| Subcommand names      | **bold cyan**                        | `\x1b[1;36m`   |
+| Deprecation warnings  | **orange** (dark yellow)             | `\x1b[33m`     |
+| Parse errors          | **bright red**                       | `\x1b[91m`     |
+| Description text      | default terminal colour              | —              |
 
 The `_generate_help()` method accepts an optional `color` parameter:
 
@@ -2568,9 +2583,20 @@ The **header colour**, **argument-name colour**, **deprecation warning colour**,
 ```mojo
 var command = Command("myapp", "My app")
 command.header_color["BLUE"]()     # section headers in bright blue
-command.arg_color["GREEN"]()       # option/argument names in bright green
+command.argument_color["GREEN"]()       # ALL option/argument names in bright green
 command.warn_color["YELLOW"]()     # deprecation warnings (default: orange)
 command.error_color["MAGENTA"]()   # parse errors (default: red)
+```
+
+`argument_color` is a convenience that sets all six name-colour roles at once. For fine-grained control:
+
+```mojo
+command.program_color["MAGENTA"]()       # program name in usage line
+command.short_option_color["GREEN"]()    # short options (-h, -p)
+command.long_option_color["CYAN"]()      # long options (--help, --port)
+command.value_color["YELLOW"]()          # value names / metavar (PORT, <HOST>)
+command.positional_color["GREEN"]()      # positional argument names
+command.command_color["CYAN"]()          # subcommand names in commands section
 ```
 
 Available colour names (uppercase only):
@@ -2655,18 +2681,18 @@ command.add_tip("Use quotes if you use spaces in expressions.")
 ```text
 A calculator
 
-Usage: calc <expr> [OPTIONS]
+usage: calc <expr> [OPTIONS]
 
-Arguments:
+arguments:
   expr    Expression
 
-Options:
+options:
   -h, --help       Show this help message
   -V, --version    Show version
 
-Tip: Use '--' to pass values starting with '-' as positionals:  calc -- -10.18
-Tip: Expressions starting with `-` are accepted.
-Tip: Use quotes if you use spaces in expressions.
+tip: Use '--' to pass values starting with '-' as positionals:  calc -- -10.18
+tip: Expressions starting with `-` are accepted.
+tip: Use quotes if you use spaces in expressions.
 ```
 
 ---
@@ -2723,7 +2749,7 @@ command.add_argument(
 ```
 
 ```txt
-Options:
+options:
   -o, --output <output>    Output path
       --編碼 <編碼>        設定編碼
 ```
@@ -2739,7 +2765,7 @@ app.add_subcommand(build_cmd^)
 ```
 
 ```txt
-Commands:
+commands:
   初始化    建立新項目
   構建      編譯項目
 ```
@@ -2846,7 +2872,7 @@ calc -- -3e4         # operand = "-3e4"
 See [The `--` Stop Marker](#the----stop-marker) for details. When positional arguments are registered, ArgMojo's help output includes a **Tip** line reminding users about this:
 
 ```text
-Tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc -- -10.18
+tip: Use '--' to pass values that start with '-' (e.g., negative numbers):  calc -- -10.18
 ```
 
 ---
@@ -3686,7 +3712,7 @@ Dropping database: mydb
 
 ## Usage Line Customisation
 
-By default, ArgMojo generates usage lines like `Usage: myapp <PATTERN> [OPTIONS]` — showing `[OPTIONS]` for named arguments and listing each positional. This convention (shared by clap, cobra, and Click) works well for most CLIs.
+By default, ArgMojo generates usage lines like `usage: myapp <PATTERN> [OPTIONS]` — showing `[OPTIONS]` for named arguments and listing each positional. This convention (shared by clap, cobra, and Click) works well for most CLIs.
 
 For some programs you may want a hand-written usage string — for example, git's usage line enumerates a few key flags inline rather than collapsing them into `[OPTIONS]`. The `usage()` method on `Command` lets you replace the auto-generated usage line with your own text:
 
@@ -3703,15 +3729,15 @@ def main() raises:
     var result = cmd.parse()
 ```
 
-The custom string appears as-is after `Usage:` in both `--help` output and error messages:
+The custom string appears as-is after `usage:` in both `--help` output and error messages:
 
 ```sh
 $ ./git --help
 The stupid content tracker
 
-Usage: git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]
+usage: git [-v | --version] [-h | --help] [-C <path>] <command> [<args>]
 
-Options:
+options:
   -v, --verbose   Verbose output
   -C <path>       Run as if started in <path>
   -h, --help      Print help
@@ -3755,7 +3781,7 @@ myapp --completions fish   # prints Fish completion script and exits
 The `--completions` option is shown in the help output alongside `--help` and `--version`:
 
 ```console
-Options:
+options:
   --help                  Show this help message and exit
   --version               Show the version and exit
   --completions {bash,zsh,fish}
@@ -3907,7 +3933,7 @@ Methods validated at compile time include:
 | `.number_of_values[N]()`       | Value count is a positive `Int`             |
 | `.range[min, max]()`           | Range bounds are valid `Int` values         |
 | `header_color[name]()`         | Colour name is one of the accepted names    |
-| `arg_color[name]()`            | Same as above                               |
+| `argument_color[name]()`       | Same as above                               |
 | `warn_color[name]()`           | Same as above                               |
 | `error_color[name]()`          | Same as above                               |
 | `response_file_max_depth[N]()` | Depth is a positive `Int`                   |
@@ -4212,14 +4238,14 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 #### Help & Display <!-- omit from toc -->
 
-| ArgMojo method         | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
-| ---------------------- | ------------ | ------------ | ---------------------- | ------------------ |
-| `usage(text)`          | `usage="…"`  | —            | `.override_usage("…")` | `Use: "…"`         |
-| `add_tip(tip)`         | `epilog="…"` | `epilog="…"` | `.after_help("…")`     | `Example: "…"`     |
-| `header_color[name]()` | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `arg_color[name]()`    | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `warn_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `error_color[name]()`  | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| ArgMojo method           | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
+| ------------------------ | ------------ | ------------ | ---------------------- | ------------------ |
+| `usage(text)`            | `usage="…"`  | —            | `.override_usage("…")` | `Use: "…"`         |
+| `add_tip(tip)`           | `epilog="…"` | `epilog="…"` | `.after_help("…")`     | `Example: "…"`     |
+| `header_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `argument_color[name]()` | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `warn_color[name]()`     | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| `error_color[name]()`    | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
 
 #### Shell Completions <!-- omit from toc -->
 
