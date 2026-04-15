@@ -37,12 +37,13 @@ comptime _DEFAULT_POSITIONAL_COLOR = _BOLD_GREEN
 comptime _DEFAULT_COMMAND_COLOR = _BOLD_CYAN
 
 # ── Help formatting layout constants ─────────────────────────────────────────
-# Fixed layout values for the two-column help formatter, optimized for
-# readable output on standard 80-column terminals.
-# Per-section layout: INDENT + min(longest, OPT_WIDTH) + GAP + desc + TRAIL = LINE_WIDTH
+# Fixed layout values for the two-column help formatter.
+# Aligned with Python argparse defaults (max_help_position=24):
+# INDENT + min(longest, OPT_WIDTH) + GAP gives a maximum description
+# start column of 28, close to argparse's default of 24.
 comptime _HELP_LINE_WIDTH: Int = 80
 comptime _HELP_INDENT: Int = 2
-comptime _HELP_OPT_WIDTH: Int = 32
+comptime _HELP_OPT_WIDTH: Int = 24
 comptime _HELP_GAP: Int = 2
 comptime _HELP_TRAIL: Int = 2
 

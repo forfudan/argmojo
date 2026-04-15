@@ -9,6 +9,8 @@ from .parse_result import ParseResult
 from .utils import (
     _RESET,
     _BOLD_UL,
+    _BOLD_YELLOW,
+    _BOLD_CYAN,
     _DEFAULT_HEADER_COLOR,
     _DEFAULT_ARGUMENT_COLOR,
     _DEFAULT_WARN_COLOR,
@@ -3173,25 +3175,6 @@ struct Command(Copyable, Movable, Writable):
             # When allow_positional_with_subcommands is set, fall
             # through to positional handling below.
             if not self._allow_positional_with_subcommands:
-                var avail = String("")
-                var first = True
-                for _si in range(len(self.subcommands)):
-                    if (
-                        not self.subcommands[_si]._is_help_subcommand
-                        and not self.subcommands[_si]._is_hidden
-                    ):
-                        if not first:
-                            avail += ", "
-                        avail += self.subcommands[_si].name
-                        # Append aliases to available list.
-                        for _ai in range(
-                            len(self.subcommands[_si]._command_aliases)
-                        ):
-                            avail += (
-                                ", "
-                                + self.subcommands[_si]._command_aliases[_ai]
-                            )
-                        first = False
                 # Try typo suggestion for subcommand names.
                 var sub_names = List[String]()
                 for _si2 in range(len(self.subcommands)):
@@ -3207,16 +3190,56 @@ struct Command(Copyable, Movable, Writable):
                                 self.subcommands[_si2]._command_aliases[_ai2]
                             )
                 var suggestion = _suggest_similar(arg, sub_names)
-                var hint = String("")
-                if suggestion != "":
-                    hint = ". Did you mean '" + suggestion + "'?"
-                self._error(
-                    "Unknown command '"
-                    + arg
-                    + "'. Available commands: "
-                    + avail
-                    + hint
-                )
+
+                # Multi-line error (pixi / argparse style):
+                #   error: prog: unrecognized command 'foo'
+                #
+                #     tip: a similar command exists: 'bar'
+                #
+                #   Usage: prog <COMMAND> [OPTIONS]
+                var err_msg = "unrecognized command '" + arg + "'"
+                if suggestion:
+                    err_msg += ". Did you mean '" + suggestion + "'?"
+                if Self._no_color_env():
+                    print(
+                        "error: " + self.name + ": " + err_msg,
+                        file=stderr,
+                    )
+                    if suggestion:
+                        print(file=stderr)
+                        print(
+                            "  tip: a similar command exists: '"
+                            + suggestion
+                            + "'",
+                            file=stderr,
+                        )
+                else:
+                    print(
+                        self._error_color
+                        + "error: "
+                        + self.name
+                        + ": "
+                        + err_msg
+                        + _RESET,
+                        file=stderr,
+                    )
+                    if suggestion:
+                        print(file=stderr)
+                        print(
+                            "  "
+                            + _BOLD_YELLOW
+                            + "tip: "
+                            + _RESET
+                            + "a similar command exists: '"
+                            + _BOLD_CYAN
+                            + suggestion
+                            + _RESET
+                            + "'",
+                            file=stderr,
+                        )
+                print(file=stderr)
+                print(self._plain_usage(), file=stderr)
+                raise Error(err_msg)
             return -1
 
     # ===------------------------------------------------------------------=== #

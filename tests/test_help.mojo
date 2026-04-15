@@ -209,8 +209,8 @@ def test_dynamic_padding_long_options() raises:
 
     var help = command._generate_help(color=False)
     # The longest user arg is "--very-long-option-name <very-long-option-name>"
-    # which overflows the 32-char option column.  Its description should
-    # appear on the next line, aligned with other descriptions at column 38.
+    # which overflows the 24-char option column. Its description should appear
+    # on the next line, aligned with other descriptions.
     var desc_col_long: Int = -1
     var desc_col_short: Int = -1
     var lines = help.splitlines()
@@ -423,7 +423,8 @@ def test_custom_both_colors() raises:
 
 
 def test_default_colors_unchanged() raises:
-    """Without any setter, help uses default yellow headers + distinct arg colors."""
+    """Without any setter, help uses default yellow headers + distinct arg colors.
+    """
     var command = Command("app", "My app")
     command.add_argument(Argument("name", help="Your name").long["name"]())
 
