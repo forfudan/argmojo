@@ -55,6 +55,7 @@ from argmojo import Argument, Command
   - [Unknown Subcommand Error](#unknown-subcommand-error)
   - [Hidden Subcommands](#hidden-subcommands)
   - [Mixing Positional Args with Subcommands](#mixing-positional-args-with-subcommands)
+  - [Compile-Time Best Practice: Split Large Command Trees](#compile-time-best-practice-split-large-command-trees)
 - [Help \& Display](#help--display)
   - [Value Name](#value-name)
   - [Hidden Arguments](#hidden-arguments)
@@ -2167,6 +2168,91 @@ app search --unknown-flag
 ```
 
 This makes it immediately clear which subcommand triggered the error, especially in deeply nested command trees.
+
+### Compile-Time Best Practice: Split Large Command Trees
+
+When your CLI has many subcommands (roughly 10+, e.g., [the mgit example](../examples/mgit.mojo)), you should build each subcommand in its own function instead of constructing everything in a single monolithic `main()`. This can reduce compile time by an order of magnitude.
+
+#### Why monolithic functions compile slowly
+
+Mojo's compiler includes a lifetime checker (the `CheckLifetimes` pass) that verifies ownership and borrowing safety — ensuring no value is used after a move, no mutable reference aliases another, and every value is destroyed exactly once. To do this it performs **liveness analysis**: at every program point in a function, it computes which variables are still "live" (may be read or moved later).
+
+> [!Note]
+> See [Mojo Miji - Chapter Lifetimes and origins](https://mojo-lang.com/miji/advanced/lifetimes) on the ownership model and lifetime checking of Mojo.
+
+The cost of this analysis depends on two factors that multiply together:
+
+1. **Number of live variables (N)** — every `Command`, `Argument`, and temporary created by a builder chain (e.g., `Argument("x").long["y"]().flag()` produces intermediate owned values) is a variable the checker must track.
+
+2. **Number of program points (M)** — roughly proportional to the number of statements in the function.
+
+At each of the M program points, the checker must update the liveness status of up to N variables, making the total work **O(N × M)**. In a monolithic function, both N and M grow together (more subcommands → more variables *and* more statements), so the cost scales roughly as **O(N²)**.
+
+Concretely, a monolithic `main()` with 27 subcommands and 107 builder calls creates ~400+ live variables across ~600 statements. The checker must process 400 × 600 ≈ 240,000 variable-point pairs. Split into 13 functions of ~30 variables and ~45 statements each, the total drops to 13 × (30 × 45) ≈ 17,550 — a **~14× reduction** in work.
+
+#### The pattern
+
+Instead of:
+
+```mojo
+# Slow — everything in one scope
+def main() raises:
+    var app = Command("app", "My app")
+
+    var search = Command("search", "Search")
+    search.add_argument(Argument("pattern", help="Pattern").positional())
+    search.add_argument(Argument("max-depth", help="Depth").long["max-depth"]())
+    app.add_subcommand(search^)
+
+    var init = Command("init", "Init")
+    init.add_argument(Argument("name", help="Name").positional())
+    app.add_subcommand(init^)
+
+    # ... 10 more subcommands ...
+
+    app.execute()
+```
+
+Write:
+
+```mojo
+# Fast — each subcommand in its own function
+def generate_search_subcommand() raises -> Command:
+    var cmd = Command("search", "Search")
+    cmd.add_argument(Argument("pattern", help="Pattern").positional())
+    cmd.add_argument(Argument("max-depth", help="Depth").long["max-depth"]())
+    return cmd^
+
+def generate_init_subcommand() raises -> Command:
+    var cmd = Command("init", "Init")
+    cmd.add_argument(Argument("name", help="Name").positional())
+    return cmd^
+
+# ... one function per subcommand ...
+
+def main() raises:
+    var app = Command("app", "My app")
+    app.add_subcommand(generate_search_subcommand())
+    app.add_subcommand(generate_init_subcommand())
+    app.execute()
+```
+
+Each generator function has its own small scope — the lifetime checker analyses it independently in O(k²) time where k is tiny. The total work across all functions is far less than one giant O(N²) pass.
+
+#### Real-world measurement
+
+The [`mgit.mojo` example](../examples/mgit.mojo) (27 subcommands, 107 builder calls) demonstrated this in one measured run (MacBook Pro M4 Pro, Mojo nightly 2025.7):
+
+| Layout                                            | Compile time |
+| ------------------------------------------------- | ------------ |
+| Monolithic `main()`                               | **~320 s**   |
+| Split into 13 `generate_*_subcommand()` functions | **~13 s**    |
+
+Roughly a **25× speedup** from a purely structural refactor — no logic changes. Exact numbers vary by machine, compiler version, and build settings.
+
+#### Rule of thumb
+
+If your `main()` constructs more than ~5 subcommands, factor each one into a `generate_<name>_subcommand()` function that returns `Command`. This keeps every function body small and gives the Mojo lifetime checker an easy job.
 
 ## Help & Display
 
