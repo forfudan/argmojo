@@ -2217,13 +2217,13 @@ Write:
 
 ```mojo
 # Fast — each subcommand in its own function
-def generate_search_subcommand() -> Command:
+def generate_search_subcommand() raises -> Command:
     var cmd = Command("search", "Search")
     cmd.add_argument(Argument("pattern", help="Pattern").positional())
     cmd.add_argument(Argument("max-depth", help="Depth").long["max-depth"]())
     return cmd^
 
-def generate_init_subcommand() -> Command:
+def generate_init_subcommand() raises -> Command:
     var cmd = Command("init", "Init")
     cmd.add_argument(Argument("name", help="Name").positional())
     return cmd^
@@ -2241,14 +2241,14 @@ Each generator function has its own small scope — the lifetime checker analyse
 
 #### Real-world measurement
 
-The [`mgit.mojo` example](../examples/mgit.mojo) (27 subcommands, 107 builder calls) demonstrated this (on MacBook Pro M4 Pro):
+The [`mgit.mojo` example](../examples/mgit.mojo) (27 subcommands, 107 builder calls) demonstrated this in one measured run (MacBook Pro M4 Pro, Mojo nightly 2025.7):
 
 | Layout                                            | Compile time |
 | ------------------------------------------------- | ------------ |
-| Monolithic `main()`                               | **321 s**    |
-| Split into 13 `generate_*_subcommand()` functions | **13 s**     |
+| Monolithic `main()`                               | **~320 s**   |
+| Split into 13 `generate_*_subcommand()` functions | **~13 s**    |
 
-A **24.7× speedup** from a purely structural refactor — no logic changes.
+Roughly a **25× speedup** from a purely structural refactor — no logic changes. Exact numbers vary by machine, compiler version, and build settings.
 
 #### Rule of thumb
 

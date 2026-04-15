@@ -453,8 +453,8 @@ def handle_config_unset(result: ParseResult) raises:
 # Each subcommand is built in its own function to keep individual function
 # bodies small.  The Mojo compiler's CheckLifetimes pass scales
 # super-linearly with the number of live variables in a single function, so
-# splitting a monolithic main() into many small generators dramatically
-# reduces total compile time (benchmarked: ~320 s → ~30 s for this file).
+# splitting a monolithic main() into many small generators can dramatically
+# reduce total compile time.
 # ═══════════════════════════════════════════════════════════════════════════
 
 
