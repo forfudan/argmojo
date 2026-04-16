@@ -938,12 +938,10 @@ def test_unknown_subcommand_error_no_positionals() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Unknown command" in msg,
-            msg="Should mention unknown command",
+            "unrecognized subcommand" in msg,
+            msg="Should mention unrecognized subcommand",
         )
         assert_true("foo" in msg, msg="Should mention 'foo'")
-        assert_true("search" in msg, msg="Should list available 'search'")
-        assert_true("init" in msg, msg="Should list available 'init'")
     assert_true(caught, msg="Should have raised for unknown subcommand")
 
 
@@ -1001,20 +999,15 @@ def test_unknown_subcommand_error_excludes_help_sub() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Unknown command" in msg,
-            msg="Should mention unknown command",
+            "unrecognized subcommand" in msg,
+            msg="Should mention unrecognized subcommand",
         )
-        assert_true("search" in msg, msg="Should list 'search'")
-        # 'help' should not appear in available commands.
-        # But the full msg could contain "help" in other contexts.
-        # Check the "Available commands:" part specifically.
-        var avail_start = msg.find("Available commands: ")
-        if avail_start >= 0:
-            var avail_part = String(msg[byte=avail_start:])
-            assert_false(
-                "help" in avail_part,
-                msg="'help' sub should not appear in available commands",
-            )
+        # The error message now only contains the unrecognized subcommand name,
+        # not an "Available commands:" list, so 'help' cannot leak.
+        assert_false(
+            "help" in msg,
+            msg="'help' should not appear in error message",
+        )
     assert_true(caught, msg="Should have raised")
 
 

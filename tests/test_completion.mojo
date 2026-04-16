@@ -1300,10 +1300,15 @@ def test_typo_hidden_subcommand_not_suggested() raises:
         "debug" in err_msg,
         msg="Hidden sub 'debug' should NOT appear in typo suggestion",
     )
-    # But the error should still mention available commands (only clone).
+    # But the error message no longer contains available commands (they are
+    # printed to stderr in multi-line format instead).
     assert_true(
-        "clone" in err_msg,
-        msg="Visible sub 'clone' should still be in error message",
+        "unrecognized subcommand" in err_msg,
+        msg="Should mention unrecognized subcommand",
+    )
+    assert_true(
+        "debu" in err_msg,
+        msg="Should mention the unrecognized 'debu'",
     )
 
 

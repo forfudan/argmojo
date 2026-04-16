@@ -7,7 +7,7 @@ them interactively from the command line.
 Showcases: count ceiling (.count().max(N)), range clamping (.range().clamp()),
 one-required groups, mutually exclusive groups, required-together groups,
 conditional requirements, negatable flags, color customisation
-(header_color, arg_color), numeric range validation, append with range
+(header_color, argument_color), numeric range validation, append with range
 clamping, value delimiter, nargs, key-value map, aliases, deprecated args,
 negative number passthrough, allow_positional_with_subcommands, custom tips,
 help_on_no_arguments, default_if_no_value, require_equals, response files,
@@ -121,7 +121,7 @@ def main() raises:
 
     # ── Color customisation ──────────────────────────────────────────────
     app.header_color["CYAN"]()
-    app.arg_color["GREEN"]()
+    app.argument_color["GREEN"]()
 
     # ── Response file support ────────────────────────────────────────────
     app.response_file_prefix()  # enables @args.txt expansion

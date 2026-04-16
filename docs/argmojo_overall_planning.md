@@ -359,7 +359,7 @@ The practical view — both dimensions checked together at parse time:
    ```bash
    error: <command>: <what's wrong>
 
-   Usage: <command> <required> [optional] [OPTIONS]
+   usage: <command> <required> [optional] [OPTIONS]
    For more information, try '<command> --help'.
    ```
 
@@ -397,7 +397,7 @@ The practical view — both dimensions checked together at parse time:
 - [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help` (common in Windows CLI tools, Java, MySQL, curl)
 - [x] **Help on no args** — `command.help_on_no_arguments()` shows help when invoked with no arguments (like git/docker/cargo)
 - [x] **Dynamic help padding** — help column alignment is computed from the longest option line instead of a fixed width
-- [x] **colored help output** — ANSI colors (bold+underline headers, colored arg names), with `color=False` opt-out and customisable colors via `header_color["NAME"]()` / `arg_color["NAME"]()` (compile-time validated)
+- [x] **colored help output** — ANSI colors (bold+underline headers, fine-grained colour roles for program/short-option/long-option/value/positional/command names), with `color=False` opt-out and customisable colors via `header_color["NAME"]()` / `argument_color["NAME"]()` / individual setters like `program_color`, `short_option_color`, etc. (compile-time validated)
 - [x] **number of values (multi-value)** — `--point 1 2 3` consumes N values for one option (argparse `nargs`, clap `num_args`)
 - [x] **Conditional requirement** — `--output` required only when `--save` is present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
 - [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port` value is within range (no major library has this built-in)
@@ -587,6 +587,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [ ] **Extend `implies()`** - support value-taking options with a default value, e.g., `cmd.implies("debug", "output", "debug.log")` — when `--debug` is set, auto-set `--output` to `"debug.log"`. Currently `implies()` only supports flag/count targets (same as cobra in Go). Revisit when there is a concrete use case.
 - [x] **80-character help formatting** — wrap help descriptions at 80 columns with proper indentation (no major library does this by default; users typically pipe through `less` or rely on terminal wrapping)
 - [ ] **Comptime string concatenation** — 將 String 的拼接 comptime 化，避免在運行時進行多次拼接（例如錯誤消息、幫助文本等），提升性能。
+- [x] **Even more beautiful and colourful help output** — six fine-grained colour roles (`program_color`, `short_option_color`, `long_option_color`, `value_color`, `positional_color`, `command_color`) matching `argparse`'s differentiation; lowercase section headings (`usage:`, `options:`, `commands:`); dynamic terminal-width detection via `ioctl(TIOCGWINSZ)`; pixi-style multi-line error diagnostics with coloured `error:` / `tip:` labels and coloured usage line. `argument_color` remains as a convenience setter for all six roles at once.
 
 #### Explicitly Out of Scope in This Phase
 

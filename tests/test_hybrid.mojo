@@ -108,7 +108,7 @@ def test_to_command_with_colors() raises:
     """Builder color customisation on to_command() works."""
     var cmd = Deploy.to_command()
     cmd.header_color["CYAN"]()
-    cmd.arg_color["GREEN"]()
+    cmd.argument_color["GREEN"]()
 
     var args: List[String] = ["command", "--replicas", "5", "prod"]
     var result = cmd.parse_arguments(args)

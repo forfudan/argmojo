@@ -1,6 +1,6 @@
 """Tests for argmojo help and display features:
   • Help output formatting (hidden args, value_name, padding, alignment)
-  • ANSI colour customisation (header_color, arg_color, etc.)
+  • ANSI colour customisation (header_color, argument_color, etc.)
   • Subcommand help (Commands section, aliases, hidden subs, tips)
   • CJK-aware help alignment (_display_width)
   • NO_COLOR environment variable
@@ -209,8 +209,8 @@ def test_dynamic_padding_long_options() raises:
 
     var help = command._generate_help(color=False)
     # The longest user arg is "--very-long-option-name <very-long-option-name>"
-    # which overflows the 32-char option column.  Its description should
-    # appear on the next line, aligned with other descriptions at column 38.
+    # which overflows the 24-char option column. Its description should appear
+    # on the next line, aligned with other descriptions.
     var desc_col_long: Int = -1
     var desc_col_short: Int = -1
     var lines = help.splitlines()
@@ -346,9 +346,9 @@ def test_help_contains_ansi_colors() raises:
     assert_true("verbose" in colored, msg="colored help should have 'verbose'")
     assert_true("verbose" in plain, msg="plain help should have 'verbose'")
     assert_true(
-        "Options:" in colored, msg="colored help should have 'Options:'"
+        "options:" in colored, msg="colored help should have 'options:'"
     )
-    assert_true("Options:" in plain, msg="plain help should have 'Options:'")
+    assert_true("options:" in plain, msg="plain help should have 'options:'")
 
 
 def test_help_color_false_no_codes() raises:
@@ -360,8 +360,8 @@ def test_help_color_false_no_codes() raises:
 
     var help = command._generate_help(color=False)
     # Section headers should appear without any escape sequences.
-    assert_true("Usage: test" in help, msg="Usage line should be plain")
-    assert_true("Options:\n" in help, msg="Options header should be plain")
+    assert_true("usage: test" in help, msg="Usage line should be plain")
+    assert_true("options:\n" in help, msg="Options header should be plain")
     # No escape character anywhere.
     assert_false("\x1b" in help, msg="No escape chars in plain mode")
 
@@ -386,12 +386,12 @@ def test_custom_header_color() raises:
 
 
 def test_custom_arg_color() raises:
-    """Setting arg_color changes the arg-name ANSI code in help output."""
+    """Setting argument_color changes the arg-name ANSI code in help output."""
     var command = Command("app", "My app")
     command.add_argument(
         Argument("verbose", help="Be verbose").long["verbose"]().flag()
     )
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     # GREEN = \x1b[92m
@@ -407,11 +407,11 @@ def test_custom_arg_color() raises:
 
 
 def test_custom_both_colors() raises:
-    """Setting both header_color and arg_color at the same time."""
+    """Setting both header_color and argument_color at the same time."""
     var command = Command("app", "My app")
     command.add_argument(Argument("file", help="Input").long["file"]())
     command.header_color["BLUE"]()
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
 
     var help = command._generate_help(color=True)
     assert_true("\x1b[94m" in help, msg="Header should be blue (94)")
@@ -423,14 +423,29 @@ def test_custom_both_colors() raises:
 
 
 def test_default_colors_unchanged() raises:
-    """Without any setter, help uses default yellow headers + magenta args."""
+    """Without any setter, help uses default yellow headers + distinct arg colors.
+    """
     var command = Command("app", "My app")
     command.add_argument(Argument("name", help="Your name").long["name"]())
 
     var help = command._generate_help(color=True)
-    # Default header = yellow \x1b[93m , default arg = magenta \x1b[95m
+    # Default header = yellow \x1b[93m
     assert_true("\x1b[93m" in help, msg="Default header should be yellow (93)")
-    assert_true("\x1b[95m" in help, msg="Default arg should be magenta (95)")
+    # Default short_opt = bold green \x1b[1;32m
+    assert_true(
+        "\x1b[1;32m" in help,
+        msg="Default short opt should be bold green (1;32)",
+    )
+    # Default long_opt = bold cyan \x1b[1;36m
+    assert_true(
+        "\x1b[1;36m" in help,
+        msg="Default long opt should be bold cyan (1;36)",
+    )
+    # Default prog = bold magenta \x1b[1;35m
+    assert_true(
+        "\x1b[1;35m" in help,
+        msg="Default prog should be bold magenta (1;35)",
+    )
 
 
 def test_color_uppercase_only() raises:
@@ -446,7 +461,7 @@ def test_pink_alias_for_magenta() raises:
     """'PINK' is an alias for MAGENTA (\\x1b[95m)."""
     var command = Command("app", "My app")
     command.add_argument(Argument("f", help="File").long["file"]())
-    command.arg_color["PINK"]()
+    command.argument_color["PINK"]()
 
     var help = command._generate_help(color=True)
     assert_true(
@@ -463,7 +478,7 @@ def test_invalid_color_caught_at_compile_time() raises:
     """
     var command = Command("app", "My app")
     command.header_color["RED"]()
-    command.arg_color["GREEN"]()
+    command.argument_color["GREEN"]()
     command.warn_color["YELLOW"]()
     command.error_color["MAGENTA"]()
 
@@ -495,11 +510,11 @@ def test_custom_color_plain_mode_unaffected() raises:
     var command = Command("app", "My app")
     command.add_argument(Argument("x", help="X option").long["x"]())
     command.header_color["RED"]()
-    command.arg_color["BLUE"]()
+    command.argument_color["BLUE"]()
 
     var help = command._generate_help(color=False)
     assert_false("\x1b" in help, msg="Plain mode should have no ANSI codes")
-    assert_true("Options:" in help, msg="Plain mode should still have content")
+    assert_true("options:" in help, msg="Plain mode should still have content")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -563,7 +578,7 @@ def test_nargs_with_value_name() raises:
 
 
 def test_root_help_shows_commands_section() raises:
-    """Tests that root help includes a Commands: section when subcommands are registered.
+    """Tests that root help includes a commands: section when subcommands are registered.
     """
     var app = Command("app", "My CLI tool")
     app.add_argument(
@@ -578,7 +593,7 @@ def test_root_help_shows_commands_section() raises:
     app.add_subcommand(init^)
 
     var help = app._generate_help(color=False)
-    assert_true("Commands:" in help, msg="Help should have Commands: section")
+    assert_true("commands:" in help, msg="Help should have commands: section")
     assert_true("search" in help, msg="Help should list 'search' subcommand")
     assert_true("init" in help, msg="Help should list 'init' subcommand")
     assert_true(
@@ -592,7 +607,7 @@ def test_root_help_shows_commands_section() raises:
 
 
 def test_root_help_no_commands_when_no_subcommands() raises:
-    """Tests that Commands: section is omitted when no subcommands are registered.
+    """Tests that commands: section is omitted when no subcommands are registered.
     """
     var command = Command("test", "Test app")
     command.add_argument(
@@ -600,7 +615,7 @@ def test_root_help_no_commands_when_no_subcommands() raises:
     )
 
     var help = command._generate_help(color=False)
-    assert_false("Commands:" in help, msg="No Commands: without subcommands")
+    assert_false("commands:" in help, msg="No commands: without subcommands")
 
 
 def test_root_help_commands_excludes_help_sub() raises:
@@ -611,7 +626,7 @@ def test_root_help_commands_excludes_help_sub() raises:
     # 'help' subcommand is auto-added.
 
     var help = app._generate_help(color=False)
-    assert_true("Commands:" in help, msg="Should have Commands: section")
+    assert_true("commands:" in help, msg="Should have commands: section")
     assert_true("search" in help, msg="search should appear")
     # Check that 'help' doesn't appear as a listed command entry.
     # (It may appear in other contexts like --help, but not as a subcommand line.)
@@ -619,7 +634,7 @@ def test_root_help_commands_excludes_help_sub() raises:
     var found_help_cmd = False
     var in_commands = False
     for i in range(len(lines)):
-        if lines[i].startswith("Commands:"):
+        if lines[i].startswith("commands:"):
             in_commands = True
             continue
         if in_commands:
@@ -670,7 +685,7 @@ def test_root_help_usage_no_command_placeholder_without_subs() raises:
 
 
 def test_persistent_args_under_global_options() raises:
-    """Tests that persistent args appear under a 'Global Options:' heading."""
+    """Tests that persistent args appear under a 'global options:' heading."""
     var app = Command("app", "My app")
     app.add_argument(
         Argument("verbose", help="Verbose output")
@@ -686,22 +701,22 @@ def test_persistent_args_under_global_options() raises:
 
     var help = app._generate_help(color=False)
     assert_true(
-        "Global Options:" in help,
-        msg="Should have Global Options: section",
+        "global options:" in help,
+        msg="Should have global options: section",
     )
-    assert_true("Options:" in help, msg="Should have Options: section")
+    assert_true("options:" in help, msg="Should have options: section")
     # --output should be under Options, --verbose under Global Options.
     # Check ordering: Options comes before Global Options.
-    var opt_pos = help.find("Options:")
-    var global_pos = help.find("Global Options:")
+    var opt_pos = help.find("options:")
+    var global_pos = help.find("global options:")
     assert_true(
         opt_pos < global_pos,
-        msg="Options: should come before Global Options:",
+        msg="options: should come before global options:",
     )
 
 
 def test_no_global_options_without_persistent() raises:
-    """Tests that Global Options: section is absent when no persistent args."""
+    """Tests that global options: section is absent when no persistent args."""
     var app = Command("app", "My app")
     app.add_argument(
         Argument("verbose", help="Verbose output").long["verbose"]().flag()
@@ -710,8 +725,8 @@ def test_no_global_options_without_persistent() raises:
 
     var help = app._generate_help(color=False)
     assert_false(
-        "Global Options:" in help,
-        msg="No Global Options: without persistent args",
+        "global options:" in help,
+        msg="No global options: without persistent args",
     )
 
 
@@ -726,7 +741,7 @@ def test_child_help_shows_full_command_path() raises:
 
     # Simulate: app search --help
     # The child copy gets name set to "app search", so --help would
-    # show "Usage: app search ..." in help.
+    # show "usage: app search ..." in help.
     # We test indirectly by checking what parse_arguments sets on the child copy.
     # Create the child copy as parse_arguments would.
     # Note: subcommands[0] is auto-added 'help'; search is at index 1.
@@ -769,8 +784,8 @@ def test_child_help_shows_inherited_persistent_args() raises:
 
     var help = child_copy._generate_help(color=False)
     assert_true(
-        "Global Options:" in help,
-        msg="Child help should have Global Options:",
+        "global options:" in help,
+        msg="Child help should have global options:",
     )
     assert_true(
         "--verbose" in help,
@@ -1031,7 +1046,7 @@ def test_custom_usage_in_plain_help() raises:
 
     var help = cmd._generate_help(color=False)
     assert_true(
-        "Usage: git [-v | --version] [-C <path>] <command> [<args>]" in help,
+        "usage: git [-v | --version] [-C <path>] <command> [<args>]" in help,
         msg="Custom usage should appear in plain help: " + help,
     )
 
@@ -1042,7 +1057,7 @@ def test_custom_usage_in_colored_help() raises:
     cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
 
     var help = cmd._generate_help(color=True)
-    # The custom text should appear (wrapped in ANSI codes for "Usage:")
+    # The custom text should appear (wrapped in ANSI codes for "usage:")
     assert_true(
         "git [-v | --version]" in help,
         msg="Custom usage text should appear in colored help: " + help,
@@ -1060,13 +1075,13 @@ def test_custom_usage_replaces_auto_generated() raises:
 
     var help = cmd._generate_help(color=False)
     assert_true(
-        "Usage: myapp FILE [--output FILE]" in help,
+        "usage: myapp FILE [--output FILE]" in help,
         msg="Custom usage should replace auto-generated: " + help,
     )
     # The auto-generated "<file> [OPTIONS]" should NOT appear in usage line
     var lines = help.split("\n")
     for i in range(len(lines)):
-        if "Usage:" in lines[i]:
+        if "usage:" in lines[i]:
             assert_false(
                 "<file>" in lines[i],
                 msg="Auto-generated positional should not appear in usage line",
@@ -1083,7 +1098,7 @@ def test_default_usage_when_no_custom() raises:
 
     var help = cmd._generate_help(color=False)
     assert_true(
-        "Usage: test <file> [OPTIONS]" in help,
+        "usage: test <file> [OPTIONS]" in help,
         msg="Default usage should show auto-generated format: " + help,
     )
 
@@ -1097,7 +1112,7 @@ def test_default_usage_with_optional_positional() raises:
 
     var help = cmd._generate_help(color=False)
     assert_true(
-        "Usage: test [path] [OPTIONS]" in help,
+        "usage: test [path] [OPTIONS]" in help,
         msg="Optional positional should be in brackets: " + help,
     )
 
@@ -1110,7 +1125,7 @@ def test_default_usage_with_subcommands() raises:
 
     var help = app._generate_help(color=False)
     assert_true(
-        "Usage: app <COMMAND> [OPTIONS]" in help,
+        "usage: app <COMMAND> [OPTIONS]" in help,
         msg="Subcommand usage should show <COMMAND>: " + help,
     )
 
@@ -1123,7 +1138,7 @@ def test_custom_usage_preserved_in_copy() raises:
     var copied = original.copy()
     var help = copied._generate_help(color=False)
     assert_true(
-        "Usage: git [options] <command> [<args>]" in help,
+        "usage: git [options] <command> [<args>]" in help,
         msg="Custom usage should be preserved in copy: " + help,
     )
 
@@ -1137,7 +1152,7 @@ def test_custom_usage_with_subcommands() raises:
 
     var help = app._generate_help(color=False)
     assert_true(
-        "Usage: app [-v] <command>" in help,
+        "usage: app [-v] <command>" in help,
         msg="Custom usage should override even with subcommands: " + help,
     )
     # Auto-generated <COMMAND> should NOT appear
@@ -1158,7 +1173,7 @@ def test_custom_usage_description_still_shown() raises:
         msg="Description should still appear: " + help,
     )
     assert_true(
-        "Usage: myapp [options]" in help,
+        "usage: myapp [options]" in help,
         msg="Custom usage should appear after description: " + help,
     )
 

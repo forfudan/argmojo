@@ -85,7 +85,7 @@ ArgMojo v0.4.0 targets Mojo v0.26.2.
 
 1. Rename `.metavar()` to `.value_name()` across the entire API (PR #13).
 2. Parameterise `.long[]()` and `.short[]()` as compile-time `StringLiteral` parameters (PR #20).
-3. Parameterise `.alias_name[]()`, `.delimiter[]()`, `.default[]()`, `.deprecated[]()`, `.default_if_no_value[]()`, `.group[]()`, `.prompt[]()`, and colour setters (`header_color[]`, `arg_color[]`, `warn_color[]`, `error_color[]`) as compile-time parameters (PR #18, #21).
+3. Parameterise `.alias_name[]()`, `.delimiter[]()`, `.default[]()`, `.deprecated[]()`, `.default_if_no_value[]()`, `.group[]()`, `.prompt[]()`, and colour setters (`header_color[]`, `argument_color[]`, `warn_color[]`, `error_color[]`) as compile-time parameters (PR #18, #21).
 4. Replace `.choices(list)` with chained `.choice["a"]().choice["b"]()` compile-time parameters (PR #18).
 5. Value-name display uses angle brackets by default; `.value_name["FOO", False]()` for bare display (PR #17).
 6. Move `print_summary()` from `Command` to `ParseResult` (PR #24).

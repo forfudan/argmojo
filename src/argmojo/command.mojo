@@ -9,11 +9,19 @@ from .parse_result import ParseResult
 from .utils import (
     _RESET,
     _BOLD_UL,
+    _BOLD_YELLOW,
+    _UNDERLINE,
     _DEFAULT_HEADER_COLOR,
-    _DEFAULT_ARG_COLOR,
+    _DEFAULT_ARGUMENT_COLOR,
     _DEFAULT_WARN_COLOR,
     _DEFAULT_ERROR_COLOR,
-    _HELP_LINE_WIDTH,
+    _DEFAULT_PROGRAM_COLOR,
+    _DEFAULT_SHORT_OPTION_COLOR,
+    _DEFAULT_LONG_OPTION_COLOR,
+    _DEFAULT_VALUE_COLOR,
+    _DEFAULT_POSITIONAL_COLOR,
+    _DEFAULT_COMMAND_COLOR,
+    _help_line_width,
     _HELP_INDENT,
     _HELP_OPT_WIDTH,
     _HELP_GAP,
@@ -262,13 +270,25 @@ struct Command(Copyable, Movable, Writable):
     """ANSI code for deprecation warning messages (default: orange)."""
     var _error_color: String
     """ANSI code for parse error messages (default: red)."""
+    var _prog_color: String
+    """ANSI code for the program name in the usage line."""
+    var _short_opt_color: String
+    """ANSI code for short option names (-h, -p)."""
+    var _long_opt_color: String
+    """ANSI code for long option names (--help, --port)."""
+    var _value_color: String
+    """ANSI code for value names / metavar (PORT, <HOST>)."""
+    var _pos_color: String
+    """ANSI code for positional argument names."""
+    var _cmd_color: String
+    """ANSI code for subcommand names in the Commands section."""
     var _custom_usage: String
     """When non-empty, replaces the auto-generated usage line.
     Set via ``usage("...")``."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
     Add entries via ``add_tip()``.  Each tip is printed on its own line
-    prefixed with the same bold ``Tip:`` label as the built-in hint."""
+    prefixed with the same bold ``tip:`` label as the built-in hint."""
 
     # === Private fields — Shell completions ===
     var _completions_enabled: Bool
@@ -338,9 +358,15 @@ struct Command(Copyable, Movable, Writable):
         self._confirmation_prompt = String("")
         # ── Help & display ──
         self._header_color = _DEFAULT_HEADER_COLOR
-        self._arg_color = _DEFAULT_ARG_COLOR
+        self._arg_color = _DEFAULT_ARGUMENT_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
+        self._prog_color = _DEFAULT_PROGRAM_COLOR
+        self._short_opt_color = _DEFAULT_SHORT_OPTION_COLOR
+        self._long_opt_color = _DEFAULT_LONG_OPTION_COLOR
+        self._value_color = _DEFAULT_VALUE_COLOR
+        self._pos_color = _DEFAULT_POSITIONAL_COLOR
+        self._cmd_color = _DEFAULT_COMMAND_COLOR
         self._custom_usage = String("")
         self._tips = List[String]()
         # ── Shell completions ──
@@ -393,6 +419,12 @@ struct Command(Copyable, Movable, Writable):
         self._arg_color = take._arg_color^
         self._warn_color = take._warn_color^
         self._error_color = take._error_color^
+        self._prog_color = take._prog_color^
+        self._short_opt_color = take._short_opt_color^
+        self._long_opt_color = take._long_opt_color^
+        self._value_color = take._value_color^
+        self._pos_color = take._pos_color^
+        self._cmd_color = take._cmd_color^
         self._custom_usage = take._custom_usage^
         self._tips = take._tips^
         # ── Shell completions ──
@@ -462,6 +494,12 @@ struct Command(Copyable, Movable, Writable):
         self._arg_color = copy._arg_color
         self._warn_color = copy._warn_color
         self._error_color = copy._error_color
+        self._prog_color = copy._prog_color
+        self._short_opt_color = copy._short_opt_color
+        self._long_opt_color = copy._long_opt_color
+        self._value_color = copy._value_color
+        self._pos_color = copy._pos_color
+        self._cmd_color = copy._cmd_color
         self._custom_usage = copy._custom_usage
         self._tips = copy._tips.copy()
         # ── Shell completions ──
@@ -1531,10 +1569,10 @@ struct Command(Copyable, Movable, Writable):
 
         By default, ArgMojo generates a usage line like::
 
-            Usage: myapp <file> [OPTIONS]
+            usage: myapp <file> [OPTIONS]
 
         Call this method to override it with a completely custom string.
-        The string should **not** include the ``Usage:`` prefix — it will
+        The string should **not** include the ``usage:`` prefix — it will
         be added automatically.
 
         Args:
@@ -1548,7 +1586,7 @@ struct Command(Copyable, Movable, Writable):
         var cmd = Command("git", "The stupid content tracker")
         cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
         # --help will show:
-        #   Usage: git [-v | --version] [-C <path>] <command> [<args>]
+        #   usage: git [-v | --version] [-C <path>] <command> [<args>]
         ```
         """
         self._custom_usage = text
@@ -1557,7 +1595,7 @@ struct Command(Copyable, Movable, Writable):
         """Adds a custom tip line to the bottom of the help message.
 
         Each tip is printed on its own line below the built-in ``--``
-        separator hint, prefixed with a bold ``Tip:`` label.  Useful for
+        separator hint, prefixed with a bold ``tip:`` label.  Useful for
         documenting shell idioms, environment variables, or any other
         usage notes that don't fit in argument help strings.
 
@@ -1575,7 +1613,6 @@ struct Command(Copyable, Movable, Writable):
         """
         self._tips.append(tip)
 
-    # TODO: alias_name[name: StringLiteral](mut self) for compile-time checks
     def header_color[name: StringLiteral](mut self):
         """Sets the colour for section headers (Usage, Arguments, Options).
 
@@ -1599,8 +1636,13 @@ struct Command(Copyable, Movable, Writable):
         """
         self._header_color = _resolve_color[name]()
 
-    def arg_color[name: StringLiteral](mut self):
-        """Sets the colour for option and argument names in help output.
+    def argument_color[name: StringLiteral](mut self):
+        """Sets a single colour for ALL option and argument names in help.
+
+        This is a convenience method that sets ``program_color``,
+        ``short_option_color``, ``long_option_color``, ``value_color``,
+        ``positional_color``, and ``command_color`` to the same colour at once.
+        Use the individual setters for fine-grained control.
 
         Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
         ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
@@ -1614,10 +1656,17 @@ struct Command(Copyable, Movable, Writable):
         ```mojo
         from argmojo import Command
         var command = Command("myapp", "A sample application")
-        command.arg_color["GREEN"]()
+        command.argument_color["GREEN"]()
         ```
         """
-        self._arg_color = _resolve_color[name]()
+        var c = _resolve_color[name]()
+        self._arg_color = c
+        self._prog_color = c
+        self._short_opt_color = c
+        self._long_opt_color = c
+        self._value_color = c
+        self._pos_color = c
+        self._cmd_color = c
 
     def warn_color[name: StringLiteral](mut self):
         """Sets the colour for deprecation warning messages.
@@ -1658,6 +1707,78 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         self._error_color = _resolve_color[name]()
+
+    def program_color[name: StringLiteral](mut self):
+        """Sets the colour for the program name in the usage line.
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._prog_color = _resolve_color[name]()
+
+    def short_option_color[name: StringLiteral](mut self):
+        """Sets the colour for short option names (e.g. ``-h``, ``-p``).
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._short_opt_color = _resolve_color[name]()
+
+    def long_option_color[name: StringLiteral](mut self):
+        """Sets the colour for long option names (e.g. ``--help``, ``--port``).
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._long_opt_color = _resolve_color[name]()
+
+    def value_color[name: StringLiteral](mut self):
+        """Sets the colour for value names / metavar (e.g. ``PORT``, ``<HOST>``).
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._value_color = _resolve_color[name]()
+
+    def positional_color[name: StringLiteral](mut self):
+        """Sets the colour for positional argument names.
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._pos_color = _resolve_color[name]()
+
+    def command_color[name: StringLiteral](mut self):
+        """Sets the colour for subcommand names in the Commands section.
+
+        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
+        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Invalid names are caught at compile time.
+
+        Parameters:
+            name: The colour name.
+        """
+        self._cmd_color = _resolve_color[name]()
 
     # ── Shell completions ──
 
@@ -1869,11 +1990,11 @@ struct Command(Copyable, Movable, Writable):
     def _plain_usage(self) -> String:
         """Returns a plain-text usage line (no ANSI colours).
 
-        Example output: ``Usage: git clone <repository> [directory] [OPTIONS]``
+        Example output: ``usage: git clone <repository> [directory] [OPTIONS]``
         """
         if self._custom_usage:
-            return String("Usage: ") + self._custom_usage
-        var s = String("Usage: ") + self.name
+            return String("usage: ") + self._custom_usage
+        var s = String("usage: ") + self.name
         for i in range(len(self.args)):
             if self.args[i]._is_positional and not self.args[i]._is_hidden:
                 var display = self.args[i].name
@@ -1894,6 +2015,51 @@ struct Command(Copyable, Movable, Writable):
         if has_subcommands:
             s += " <COMMAND>"
         s += " [OPTIONS]"
+        return s
+
+    def _colored_usage(self) -> String:
+        """Returns a coloured usage line for error output.
+
+        Uses the command's colour settings but with a lighter style than
+        help output — the ``usage:`` label uses ``_header_color`` without
+        bold/underline, matching the subdued diagnostic style of pixi/cargo.
+        Falls back to plain usage when ``NO_COLOR`` is set.
+
+        Example output: ``usage: prog <COMMAND> [OPTIONS]`` with colours.
+        """
+        if Self._no_color_env():
+            return self._plain_usage()
+
+        var hc = self._header_color
+        var pc = self._prog_color
+        var posc = self._pos_color
+        var lc = self._long_opt_color
+        var rc = _RESET
+
+        if self._custom_usage:
+            return hc + "usage:" + rc + " " + self._custom_usage
+
+        var s = hc + "usage:" + rc + " " + pc + self.name + rc
+        for i in range(len(self.args)):
+            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+                var display = self.args[i].name
+                if self.args[i]._is_remainder:
+                    display += "..."
+                if self.args[i]._is_required:
+                    s += " " + posc + "<" + display + ">" + rc
+                else:
+                    s += " " + posc + "[" + display + "]" + rc
+        var has_subcommands = False
+        for i in range(len(self.subcommands)):
+            if (
+                not self.subcommands[i]._is_help_subcommand
+                and not self.subcommands[i]._is_hidden
+            ):
+                has_subcommands = True
+                break
+        if has_subcommands:
+            s += " " + posc + "<COMMAND>" + rc
+        s += " " + lc + "[OPTIONS]" + rc
         return s
 
     # ===------------------------------------------------------------------=== #
@@ -3054,25 +3220,6 @@ struct Command(Copyable, Movable, Writable):
             # When allow_positional_with_subcommands is set, fall
             # through to positional handling below.
             if not self._allow_positional_with_subcommands:
-                var avail = String("")
-                var first = True
-                for _si in range(len(self.subcommands)):
-                    if (
-                        not self.subcommands[_si]._is_help_subcommand
-                        and not self.subcommands[_si]._is_hidden
-                    ):
-                        if not first:
-                            avail += ", "
-                        avail += self.subcommands[_si].name
-                        # Append aliases to available list.
-                        for _ai in range(
-                            len(self.subcommands[_si]._command_aliases)
-                        ):
-                            avail += (
-                                ", "
-                                + self.subcommands[_si]._command_aliases[_ai]
-                            )
-                        first = False
                 # Try typo suggestion for subcommand names.
                 var sub_names = List[String]()
                 for _si2 in range(len(self.subcommands)):
@@ -3088,16 +3235,64 @@ struct Command(Copyable, Movable, Writable):
                                 self.subcommands[_si2]._command_aliases[_ai2]
                             )
                 var suggestion = _suggest_similar(arg, sub_names)
-                var hint = String("")
-                if suggestion != "":
-                    hint = ". Did you mean '" + suggestion + "'?"
-                self._error(
-                    "Unknown command '"
-                    + arg
-                    + "'. Available commands: "
-                    + avail
-                    + hint
-                )
+
+                # Multi-line error (pixi style):
+                #   error: unrecognized subcommand 'foo'
+                #
+                #     tip: a similar subcommand exists: 'bar'
+                #
+                #   usage: prog <COMMAND> [OPTIONS]
+                var err_msg = "unrecognized subcommand '" + arg + "'"
+                if suggestion:
+                    err_msg += ". Did you mean '" + suggestion + "'?"
+                if Self._no_color_env():
+                    print(
+                        "error: " + err_msg,
+                        file=stderr,
+                    )
+                    if suggestion:
+                        print(file=stderr)
+                        print(
+                            "  tip: a similar subcommand exists: '"
+                            + suggestion
+                            + "'",
+                            file=stderr,
+                        )
+                else:
+                    # error: unrecognized subcommand 'foo'
+                    # "error:" in red, message in plain, bad arg in red.
+                    print(
+                        self._error_color
+                        + "error:"
+                        + _RESET
+                        + " unrecognized subcommand '"
+                        + self._error_color
+                        + arg
+                        + _RESET
+                        + "'",
+                        file=stderr,
+                    )
+                    if suggestion:
+                        print(file=stderr)
+                        #   tip: a similar subcommand exists: 'build'
+                        # "tip:" underlined, suggestion underlined.
+                        print(
+                            "  "
+                            + _BOLD_YELLOW
+                            + _UNDERLINE
+                            + "tip:"
+                            + _RESET
+                            + " a similar subcommand exists: '"
+                            + _BOLD_YELLOW
+                            + _UNDERLINE
+                            + suggestion
+                            + _RESET
+                            + "'",
+                            file=stderr,
+                        )
+                print(file=stderr)
+                print(self._colored_usage(), file=stderr)
+                raise Error(err_msg)
             return -1
 
     # ===------------------------------------------------------------------=== #
@@ -3421,9 +3616,9 @@ struct Command(Copyable, Movable, Writable):
         for g in range(len(self._exclusive_groups)):
             var found = List[String]()
             for n in range(len(self._exclusive_groups[g])):
-                var arg_name = self._exclusive_groups[g][n]
-                if result.has(arg_name):
-                    found.append(arg_name)
+                var argument_name = self._exclusive_groups[g][n]
+                if result.has(argument_name):
+                    found.append(argument_name)
             if len(found) > 1:
                 var names_str = String("")
                 for f in range(len(found)):
@@ -3437,11 +3632,11 @@ struct Command(Copyable, Movable, Writable):
             var provided = List[String]()
             var missing = List[String]()
             for n in range(len(self._required_groups[g])):
-                var arg_name = self._required_groups[g][n]
-                if result.has(arg_name):
-                    provided.append(arg_name)
+                var argument_name = self._required_groups[g][n]
+                if result.has(argument_name):
+                    provided.append(argument_name)
                 else:
-                    missing.append(arg_name)
+                    missing.append(argument_name)
             if len(provided) > 0 and len(missing) > 0:
                 var missing_str = String("")
                 for m in range(len(missing)):
@@ -3465,8 +3660,8 @@ struct Command(Copyable, Movable, Writable):
         for g in range(len(self._one_required_groups)):
             var found_any = False
             for n in range(len(self._one_required_groups[g])):
-                var arg_name = self._one_required_groups[g][n]
-                if result.has(arg_name):
+                var argument_name = self._one_required_groups[g][n]
+                if result.has(argument_name):
                     found_any = True
                     break
             if not found_any:
@@ -3713,7 +3908,7 @@ struct Command(Copyable, Movable, Writable):
         for i in range(len(self.args)):
             for j in range(len(self.args[i]._alias_names)):
                 if self.args[i]._alias_names[j].startswith(name):
-                    # Avoid duplicate if the same arg already matched via long_name.
+                    # Avoid duplicate if the same argument already matched via long_name.
                     var already = False
                     for k in range(len(candidates)):
                         if candidates[k] == self.args[i]._long_name:
@@ -3982,45 +4177,91 @@ struct Command(Copyable, Movable, Writable):
         # Resolve colour tokens — empty strings when colour is off.
         # NO_COLOR env var overrides the color parameter.
         var use_color = color and not Self._no_color_env()
-        var arg_color = self._arg_color if use_color else ""
         var header_color = (_BOLD_UL + self._header_color) if use_color else ""
+        var program_color = self._prog_color if use_color else ""
+        var short_option_color = self._short_opt_color if use_color else ""
+        var long_option_color = self._long_opt_color if use_color else ""
+        var value_color = self._value_color if use_color else ""
+        var positional_color = self._pos_color if use_color else ""
+        var command_color = self._cmd_color if use_color else ""
         var reset_code = _RESET if use_color else ""
 
+        # Dynamic line width (terminal columns − 2, capped at 120).
+        var line_width = _help_line_width()
+
         var s = String("")
-        s += self._help_usage_line(arg_color, header_color, reset_code)
-        s += self._help_positionals_section(arg_color, header_color, reset_code)
-        s += self._help_options_section(arg_color, header_color, reset_code)
-        s += self._help_commands_section(arg_color, header_color, reset_code)
+        s += self._help_usage_line(
+            program_color,
+            short_option_color,
+            long_option_color,
+            value_color,
+            positional_color,
+            header_color,
+            reset_code,
+            line_width,
+        )
+        s += self._help_positionals_section(
+            positional_color,
+            value_color,
+            header_color,
+            reset_code,
+            line_width,
+        )
+        s += self._help_options_section(
+            short_option_color,
+            long_option_color,
+            value_color,
+            header_color,
+            reset_code,
+            line_width,
+        )
+        s += self._help_commands_section(
+            command_color,
+            header_color,
+            reset_code,
+            line_width,
+        )
         s += self._help_tips_section(header_color, reset_code)
         return s
 
     def _help_usage_line(
         self,
-        arg_color: String,
+        program_color: String,
+        short_option_color: String,
+        long_option_color: String,
+        value_color: String,
+        positional_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
         """Generates the description and usage line of help output.
 
         Args:
-            arg_color: ANSI colour code for argument names (empty if colour off).
+            program_color: ANSI colour code for the program name.
+            short_option_color: ANSI colour code for short options in summary.
+            long_option_color: ANSI colour code for long options in summary.
+            value_color: ANSI colour code for value names in summary.
+            positional_color: ANSI colour code for positional arg names in summary.
             header_color: ANSI colour code for section headers (empty if colour off).
             reset_code: ANSI reset code (empty if colour off).
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The description (if any) and usage line string.
         """
+        var w_line = line_width if line_width > 0 else _help_line_width()
         var s = String("")
         if self.description:
-            s += _wrap_text_at(self.description, _HELP_LINE_WIDTH) + "\n\n"
+            s += _wrap_text_at(self.description, w_line) + "\n\n"
 
         # Usage line.
         if self._custom_usage:
-            s += header_color + "Usage:" + reset_code + " "
+            s += header_color + "usage:" + reset_code + " "
             s += self._custom_usage + "\n\n"
             return s
-        s += header_color + "Usage:" + reset_code + " "
-        s += arg_color + self.name + reset_code
+        s += header_color + "usage:" + reset_code + " "
+        s += program_color + self.name + reset_code
 
         # Collect usage tokens (plain and coloured) for wrapping.
         var usage_tokens_plain = List[String]()
@@ -4035,12 +4276,12 @@ struct Command(Copyable, Movable, Writable):
                 if self.args[i]._is_required:
                     usage_tokens_plain.append("<" + display + ">")
                     usage_tokens_colored.append(
-                        arg_color + "<" + display + ">" + reset_code
+                        positional_color + "<" + display + ">" + reset_code
                     )
                 else:
                     usage_tokens_plain.append("[" + display + "]")
                     usage_tokens_colored.append(
-                        arg_color + "[" + display + "]" + reset_code
+                        positional_color + "[" + display + "]" + reset_code
                     )
 
         # Show <COMMAND> placeholder when subcommands are registered.
@@ -4054,13 +4295,17 @@ struct Command(Copyable, Movable, Writable):
                 break
         if has_subcommands:
             usage_tokens_plain.append("<COMMAND>")
-            usage_tokens_colored.append(arg_color + "<COMMAND>" + reset_code)
+            usage_tokens_colored.append(
+                positional_color + "<COMMAND>" + reset_code
+            )
 
         usage_tokens_plain.append("[OPTIONS]")
-        usage_tokens_colored.append(arg_color + "[OPTIONS]" + reset_code)
+        usage_tokens_colored.append(
+            long_option_color + "[OPTIONS]" + reset_code
+        )
 
-        # Build the usage line with wrapping at _HELP_LINE_WIDTH.
-        var prefix_plain = "Usage: " + self.name
+        # Build the usage line with wrapping at the detected line width.
+        var prefix_plain = "usage: " + self.name
         var prefix_width = _display_width(prefix_plain)
         var indent = String("")
         for _ in range(prefix_width):
@@ -4071,46 +4316,51 @@ struct Command(Copyable, Movable, Writable):
         for ti in range(len(usage_tokens_plain)):
             total_plain += " " + usage_tokens_plain[ti]
 
-        if _display_width(total_plain) <= _HELP_LINE_WIDTH:
+        if _display_width(total_plain) <= w_line:
             # Single line — append coloured tokens directly.
             for ti in range(len(usage_tokens_colored)):
                 s += " " + usage_tokens_colored[ti]
         else:
             # Multi-line: wrap tokens with " \" continuation.
-            var line_width = prefix_width  # current line width (plain)
+            var cur_width = prefix_width  # current line width (plain)
             for ti in range(len(usage_tokens_plain)):
                 var tw = _display_width(usage_tokens_plain[ti])
                 # +1 for the preceding space, +2 for " \" if not last token.
                 var is_last = ti == len(usage_tokens_plain) - 1
                 var trail = 0 if is_last else 2  # reserve for " \"
                 if (
-                    line_width + 1 + tw + trail > _HELP_LINE_WIDTH
-                    and line_width > prefix_width
+                    cur_width + 1 + tw + trail > w_line
+                    and cur_width > prefix_width
                 ):
                     # Wrap: end current line, start new indented line.
                     s += " \\\n" + indent
-                    line_width = prefix_width
+                    cur_width = prefix_width
                 s += " " + usage_tokens_colored[ti]
-                line_width += 1 + tw
+                cur_width += 1 + tw
 
         s += "\n\n"
         return s
 
     def _help_positionals_section(
         self,
-        arg_color: String,
+        positional_color: String,
+        value_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Arguments:' section listing positional arguments.
+        """Generates the 'arguments:' section listing positional arguments.
 
         Uses a two-pass approach: first collects plain and coloured text
         to compute dynamic column padding, then assembles the final lines.
 
         Args:
-            arg_color: ANSI colour code for argument names.
+            positional_color: ANSI colour code for positional argument names.
+            value_color: ANSI colour code for value names (unused here
+                but kept for signature consistency).
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The positional arguments section, or empty string if none.
@@ -4135,17 +4385,19 @@ struct Command(Copyable, Movable, Writable):
                     name_display += "..."
                 var plain = String("  ") + name_display
                 var colored = (
-                    String("  ") + arg_color + name_display + reset_code
+                    String("  ") + positional_color + name_display + reset_code
                 )
                 pos_plains.append(plain)
                 pos_colors.append(colored)
                 pos_helps.append(self.args[i].help_text)
 
-        var s = header_color + "Arguments:" + reset_code + "\n"
+        var s = header_color + "arguments:" + reset_code + "\n"
         var pos_indices = List[Int]()
         for k in range(len(pos_plains)):
             pos_indices.append(k)
-        var pos_layout = _section_desc_layout(pos_plains, pos_indices)
+        var pos_layout = _section_desc_layout(
+            pos_plains, pos_indices, line_width
+        )
         var pos_ds = pos_layout[0]
         var pos_dw = pos_layout[1]
         for k in range(len(pos_plains)):
@@ -4164,11 +4416,14 @@ struct Command(Copyable, Movable, Writable):
 
     def _help_options_section(
         self,
-        arg_color: String,
+        short_option_color: String,
+        long_option_color: String,
+        value_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Options:', group, and 'Global Options:' sections.
+        """Generates the 'options:', group, and 'global options:' sections.
 
         Separates local options from persistent (global) options and
         displays them under distinct headings.  Options with a ``.group()``
@@ -4176,9 +4431,12 @@ struct Command(Copyable, Movable, Writable):
         ``--version`` are always appended to the ungrouped local section.
 
         Args:
-            arg_color: ANSI colour code for argument names.
+            short_option_color: ANSI colour code for short option names.
+            long_option_color: ANSI colour code for long option names.
+            value_color: ANSI colour code for value names / metavar.
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The options section string.
@@ -4196,7 +4454,10 @@ struct Command(Copyable, Movable, Writable):
                 if self.args[i]._short_name:
                     plain += "-" + self.args[i]._short_name
                     colored += (
-                        arg_color + "-" + self.args[i]._short_name + reset_code
+                        short_option_color
+                        + "-"
+                        + self.args[i]._short_name
+                        + reset_code
                     )
                     if self.args[i]._long_name:
                         plain += ", "
@@ -4207,7 +4468,7 @@ struct Command(Copyable, Movable, Writable):
                 if self.args[i]._long_name:
                     var long_part = String("--") + self.args[i]._long_name
                     plain += long_part
-                    colored += arg_color + long_part + reset_code
+                    colored += long_option_color + long_part + reset_code
                     if self.args[i]._is_negatable:
                         var neg_part = (
                             String(" / --no-") + self.args[i]._long_name
@@ -4215,7 +4476,7 @@ struct Command(Copyable, Movable, Writable):
                         plain += neg_part
                         colored += (
                             " / "
-                            + arg_color
+                            + long_option_color
                             + "--no-"
                             + self.args[i]._long_name
                             + reset_code
@@ -4228,7 +4489,7 @@ struct Command(Copyable, Movable, Writable):
                         plain += alias_part
                         colored += (
                             ", "
-                            + arg_color
+                            + long_option_color
                             + "--"
                             + self.args[i]._alias_names[j]
                             + reset_code
@@ -4260,14 +4521,14 @@ struct Command(Copyable, Movable, Writable):
                         var mv_colored = String("")
                         for _r in range(repeat - 1):
                             mv_plain += " " + mv
-                            mv_colored += " " + arg_color + mv + reset_code
+                            mv_colored += " " + value_color + mv + reset_code
                         # Last (or only) occurrence — attach "..." if append.
                         var last = mv + ("..." if append_dots else "")
                         mv_plain += open_bracket + sep + last + close_bracket
                         mv_colored += (
                             open_bracket
                             + sep
-                            + arg_color
+                            + value_color
                             + last
                             + reset_code
                             + close_bracket
@@ -4288,7 +4549,7 @@ struct Command(Copyable, Movable, Writable):
                         colored += (
                             open_bracket
                             + sep
-                            + arg_color
+                            + value_color
                             + suffix
                             + reset_code
                             + close_bracket
@@ -4304,14 +4565,14 @@ struct Command(Copyable, Movable, Writable):
                         var ph_colored = String("")
                         for _r in range(repeat - 1):
                             ph_plain += " " + tag
-                            ph_colored += " " + arg_color + tag + reset_code
+                            ph_colored += " " + value_color + tag + reset_code
                         # Last (or only) — attach "..." if append.
                         var last = tag + ("..." if append_dots else "")
                         ph_plain += open_bracket + sep + last + close_bracket
                         ph_colored += (
                             open_bracket
                             + sep
-                            + arg_color
+                            + value_color
                             + last
                             + reset_code
                             + close_bracket
@@ -4331,26 +4592,26 @@ struct Command(Copyable, Movable, Writable):
                     help += "[deprecated: " + self.args[i]._deprecated_msg + "]"
                 opt_helps.append(help)
 
-        # Built-in options (always shown under local ungrouped "Options:" section).
+        # Built-in options (always shown under local ungrouped "options:" section).
         var help_plain = String("  -h, --help")
         var help_colored = (
             "  "
-            + arg_color
+            + short_option_color
             + "-h"
             + reset_code
             + ", "
-            + arg_color
+            + long_option_color
             + "--help"
             + reset_code
         )  # Not show -? in help message as it requires quoting in some shells
         var version_plain = String("  -V, --version")
         var version_colored = (
             "  "
-            + arg_color
+            + short_option_color
             + "-V"
             + reset_code
             + ", "
-            + arg_color
+            + long_option_color
             + "--version"
             + reset_code
         )
@@ -4370,12 +4631,12 @@ struct Command(Copyable, Movable, Writable):
             )
             var comp_colored = (
                 "      "
-                + arg_color
+                + long_option_color
                 + "--"
                 + self._completions_name
                 + reset_code
                 + " "
-                + arg_color
+                + value_color
                 + "<SHELL>"
                 + reset_code
             )
@@ -4408,15 +4669,17 @@ struct Command(Copyable, Movable, Writable):
 
         # --- Per-section dynamic padding (capped at _HELP_OPT_WIDTH) ---
 
-        # --- Ungrouped local options (Options:) ---
+        # --- Ungrouped local options (options:) ---
         var ungrouped_idx = List[Int]()
         for k in range(len(opt_plains)):
             if not opt_persistent[k] and not opt_groups[k]:
                 ungrouped_idx.append(k)
-        var ug_layout = _section_desc_layout(opt_plains, ungrouped_idx)
+        var ug_layout = _section_desc_layout(
+            opt_plains, ungrouped_idx, line_width
+        )
         var ug_ds = ug_layout[0]
         var ug_dw = ug_layout[1]
-        var s = header_color + "Options:" + reset_code + "\n"
+        var s = header_color + "options:" + reset_code + "\n"
         for ki in range(len(ungrouped_idx)):
             var k = ungrouped_idx[ki]
             s += (
@@ -4437,7 +4700,7 @@ struct Command(Copyable, Movable, Writable):
             for k in range(len(opt_plains)):
                 if not opt_persistent[k] and opt_groups[k] == gname:
                     grp_idx.append(k)
-            var g_layout = _section_desc_layout(opt_plains, grp_idx)
+            var g_layout = _section_desc_layout(opt_plains, grp_idx, line_width)
             var g_ds = g_layout[0]
             var g_dw = g_layout[1]
             s += "\n" + header_color + gname + ":" + reset_code + "\n"
@@ -4460,10 +4723,10 @@ struct Command(Copyable, Movable, Writable):
             for k in range(len(opt_plains)):
                 if opt_persistent[k]:
                     gl_idx.append(k)
-            var gl_layout = _section_desc_layout(opt_plains, gl_idx)
+            var gl_layout = _section_desc_layout(opt_plains, gl_idx, line_width)
             var gl_ds = gl_layout[0]
             var gl_dw = gl_layout[1]
-            s += "\n" + header_color + "Global Options:" + reset_code + "\n"
+            s += "\n" + header_color + "global options:" + reset_code + "\n"
             for ki in range(len(gl_idx)):
                 var k = gl_idx[ki]
                 s += (
@@ -4481,16 +4744,18 @@ struct Command(Copyable, Movable, Writable):
 
     def _help_commands_section(
         self,
-        arg_color: String,
+        command_color: String,
         header_color: String,
         reset_code: String,
+        line_width: Int = 0,
     ) -> String:
-        """Generates the 'Commands:' section listing registered subcommands.
+        """Generates the 'commands:' section listing registered subcommands.
 
         Args:
-            arg_color: ANSI colour code for argument names.
+            command_color: ANSI colour code for subcommand names.
             header_color: ANSI colour code for section headers.
             reset_code: ANSI reset code.
+            line_width: Total line width (0 = auto-detect via terminal).
 
         Returns:
             The commands section string, or empty string if no subcommands.
@@ -4523,7 +4788,7 @@ struct Command(Copyable, Movable, Writable):
                 for _ai in range(len(self.subcommands[i]._command_aliases)):
                     label += ", " + self.subcommands[i]._command_aliases[_ai]
                 var plain = String("  ") + label
-                var colored = String("  ") + arg_color + label + reset_code
+                var colored = String("  ") + command_color + label + reset_code
                 cmd_plains.append(plain)
                 cmd_colors.append(colored)
                 cmd_helps.append(self.subcommands[i].description)
@@ -4531,7 +4796,7 @@ struct Command(Copyable, Movable, Writable):
         if self._completions_enabled and self._completions_is_subcommand:
             var cname = self._completions_name
             var plain = String("  ") + cname
-            var colored = String("  ") + arg_color + cname + reset_code
+            var colored = String("  ") + command_color + cname + reset_code
             cmd_plains.append(plain)
             cmd_colors.append(colored)
             cmd_helps.append(
@@ -4540,10 +4805,12 @@ struct Command(Copyable, Movable, Writable):
         var cmd_indices = List[Int]()
         for k in range(len(cmd_plains)):
             cmd_indices.append(k)
-        var cmd_layout = _section_desc_layout(cmd_plains, cmd_indices)
+        var cmd_layout = _section_desc_layout(
+            cmd_plains, cmd_indices, line_width
+        )
         var cmd_ds = cmd_layout[0]
         var cmd_dw = cmd_layout[1]
-        var s = "\n" + header_color + "Commands:" + reset_code + "\n"
+        var s = "\n" + header_color + "commands:" + reset_code + "\n"
         for k in range(len(cmd_plains)):
             s += (
                 _format_two_column_line(
@@ -4561,7 +4828,7 @@ struct Command(Copyable, Movable, Writable):
     def _help_tips_section(
         self, header_color: String, reset_code: String
     ) -> String:
-        """Generates the 'Tips:' section with hints and user-defined tips.
+        """Generates the 'tips:' section with hints and user-defined tips.
 
         Automatically adds a ``--`` separator hint when positional
         arguments are registered.  User-defined tips (added via
@@ -4629,7 +4896,7 @@ struct Command(Copyable, Movable, Writable):
         if len(tip_lines) == 0:
             return ""
 
-        var s = "\n" + header_color + "Tips:" + reset_code + "\n"
+        var s = "\n" + header_color + "tips:" + reset_code + "\n"
         for _ti in range(len(tip_lines)):
             s += "  " + tip_lines[_ti] + "\n"
         return s

@@ -866,13 +866,13 @@ def test_group_basic() raises:
         msg="help should contain 'Network:' group heading: " + help,
     )
     assert_true(
-        "Options:" in help,
-        msg="help should contain 'Options:' for ungrouped args: " + help,
+        "options:" in help,
+        msg="help should contain 'options:' for ungrouped args: " + help,
     )
 
 
 def test_group_ungrouped_separate_from_grouped() raises:
-    """Ungrouped options appear under 'Options:' and grouped under their
+    """Ungrouped options appear under 'options:' and grouped under their
     own heading — they don't mix."""
     var command = Command("test", "Test app")
     command.add_argument(
@@ -887,11 +887,11 @@ def test_group_ungrouped_separate_from_grouped() raises:
 
     var help = command._generate_help(color=False)
     # --verbose should appear before "Network:" heading.
-    var opts_pos = help.find("Options:")
+    var opts_pos = help.find("options:")
     var net_pos = help.find("Network:")
     var verbose_pos = help.find("--verbose")
     var host_pos = help.find("--host")
-    assert_true(opts_pos >= 0, msg="Options: heading missing")
+    assert_true(opts_pos >= 0, msg="options: heading missing")
     assert_true(net_pos >= 0, msg="Network: heading missing")
     assert_true(
         verbose_pos < net_pos,
@@ -967,11 +967,11 @@ def test_group_no_groups_unchanged() raises:
     )
 
     var help = command._generate_help(color=False)
-    assert_true("Options:" in help, msg="Options: heading should exist")
+    assert_true("options:" in help, msg="options: heading should exist")
     # Should have --verbose and --output under the same section.
     var verbose_pos = help.find("--verbose")
     var output_pos = help.find("--output")
-    var options_pos = help.find("Options:")
+    var options_pos = help.find("options:")
     assert_true(verbose_pos > options_pos, msg="--verbose under Options:")
     assert_true(output_pos > options_pos, msg="--output under Options:")
 
@@ -985,23 +985,23 @@ def test_group_builtin_options_ungrouped() raises:
     )
 
     var help = command._generate_help(color=False)
-    var options_pos = help.find("Options:")
+    var options_pos = help.find("options:")
     var network_pos = help.find("Network:")
     var help_pos = help.find("--help")
     var version_pos = help.find("--version")
     # --help and --version should be under Options:, before Network:.
     assert_true(
         help_pos > options_pos and help_pos < network_pos,
-        msg="--help should be under Options: before Network:",
+        msg="--help should be under options: before Network:",
     )
     assert_true(
         version_pos > options_pos and version_pos < network_pos,
-        msg="--version should be under Options: before Network:",
+        msg="--version should be under options: before Network:",
     )
 
 
 def test_group_with_persistent() raises:
-    """Persistent (global) args go under Global Options:, not under groups."""
+    """Persistent (global) args go under global options:, not under groups."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output")
@@ -1018,17 +1018,17 @@ def test_group_with_persistent() raises:
     command.add_subcommand(sub^)
 
     var help = command._generate_help(color=False)
-    assert_true("Options:" in help, msg="Options: heading missing")
+    assert_true("options:" in help, msg="options: heading missing")
     assert_true("Network:" in help, msg="Network: heading missing")
     assert_true(
-        "Global Options:" in help, msg="Global Options: heading missing"
+        "global options:" in help, msg="global options: heading missing"
     )
-    # --verbose should be under Global Options:, after Network:.
-    var global_pos = help.find("Global Options:")
+    # --verbose should be under global options:, after Network:.
+    var global_pos = help.find("global options:")
     var verbose_pos = help.find("--verbose")
     assert_true(
         verbose_pos > global_pos,
-        msg="--verbose (persistent) should be under Global Options:",
+        msg="--verbose (persistent) should be under global options:",
     )
 
 
@@ -1056,7 +1056,7 @@ def test_group_independent_padding() raises:
 
 
 def test_group_with_colored_output() raises:
-    """Group headings use the same header_color styling as Options:/Arguments:.
+    """Group headings use the same header_color styling as options:/arguments:.
     """
     var command = Command("test", "Test app")
     command.add_argument(
@@ -1154,7 +1154,7 @@ def test_group_with_subcommand_help() raises:
         "Network:" in sub_help, msg="Network: heading in subcommand help"
     )
     assert_true(
-        "Options:" in sub_help, msg="Options: heading in subcommand help"
+        "options:" in sub_help, msg="options: heading in subcommand help"
     )
 
 
