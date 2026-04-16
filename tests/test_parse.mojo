@@ -1259,7 +1259,7 @@ def test_negative_expression_parse_known() raises:
     var result = command.parse_known_arguments(args)
     assert_equal(result.get_string("expr"), "-1/3*pi")
     assert_equal(result.get_string("precision"), "10")
-    var unknown = result.get_unknown_args()
+    var unknown = result.get_unknown_arguments()
     assert_equal(len(unknown), 1)
     assert_equal(unknown[0], "--color")
 

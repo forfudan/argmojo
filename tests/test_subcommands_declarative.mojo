@@ -8,7 +8,7 @@ Tests Parsable structs as subcommand participants:
   - Child.from_parse_result() write-back from subcommand ParseResult
 
 Note: parse_from_command(), parse_full(), and parse_full_from_command() call
-cmd.parse() which reads sys.argv(), so they cannot be exercised in
+command.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  The testable equivalents
 (to_command + parse_arguments + from_parse_result) exercise identical logic.
 """
@@ -229,7 +229,7 @@ struct RunLeafCmd(Parsable):
 
 def test_flat_dispatch_search() raises:
     """Dispatch to 'search' subcommand with root flag."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = [
         "app",
         "--verbose",
@@ -237,7 +237,7 @@ def test_flat_dispatch_search() raises:
         "--case-sensitive",
         "hello",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = AppRoot.from_parse_result(result)
 
     assert_true(root.verbose.value)
@@ -252,9 +252,9 @@ def test_flat_dispatch_search() raises:
 
 def test_flat_dispatch_list() raises:
     """Dispatch to 'list' subcommand with its own flags."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "list", "--all", "-f", "json"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     assert_equal(result.subcommand, "list")
     var sub = result.get_subcommand_result()
@@ -265,9 +265,9 @@ def test_flat_dispatch_list() raises:
 
 def test_flat_dispatch_list_default_format() raises:
     """List subcommand with default format value."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "list"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     assert_equal(result.subcommand, "list")
     var sub = result.get_subcommand_result()
@@ -278,9 +278,9 @@ def test_flat_dispatch_list_default_format() raises:
 
 def test_flat_root_only_no_subcommand() raises:
     """Root flags only, no subcommand dispatched."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose", "-c", "myconfig.toml"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = AppRoot.from_parse_result(result)
 
     assert_true(root.verbose.value)
@@ -291,9 +291,9 @@ def test_flat_root_only_no_subcommand() raises:
 
 def test_flat_root_config_with_search() raises:
     """Root config option + search subcommand."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "-c", "prod.toml", "search", "pattern"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = AppRoot.from_parse_result(result)
 
     assert_equal(root.config.value, "prod.toml")
@@ -305,9 +305,9 @@ def test_flat_root_config_with_search() raises:
 
 def test_flat_root_to_command() raises:
     """Use trait static method AppRoot.to_command() to build Command."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "search", "test"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     assert_equal(result.subcommand, "search")
     var sub = result.get_subcommand_result()
@@ -322,7 +322,7 @@ def test_flat_root_to_command() raises:
 
 def test_nested_remote_add() raises:
     """Nested: git --verbose remote add origin https://example.com."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "--verbose",
@@ -331,7 +331,7 @@ def test_nested_remote_add() raises:
         "origin",
         "https://example.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = GitApp.from_parse_result(result)
 
     assert_true(root.verbose.value)
@@ -355,7 +355,7 @@ def test_nested_remote_add() raises:
 
 def test_nested_remote_add_with_fetch() raises:
     """Nested: git remote add --fetch origin https://example.com."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "remote",
@@ -364,7 +364,7 @@ def test_nested_remote_add_with_fetch() raises:
         "origin",
         "https://example.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var remote_result = result.get_subcommand_result()
     var add_result = remote_result.get_subcommand_result()
@@ -376,7 +376,7 @@ def test_nested_remote_add_with_fetch() raises:
 
 def test_nested_mid_level_flag() raises:
     """Mid-level flag: git remote --verbose add origin https://example.com."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "remote",
@@ -385,7 +385,7 @@ def test_nested_mid_level_flag() raises:
         "origin",
         "https://example.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var remote_result = result.get_subcommand_result()
     var remote = RemoteCmd.from_parse_result(remote_result)
@@ -398,9 +398,9 @@ def test_nested_mid_level_flag() raises:
 
 def test_nested_remote_remove() raises:
     """Nested: git remote remove --force origin."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = ["git", "remote", "remove", "--force", "origin"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     assert_equal(result.subcommand, "remote")
     var remote_result = result.get_subcommand_result()
@@ -414,9 +414,9 @@ def test_nested_remote_remove() raises:
 
 def test_nested_remote_remove_no_force() raises:
     """Nested: git remote remove origin (no --force)."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = ["git", "remote", "remove", "origin"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var remote_result = result.get_subcommand_result()
     var rm_result = remote_result.get_subcommand_result()
@@ -427,7 +427,7 @@ def test_nested_remote_remove_no_force() raises:
 
 def test_nested_root_and_mid_verbose() raises:
     """Both levels verbose: git -v remote -v add origin https://example.com."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "-v",
@@ -437,7 +437,7 @@ def test_nested_root_and_mid_verbose() raises:
         "origin",
         "https://example.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = GitApp.from_parse_result(result)
     assert_true(root.verbose.value)
 
@@ -457,14 +457,14 @@ def test_nested_root_and_mid_verbose() raises:
 
 def test_root_customization_builder_child() raises:
     """Root to_command() + add extra builder subcommand + parse."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     # Add an extra builder-only subcommand beyond the declarative ones
     var info = Command("info", "Show information")
     info.add_argument(Argument("topic", help="Info topic").positional())
-    cmd.add_subcommand(info^)
+    command.add_subcommand(info^)
 
     var args: List[String] = ["app", "info", "version"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     assert_equal(result.subcommand, "info")
     var sub = result.get_subcommand_result()
@@ -473,9 +473,9 @@ def test_root_customization_builder_child() raises:
 
 def test_dual_return_root_and_subcommand() raises:
     """Simulate parse_full: get typed root + raw result for dispatch."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose", "search", "hello"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed root
     var root = AppRoot.from_parse_result(result)
@@ -493,7 +493,7 @@ def test_dual_return_root_and_subcommand() raises:
 
 def test_dual_return_nested() raises:
     """Dual return through nested subcommands."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "-v",
@@ -504,7 +504,7 @@ def test_dual_return_nested() raises:
         "origin",
         "https://x.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Root typed
     var root = GitApp.from_parse_result(result)
@@ -526,9 +526,9 @@ def test_dual_return_nested() raises:
 def test_from_result_child_only() raises:
     """Extract child directly from sub-result via ChildParsable.from_parse_result().
     """
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "list", "--all", "-f", "csv"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var sub = result.get_subcommand_result()
     var lst = ListCmd.from_parse_result(sub)
@@ -543,18 +543,18 @@ def test_from_result_child_only() raises:
 
 def test_run_default_noop() raises:
     """Default run() does nothing and does not raise."""
-    var cmd = AppRoot.to_command()
+    var command = AppRoot.to_command()
     var args: List[String] = ["app", "--verbose"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var root = AppRoot.from_parse_result(result)
     root.run()  # Should complete without error
 
 
 def test_run_leaf_reads_fields() raises:
     """Leaf run() can read parsed fields."""
-    var cmd = RunTestRoot.to_command()
+    var command = RunTestRoot.to_command()
     var args: List[String] = ["runner", "build", "--release", "myapp"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var sub = result.get_subcommand_result()
     var leaf = RunLeafCmd.from_parse_result(sub)
@@ -574,7 +574,7 @@ def test_run_dispatch_full_pattern() raises:
     5. Extract child typed fields via from_parse_result on sub-result
     6. Call child.run()
     """
-    var cmd = RunTestRoot.to_command()
+    var command = RunTestRoot.to_command()
     var args: List[String] = [
         "runner",
         "--debug",
@@ -582,7 +582,7 @@ def test_run_dispatch_full_pattern() raises:
         "--release",
         "myapp",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Step 3: root typed
     var root = RunTestRoot.from_parse_result(result)
@@ -601,7 +601,7 @@ def test_run_dispatch_full_pattern() raises:
 
 def test_run_nested_dispatch() raises:
     """Nested dispatch: root → mid → leaf.run()."""
-    var cmd = GitApp.to_command()
+    var command = GitApp.to_command()
     var args: List[String] = [
         "git",
         "remote",
@@ -609,7 +609,7 @@ def test_run_nested_dispatch() raises:
         "origin",
         "https://example.com",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Navigate to leaf
     var remote_result = result.get_subcommand_result()
@@ -622,30 +622,30 @@ def test_run_nested_dispatch() raises:
 
 def test_run_root_noop_when_subcommand_dispatched() raises:
     """Root run() is no-op even when a subcommand was dispatched."""
-    var cmd = RunTestRoot.to_command()
+    var command = RunTestRoot.to_command()
     var args: List[String] = ["runner", "--debug", "build", "myapp"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var root = RunTestRoot.from_parse_result(result)
     root.run()  # Root's run() is a no-op, doesn't interfere
 
 
 # =====================================================================
-# Section 5 Tests: Declarative child with parse_args free function
+# Section 5 Tests: Declarative child with parse_arguments free function
 # =====================================================================
 
 
-def test_parse_args_with_subcommands() raises:
-    """Method parse_args works when subcommands are registered."""
+def test_parse_arguments_with_subcommands() raises:
+    """Method parse_arguments works when subcommands are registered."""
     var args: List[String] = ["app", "-v", "search", "hello"]
-    var root = AppRoot.parse_args(args)
+    var root = AppRoot.parse_arguments(args)
     assert_true(root.verbose.value)
-    # parse_args returns only typed root — subcommand info is in raw result
-    # (This tests that parse_args doesn't crash with subcommands)
+    # parse_arguments returns only typed root — subcommand info is in raw result
+    # (This tests that parse_arguments doesn't crash with subcommands)
 
 
-def test_parse_args_nested() raises:
-    """Method parse_args works through nested subcommand dispatch."""
+def test_parse_arguments_nested() raises:
+    """Method parse_arguments works through nested subcommand dispatch."""
     var args: List[String] = [
         "git",
         "-v",
@@ -654,7 +654,7 @@ def test_parse_args_nested() raises:
         "origin",
         "https://x.com",
     ]
-    var root = GitApp.parse_args(args)
+    var root = GitApp.parse_arguments(args)
     assert_true(root.verbose.value)
 
 

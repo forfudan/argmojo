@@ -1203,7 +1203,7 @@ def test_remainder_basic() raises:
     """Tests that remainder consumes all remaining tokens."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("cmd", help="Command to run").positional().required()
+        Argument("command", help="Command to run").positional().required()
     )
     command.add_argument(
         Argument("rest", help="Arguments for the command").remainder()
@@ -1211,7 +1211,7 @@ def test_remainder_basic() raises:
 
     var args: List[String] = ["test", "gcc", "-Wall", "-O2", "main.c"]
     var result = command.parse_arguments(args)
-    assert_equal(result.get_string("cmd"), "gcc")
+    assert_equal(result.get_string("command"), "gcc")
     var rest = result.get_list("rest")
     assert_equal(len(rest), 3)
     assert_equal(rest[0], "-Wall")
@@ -1223,7 +1223,7 @@ def test_remainder_empty() raises:
     """Tests remainder with no trailing arguments."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("cmd", help="Command to run").positional().required()
+        Argument("command", help="Command to run").positional().required()
     )
     command.add_argument(
         Argument("rest", help="Arguments for the command").remainder()
@@ -1231,7 +1231,7 @@ def test_remainder_empty() raises:
 
     var args: List[String] = ["test", "gcc"]
     var result = command.parse_arguments(args)
-    assert_equal(result.get_string("cmd"), "gcc")
+    assert_equal(result.get_string("command"), "gcc")
     var rest = result.get_list("rest")
     assert_equal(len(rest), 0)
 
@@ -1261,14 +1261,14 @@ def test_remainder_with_options_before() raises:
         .flag()
     )
     command.add_argument(
-        Argument("cmd", help="Command").positional().required()
+        Argument("command", help="Command").positional().required()
     )
     command.add_argument(Argument("rest", help="Rest").remainder())
 
     var args: List[String] = ["test", "--verbose", "gcc", "-O2", "main.c"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"))
-    assert_equal(result.get_string("cmd"), "gcc")
+    assert_equal(result.get_string("command"), "gcc")
     var rest = result.get_list("rest")
     assert_equal(len(rest), 2)
     assert_equal(rest[0], "-O2")
@@ -1319,7 +1319,7 @@ def test_remainder_with_dashes_in_values() raises:
     """Tests that remainder captures tokens like --unknown and -x."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("cmd", help="Command").positional().required()
+        Argument("command", help="Command").positional().required()
     )
     command.add_argument(Argument("args", help="Forwarded args").remainder())
 
@@ -1331,7 +1331,7 @@ def test_remainder_with_dashes_in_values() raises:
         "default",
     ]
     var result = command.parse_arguments(args)
-    assert_equal(result.get_string("cmd"), "cmake")
+    assert_equal(result.get_string("command"), "cmake")
     var rest = result.get_list("args")
     assert_equal(len(rest), 3)
     assert_equal(rest[0], "-DCMAKE_BUILD_TYPE=Release")
@@ -1357,7 +1357,7 @@ def test_parse_known_basic() raises:
     var args: List[String] = ["test", "--verbose", "--unknown", "-x"]
     var result = command.parse_known_arguments(args)
     assert_true(result.get_flag("verbose"))
-    var unknown = result.get_unknown_args()
+    var unknown = result.get_unknown_arguments()
     assert_equal(len(unknown), 2)
     assert_equal(unknown[0], "--unknown")
     assert_equal(unknown[1], "-x")
@@ -1377,7 +1377,7 @@ def test_parse_known_no_unknowns() raises:
     var result = command.parse_known_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.get_string("output"), "file.txt")
-    var unknown = result.get_unknown_args()
+    var unknown = result.get_unknown_arguments()
     assert_equal(len(unknown), 0)
 
 
@@ -1400,7 +1400,7 @@ def test_parse_known_mixed_with_positionals() raises:
     var result = command.parse_known_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.get_string("file"), "input.txt")
-    var unknown = result.get_unknown_args()
+    var unknown = result.get_unknown_arguments()
     assert_equal(len(unknown), 1)
     assert_equal(unknown[0], "--unknown-flag")
 
@@ -1415,7 +1415,7 @@ def test_parse_known_unknown_with_value() raises:
     var args: List[String] = ["test", "--verbose", "--color=auto"]
     var result = command.parse_known_arguments(args)
     assert_true(result.get_flag("verbose"))
-    var unknown = result.get_unknown_args()
+    var unknown = result.get_unknown_arguments()
     assert_equal(len(unknown), 1)
     assert_equal(unknown[0], "--color=auto")
 
@@ -1584,7 +1584,7 @@ def test_hyphen_value_in_parse_known() raises:
     var result = command.parse_known_arguments(args)
     assert_true(result.get_flag("verbose"))
     assert_equal(result.get_string("expr"), "-pattern")
-    assert_equal(len(result.get_unknown_args()), 0)
+    assert_equal(len(result.get_unknown_arguments()), 0)
 
 
 def test_remainder_guard_positional_after() raises:

@@ -127,7 +127,7 @@ trait Parsable(Defaultable, Movable):
         ```
 
         For builder subcommands or per-child customization, use
-        ``to_command()`` in ``main()`` and call ``cmd.add_subcommand()``
+        ``to_command()`` in ``main()`` and call ``command.add_subcommand()``
         directly.
 
         Returns:
@@ -153,24 +153,24 @@ trait Parsable(Defaultable, Movable):
         Returns:
             A populated instance of Self.
         """
-        var cmd = Self.to_command()
-        var result = cmd.parse()
+        var command = Self.to_command()
+        var result = command.parse()
         return Self.from_parse_result(result)
 
     @staticmethod
-    def parse_args(args: List[String]) raises -> Self:
+    def parse_arguments(arguments: List[String]) raises -> Self:
         """Builds, parses the given argument list, and returns a populated Self.
 
         Useful for testing without touching sys.argv().
 
         Args:
-            args: The raw argument strings (including program name at index 0).
+            arguments: The raw argument strings (including program name at index 0).
 
         Returns:
             A populated instance of Self.
         """
-        var cmd = Self.to_command()
-        var result = cmd.parse_arguments(args)
+        var command = Self.to_command()
+        var result = command.parse_arguments(arguments)
         return Self.from_parse_result(result)
 
     # == Hybrid: to_command → customise → parse_from_command ==
@@ -191,7 +191,7 @@ trait Parsable(Defaultable, Movable):
         var cmd_name = String(Self.name())
         if not cmd_name:
             cmd_name = String("command")
-        var cmd = Command(
+        var command = Command(
             cmd_name,
             String(Self.description()),
             version=String(Self.version()),
@@ -231,27 +231,27 @@ trait Parsable(Defaultable, Movable):
                 ref field = __struct_field_ref(field_index, instance)
                 comptime field_name = field_names[field_index]
                 trait_downcast[ArgumentLike](field).add_to_command(
-                    String(field_name), cmd
+                    String(field_name), command
                 )
 
         var subs = Self.subcommands()
         while len(subs) > 0:
-            cmd.add_subcommand(subs.pop(0))
-        return cmd^
+            command.add_subcommand(subs.pop(0))
+        return command^
 
     @staticmethod
-    def parse_from_command(var cmd: Command) raises -> Self:
+    def parse_from_command(var command: Command) raises -> Self:
         """Parses using a pre-configured Command and returns a populated Self.
 
         Use after ``to_command()`` + builder customisations.
 
         Args:
-            cmd: A Command (typically from ``to_command()``).
+            command: A Command (typically from ``to_command()``).
 
         Returns:
             A populated instance of Self.
         """
-        var result = cmd.parse()
+        var result = command.parse()
         return Self.from_parse_result(result)
 
     # == Dual return ==
@@ -265,14 +265,14 @@ trait Parsable(Defaultable, Movable):
         Returns:
             A tuple of (populated Self, raw ParseResult).
         """
-        var cmd = Self.to_command()
-        var result = cmd.parse()
-        var args = Self.from_parse_result(result)
-        return Tuple[Self, ParseResult](args^, result^)
+        var command = Self.to_command()
+        var result = command.parse()
+        var arguments = Self.from_parse_result(result)
+        return Tuple[Self, ParseResult](arguments^, result^)
 
     @staticmethod
     def parse_full_from_command(
-        var cmd: Command,
+        var command: Command,
     ) raises -> Tuple[Self, ParseResult]:
         """Parses using a pre-configured Command and returns both Self and ParseResult.
 
@@ -280,14 +280,14 @@ trait Parsable(Defaultable, Movable):
         root-level flags, ParseResult gives subcommand name + fields.
 
         Args:
-            cmd: A Command (typically from ``to_command()``).
+            command: A Command (typically from ``to_command()``).
 
         Returns:
             A tuple of (populated Self, raw ParseResult).
         """
-        var result = cmd.parse()
-        var args = Self.from_parse_result(result)
-        return Tuple[Self, ParseResult](args^, result^)
+        var result = command.parse()
+        var arguments = Self.from_parse_result(result)
+        return Tuple[Self, ParseResult](arguments^, result^)
 
     # == Subcommand write-back ==
 

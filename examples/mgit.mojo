@@ -460,256 +460,256 @@ def handle_config_unset(result: ParseResult) raises:
 
 def generate_clone_subcommand() raises -> Command:
     """Builds the 'clone' subcommand."""
-    var cmd = Command("clone", "Clone a repository into a new directory")
-    cmd.add_argument(
+    var command = Command("clone", "Clone a repository into a new directory")
+    command.add_argument(
         Argument("repository", help="Repository URL or path")
         .positional()
         .required()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("directory", help="Target directory name").positional()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("depth", help="Create a shallow clone with N commits")
         .long["depth"]()
         .value_name["N"]()
         .range[1, 999999]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("branch", help="Check out this branch instead of HEAD")
         .long["branch"]()
         .short["b"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("bare", help="Make a bare repository").long["bare"]().flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("recurse-submodules", help="Initialize submodules")
         .long["recurse-submodules"]()
         .flag()
     )
-    cmd.help_on_no_arguments()
+    command.help_on_no_arguments()
     var aliases: List[String] = ["cl"]
-    cmd.command_aliases(aliases^)
-    cmd.set_run_function(handle_clone)
-    return cmd^
+    command.command_aliases(aliases^)
+    command.set_run_function(handle_clone)
+    return command^
 
 
 def generate_init_subcommand() raises -> Command:
     """Builds the 'init' subcommand."""
-    var cmd = Command("init", "Create an empty Git repository")
-    cmd.add_argument(
+    var command = Command("init", "Create an empty Git repository")
+    command.add_argument(
         Argument("directory", help="Directory to initialize")
         .positional()
         .default["."]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("bare", help="Create a bare repository").long["bare"]().flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("template", help="Template directory")
         .long["template"]()
         .choice["default"]()
         .choice["minimal"]()
         .default["default"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("initial-branch", help="Name for the initial branch")
         .long["initial-branch"]()
         .short["b"]()
         .default["main"]()
     )
-    cmd.set_run_function(handle_init)
-    return cmd^
+    command.set_run_function(handle_init)
+    return command^
 
 
 def generate_add_subcommand() raises -> Command:
     """Builds the 'add' subcommand."""
-    var cmd = Command("add", "Add file contents to the index")
-    cmd.add_argument(Argument("pathspec", help="Files to add").positional())
-    cmd.add_argument(
+    var command = Command("add", "Add file contents to the index")
+    command.add_argument(Argument("pathspec", help="Files to add").positional())
+    command.add_argument(
         Argument("all", help="Add all changed files")
         .long["all"]()
         .short["A"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("force", help="Allow adding otherwise ignored files")
         .long["force"]()
         .short["f"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("dry-run", help="Show what would be added without adding")
         .long["dry-run"]()
         .short["n"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("patch", help="Interactively select hunks to add")
         .long["patch"]()
         .short["p"]()
         .flag()
     )
-    cmd.set_run_function(handle_add)
-    return cmd^
+    command.set_run_function(handle_add)
+    return command^
 
 
 def generate_commit_subcommand() raises -> Command:
     """Builds the 'commit' subcommand."""
-    var cmd = Command("commit", "Record changes to the repository")
-    cmd.add_argument(
+    var command = Command("commit", "Record changes to the repository")
+    command.add_argument(
         Argument("message", help="Commit message")
         .long["message"]()
         .short["m"]()
         .required()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("all", help="Automatically stage modified/deleted files")
         .long["all"]()
         .short["a"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("amend", help="Amend the previous commit")
         .long["amend"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("no-verify", help="Skip pre-commit and commit-msg hooks")
         .long["no-verify"]()
         .short["n"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("author", help="Override the commit author")
         .long["author"]()
         .value_name["NAME"]()
     )
     # Deprecated flag
-    cmd.add_argument(
+    command.add_argument(
         Argument("cleanup-mode", help="Set cleanup mode (legacy)")
         .long["cleanup-mode"]()
         .deprecated["Use --cleanup instead"]()
     )
     var aliases: List[String] = ["ci"]
-    cmd.command_aliases(aliases^)
-    cmd.set_run_function(handle_commit)
-    return cmd^
+    command.command_aliases(aliases^)
+    command.set_run_function(handle_commit)
+    return command^
 
 
 def generate_push_subcommand() raises -> Command:
     """Builds the 'push' subcommand."""
-    var cmd = Command("push", "Update remote refs along with objects")
-    cmd.add_argument(
+    var command = Command("push", "Update remote refs along with objects")
+    command.add_argument(
         Argument("remote", help="Remote name").positional().default["origin"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("refspec", help="Branch or refspec to push").positional()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("force", help="Force push (use with caution!)")
         .long["force"]()
         .short["f"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("set-upstream", help="Set upstream for the branch")
         .long["set-upstream"]()
         .short["u"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("tags", help="Push all tags").long["tags"]().flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("dry-run", help="Simulate the push without sending")
         .long["dry-run"]()
         .short["n"]()
         .flag()
     )
     # Mutually exclusive: force strategies
-    cmd.add_argument(
+    command.add_argument(
         Argument("force-with-lease", help="Safe force push")
         .long["force-with-lease"]()
         .flag()
     )
     var force_group: List[String] = ["force", "force-with-lease"]
-    cmd.mutually_exclusive(force_group^)
-    cmd.set_run_function(handle_push)
-    return cmd^
+    command.mutually_exclusive(force_group^)
+    command.set_run_function(handle_push)
+    return command^
 
 
 def generate_pull_subcommand() raises -> Command:
     """Builds the 'pull' subcommand."""
-    var cmd = Command("pull", "Fetch from and integrate with a remote")
-    cmd.add_argument(
+    var command = Command("pull", "Fetch from and integrate with a remote")
+    command.add_argument(
         Argument("remote", help="Remote name").positional().default["origin"]()
     )
-    cmd.add_argument(Argument("branch", help="Branch to pull").positional())
+    command.add_argument(Argument("branch", help="Branch to pull").positional())
     # Mutually exclusive: merge strategy
-    cmd.add_argument(
+    command.add_argument(
         Argument("rebase", help="Rebase instead of merge")
         .long["rebase"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("no-rebase", help="Merge instead of rebase")
         .long["no-rebase"]()
         .flag()
     )
     var merge_strat: List[String] = ["rebase", "no-rebase"]
-    cmd.mutually_exclusive(merge_strat^)
-    cmd.add_argument(
+    command.mutually_exclusive(merge_strat^)
+    command.add_argument(
         Argument("autostash", help="Stash changes before pull, reapply after")
         .long["autostash"]()
         .flag()
     )
-    cmd.set_run_function(handle_pull)
-    return cmd^
+    command.set_run_function(handle_pull)
+    return command^
 
 
 def generate_log_subcommand() raises -> Command:
     """Builds the 'log' subcommand."""
-    var cmd = Command("log", "Show commit logs")
-    cmd.add_argument(
+    var command = Command("log", "Show commit logs")
+    command.add_argument(
         Argument("oneline", help="Compact one-line format")
         .long["oneline"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("graph", help="Draw ASCII commit graph").long["graph"]().flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("number", help="Limit number of commits shown")
         .long["number"]()
         .short["n"]()
         .value_name["N"]()
         .range[1, 999999]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("author", help="Filter by author")
         .long["author"]()
         .value_name["PATTERN"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("since", help="Show commits after date")
         .long["since"]()
         .value_name["DATE"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("until", help="Show commits before date")
         .long["until"]()
         .value_name["DATE"]()
     )
     # Append: multiple --grep patterns
-    cmd.add_argument(
+    command.add_argument(
         Argument("grep", help="Filter by commit message (repeatable)")
         .long["grep"]()
         .append()
     )
     # Aliases
-    cmd.add_argument(
+    command.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
         .alias_name["pretty"]()
@@ -719,13 +719,13 @@ def generate_log_subcommand() raises -> Command:
         .choice["full"]()
         .choice["fuller"]()
     )
-    cmd.set_run_function(handle_log)
-    return cmd^
+    command.set_run_function(handle_log)
+    return command^
 
 
 def generate_remote_subcommand() raises -> Command:
     """Builds the 'remote' subcommand with its sub-subcommands."""
-    var cmd = Command("remote", "Manage set of tracked repositories")
+    var command = Command("remote", "Manage set of tracked repositories")
 
     var remote_add = Command("add", "Add a new remote")
     remote_add.add_argument(
@@ -742,7 +742,7 @@ def generate_remote_subcommand() raises -> Command:
     )
     remote_add.help_on_no_arguments()
     remote_add.set_run_function(handle_remote_add)
-    cmd.add_subcommand(remote_add^)
+    command.add_subcommand(remote_add^)
 
     var remote_remove = Command("remove", "Remove a remote")
     remote_remove.add_argument(
@@ -750,7 +750,7 @@ def generate_remote_subcommand() raises -> Command:
     )
     remote_remove.help_on_no_arguments()
     remote_remove.set_run_function(handle_remote_remove)
-    cmd.add_subcommand(remote_remove^)
+    command.add_subcommand(remote_remove^)
 
     var remote_rename = Command("rename", "Rename a remote")
     remote_rename.add_argument(
@@ -761,7 +761,7 @@ def generate_remote_subcommand() raises -> Command:
     )
     remote_rename.help_on_no_arguments()
     remote_rename.set_run_function(handle_remote_rename)
-    cmd.add_subcommand(remote_rename^)
+    command.add_subcommand(remote_rename^)
 
     var remote_show = Command("show", "Show information about a remote")
     remote_show.add_argument(
@@ -769,124 +769,124 @@ def generate_remote_subcommand() raises -> Command:
     )
     remote_show.help_on_no_arguments()
     remote_show.set_run_function(handle_remote_show)
-    cmd.add_subcommand(remote_show^)
+    command.add_subcommand(remote_show^)
 
-    cmd.help_on_no_arguments()
-    return cmd^
+    command.help_on_no_arguments()
+    return command^
 
 
 def generate_branch_subcommand() raises -> Command:
     """Builds the 'branch' subcommand."""
-    var cmd = Command("branch", "List, create, or delete branches")
+    var command = Command("branch", "List, create, or delete branches")
     var aliases: List[String] = ["br"]
-    cmd.command_aliases(aliases^)
-    cmd.add_argument(Argument("name", help="Branch name").positional())
-    cmd.add_argument(
+    command.command_aliases(aliases^)
+    command.add_argument(Argument("name", help="Branch name").positional())
+    command.add_argument(
         Argument("delete", help="Delete a branch")
         .long["delete"]()
         .short["d"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("force-delete", help="Force delete a branch")
         .long["force-delete"]()
         .short["D"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("list", help="List branches (default)").long["list"]().flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("all-branches", help="List both local and remote branches")
         .long["all"]()
         .short["a"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("move", help="Rename branch")
         .long["move"]()
         .short["m"]()
         .flag()
     )
-    cmd.set_run_function(handle_branch)
-    return cmd^
+    command.set_run_function(handle_branch)
+    return command^
 
 
 def generate_diff_subcommand() raises -> Command:
     """Builds the 'diff' subcommand."""
-    var cmd = Command("diff", "Show changes between commits, trees, etc.")
+    var command = Command("diff", "Show changes between commits, trees, etc.")
     var aliases: List[String] = ["di"]
-    cmd.command_aliases(aliases^)
-    cmd.add_argument(Argument("path", help="Path to diff").positional())
-    cmd.add_argument(
+    command.command_aliases(aliases^)
+    command.add_argument(Argument("path", help="Path to diff").positional())
+    command.add_argument(
         Argument("staged", help="Show staged changes")
         .long["staged"]()
         .alias_name["cached"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("stat", help="Show diffstat instead of patch")
         .long["stat"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("name-only", help="Show only names of changed files")
         .long["name-only"]()
         .flag()
     )
     # Nargs: unified context lines
-    cmd.add_argument(
+    command.add_argument(
         Argument("unified", help="Generate diffs with N lines of context")
         .long["unified"]()
         .short["U"]()
         .value_name["N"]()
     )
-    cmd.set_run_function(handle_diff)
-    return cmd^
+    command.set_run_function(handle_diff)
+    return command^
 
 
 def generate_tag_subcommand() raises -> Command:
     """Builds the 'tag' subcommand."""
-    var cmd = Command("tag", "Create, list, or delete tags")
-    cmd.add_argument(Argument("tagname", help="Tag name").positional())
-    cmd.add_argument(
+    var command = Command("tag", "Create, list, or delete tags")
+    command.add_argument(Argument("tagname", help="Tag name").positional())
+    command.add_argument(
         Argument("annotate", help="Create an annotated tag")
         .long["annotate"]()
         .short["a"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("tag-message", help="Tag message (for annotated tags)")
         .long["message"]()
         .short["m"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("tag-delete", help="Delete a tag")
         .long["delete"]()
         .short["d"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("tag-list", help="List tags matching a pattern")
         .long["list"]()
         .short["l"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("force-tag", help="Replace an existing tag")
         .long["force"]()
         .short["f"]()
         .flag()
     )
-    cmd.set_run_function(handle_tag)
-    return cmd^
+    command.set_run_function(handle_tag)
+    return command^
 
 
 def generate_stash_subcommand() raises -> Command:
     """Builds the 'stash' subcommand with its sub-subcommands."""
-    var cmd = Command("stash", "Stash changes in working directory")
+    var command = Command("stash", "Stash changes in working directory")
     var aliases: List[String] = ["st"]
-    cmd.command_aliases(aliases^)
+    command.command_aliases(aliases^)
 
     var stash_push = Command("push", "Save local modifications to a new stash")
     stash_push.add_argument(
@@ -907,7 +907,7 @@ def generate_stash_subcommand() raises -> Command:
         .flag()
     )
     stash_push.set_run_function(handle_stash_push)
-    cmd.add_subcommand(stash_push^)
+    command.add_subcommand(stash_push^)
 
     var stash_pop = Command("pop", "Apply and remove the top stash entry")
     stash_pop.add_argument(
@@ -916,11 +916,11 @@ def generate_stash_subcommand() raises -> Command:
         .default["0"]()
     )
     stash_pop.set_run_function(handle_stash_pop)
-    cmd.add_subcommand(stash_pop^)
+    command.add_subcommand(stash_pop^)
 
     var stash_list = Command("list", "List all stash entries")
     stash_list.set_run_function(handle_stash_list)
-    cmd.add_subcommand(stash_list^)
+    command.add_subcommand(stash_list^)
 
     var stash_drop = Command("drop", "Remove a single stash entry")
     stash_drop.add_argument(
@@ -929,7 +929,7 @@ def generate_stash_subcommand() raises -> Command:
         .default["0"]()
     )
     stash_drop.set_run_function(handle_stash_drop)
-    cmd.add_subcommand(stash_drop^)
+    command.add_subcommand(stash_drop^)
 
     var stash_apply = Command("apply", "Apply a stash without removing it")
     stash_apply.add_argument(
@@ -938,15 +938,15 @@ def generate_stash_subcommand() raises -> Command:
         .default["0"]()
     )
     stash_apply.set_run_function(handle_stash_apply)
-    cmd.add_subcommand(stash_apply^)
+    command.add_subcommand(stash_apply^)
 
-    cmd.help_on_no_arguments()
-    return cmd^
+    command.help_on_no_arguments()
+    return command^
 
 
 def generate_config_subcommand() raises -> Command:
     """Builds the 'config' subcommand with its sub-subcommands."""
-    var cmd = Command("config", "Get and set repository or global options")
+    var command = Command("config", "Get and set repository or global options")
 
     var config_get = Command("get", "Get a configuration value")
     config_get.add_argument(
@@ -956,7 +956,7 @@ def generate_config_subcommand() raises -> Command:
     )
     config_get.help_on_no_arguments()
     config_get.set_run_function(handle_config_get)
-    cmd.add_subcommand(config_get^)
+    command.add_subcommand(config_get^)
 
     var config_set = Command("set", "Set a configuration value")
     config_set.add_argument(
@@ -974,11 +974,11 @@ def generate_config_subcommand() raises -> Command:
     )
     config_set.help_on_no_arguments()
     config_set.set_run_function(handle_config_set)
-    cmd.add_subcommand(config_set^)
+    command.add_subcommand(config_set^)
 
     var config_list = Command("list", "List all configuration entries")
     config_list.set_run_function(handle_config_list)
-    cmd.add_subcommand(config_list^)
+    command.add_subcommand(config_list^)
 
     var config_unset = Command("unset", "Remove a configuration entry")
     config_unset.add_argument(
@@ -993,10 +993,10 @@ def generate_config_subcommand() raises -> Command:
     )
     config_unset.help_on_no_arguments()
     config_unset.set_run_function(handle_config_unset)
-    cmd.add_subcommand(config_unset^)
+    command.add_subcommand(config_unset^)
 
-    cmd.help_on_no_arguments()
-    return cmd^
+    command.help_on_no_arguments()
+    return command^
 
 
 # ═══════════════════════════════════════════════════════════════════════════

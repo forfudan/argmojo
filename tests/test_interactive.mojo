@@ -399,10 +399,10 @@ def test_password_copy_preserves_field() raises:
 
 def test_password_rejected_on_flag() raises:
     """Tests that .password() on a flag raises at add_argument time."""
-    var cmd = Command("test", "Test app")
+    var command = Command("test", "Test app")
     var caught = False
     try:
-        cmd.add_argument(
+        command.add_argument(
             Argument("debug", help="Debug mode")
             .long["debug"]()
             .flag()
@@ -419,10 +419,10 @@ def test_password_rejected_on_flag() raises:
 
 def test_password_rejected_on_count() raises:
     """Tests that .password() on a count arg raises at add_argument time."""
-    var cmd = Command("test", "Test app")
+    var command = Command("test", "Test app")
     var caught = False
     try:
-        cmd.add_argument(
+        command.add_argument(
             Argument("verbose", help="Verbosity")
             .long["verbose"]()
             .count()
@@ -442,13 +442,13 @@ def test_password_rejected_on_count() raises:
 
 def test_password_skipped_when_value_provided() raises:
     """Tests that password prompt is skipped when value is on command line."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("token", help="API token").long["token"]().password()
     )
 
     var args: List[String] = ["test", "--token", "abc123"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("token"),
         "abc123",
@@ -458,8 +458,8 @@ def test_password_skipped_when_value_provided() raises:
 
 def test_password_with_default() raises:
     """Tests password arg with a default value."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("key", help="API key")
         .long["key"]()
         .default["default-key"]()
@@ -469,7 +469,7 @@ def test_password_with_default() raises:
     # No value on command line + stdin is /dev/null → prompting stops,
     # default is applied.
     var args: List[String] = ["test"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("key"),
         "default-key",
@@ -479,8 +479,8 @@ def test_password_with_default() raises:
 
 def test_password_with_choices() raises:
     """Tests password arg with choices (unusual but valid)."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("level", help="Access level")
         .long["level"]()
         .choice["admin"]()
@@ -489,7 +489,7 @@ def test_password_with_choices() raises:
     )
 
     var args: List[String] = ["test", "--level", "admin"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("level"),
         "admin",
@@ -506,15 +506,15 @@ def test_password_with_required() raises:
     When stdin is /dev/null, prompting stops → the required arg is
     missing → validation error.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("secret", help="Secret").long["secret"]().required().password()
     )
 
     var args: List[String] = ["test"]
     var caught = False
     try:
-        var result = cmd.parse_arguments(args)
+        var result = command.parse_arguments(args)
     except e:
         caught = True
         assert_true(
@@ -536,14 +536,14 @@ def test_password_arg_with_parent() raises:
 
     # Check the inherited arg has _hide_input and _prompt set.
     var found = False
-    for i in range(len(child.args)):
-        if child.args[i].name == "token":
+    for i in range(len(child.arguments)):
+        if child.arguments[i].name == "token":
             assert_true(
-                child.args[i]._hide_input,
+                child.arguments[i]._hide_input,
                 msg="inherited arg should have _hide_input",
             )
             assert_true(
-                child.args[i]._prompt,
+                child.arguments[i]._prompt,
                 msg="inherited arg should have _prompt",
             )
             found = True
@@ -638,11 +638,13 @@ def test_password_asterisk_default_is_false() raises:
 
 def test_password_asterisk_skipped_when_value_provided() raises:
     """Tests that asterisk password prompt is skipped when value is on CLI."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(Argument("pin", help="PIN").long["pin"]().password[True]())
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("pin", help="PIN").long["pin"]().password[True]()
+    )
 
     var args: List[String] = ["test", "--pin", "1234"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("pin"),
         "1234",
@@ -655,8 +657,8 @@ def test_password_asterisk_with_default() raises:
 
     When stdin is /dev/null, prompting stops and default is applied.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("pin", help="PIN")
         .long["pin"]()
         .default["0000"]()
@@ -664,7 +666,7 @@ def test_password_asterisk_with_default() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("pin"),
         "0000",
@@ -674,13 +676,13 @@ def test_password_asterisk_with_default() raises:
 
 def test_password_positional() raises:
     """Tests password on a positional argument."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("secret", help="Secret value").positional().password()
     )
 
     var args: List[String] = ["test", "my-secret"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("secret"),
         "my-secret",
@@ -696,8 +698,8 @@ def test_password_graceful_on_non_interactive_stdin() raises:
     arg has a default, the default is used; otherwise validation runs
     normally.
     """
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("token", help="Token")
         .long["token"]()
         .default["fallback"]()
@@ -705,7 +707,7 @@ def test_password_graceful_on_non_interactive_stdin() raises:
     )
 
     var args: List[String] = ["test"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(
         result.get_string("token"),
         "fallback",
@@ -720,42 +722,42 @@ def test_password_graceful_on_non_interactive_stdin() raises:
 
 def test_confirmation_yes_flag_skips() raises:
     """Tests that --yes skips the confirmation prompt."""
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     var args: List[String] = ["drop", "mydb", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("name"), "mydb")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
 def test_confirmation_y_short_flag_skips() raises:
     """Tests that -y skips the confirmation prompt."""
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     var args: List[String] = ["drop", "mydb", "-y"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("name"), "mydb")
     assert_true(result.get_flag("yes"), msg="-y should be True")
 
 
 def test_confirmation_yes_before_positional() raises:
     """Tests that --yes can appear before the positional argument."""
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     var args: List[String] = ["drop", "--yes", "mydb"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("name"), "mydb")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
@@ -769,11 +771,11 @@ def test_confirmation_aborts_on_no_stdin() raises:
     When tests run without a terminal (stdin is /dev/null or piped),
     input() raises and _confirm() should abort with an error.
     """
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     # Without --yes, confirmation prompt fires.
     # Since we're in a test environment (no interactive stdin),
@@ -781,7 +783,7 @@ def test_confirmation_aborts_on_no_stdin() raises:
     var args: List[String] = ["drop", "mydb"]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -797,30 +799,30 @@ def test_confirmation_aborts_on_no_stdin() raises:
 
 def test_confirmation_custom_prompt_with_yes() raises:
     """Tests that custom prompt works and --yes still skips it."""
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option["Drop the database? This cannot be undone."]()
+    command.confirmation_option["Drop the database? This cannot be undone."]()
 
     var args: List[String] = ["drop", "mydb", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("name"), "mydb")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
 
 def test_confirmation_custom_prompt_aborts_no_stdin() raises:
     """Tests that custom prompt aborts when stdin is unavailable."""
-    var cmd = Command("drop", "Drop the database")
-    cmd.add_argument(
+    var command = Command("drop", "Drop the database")
+    command.add_argument(
         Argument("name", help="Database name").positional().required()
     )
-    cmd.confirmation_option["Are you absolutely sure?"]()
+    command.confirmation_option["Are you absolutely sure?"]()
 
     var args: List[String] = ["drop", "mydb"]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -836,20 +838,20 @@ def test_confirmation_custom_prompt_aborts_no_stdin() raises:
 
 def test_confirmation_with_flag_and_option() raises:
     """Tests that confirmation works alongside other flags and options."""
-    var cmd = Command("deploy", "Deploy the application")
-    cmd.add_argument(
+    var command = Command("deploy", "Deploy the application")
+    command.add_argument(
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .short["v"]()
         .flag()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("env", help="Target environment").long["env"]().required()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     var args: List[String] = ["deploy", "--env", "prod", "-v", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("env"), "prod")
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
@@ -857,16 +859,16 @@ def test_confirmation_with_flag_and_option() raises:
 
 def test_confirmation_yes_is_false_by_default() raises:
     """Tests that --yes works alongside defaulted options."""
-    var cmd = Command("deploy", "Deploy the application")
-    cmd.add_argument(
+    var command = Command("deploy", "Deploy the application")
+    command.add_argument(
         Argument("env", help="Target environment")
         .long["env"]()
         .default["staging"]()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     var args: List[String] = ["deploy", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("yes"), msg="--yes should be True")
     assert_equal(result.get_string("env"), "staging")
 
@@ -876,13 +878,13 @@ def test_confirmation_yes_is_false_by_default() raises:
 
 def test_no_confirmation_option_normal_parse() raises:
     """Tests that without confirmation_option(), parsing works normally."""
-    var cmd = Command("list", "List items")
-    cmd.add_argument(
+    var command = Command("list", "List items")
+    command.add_argument(
         Argument("verbose", help="Verbose output").long["verbose"]().flag()
     )
 
     var args: List[String] = ["list", "--verbose"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
 
 
@@ -930,15 +932,15 @@ def test_confirmation_preserved_in_copy() raises:
 def test_confirmation_with_prompt_arg_uses_yes() raises:
     """Tests that confirmation works alongside .prompt() arguments when --yes is passed.
     """
-    var cmd = Command("setup", "Setup the project")
-    cmd.add_argument(
+    var command = Command("setup", "Setup the project")
+    command.add_argument(
         Argument("name", help="Project name").long["name"]().prompt()
     )
-    cmd.confirmation_option()
+    command.confirmation_option()
 
     # Provide both --name and --yes to skip all interactive prompts.
     var args: List[String] = ["setup", "--name", "myproject", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("name"), "myproject")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
@@ -956,12 +958,12 @@ def test_confirmation_with_parent_args() raises:
         .flag()
     )
 
-    var cmd = Command("deploy", "Deploy the app")
-    cmd.add_parent(parent)
-    cmd.confirmation_option()
+    var command = Command("deploy", "Deploy the app")
+    command.add_parent(parent)
+    command.confirmation_option()
 
     var args: List[String] = ["deploy", "--verbose", "--yes"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_true(result.get_flag("verbose"), msg="--verbose should be True")
     assert_true(result.get_flag("yes"), msg="--yes should be True")
 
