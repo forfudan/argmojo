@@ -1177,7 +1177,12 @@ def test_typo_long_option_single_char_diff() raises:
 
 
 def test_typo_subcommand_suggests() raises:
-    """Tests that a typo subcommand like 'serach' suggests 'search'."""
+    """Tests that a typo subcommand like 'serach' raises an error.
+
+    The suggestion ('tip: a similar subcommand exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'unrecognized subcommand' message.
+    """
     var root = Command("app", "Test app")
     var search = Command("search", "Search items")
     var list_cmd = Command("list", "List items")
@@ -1192,12 +1197,12 @@ def test_typo_subcommand_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for 'serach'",
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
         assert_true(
-            "search" in msg,
-            msg="Error should suggest 'search'",
+            "serach" in msg,
+            msg="Error should contain the bad token 'serach'",
         )
     assert_true(caught, msg="Should have raised error for 'serach'")
 
@@ -1216,9 +1221,9 @@ def test_typo_subcommand_no_suggestion() raises:
     except e:
         caught = True
         var msg = String(e)
-        assert_false(
-            "Did you mean" in msg,
-            msg="Error should not suggest anything for unrelated command",
+        assert_true(
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
     assert_true(caught, msg="Should have raised error for 'xxxxxxx'")
 
@@ -1251,7 +1256,12 @@ def test_typo_alias_suggests() raises:
 
 
 def test_typo_subcommand_alias_suggests() raises:
-    """Tests that a typo near a subcommand alias triggers a suggestion."""
+    """Tests that a typo near a subcommand alias raises an error.
+
+    The suggestion ('tip: a similar subcommand exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'unrecognized subcommand' message.
+    """
     var root = Command("app", "Test app")
     var clone = Command("clone", "Clone a repo")
     var aliases: List[String] = ["cl"]
@@ -1267,12 +1277,12 @@ def test_typo_subcommand_alias_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for 'clon'",
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
         assert_true(
-            "clone" in msg,
-            msg="Error should suggest 'clone' for 'clon'",
+            "clon" in msg,
+            msg="Error should contain the bad token 'clon'",
         )
     assert_true(caught, msg="Should have raised error for 'clon'")
 
