@@ -54,7 +54,7 @@ def _read_file_content(filepath: String) raises -> String:
 
 
 def _expand_response_files(
-    raw_arguments: List[String],
+    raw_tokens: List[String],
     prefix: String,
     max_depth: Int,
     command_name: String,
@@ -69,8 +69,8 @@ def _expand_response_files(
     var expanded = List[String]()
     var plen = len(prefix)
 
-    for idx in range(len(raw_arguments)):
-        var token = raw_arguments[idx]
+    for idx in range(len(raw_tokens)):
+        var token = raw_tokens[idx]
 
         # Preserve argv[0] (program name) verbatim — never expand it.
         if idx == 0:
@@ -2153,7 +2153,7 @@ struct Command(Copyable, Movable, Writable):
         var result = self.parse()
         self._dispatch(result)
 
-    def _execute_with_arguments(self, raw_arguments: List[String]) raises:
+    def _execute_with_arguments(self, raw_tokens: List[String]) raises:
         """Parses the given argument list and auto-dispatches to the
         appropriate run function.
 
@@ -2174,14 +2174,14 @@ struct Command(Copyable, Movable, Writable):
         making it suitable for tests that need to catch and inspect errors.
 
         Args:
-            raw_arguments: The raw argument strings (including program name at
+            raw_tokens: The raw token strings (including program name at
                 index 0).
 
         Raises:
             Error if parsing fails or no run function is registered for the
             resolved command.
         """
-        var result = self.parse_arguments(raw_arguments)
+        var result = self.parse_arguments(raw_tokens)
         self._dispatch(result)
 
     def _dispatch(self, result: ParseResult) raises:
@@ -2269,12 +2269,23 @@ struct Command(Copyable, Movable, Writable):
         Returns:
             A ParseResult containing all parsed values.
         """
-        var raw_variadic = argv()
-        var raw = List[String]()
-        for i in range(len(raw_variadic)):
-            raw.append(String(raw_variadic[i]))
+        # [Mojo Miji]
+        # The result of `argv()` is called "tokens" in argmojo.
+        # This is because they consist not only the "arguments" defined by
+        # argmojo, but also the "values" that will be consumed by those
+        # arguments.
+        # Thus, a more precise name is "token" rather than "args".
+        # This is anological to a programming language parser, where the `argv`
+        # function scans the raw input line and produces a list of "tokens" that
+        # are then parsed by argmojo's parsing logic.
+        # In that sense, `argv()` is more like a "scanner" or "lexer" while
+        # argmojo is more like a "parser".
+        var raw_variadic_tokens = argv()
+        var raw_tokens = List[String]()
+        for i in range(len(raw_variadic_tokens)):
+            raw_tokens.append(String(raw_variadic_tokens[i]))
         try:
-            return self.parse_arguments(raw)
+            return self.parse_arguments(raw_tokens)
         except:
             # Error message was already printed to stderr by _error().
             exit(2)
@@ -2282,16 +2293,14 @@ struct Command(Copyable, Movable, Writable):
             # compiler does not model exit() as @noreturn yet.
             return ParseResult()
 
-    def parse_arguments(
-        self, raw_arguments: List[String]
-    ) raises -> ParseResult:
+    def parse_arguments(self, raw_tokens: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
         The first element, e.g., ``argv[0]``, is expected to be the program name
         and is skipped.
 
         Args:
-            raw_arguments: The raw argument strings (including program name at index 0).
+            raw_tokens: The raw token strings (including program name at index 0).
 
         Returns:
             A ParseResult containing all parsed values.
@@ -2349,7 +2358,7 @@ struct Command(Copyable, Movable, Writable):
         var result = ParseResult()
 
         # Expand response files if enabled.
-        var tokens_to_parse = raw_arguments.copy()
+        var tokens_to_parse = raw_tokens.copy()
         # NOTE: Response file expansion temporarily disabled to work around
         # Mojo compiler deadlock with -D ASSERT=all.  The module-level
         # _expand_response_files / _read_response_file functions are still
@@ -2357,7 +2366,7 @@ struct Command(Copyable, Movable, Writable):
         # is commented out.
         # if len(self._response_file_prefix) > 0:
         #     tokens_to_parse = _expand_response_files(
-        #         raw_arguments,
+        #         raw_tokens,
         #         self._response_file_prefix,
         #         self._response_file_max_depth,
         #         self.name,
@@ -2570,7 +2579,7 @@ struct Command(Copyable, Movable, Writable):
         return result^
 
     def parse_known_arguments(
-        self, raw_arguments: List[String]
+        self, raw_tokens: List[String]
     ) raises -> ParseResult:
         """Parses known arguments, collecting unrecognised ones.
 
@@ -2582,7 +2591,7 @@ struct Command(Copyable, Movable, Writable):
         another tool, or for incremental/phased parsing.
 
         Args:
-            raw_arguments: The raw argument strings (including program name at
+            raw_tokens: The raw token strings (including program name at
                 index 0).
 
         Returns:
@@ -2606,7 +2615,7 @@ struct Command(Copyable, Movable, Writable):
         """
         var result = ParseResult()
 
-        var tokens_to_parse = raw_arguments.copy()
+        var tokens_to_parse = raw_tokens.copy()
 
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
         self._preprocess_cjk_arguments(tokens_to_parse)
@@ -2802,7 +2811,7 @@ struct Command(Copyable, Movable, Writable):
     # ===------------------------------------------------------------------=== #
 
     def _parse_long_option(
-        self, raw_arguments: List[String], start: Int, mut result: ParseResult
+        self, raw_tokens: List[String], start: Int, mut result: ParseResult
     ) raises -> Int:
         """Parses a long option token (``--key``, ``--key=value``, ``--no-X``).
 
@@ -2812,7 +2821,7 @@ struct Command(Copyable, Movable, Writable):
         warnings.
 
         Args:
-            raw_arguments: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current ``--key`` token.
             result: The ParseResult to store into.
 
@@ -2820,7 +2829,7 @@ struct Command(Copyable, Movable, Writable):
             The index of the next token to process.
         """
         var i = start
-        var token = raw_arguments[i]
+        var token = raw_tokens[i]
         var key = String(token[byte=2:])  # strip leading "--"
         var value = String("")
         var has_eq = False
@@ -2906,7 +2915,7 @@ struct Command(Copyable, Movable, Writable):
                 result._lists[matched.name] = List[String]()
             for _n in range(matched._number_of_values):
                 i += 1
-                if i >= len(raw_arguments):
+                if i >= len(raw_tokens):
                     self._error(
                         "Option '--"
                         + key
@@ -2914,8 +2923,8 @@ struct Command(Copyable, Movable, Writable):
                         + String(matched._number_of_values)
                         + " values"
                     )
-                self._validate_choices(matched, raw_arguments[i])
-                result._lists[matched.name].append(raw_arguments[i])
+                self._validate_choices(matched, raw_tokens[i])
+                result._lists[matched.name].append(raw_tokens[i])
         else:
             if not has_eq:
                 if matched._require_equals:
@@ -2932,9 +2941,9 @@ struct Command(Copyable, Movable, Writable):
                         )
                 else:
                     i += 1
-                    if i >= len(raw_arguments):
+                    if i >= len(raw_tokens):
                         self._error("Option '--" + key + "' requires a value")
-                    value = raw_arguments[i]
+                    value = raw_tokens[i]
             if matched._is_map:
                 self._store_map_value(matched, value, result)
             elif matched._is_append:
@@ -2948,7 +2957,7 @@ struct Command(Copyable, Movable, Writable):
     def _parse_short_single(
         self,
         key: String,
-        raw_arguments: List[String],
+        raw_tokens: List[String],
         start: Int,
         mut result: ParseResult,
     ) raises -> Int:
@@ -2956,7 +2965,7 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             key: The short option character (without ``-``).
-            raw_arguments: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current ``-k`` token.
             result: The ParseResult to store into.
 
@@ -2985,7 +2994,7 @@ struct Command(Copyable, Movable, Writable):
                 result._lists[matched.name] = List[String]()
             for _n in range(matched._number_of_values):
                 i += 1
-                if i >= len(raw_arguments):
+                if i >= len(raw_tokens):
                     self._error(
                         "Option '-"
                         + key
@@ -2993,8 +3002,8 @@ struct Command(Copyable, Movable, Writable):
                         + String(matched._number_of_values)
                         + " values"
                     )
-                self._validate_choices(matched, raw_arguments[i])
-                result._lists[matched.name].append(raw_arguments[i])
+                self._validate_choices(matched, raw_tokens[i])
+                result._lists[matched.name].append(raw_tokens[i])
         else:
             if matched._has_default_if_no_value:
                 # No value given — use default-if-no-value.
@@ -3008,9 +3017,9 @@ struct Command(Copyable, Movable, Writable):
                     result._values[matched.name] = val
             else:
                 i += 1
-                if i >= len(raw_arguments):
+                if i >= len(raw_tokens):
                     self._error("Option '-" + key + "' requires a value")
-                var val = raw_arguments[i]
+                var val = raw_tokens[i]
                 if matched._is_map:
                     self._store_map_value(matched, val, result)
                 elif matched._is_append:
@@ -3024,7 +3033,7 @@ struct Command(Copyable, Movable, Writable):
     def _parse_short_merged(
         self,
         key: String,
-        raw_arguments: List[String],
+        raw_tokens: List[String],
         start: Int,
         mut result: ParseResult,
     ) raises -> Int:
@@ -3040,7 +3049,7 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             key: The characters after ``-`` (e.g., ``"abc"`` from ``-abc``).
-            raw_arguments: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current token.
             result: The ParseResult to store into.
 
@@ -3081,7 +3090,7 @@ struct Command(Copyable, Movable, Writable):
                         result._lists[m.name] = List[String]()
                     for _n in range(m._number_of_values):
                         i += 1
-                        if i >= len(raw_arguments):
+                        if i >= len(raw_tokens):
                             self._error(
                                 "Option '-"
                                 + ch
@@ -3089,8 +3098,8 @@ struct Command(Copyable, Movable, Writable):
                                 + String(m._number_of_values)
                                 + " values"
                             )
-                        self._validate_choices(m, raw_arguments[i])
-                        result._lists[m.name].append(raw_arguments[i])
+                        self._validate_choices(m, raw_tokens[i])
+                        result._lists[m.name].append(raw_tokens[i])
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -3103,11 +3112,11 @@ struct Command(Copyable, Movable, Writable):
                             val = m._default_if_no_value
                         else:
                             i += 1
-                            if i >= len(raw_arguments):
+                            if i >= len(raw_tokens):
                                 self._error(
                                     "Option '-" + ch + "' requires a value"
                                 )
-                            val = raw_arguments[i]
+                            val = raw_tokens[i]
                     if m._is_map:
                         self._store_map_value(m, val, result)
                     elif m._is_append:
@@ -3133,7 +3142,7 @@ struct Command(Copyable, Movable, Writable):
                     result._lists[first_match.name] = List[String]()
                 for _n in range(first_match._number_of_values):
                     i += 1
-                    if i >= len(raw_arguments):
+                    if i >= len(raw_tokens):
                         self._error(
                             "Option '-"
                             + first_char
@@ -3141,8 +3150,8 @@ struct Command(Copyable, Movable, Writable):
                             + String(first_match._number_of_values)
                             + " values"
                         )
-                    self._validate_choices(first_match, raw_arguments[i])
-                    result._lists[first_match.name].append(raw_arguments[i])
+                    self._validate_choices(first_match, raw_tokens[i])
+                    result._lists[first_match.name].append(raw_tokens[i])
             elif first_match._is_map:
                 var val = String(key[byte=1:])
                 self._store_map_value(first_match, val, result)
@@ -3159,7 +3168,7 @@ struct Command(Copyable, Movable, Writable):
     def _dispatch_subcommand(
         self,
         token: String,
-        raw_arguments: List[String],
+        raw_tokens: List[String],
         i: Int,
         mut result: ParseResult,
     ) raises -> Int:
@@ -3171,13 +3180,13 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             token: The current token (potential subcommand name).
-            raw_arguments: The full argument list.
+            raw_tokens: The full token list.
             i: Index of the current token.
             result: The ParseResult to store into.
 
         Returns:
             The index of the next token to process if a subcommand was
-            dispatched (typically ``len(raw_arguments)``), or ``-1`` if no
+            dispatched (typically ``len(raw_tokens)``), or ``-1`` if no
             subcommand matched and the caller should fall through to
             positional argument handling.
         """
@@ -3189,8 +3198,8 @@ struct Command(Copyable, Movable, Writable):
             # Build child argv: ["parent sub", remaining tokens...].
             var child_argv = List[String]()
             child_argv.append(self.name + " " + canon)
-            for k in range(i + 1, len(raw_arguments)):
-                child_argv.append(raw_arguments[k])
+            for k in range(i + 1, len(raw_tokens)):
+                child_argv.append(raw_tokens[k])
             # Auto-registered 'help' subcommand: display sibling help.
             if self.subcommands[sub_idx]._is_help_subcommand:
                 if len(child_argv) > 1:
@@ -3241,7 +3250,7 @@ struct Command(Copyable, Movable, Writable):
             result.subcommand = canon
             result._subcommand_results.append(child_result^)
             # All remaining tokens were consumed by the child.
-            return len(raw_arguments)
+            return len(raw_tokens)
         else:
             # No matching subcommand found.  When positionals are
             # not allowed (the usual case), produce a helpful error.
