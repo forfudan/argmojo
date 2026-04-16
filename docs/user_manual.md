@@ -2554,18 +2554,18 @@ Help text columns are **dynamically aligned**: the padding between the option na
 
 Help output uses **ANSI colour codes** by default to enhance readability.
 
-| Element               | Default style                        | ANSI code      |
-| --------------------- | ------------------------------------ | -------------- |
-| Section headers       | **bold + underline + bright yellow** | `\x1b[1;4;93m` |
-| Program name          | **bold magenta**                     | `\x1b[1;35m`   |
-| Short option names    | **bold green**                       | `\x1b[1;32m`   |
-| Long option names     | **bold cyan**                        | `\x1b[1;36m`   |
-| Value names / metavar | **bold yellow**                      | `\x1b[1;33m`   |
-| Positional arg names  | **bold green**                       | `\x1b[1;32m`   |
-| Subcommand names      | **bold cyan**                        | `\x1b[1;36m`   |
-| Deprecation warnings  | **orange** (dark yellow)             | `\x1b[33m`     |
-| Parse errors          | **bright red**                       | `\x1b[91m`     |
-| Description text      | default terminal colour              | —              |
+| Element               | Default style                        | ANSI code           |
+| --------------------- | ------------------------------------ | ------------------- |
+| Section headers       | **bold + underline + bright yellow** | `\x1b[1;4m\x1b[93m` |
+| Program name          | **bold magenta**                     | `\x1b[1;35m`        |
+| Short option names    | **bold green**                       | `\x1b[1;32m`        |
+| Long option names     | **bold cyan**                        | `\x1b[1;36m`        |
+| Value names / metavar | **bold yellow**                      | `\x1b[1;33m`        |
+| Positional arg names  | **bold green**                       | `\x1b[1;32m`        |
+| Subcommand names      | **bold cyan**                        | `\x1b[1;36m`        |
+| Deprecation warnings  | **orange** (dark yellow)             | `\x1b[33m`          |
+| Parse errors          | **bright red**                       | `\x1b[91m`          |
+| Description text      | default terminal colour              | —                   |
 
 The `_generate_help()` method accepts an optional `color` parameter:
 
@@ -3154,7 +3154,7 @@ var verbose = result.get_flag("verbose")
 var file = result.get_string("file")
 
 # Unknown arguments are collected separately:
-var unknown = result.get_unknown_args()
+var unknown = result.get_unknown_arguments()
 # e.g., ["--color", "-x", "--threads=4"]
 ```
 
@@ -4033,15 +4033,15 @@ For simple tools, one line is all you need:
 
 ```mojo
 def main() raises:
-    var args = Search.parse()      # build + parse sys.argv() + typed result
-    print(args.pattern.value)
-    print(args.verbose.value)
+    var arguments = Search.parse()      # build + parse sys.argv() + typed result
+    print(arguments.pattern.value)
+    print(arguments.verbose.value)
 ```
 
-For testing without a real binary, use `parse_args()` with an explicit argument list:
+For testing without a real binary, use `parse_arguments()` with an explicit argument list:
 
 ```mojo
-var args = Search.parse_args(List[String]("search", "--verbose", "query"))
+var arguments = Search.parse_arguments(List[String]("search", "--verbose", "query"))
 ```
 
 See [`examples/declarative/search.mojo`](../examples/declarative/search.mojo) for a complete example.
@@ -4052,12 +4052,12 @@ When you need builder-level features (mutually exclusive groups, implications, c
 
 ```mojo
 def main() raises:
-    var cmd = Deploy.to_command()               # struct → owned Command
-    cmd.mutually_exclusive(["force", "dry_run"])
-    cmd.implies("force", "validated")
-    cmd.add_tip("Use --dry-run to preview changes first")
-    cmd.header_color["CYAN"]()
-    var deploy = Deploy.parse_from_command(cmd^)       # Command → typed struct
+    var command = Deploy.to_command()               # struct → owned Command
+    command.mutually_exclusive(["force", "dry_run"])
+    command.implies("force", "validated")
+    command.add_tip("Use --dry-run to preview changes first")
+    command.header_color["CYAN"]()
+    var deploy = Deploy.parse_from_command(command^)       # Command → typed struct
     print(deploy.target.value)
 ```
 
@@ -4069,12 +4069,12 @@ When some arguments are too complex for the struct, add them via builder methods
 
 ```mojo
 def main() raises:
-    var cmd = Convert.to_command()
-    cmd.add_argument(
+    var command = Convert.to_command()
+    command.add_argument(
         Argument("format", help="Output format")
         .long["format"]().choice["json"]().choice["yaml"]().default["json"]()
     )
-    var (args, raw) = Convert.parse_full_from_command(cmd^)
+    var (args, raw) = Convert.parse_full_from_command(command^)
     print(args.input.value)              # typed — from struct
     print(raw.get_string("format"))      # untyped — from builder
 ```
@@ -4136,22 +4136,22 @@ Fields wrapped in `Positional[...]` don't get auto-generated long names.
 
 ### API Summary
 
-| Method                            | Returns                 | Purpose                                                      |
-| --------------------------------- | ----------------------- | ------------------------------------------------------------ |
-| `T.parse()`                       | `T`                     | Build + parse `sys.argv()` + typed result                    |
-| `T.parse_args(args)`              | `T`                     | Parse explicit arg list (testing)                            |
-| `T.to_command()`                  | `Command`               | Reflect struct → owned `Command` for customisation           |
-| `T.parse_from_command(cmd^)`      | `T`                     | Parse a customised `Command` → typed struct                  |
-| `T.parse_full()`                  | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
-| `T.parse_full_from_command(cmd^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
-| `T.from_parse_result(result)`     | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
+| Method                                | Returns                 | Purpose                                                      |
+| ------------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| `T.parse()`                           | `T`                     | Build + parse `sys.argv()` + typed result                    |
+| `T.parse_arguments(arguments)`        | `T`                     | Parse explicit arg list (testing)                            |
+| `T.to_command()`                      | `Command`               | Reflect struct → owned `Command` for customisation           |
+| `T.parse_from_command(command^)`      | `T`                     | Parse a customised `Command` → typed struct                  |
+| `T.parse_full()`                      | `Tuple[T, ParseResult]` | Typed struct + raw result from `sys.argv()`                  |
+| `T.parse_full_from_command(command^)` | `Tuple[T, ParseResult]` | Typed struct + raw result from customised `Command`          |
+| `T.from_parse_result(result)`         | `T`                     | Write-back from existing `ParseResult` (subcommand dispatch) |
 
 The four parsing methods follow a 2×2 naming convention:
 
-|                 | `sys.argv()`   | from `Command`                  |
-| --------------- | -------------- | ------------------------------- |
-| returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
-| returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
+|                 | `sys.argv()`   | from `Command`                      |
+| --------------- | -------------- | ----------------------------------- |
+| returns `Self`  | `parse()`      | `parse_from_command(command^)`      |
+| returns `Tuple` | `parse_full()` | `parse_full_from_command(command^)` |
 
 - **`full`** means dual return — you get both the typed struct and the raw `ParseResult`.
 - **`from_command`** means parsing from a pre-configured `Command` (created via `to_command()` + builder customisation).

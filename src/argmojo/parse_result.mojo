@@ -31,7 +31,7 @@ struct ParseResult(Copyable, Movable, Writable):
     Use ``has_subcommand_result()`` to check presence and
     ``get_subcommand_result()`` to retrieve the value.
     """
-    var _unknown_args: List[String]
+    var _unknown_arguments: List[String]
     """Unrecognised arguments collected by ``parse_known_arguments()``.
     Empty when using the standard ``parse_arguments()`` method."""
 
@@ -46,7 +46,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._positional_names = List[String]()
         self.subcommand = ""
         self._subcommand_results = List[ParseResult]()
-        self._unknown_args = List[String]()
+        self._unknown_arguments = List[String]()
 
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a ParseResult.
@@ -67,7 +67,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._positional_names = copy._positional_names.copy()
         self.subcommand = copy.subcommand
         self._subcommand_results = copy._subcommand_results.copy()
-        self._unknown_args = copy._unknown_args.copy()
+        self._unknown_arguments = copy._unknown_arguments.copy()
 
     def __init__(out self, *, deinit take: Self):
         """Moves a ParseResult, transferring all field ownership.
@@ -84,7 +84,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self._positional_names = take._positional_names^
         self.subcommand = take.subcommand^
         self._subcommand_results = take._subcommand_results^
-        self._unknown_args = take._unknown_args^
+        self._unknown_arguments = take._unknown_arguments^
 
     def get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
@@ -252,7 +252,7 @@ struct ParseResult(Copyable, Movable, Writable):
         var r: ParseResult = self._subcommand_results[0].copy()
         return r^
 
-    def get_unknown_args(self) -> List[String]:
+    def get_unknown_arguments(self) -> List[String]:
         """Returns the list of unrecognised arguments.
 
         Only populated when the result comes from
@@ -262,7 +262,7 @@ struct ParseResult(Copyable, Movable, Writable):
         Returns:
             A copy of the unknown-arguments list.
         """
-        return self._unknown_args.copy()
+        return self._unknown_arguments.copy()
 
     def print_summary(self, indent: Int = 0):
         """Prints a human-readable summary of all parsed arguments.
@@ -365,12 +365,12 @@ struct ParseResult(Copyable, Movable, Writable):
             print(line)
 
         # Unknown args.
-        if len(self._unknown_args) > 0:
+        if len(self._unknown_arguments) > 0:
             var s = prefix + "  (unknown): ["
-            for j in range(len(self._unknown_args)):
+            for j in range(len(self._unknown_arguments)):
                 if j > 0:
                     s += ", "
-                s += self._unknown_args[j]
+                s += self._unknown_arguments[j]
             s += "]"
             print(s)
 

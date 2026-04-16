@@ -34,11 +34,11 @@ struct AllShortFlags(Parsable):
 
 def test_valid_short_flags() raises:
     """All single-char short flags compile fine."""
-    var cmd = AllShortFlags.to_command()
-    assert_true(len(cmd.args) == 4, "4 args")
-    assert_true(cmd.args[0]._short_name == "o", "Option short")
-    assert_true(cmd.args[1]._short_name == "v", "Flag short")
-    assert_true(cmd.args[2]._short_name == "d", "Count short")
+    var command = AllShortFlags.to_command()
+    assert_true(len(command.arguments) == 4, "4 args")
+    assert_true(command.arguments[0]._short_name == "o", "Option short")
+    assert_true(command.arguments[1]._short_name == "v", "Flag short")
+    assert_true(command.arguments[2]._short_name == "d", "Count short")
 
 
 # =======================================================================
@@ -63,8 +63,8 @@ struct ChoicesDefaultMatch(Parsable):
 def test_choices_default_match() raises:
     """Default value matches one of the choices — compiles fine."""
     var args = List[String]()
-    args.append(String("cmd"))
-    var result = ChoicesDefaultMatch.parse_args(args)
+    args.append(String("command"))
+    var result = ChoicesDefaultMatch.parse_arguments(args)
     assert_true(result.fmt.value == "yaml", "default yaml applied")
 
 
@@ -90,9 +90,9 @@ struct RangeEqualMinMax(Parsable):
 def test_range_equal_bounds() raises:
     """Range where range_min == range_max is valid (exactly one allowed value).
     """
-    var cmd = RangeEqualMinMax.to_command()
-    assert_true(cmd.args[0]._range_min == 5, "min 5")
-    assert_true(cmd.args[0]._range_max == 5, "max 5")
+    var command = RangeEqualMinMax.to_command()
+    assert_true(command.arguments[0]._range_min == 5, "min 5")
+    assert_true(command.arguments[0]._range_max == 5, "max 5")
 
 
 # =======================================================================
@@ -112,10 +112,10 @@ struct PositionalChoices(Parsable):
 
 def test_positional_choices_default() raises:
     """Positional with valid choices+default compiles fine."""
-    var cmd = PositionalChoices.to_command()
-    assert_true(cmd.args[0]._is_positional, "is positional")
-    assert_true(len(cmd.args[0]._choice_values) == 3, "3 choices")
-    assert_true(cmd.args[0]._default_value == "start", "default start")
+    var command = PositionalChoices.to_command()
+    assert_true(command.arguments[0]._is_positional, "is positional")
+    assert_true(len(command.arguments[0]._choice_values) == 3, "3 choices")
+    assert_true(command.arguments[0]._default_value == "start", "default start")
 
 
 # =======================================================================
@@ -134,10 +134,10 @@ struct NoShortFlags(Parsable):
 
 def test_no_short_flags() raises:
     """Schema with no short flags compiles without issues."""
-    var cmd = NoShortFlags.to_command()
-    assert_true(len(cmd.args) == 2, "2 args")
-    assert_true(cmd.args[0]._short_name == "", "no short on output")
-    assert_true(cmd.args[1]._short_name == "", "no short on verbose")
+    var command = NoShortFlags.to_command()
+    assert_true(len(command.arguments) == 2, "2 args")
+    assert_true(command.arguments[0]._short_name == "", "no short on output")
+    assert_true(command.arguments[1]._short_name == "", "no short on verbose")
 
 
 # =======================================================================

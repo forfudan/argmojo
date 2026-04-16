@@ -54,10 +54,10 @@ def _read_file_content(filepath: String) raises -> String:
 
 
 def _expand_response_files(
-    raw_args: List[String],
+    raw_tokens: List[String],
     prefix: String,
     max_depth: Int,
-    cmd_name: String,
+    command_name: String,
 ) raises -> List[String]:
     """Expands response-file tokens in the argument list.
 
@@ -69,8 +69,8 @@ def _expand_response_files(
     var expanded = List[String]()
     var plen = len(prefix)
 
-    for idx in range(len(raw_args)):
-        var token = raw_args[idx]
+    for idx in range(len(raw_tokens)):
+        var token = raw_tokens[idx]
 
         # Preserve argv[0] (program name) verbatim — never expand it.
         if idx == 0:
@@ -88,7 +88,7 @@ def _expand_response_files(
         if len(token) > plen and String(token[byte=:plen]) == prefix:
             var filepath = String(token[byte=plen:])
             _read_response_file(
-                filepath, expanded, 0, prefix, max_depth, cmd_name
+                filepath, expanded, 0, prefix, max_depth, command_name
             )
         else:
             expanded.append(token)
@@ -97,11 +97,11 @@ def _expand_response_files(
 
 def _read_response_file(
     filepath: String,
-    mut out_args: List[String],
+    mut out_arguments: List[String],
     depth: Int,
     prefix: String,
     max_depth: Int,
-    cmd_name: String,
+    command_name: String,
 ) raises:
     """Reads a single response file and appends its arguments.
 
@@ -115,12 +115,12 @@ def _read_response_file(
             + "): "
             + filepath
         )
-        print("error: " + cmd_name + ": " + msg, file=stderr)
+        print("error: " + command_name + ": " + msg, file=stderr)
         raise Error(msg)
 
     if not _path_exists(filepath):
         var msg = "Response file not found: " + filepath
-        print("error: " + cmd_name + ": " + msg, file=stderr)
+        print("error: " + command_name + ": " + msg, file=stderr)
         raise Error(msg)
 
     var plen = len(prefix)
@@ -138,17 +138,22 @@ def _read_response_file(
             len(line) > plen * 2 - 1
             and String(line[byte = : plen * 2]) == prefix + prefix
         ):
-            out_args.append(String(line[byte=plen:]))
+            out_arguments.append(String(line[byte=plen:]))
             continue
 
         # Recursive response file.
         if len(line) > plen and String(line[byte=:plen]) == prefix:
             var nested_path = String(line[byte=plen:])
             _read_response_file(
-                nested_path, out_args, depth + 1, prefix, max_depth, cmd_name
+                nested_path,
+                out_arguments,
+                depth + 1,
+                prefix,
+                max_depth,
+                command_name,
             )
         else:
-            out_args.append(line)
+            out_arguments.append(line)
 
 
 struct Command(Copyable, Movable, Writable):
@@ -171,7 +176,7 @@ struct Command(Copyable, Movable, Writable):
     """A short description of the command, shown in help text."""
     var version: String
     """Version string for --version output."""
-    var args: List[Argument]
+    var arguments: List[Argument]
     """Registered argument definitions."""
     var subcommands: List[Command]
     """Registered subcommand definitions. Each is a full Command instance."""
@@ -264,23 +269,30 @@ struct Command(Copyable, Movable, Writable):
     # === Private fields — Help & display ===
     var _header_color: String
     """ANSI code for section headers (Usage, Arguments, Options)."""
-    var _arg_color: String
-    """ANSI code for option / argument names."""
+    var _argument_color: String
+    """Last bulk colour set via ``argument_color[]()``.
+
+    Not used directly in rendering — the six granular fields
+    (``_program_color``, ``_short_option_color``, ``_long_option_color``,
+    ``_value_color``, ``_positional_color``, ``_command_color``) are what the
+    formatter reads.  Retained so callers can query the most-recent
+    bulk colour if needed.
+    """
     var _warn_color: String
     """ANSI code for deprecation warning messages (default: orange)."""
     var _error_color: String
     """ANSI code for parse error messages (default: red)."""
-    var _prog_color: String
+    var _program_color: String
     """ANSI code for the program name in the usage line."""
-    var _short_opt_color: String
+    var _short_option_color: String
     """ANSI code for short option names (-h, -p)."""
-    var _long_opt_color: String
+    var _long_option_color: String
     """ANSI code for long option names (--help, --port)."""
     var _value_color: String
     """ANSI code for value names / metavar (PORT, <HOST>)."""
-    var _pos_color: String
+    var _positional_color: String
     """ANSI code for positional argument names."""
-    var _cmd_color: String
+    var _command_color: String
     """ANSI code for subcommand names in the Commands section."""
     var _custom_usage: String
     """When non-empty, replaces the auto-generated usage line.
@@ -331,7 +343,7 @@ struct Command(Copyable, Movable, Writable):
         self.name = name
         self.description = description
         self.version = version
-        self.args = List[Argument]()
+        self.arguments = List[Argument]()
         self.subcommands = List[Command]()
         # ── Group constraints ──
         self._exclusive_groups = List[List[String]]()
@@ -358,15 +370,15 @@ struct Command(Copyable, Movable, Writable):
         self._confirmation_prompt = String("")
         # ── Help & display ──
         self._header_color = _DEFAULT_HEADER_COLOR
-        self._arg_color = _DEFAULT_ARGUMENT_COLOR
+        self._argument_color = _DEFAULT_ARGUMENT_COLOR
         self._warn_color = _DEFAULT_WARN_COLOR
         self._error_color = _DEFAULT_ERROR_COLOR
-        self._prog_color = _DEFAULT_PROGRAM_COLOR
-        self._short_opt_color = _DEFAULT_SHORT_OPTION_COLOR
-        self._long_opt_color = _DEFAULT_LONG_OPTION_COLOR
+        self._program_color = _DEFAULT_PROGRAM_COLOR
+        self._short_option_color = _DEFAULT_SHORT_OPTION_COLOR
+        self._long_option_color = _DEFAULT_LONG_OPTION_COLOR
         self._value_color = _DEFAULT_VALUE_COLOR
-        self._pos_color = _DEFAULT_POSITIONAL_COLOR
-        self._cmd_color = _DEFAULT_COMMAND_COLOR
+        self._positional_color = _DEFAULT_POSITIONAL_COLOR
+        self._command_color = _DEFAULT_COMMAND_COLOR
         self._custom_usage = String("")
         self._tips = List[String]()
         # ── Shell completions ──
@@ -385,7 +397,7 @@ struct Command(Copyable, Movable, Writable):
         self.name = take.name^
         self.description = take.description^
         self.version = take.version^
-        self.args = take.args^
+        self.arguments = take.arguments^
         self.subcommands = take.subcommands^
         # ── Group constraints ──
         self._exclusive_groups = take._exclusive_groups^
@@ -416,15 +428,15 @@ struct Command(Copyable, Movable, Writable):
         self._confirmation_prompt = take._confirmation_prompt^
         # ── Help & display ──
         self._header_color = take._header_color^
-        self._arg_color = take._arg_color^
+        self._argument_color = take._argument_color^
         self._warn_color = take._warn_color^
         self._error_color = take._error_color^
-        self._prog_color = take._prog_color^
-        self._short_opt_color = take._short_opt_color^
-        self._long_opt_color = take._long_opt_color^
+        self._program_color = take._program_color^
+        self._short_option_color = take._short_option_color^
+        self._long_option_color = take._long_option_color^
         self._value_color = take._value_color^
-        self._pos_color = take._pos_color^
-        self._cmd_color = take._cmd_color^
+        self._positional_color = take._positional_color^
+        self._command_color = take._command_color^
         self._custom_usage = take._custom_usage^
         self._tips = take._tips^
         # ── Shell completions ──
@@ -437,7 +449,7 @@ struct Command(Copyable, Movable, Writable):
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
 
-        All field data — including registered args and subcommands — is
+        All field data — including registered arguments and subcommands — is
         duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
         moves rather than copies, so this is only triggered when a
         ``Command`` value is assigned via ``=``.
@@ -448,7 +460,7 @@ struct Command(Copyable, Movable, Writable):
         self.name = copy.name
         self.description = copy.description
         self.version = copy.version
-        self.args = copy.args.copy()
+        self.arguments = copy.arguments.copy()
         self.subcommands = copy.subcommands.copy()
         # ── Group constraints ──
         self._exclusive_groups = List[List[String]]()
@@ -491,15 +503,15 @@ struct Command(Copyable, Movable, Writable):
         self._confirmation_prompt = copy._confirmation_prompt
         # ── Help & display ──
         self._header_color = copy._header_color
-        self._arg_color = copy._arg_color
+        self._argument_color = copy._argument_color
         self._warn_color = copy._warn_color
         self._error_color = copy._error_color
-        self._prog_color = copy._prog_color
-        self._short_opt_color = copy._short_opt_color
-        self._long_opt_color = copy._long_opt_color
+        self._program_color = copy._program_color
+        self._short_option_color = copy._short_option_color
+        self._long_option_color = copy._long_option_color
         self._value_color = copy._value_color
-        self._pos_color = copy._pos_color
-        self._cmd_color = copy._cmd_color
+        self._positional_color = copy._positional_color
+        self._command_color = copy._command_color
         self._custom_usage = copy._custom_usage
         self._tips = copy._tips.copy()
         # ── Shell completions ──
@@ -537,7 +549,7 @@ struct Command(Copyable, Movable, Writable):
         var result = command.parse()
         ```
         """
-        # Guard: positional args + subcommands require explicit opt-in.
+        # Guard: positional arguments + subcommands require explicit opt-in.
         if (
             argument._is_positional
             and len(self.subcommands) > 0
@@ -573,26 +585,26 @@ struct Command(Copyable, Movable, Writable):
             )
         # Guard: at most one remainder positional is allowed.
         if argument._is_remainder:
-            for _ri in range(len(self.args)):
-                if self.args[_ri]._is_remainder:
+            for _ri in range(len(self.arguments)):
+                if self.arguments[_ri]._is_remainder:
                     raise Error(
                         "Argument '"
                         + argument.name
                         + "': only one .remainder() positional is allowed"
                         " (already set on '"
-                        + self.args[_ri].name
+                        + self.arguments[_ri].name
                         + "')"
                     )
         # Guard: no positional may be added after a remainder.
         if argument._is_positional and not argument._is_remainder:
-            for _ri in range(len(self.args)):
-                if self.args[_ri]._is_remainder:
+            for _ri in range(len(self.arguments)):
+                if self.arguments[_ri]._is_remainder:
                     raise Error(
                         "Argument '"
                         + argument.name
                         + "': cannot add a positional argument after"
                         " a .remainder() positional ('"
-                        + self.args[_ri].name
+                        + self.arguments[_ri].name
                         + "')"
                     )
         # Guard: .prompt() conflicts with help_on_no_arguments().
@@ -614,8 +626,8 @@ struct Command(Copyable, Movable, Writable):
                 " argument — it only applies to value-taking arguments"
             )
         # Guard: duplicate internal name.
-        for _di in range(len(self.args)):
-            if self.args[_di].name == argument.name:
+        for _di in range(len(self.arguments)):
+            if self.arguments[_di].name == argument.name:
                 raise Error(
                     "Argument '"
                     + argument.name
@@ -626,10 +638,10 @@ struct Command(Copyable, Movable, Writable):
                 )
         # Guard: duplicate long name (including alias collisions).
         if argument._long_name:
-            for _di in range(len(self.args)):
+            for _di in range(len(self.arguments)):
                 if (
-                    self.args[_di]._long_name
-                    and self.args[_di]._long_name == argument._long_name
+                    self.arguments[_di]._long_name
+                    and self.arguments[_di]._long_name == argument._long_name
                 ):
                     raise Error(
                         "Argument '"
@@ -637,31 +649,35 @@ struct Command(Copyable, Movable, Writable):
                         + "': duplicate long flag '--"
                         + argument._long_name
                         + "' — already used by argument '"
-                        + self.args[_di].name
+                        + self.arguments[_di].name
                         + "' on '"
                         + self.name
                         + "'"
                     )
                 # Check new argument's long name against existing aliases.
-                for _ai in range(len(self.args[_di]._alias_names)):
-                    if self.args[_di]._alias_names[_ai] == argument._long_name:
+                for _ai in range(len(self.arguments[_di]._alias_names)):
+                    if (
+                        self.arguments[_di]._alias_names[_ai]
+                        == argument._long_name
+                    ):
                         raise Error(
                             "Argument '"
                             + argument.name
                             + "': long flag '--"
                             + argument._long_name
                             + "' collides with alias of argument '"
-                            + self.args[_di].name
+                            + self.arguments[_di].name
                             + "' on '"
                             + self.name
                             + "'"
                         )
         # Guard: new argument's aliases against existing long names and aliases.
         for _ni in range(len(argument._alias_names)):
-            for _di in range(len(self.args)):
+            for _di in range(len(self.arguments)):
                 if (
-                    self.args[_di]._long_name
-                    and self.args[_di]._long_name == argument._alias_names[_ni]
+                    self.arguments[_di]._long_name
+                    and self.arguments[_di]._long_name
+                    == argument._alias_names[_ni]
                 ):
                     raise Error(
                         "Argument '"
@@ -669,14 +685,14 @@ struct Command(Copyable, Movable, Writable):
                         + "': alias '--"
                         + argument._alias_names[_ni]
                         + "' collides with long flag of argument '"
-                        + self.args[_di].name
+                        + self.arguments[_di].name
                         + "' on '"
                         + self.name
                         + "'"
                     )
-                for _ai in range(len(self.args[_di]._alias_names)):
+                for _ai in range(len(self.arguments[_di]._alias_names)):
                     if (
-                        self.args[_di]._alias_names[_ai]
+                        self.arguments[_di]._alias_names[_ai]
                         == argument._alias_names[_ni]
                     ):
                         raise Error(
@@ -685,17 +701,17 @@ struct Command(Copyable, Movable, Writable):
                             + "': alias '--"
                             + argument._alias_names[_ni]
                             + "' collides with alias of argument '"
-                            + self.args[_di].name
+                            + self.arguments[_di].name
                             + "' on '"
                             + self.name
                             + "'"
                         )
         # Guard: duplicate short name.
         if argument._short_name:
-            for _di in range(len(self.args)):
+            for _di in range(len(self.arguments)):
                 if (
-                    self.args[_di]._short_name
-                    and self.args[_di]._short_name == argument._short_name
+                    self.arguments[_di]._short_name
+                    and self.arguments[_di]._short_name == argument._short_name
                 ):
                     raise Error(
                         "Argument '"
@@ -703,12 +719,12 @@ struct Command(Copyable, Movable, Writable):
                         + "': duplicate short flag '-"
                         + argument._short_name
                         + "' — already used by argument '"
-                        + self.args[_di].name
+                        + self.arguments[_di].name
                         + "' on '"
                         + self.name
                         + "'"
                     )
-        self.args.append(argument^)
+        self.arguments.append(argument^)
 
     def add_subcommand(mut self, var sub: Command) raises:
         """Registers a subcommand.
@@ -742,29 +758,29 @@ struct Command(Copyable, Movable, Writable):
         app.add_subcommand(init^)
         ```
         """
-        # Guard: subcommands + positional args require explicit opt-in.
+        # Guard: subcommands + positional arguments require explicit opt-in.
         if not self._allow_positional_with_subcommands:
-            for _pi in range(len(self.args)):
-                if self.args[_pi]._is_positional:
+            for _pi in range(len(self.arguments)):
+                if self.arguments[_pi]._is_positional:
                     raise Error(
                         "Cannot add subcommand '"
                         + sub.name
                         + "' to '"
                         + self.name
                         + "' which already has positional argument '"
-                        + self.args[_pi].name
+                        + self.arguments[_pi].name
                         + "'. Call"
                         " allow_positional_with_subcommands() to opt in"
                     )
-        # Conflict check: persistent parent args must not share names with
+        # Conflict check: persistent parent arguments must not share names with
         # any local arg in the child — that would make the option ambiguous
         # after injection.
-        for pi in range(len(self.args)):
-            if not self.args[pi]._is_persistent:
+        for pi in range(len(self.arguments)):
+            if not self.arguments[pi]._is_persistent:
                 continue
-            var pa = self.args[pi].copy()
-            for ci in range(len(sub.args)):
-                var ca = sub.args[ci].copy()
+            var pa = self.arguments[pi].copy()
+            for ci in range(len(sub.arguments)):
+                var ca = sub.arguments[ci].copy()
                 if (
                     pa._long_name
                     and ca._long_name
@@ -856,18 +872,18 @@ struct Command(Copyable, Movable, Writable):
         cmd_b.add_parent(shared)
         ```
         """
-        # Stage args with rollback: if any add_argument() raises (e.g.
-        # name/short/long conflict), undo partially-added args so that
+        # Stage arguments with rollback: if any add_argument() raises (e.g.
+        # name/short/long conflict), undo partially-added arguments so that
         # self is not left in a half-inherited state.
-        var orig_len = len(self.args)
+        var orig_len = len(self.arguments)
         try:
-            for i in range(len(parent.args)):
-                self.add_argument(parent.args[i].copy())
+            for i in range(len(parent.arguments)):
+                self.add_argument(parent.arguments[i].copy())
         except e:
-            while len(self.args) > orig_len:
-                _ = self.args.pop()
+            while len(self.arguments) > orig_len:
+                _ = self.arguments.pop()
             raise e^
-        # All args inherited successfully; copy constraint groups.
+        # All arguments inherited successfully; copy constraint groups.
         for i in range(len(parent._exclusive_groups)):
             self._exclusive_groups.append(parent._exclusive_groups[i].copy())
         for i in range(len(parent._required_groups)):
@@ -922,8 +938,8 @@ struct Command(Copyable, Movable, Writable):
             if dup:
                 continue  # Proceed to the next name; duplicates are ignored.
             var found = False
-            for ai in range(len(self.args)):
-                if self.args[ai].name == names[ni]:
+            for ai in range(len(self.arguments)):
+                if self.arguments[ai].name == names[ni]:
                     found = True
                     break
             if not found:
@@ -972,8 +988,8 @@ struct Command(Copyable, Movable, Writable):
             if dup:
                 continue
             var found = False
-            for ai in range(len(self.args)):
-                if self.args[ai].name == names[ni]:
+            for ai in range(len(self.arguments)):
+                if self.arguments[ai].name == names[ni]:
                     found = True
                     break
             if not found:
@@ -1022,8 +1038,8 @@ struct Command(Copyable, Movable, Writable):
             if dup:
                 continue
             var found = False
-            for ai in range(len(self.args)):
-                if self.args[ai].name == names[ni]:
+            for ai in range(len(self.arguments)):
+                if self.arguments[ai].name == names[ni]:
                     found = True
                     break
             if not found:
@@ -1070,8 +1086,8 @@ struct Command(Copyable, Movable, Writable):
         var checks: List[String] = [target, condition]
         for ci in range(len(checks)):
             var found = False
-            for ai in range(len(self.args)):
-                if self.args[ai].name == checks[ci]:
+            for ai in range(len(self.arguments)):
+                if self.arguments[ai].name == checks[ci]:
                     found = True
                     break
             if not found:
@@ -1117,8 +1133,8 @@ struct Command(Copyable, Movable, Writable):
         """
         # Validate that both trigger and implied are registered arguments.
         var trigger_found = False
-        for i in range(len(self.args)):
-            if self.args[i].name == trigger:
+        for i in range(len(self.arguments)):
+            if self.arguments[i].name == trigger:
                 trigger_found = True
                 break
         if not trigger_found:
@@ -1126,12 +1142,12 @@ struct Command(Copyable, Movable, Writable):
 
         var implied_found = False
         var implied_kind = String("flag")  # "flag" or "count"
-        for i in range(len(self.args)):
-            if self.args[i].name == implied:
+        for i in range(len(self.arguments)):
+            if self.arguments[i].name == implied:
                 implied_found = True
-                if self.args[i]._is_count:
+                if self.arguments[i]._is_count:
                     implied_kind = "count"
-                elif not self.args[i]._is_flag:
+                elif not self.arguments[i]._is_flag:
                     raise Error(
                         "implies(): implied argument '"
                         + implied
@@ -1176,7 +1192,7 @@ struct Command(Copyable, Movable, Writable):
                         stack.append(target)
         # Store [trigger, implied, kind] triple.  The kind is used by
         # _apply_implications() to set the correct result field without
-        # re-scanning self.args at parse time.
+        # re-scanning self.arguments at parse time.
         var imp_triple: List[String] = [trigger, implied, implied_kind]
         self._implications.append(imp_triple^)
 
@@ -1260,14 +1276,14 @@ struct Command(Copyable, Movable, Writable):
         self.subcommands = new_subs^
 
     def allow_positional_with_subcommands(mut self):
-        """Allows a Command to have both positional args and subcommands.
+        """Allows a Command to have both positional arguments and subcommands.
 
         By default, ArgMojo follows the convention of cobra (Go) and clap
         (Rust): a Command with subcommands cannot also have positional
         arguments, because the parser cannot unambiguously distinguish a
         subcommand name from a positional value.
 
-        Call this method **before** registering positional args and
+        Call this method **before** registering positional arguments and
         subcommands to opt in to the mixed mode.  In mixed mode, a token
         that exactly matches a registered subcommand name is dispatched;
         any other token falls through to the positional list.
@@ -1297,7 +1313,7 @@ struct Command(Copyable, Movable, Writable):
 
         Raises:
             Error if any registered argument has ``.prompt()`` enabled,
-            since prompting is unreachable when help is shown on no args.
+            since prompting is unreachable when help is shown on no arguments.
 
         Examples:
 
@@ -1309,12 +1325,12 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         # Guard: conflict with .prompt() arguments.
-        for _pi in range(len(self.args)):
-            if self.args[_pi]._prompt:
+        for _pi in range(len(self.arguments)):
+            if self.arguments[_pi]._prompt:
                 raise Error(
                     "help_on_no_arguments() cannot be used on a command"
                     " that has .prompt() arguments (argument '"
-                    + self.args[_pi].name
+                    + self.arguments[_pi].name
                     + "'). When no arguments are provided, help is"
                     " shown and prompting never runs. Remove"
                     " help_on_no_arguments() or .prompt()"
@@ -1494,24 +1510,24 @@ struct Command(Copyable, Movable, Writable):
         ```mojo
         from argmojo import Command, Argument
 
-        var cmd = Command("drop", "Drop the database")
-        cmd.add_argument(
+        var command = Command("drop", "Drop the database")
+        command.add_argument(
             Argument("name", help="Database name")
             .positional().required()
         )
-        cmd.confirmation_option()
+        command.confirmation_option()
         # Users must pass --yes (or -y) to skip the prompt:
         #   drop mydb --yes
         ```
         """
         # Guard: reject if --yes or -y is already registered.
-        for i in range(len(self.args)):
-            if self.args[i]._long_name == "yes":
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._long_name == "yes":
                 raise Error(
                     "confirmation_option: a '--yes' argument is already"
                     " registered"
                 )
-            if self.args[i]._short_name == "y":
+            if self.arguments[i]._short_name == "y":
                 raise Error(
                     "confirmation_option: a '-y' argument is already registered"
                 )
@@ -1541,12 +1557,12 @@ struct Command(Copyable, Movable, Writable):
         ```mojo
         from argmojo import Command, Argument
 
-        var cmd = Command("drop", "Drop the database")
-        cmd.add_argument(
+        var command = Command("drop", "Drop the database")
+        command.add_argument(
             Argument("name", help="Database name")
             .positional().required()
         )
-        cmd.confirmation_option["Drop the database? This cannot be undone."]()
+        command.confirmation_option["Drop the database? This cannot be undone."]()
         ```
         """
         comptime assert (
@@ -1577,16 +1593,16 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             text: The custom usage text (e.g. ``"myapp [-v | --version]
-                [-C <path>] <command> [<args>]"``).
+                [-C <path>] <command> [<arguments>]"``).
 
         Examples:
 
         ```mojo
         from argmojo import Command
-        var cmd = Command("git", "The stupid content tracker")
-        cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+        var command = Command("git", "The stupid content tracker")
+        command.usage("git [-v | --version] [-C <path>] <command> [<arguments>]")
         # --help will show:
-        #   usage: git [-v | --version] [-C <path>] <command> [<args>]
+        #   usage: git [-v | --version] [-C <path>] <command> [<arguments>]
         ```
         """
         self._custom_usage = text
@@ -1660,13 +1676,13 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         var c = _resolve_color[name]()
-        self._arg_color = c
-        self._prog_color = c
-        self._short_opt_color = c
-        self._long_opt_color = c
+        self._argument_color = c
+        self._program_color = c
+        self._short_option_color = c
+        self._long_option_color = c
         self._value_color = c
-        self._pos_color = c
-        self._cmd_color = c
+        self._positional_color = c
+        self._command_color = c
 
     def warn_color[name: StringLiteral](mut self):
         """Sets the colour for deprecation warning messages.
@@ -1718,7 +1734,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
         """
-        self._prog_color = _resolve_color[name]()
+        self._program_color = _resolve_color[name]()
 
     def short_option_color[name: StringLiteral](mut self):
         """Sets the colour for short option names (e.g. ``-h``, ``-p``).
@@ -1730,7 +1746,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
         """
-        self._short_opt_color = _resolve_color[name]()
+        self._short_option_color = _resolve_color[name]()
 
     def long_option_color[name: StringLiteral](mut self):
         """Sets the colour for long option names (e.g. ``--help``, ``--port``).
@@ -1742,7 +1758,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
         """
-        self._long_opt_color = _resolve_color[name]()
+        self._long_option_color = _resolve_color[name]()
 
     def value_color[name: StringLiteral](mut self):
         """Sets the colour for value names / metavar (e.g. ``PORT``, ``<HOST>``).
@@ -1766,7 +1782,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
         """
-        self._pos_color = _resolve_color[name]()
+        self._positional_color = _resolve_color[name]()
 
     def command_color[name: StringLiteral](mut self):
         """Sets the colour for subcommand names in the Commands section.
@@ -1778,7 +1794,7 @@ struct Command(Copyable, Movable, Writable):
         Parameters:
             name: The colour name.
         """
-        self._cmd_color = _resolve_color[name]()
+        self._command_color = _resolve_color[name]()
 
     # ── Shell completions ──
 
@@ -1887,8 +1903,8 @@ struct Command(Copyable, Movable, Writable):
         else:
             print(self._warn_color + "warning: " + msg + _RESET, file=stderr)
 
-    def _preprocess_cjk_args(self, mut args: List[String]):
-        """Applies fullwidth and CJK punctuation auto-correction to *args*.
+    def _preprocess_cjk_arguments(self, mut arguments: List[String]):
+        """Applies fullwidth and CJK punctuation auto-correction to *arguments*.
 
         Two passes:
         1. Fullwidth → halfwidth (``U+FF01``–``U+FF5E``, ``U+3000``).
@@ -1899,10 +1915,10 @@ struct Command(Copyable, Movable, Writable):
         """
         # Pass 1: fullwidth → halfwidth.
         if not self._disable_fullwidth_correction:
-            var corrected_args = List[String]()
-            corrected_args.append(args[0])  # preserve argv[0]
-            for _fw_i in range(1, len(args)):
-                var token = args[_fw_i]
+            var corrected_arguments = List[String]()
+            corrected_arguments.append(arguments[0])  # preserve argv[0]
+            for _fw_i in range(1, len(arguments)):
+                var token = arguments[_fw_i]
                 if _has_fullwidth_chars(token):
                     var parts = _split_on_fullwidth_spaces(token)
                     for _fw_j in range(len(parts)):
@@ -1915,17 +1931,17 @@ struct Command(Copyable, Movable, Writable):
                                 + corrected
                                 + "'"
                             )
-                        corrected_args.append(corrected)
+                        corrected_arguments.append(corrected)
                 else:
-                    corrected_args.append(token)
-            args = corrected_args^
+                    corrected_arguments.append(token)
+            arguments = corrected_arguments^
 
         # Pass 2: CJK punctuation (e.g. em-dash → hyphen-minus).
         if not self._disable_punctuation_correction:
-            var punc_args = List[String]()
-            punc_args.append(args[0])
-            for _pi in range(1, len(args)):
-                var token = args[_pi]
+            var punc_arguments = List[String]()
+            punc_arguments.append(arguments[0])
+            for _pi in range(1, len(arguments)):
+                var token = arguments[_pi]
                 var corrected = _correct_cjk_punctuation(token)
                 if corrected != token and corrected.startswith("-"):
                     self._warn(
@@ -1935,10 +1951,10 @@ struct Command(Copyable, Movable, Writable):
                         + corrected
                         + "'"
                     )
-                    punc_args.append(corrected)
+                    punc_arguments.append(corrected)
                 else:
-                    punc_args.append(token)
-            args = punc_args^
+                    punc_arguments.append(token)
+            arguments = punc_arguments^
 
     def _error(self, msg: String) raises:
         """Prints a coloured error message to stderr then raises.
@@ -1964,7 +1980,7 @@ struct Command(Copyable, Movable, Writable):
     def _error_with_usage(self, msg: String) raises:
         """Prints a coloured error with a usage hint and help tip, then raises.
 
-        Used for validation errors (missing required args, too many positionals)
+        Used for validation errors (missing required arguments, too many positionals)
         where showing the usage line helps the user understand what is expected.
         """
         if Self._no_color_env():
@@ -1995,12 +2011,15 @@ struct Command(Copyable, Movable, Writable):
         if self._custom_usage:
             return String("usage: ") + self._custom_usage
         var s = String("usage: ") + self.name
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
-                var display = self.args[i].name
-                if self.args[i]._is_remainder:
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
+                var display = self.arguments[i].name
+                if self.arguments[i]._is_remainder:
                     display += "..."
-                if self.args[i]._is_required:
+                if self.arguments[i]._is_required:
                     s += " <" + display + ">"
                 else:
                     s += " [" + display + "]"
@@ -2031,21 +2050,24 @@ struct Command(Copyable, Movable, Writable):
             return self._plain_usage()
 
         var hc = self._header_color
-        var pc = self._prog_color
-        var posc = self._pos_color
-        var lc = self._long_opt_color
+        var pc = self._program_color
+        var posc = self._positional_color
+        var lc = self._long_option_color
         var rc = _RESET
 
         if self._custom_usage:
             return hc + "usage:" + rc + " " + self._custom_usage
 
         var s = hc + "usage:" + rc + " " + pc + self.name + rc
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
-                var display = self.args[i].name
-                if self.args[i]._is_remainder:
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
+                var display = self.arguments[i].name
+                if self.arguments[i]._is_remainder:
                     display += "..."
-                if self.args[i]._is_required:
+                if self.arguments[i]._is_required:
                     s += " " + posc + "<" + display + ">" + rc
                 else:
                     s += " " + posc + "[" + display + "]" + rc
@@ -2131,7 +2153,7 @@ struct Command(Copyable, Movable, Writable):
         var result = self.parse()
         self._dispatch(result)
 
-    def _execute_with_arguments(self, raw_args: List[String]) raises:
+    def _execute_with_arguments(self, raw_tokens: List[String]) raises:
         """Parses the given argument list and auto-dispatches to the
         appropriate run function.
 
@@ -2140,8 +2162,8 @@ struct Command(Copyable, Movable, Writable):
         cannot control the real command line, so pass the arguments
         directly:
 
-            var args: List[String] = ["app", "build", "mylib"]
-            app._execute_with_arguments(args)
+            var arguments: List[String] = ["app", "build", "mylib"]
+            app._execute_with_arguments(arguments)
 
         The leading underscore marks this method as internal.  Production
         code should call ``execute()``; only test code should call this.
@@ -2152,14 +2174,14 @@ struct Command(Copyable, Movable, Writable):
         making it suitable for tests that need to catch and inspect errors.
 
         Args:
-            raw_args: The raw argument strings (including program name at
+            raw_tokens: The raw token strings (including program name at
                 index 0).
 
         Raises:
             Error if parsing fails or no run function is registered for the
             resolved command.
         """
-        var result = self.parse_arguments(raw_args)
+        var result = self.parse_arguments(raw_tokens)
         self._dispatch(result)
 
     def _dispatch(self, result: ParseResult) raises:
@@ -2247,12 +2269,23 @@ struct Command(Copyable, Movable, Writable):
         Returns:
             A ParseResult containing all parsed values.
         """
-        var raw_variadic = argv()
-        var raw = List[String]()
-        for i in range(len(raw_variadic)):
-            raw.append(String(raw_variadic[i]))
+        # [Mojo Miji]
+        # The result of `argv()` is called "tokens" in argmojo.
+        # This is because they consist not only the "arguments" defined by
+        # argmojo, but also the "values" that will be consumed by those
+        # arguments.
+        # Thus, a more precise name is "token" rather than "args".
+        # This is anological to a programming language parser, where the `argv`
+        # function scans the raw input line and produces a list of "tokens" that
+        # are then parsed by argmojo's parsing logic.
+        # In that sense, `argv()` is more like a "scanner" or "lexer" while
+        # argmojo is more like a "parser".
+        var raw_variadic_tokens = argv()
+        var raw_tokens = List[String]()
+        for i in range(len(raw_variadic_tokens)):
+            raw_tokens.append(String(raw_variadic_tokens[i]))
         try:
-            return self.parse_arguments(raw)
+            return self.parse_arguments(raw_tokens)
         except:
             # Error message was already printed to stderr by _error().
             exit(2)
@@ -2260,14 +2293,14 @@ struct Command(Copyable, Movable, Writable):
             # compiler does not model exit() as @noreturn yet.
             return ParseResult()
 
-    def parse_arguments(self, raw_args: List[String]) raises -> ParseResult:
+    def parse_arguments(self, raw_tokens: List[String]) raises -> ParseResult:
         """Parses the given argument list.
 
         The first element, e.g., ``argv[0]``, is expected to be the program name
         and is skipped.
 
         Args:
-            raw_args: The raw argument strings (including program name at index 0).
+            raw_tokens: The raw token strings (including program name at index 0).
 
         Returns:
             A ParseResult containing all parsed values.
@@ -2301,7 +2334,7 @@ struct Command(Copyable, Movable, Writable):
         #    │   ├─ Resolve by exact long name → exact alias → prefix match.
         #    │   ├─ Emit deprecation warning if the matched arg is deprecated.
         #    │   ├─ Handle count / flag / nargs / map / value-taking variants.
-        #    │   └─ For append args, store via delimiter-aware append logic.
+        #    │   └─ For append arguments, store via delimiter-aware append logic.
         #    ├─ If token starts with "-" and len > 1:
         #    │  Parse short option(s)
         #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
@@ -2311,9 +2344,9 @@ struct Command(Copyable, Movable, Writable):
         #       ├─ Subcommands registered + token matches subcommand name:
         #       │   build child argv, call child.parse_arguments(), store result, break.
         #       └─ Otherwise: treat as positional argument.
-        # 4. Apply defaults for missing args (named + positional slots).
+        # 4. Apply defaults for missing arguments (named + positional slots).
         # 5. Validate:
-        #    ├─ Required args
+        #    ├─ Required arguments
         #    ├─ Positional count (too many)
         #    ├─ Mutually-exclusive groups
         #    ├─ Required-together groups
@@ -2325,34 +2358,34 @@ struct Command(Copyable, Movable, Writable):
         var result = ParseResult()
 
         # Expand response files if enabled.
-        var args_to_parse = raw_args.copy()
+        var tokens_to_parse = raw_tokens.copy()
         # NOTE: Response file expansion temporarily disabled to work around
         # Mojo compiler deadlock with -D ASSERT=all.  The module-level
         # _expand_response_files / _read_response_file functions are still
         # available and tested; only the automatic call from parse_arguments
         # is commented out.
         # if len(self._response_file_prefix) > 0:
-        #     args_to_parse = _expand_response_files(
-        #         raw_args,
+        #     tokens_to_parse = _expand_response_files(
+        #         raw_tokens,
         #         self._response_file_prefix,
         #         self._response_file_max_depth,
         #         self.name,
         #     )
 
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
-        self._preprocess_cjk_args(args_to_parse)
+        self._preprocess_cjk_arguments(tokens_to_parse)
 
         # Register positional argument names in order.
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional:
-                result._positional_names.append(self.args[i].name)
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._is_positional:
+                result._positional_names.append(self.arguments[i].name)
 
         # Skip argv[0] and start from argv[1].
         var i: Int = 1
         var stop_parsing_options = False
 
         # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_arguments and len(args_to_parse) <= 1:
+        if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
             print(self._generate_help())
             exit(0)
 
@@ -2360,29 +2393,29 @@ struct Command(Copyable, Movable, Writable):
 
         # Check if there is a remainder positional and which slot it is.
         var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.args)):
-            if self.args[_ri]._is_remainder:
+        for _ri in range(len(self.arguments)):
+            if self.arguments[_ri]._is_remainder:
                 # Find its positional slot index.
                 var slot: Int = 0
-                for _rj in range(len(self.args)):
-                    if self.args[_rj]._is_positional:
-                        if self.args[_rj].name == self.args[_ri].name:
+                for _rj in range(len(self.arguments)):
+                    if self.arguments[_rj]._is_positional:
+                        if self.arguments[_rj].name == self.arguments[_ri].name:
                             remainder_pos_idx = slot
                             break
                         slot += 1
                 break
 
-        while i < len(args_to_parse):
-            var arg = args_to_parse[i]
+        while i < len(tokens_to_parse):
+            var token = tokens_to_parse[i]
 
             # Handle "--" stop marker.
-            if arg == "--" and not stop_parsing_options:
+            if token == "--" and not stop_parsing_options:
                 stop_parsing_options = True
                 i += 1
                 continue
 
             if stop_parsing_options:
-                result._positionals.append(arg)
+                result._positionals.append(token)
                 i += 1
                 continue
 
@@ -2393,17 +2426,17 @@ struct Command(Copyable, Movable, Writable):
                 and len(result._positionals) >= remainder_pos_idx
             ):
                 # We've reached or passed the remainder slot — consume everything.
-                result._positionals.append(arg)
+                result._positionals.append(token)
                 i += 1
                 continue
 
             # Handle --help / -h / -?
-            if arg == "--help" or arg == "-h" or arg == "-?":
+            if token == "--help" or token == "-h" or token == "-?":
                 print(self._generate_help())
                 exit(0)
 
             # Handle --version / -V
-            if arg == "--version" or arg == "-V":
+            if token == "--version" or token == "-V":
                 print(self.name + " " + self.version)
                 exit(0)
 
@@ -2411,13 +2444,13 @@ struct Command(Copyable, Movable, Writable):
             if (
                 self._completions_enabled
                 and not self._completions_is_subcommand
-                and arg == "--" + self._completions_name
+                and token == "--" + self._completions_name
             ):
-                if i + 1 < len(args_to_parse):
+                if i + 1 < len(tokens_to_parse):
                     i += 1
-                    var shell_arg = args_to_parse[i]
+                    var shell_argument = tokens_to_parse[i]
                     try:
-                        print(self.generate_completion(shell_arg))
+                        print(self.generate_completion(shell_argument))
                     except e:
                         self._error(String(e))
                         exit(2)
@@ -2433,18 +2466,18 @@ struct Command(Copyable, Movable, Writable):
             # ── allow_hyphen_values ──────────────────────────────────
             # If the next positional slot accepts dash-prefixed tokens
             # and this token is NOT a known option, consume as positional.
-            if arg.startswith("-") and len(arg) > 1:
+            if token.startswith("-") and len(token) > 1:
                 var _ahv_consumed = False
                 var _ahv_slot = len(result._positionals)
                 if _ahv_slot < len(result._positional_names):
                     var _ahv_name = result._positional_names[_ahv_slot]
-                    for _ai in range(len(self.args)):
+                    for _ai in range(len(self.arguments)):
                         if (
-                            self.args[_ai].name == _ahv_name
-                            and self.args[_ai]._allow_hyphen_values
+                            self.arguments[_ai].name == _ahv_name
+                            and self.arguments[_ai]._allow_hyphen_values
                         ):
-                            if not self._is_known_option(arg):
-                                result._positionals.append(arg)
+                            if not self._is_known_option(token):
+                                result._positionals.append(token)
                                 i += 1
                                 _ahv_consumed = True
                             break
@@ -2453,26 +2486,26 @@ struct Command(Copyable, Movable, Writable):
             # ────────────────────────────────────────────────────────
 
             # Long option: --key, --key=value, --key value
-            if arg.startswith("--"):
-                i = self._parse_long_option(args_to_parse, i, result)
+            if token.startswith("--"):
+                i = self._parse_long_option(tokens_to_parse, i, result)
                 continue
 
             # Short option: -k, -k value, -abc (merged flags), -ofile.txt
-            if arg.startswith("-") and len(arg) > 1:
+            if token.startswith("-") and len(token) > 1:
                 # ── Negative-number detection (argparse-style) ──────────────
                 # A token like "-10.18e3" is treated as a positional value when:
                 #   (a) allow_negative_numbers() was called explicitly, OR
                 #   (b) the token looks numeric AND no registered short option
                 #       uses a digit character (auto-detect, no naming clash).
-                if _looks_like_number(arg):
+                if _looks_like_number(token):
                     var has_digit_short = False
-                    for _ni in range(len(self.args)):
-                        var sn = self.args[_ni]._short_name
+                    for _ni in range(len(self.arguments)):
+                        var sn = self.arguments[_ni]._short_name
                         if sn >= "0" and sn <= "9":
                             has_digit_short = True
                             break
                     if self._allow_negative_numbers or not has_digit_short:
-                        result._positionals.append(arg)
+                        result._positionals.append(token)
                         i += 1
                         continue
                 # ────────────────────────────────────────────────────────────
@@ -2483,17 +2516,21 @@ struct Command(Copyable, Movable, Writable):
                 # with parse_known_arguments() and avoids duplicate scans.
                 if (
                     self._allow_negative_expressions
-                    and not self._is_known_option(arg)
+                    and not self._is_known_option(token)
                 ):
-                    result._positionals.append(arg)
+                    result._positionals.append(token)
                     i += 1
                     continue
                 # ────────────────────────────────────────────────────────────
-                var key = String(arg[byte=1:])
+                var key = String(token[byte=1:])
                 if len(key) == 1:
-                    i = self._parse_short_single(key, args_to_parse, i, result)
+                    i = self._parse_short_single(
+                        key, tokens_to_parse, i, result
+                    )
                 else:
-                    i = self._parse_short_merged(key, args_to_parse, i, result)
+                    i = self._parse_short_merged(
+                        key, tokens_to_parse, i, result
+                    )
                 continue
 
             # Positional argument — check for subcommand dispatch first.
@@ -2501,13 +2538,13 @@ struct Command(Copyable, Movable, Writable):
             if (
                 self._completions_enabled
                 and self._completions_is_subcommand
-                and arg == self._completions_name
+                and token == self._completions_name
             ):
-                if i + 1 < len(args_to_parse):
+                if i + 1 < len(tokens_to_parse):
                     i += 1
-                    var shell_arg = args_to_parse[i]
+                    var shell_argument = tokens_to_parse[i]
                     try:
-                        print(self.generate_completion(shell_arg))
+                        print(self.generate_completion(shell_argument))
                     except e:
                         self._error(String(e))
                         exit(2)
@@ -2520,13 +2557,13 @@ struct Command(Copyable, Movable, Writable):
                     exit(2)
             if len(self.subcommands) > 0:
                 var new_i = self._dispatch_subcommand(
-                    arg, args_to_parse, i, result
+                    token, tokens_to_parse, i, result
                 )
                 if new_i >= 0:
                     i = new_i
                     continue
 
-            result._positionals.append(arg)
+            result._positionals.append(token)
             i += 1
 
         # Apply defaults, propagate implications, prompt for remaining
@@ -2534,7 +2571,7 @@ struct Command(Copyable, Movable, Writable):
         # ones), confirm if required, then validate constraints.
         self._apply_defaults(result)
         self._apply_implications(result)
-        self._prompt_missing_args(result)
+        self._prompt_missing_arguments(result)
         self._apply_implications(result)
         self._confirm(result)
         self._validate(result)
@@ -2542,27 +2579,27 @@ struct Command(Copyable, Movable, Writable):
         return result^
 
     def parse_known_arguments(
-        self, raw_args: List[String]
+        self, raw_tokens: List[String]
     ) raises -> ParseResult:
         """Parses known arguments, collecting unrecognised ones.
 
         Behaves like ``parse_arguments()`` but does **not** error on
         unknown options.  Instead, unrecognised tokens are stored in the
-        result and can be retrieved via ``result.get_unknown_args()``.
+        result and can be retrieved via ``result.get_unknown_arguments()``.
 
         This is useful for wrapper CLIs that forward unknown flags to
         another tool, or for incremental/phased parsing.
 
         Args:
-            raw_args: The raw argument strings (including program name at
+            raw_tokens: The raw token strings (including program name at
                 index 0).
 
         Returns:
-            A ParseResult whose ``get_unknown_args()`` contains any
+            A ParseResult whose ``get_unknown_arguments()`` contains any
             tokens that did not match a registered argument.
 
         Raises:
-            Error on validation failures (required args, groups, etc.)
+            Error on validation failures (required arguments, groups, etc.)
             — only *unknown-option* errors are suppressed.
 
 
@@ -2578,46 +2615,46 @@ struct Command(Copyable, Movable, Writable):
         """
         var result = ParseResult()
 
-        var args_to_parse = raw_args.copy()
+        var tokens_to_parse = raw_tokens.copy()
 
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
-        self._preprocess_cjk_args(args_to_parse)
+        self._preprocess_cjk_arguments(tokens_to_parse)
 
         # Register positional argument names in order.
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional:
-                result._positional_names.append(self.args[i].name)
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._is_positional:
+                result._positional_names.append(self.arguments[i].name)
 
         var i: Int = 1
         var stop_parsing_options = False
 
-        if self._help_on_no_arguments and len(args_to_parse) <= 1:
+        if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
             print(self._generate_help())
             exit(0)
 
         # Remainder positional detection (same as parse_arguments).
         var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.args)):
-            if self.args[_ri]._is_remainder:
+        for _ri in range(len(self.arguments)):
+            if self.arguments[_ri]._is_remainder:
                 var slot: Int = 0
-                for _rj in range(len(self.args)):
-                    if self.args[_rj]._is_positional:
-                        if self.args[_rj].name == self.args[_ri].name:
+                for _rj in range(len(self.arguments)):
+                    if self.arguments[_rj]._is_positional:
+                        if self.arguments[_rj].name == self.arguments[_ri].name:
                             remainder_pos_idx = slot
                             break
                         slot += 1
                 break
 
-        while i < len(args_to_parse):
-            var arg = args_to_parse[i]
+        while i < len(tokens_to_parse):
+            var token = tokens_to_parse[i]
 
-            if arg == "--" and not stop_parsing_options:
+            if token == "--" and not stop_parsing_options:
                 stop_parsing_options = True
                 i += 1
                 continue
 
             if stop_parsing_options:
-                result._positionals.append(arg)
+                result._positionals.append(token)
                 i += 1
                 continue
 
@@ -2626,17 +2663,17 @@ struct Command(Copyable, Movable, Writable):
                 remainder_pos_idx >= 0
                 and len(result._positionals) >= remainder_pos_idx
             ):
-                result._positionals.append(arg)
+                result._positionals.append(token)
                 i += 1
                 continue
 
             # --help / -h / -?
-            if arg == "--help" or arg == "-h" or arg == "-?":
+            if token == "--help" or token == "-h" or token == "-?":
                 print(self._generate_help())
                 exit(0)
 
             # --version / -V
-            if arg == "--version" or arg == "-V":
+            if token == "--version" or token == "-V":
                 print(self.name + " " + self.version)
                 exit(0)
 
@@ -2644,13 +2681,13 @@ struct Command(Copyable, Movable, Writable):
             if (
                 self._completions_enabled
                 and not self._completions_is_subcommand
-                and arg == "--" + self._completions_name
+                and token == "--" + self._completions_name
             ):
-                if i + 1 < len(args_to_parse):
+                if i + 1 < len(tokens_to_parse):
                     i += 1
-                    var shell_arg = args_to_parse[i]
+                    var shell_argument = tokens_to_parse[i]
                     try:
-                        print(self.generate_completion(shell_arg))
+                        print(self.generate_completion(shell_argument))
                     except e:
                         self._error(String(e))
                         exit(2)
@@ -2664,18 +2701,18 @@ struct Command(Copyable, Movable, Writable):
                     exit(2)
 
             # ── allow_hyphen_values (same logic as parse_arguments) ──
-            if arg.startswith("-") and len(arg) > 1:
+            if token.startswith("-") and len(token) > 1:
                 var _ahv_consumed = False
                 var _ahv_slot = len(result._positionals)
                 if _ahv_slot < len(result._positional_names):
                     var _ahv_name = result._positional_names[_ahv_slot]
-                    for _ai in range(len(self.args)):
+                    for _ai in range(len(self.arguments)):
                         if (
-                            self.args[_ai].name == _ahv_name
-                            and self.args[_ai]._allow_hyphen_values
+                            self.arguments[_ai].name == _ahv_name
+                            and self.arguments[_ai]._allow_hyphen_values
                         ):
-                            if not self._is_known_option(arg):
-                                result._positionals.append(arg)
+                            if not self._is_known_option(token):
+                                result._positionals.append(token)
                                 i += 1
                                 _ahv_consumed = True
                             break
@@ -2684,48 +2721,48 @@ struct Command(Copyable, Movable, Writable):
             # ────────────────────────────────────────────────────────
 
             # Long option — try to parse; collect as unknown if it fails.
-            if arg.startswith("--"):
+            if token.startswith("--"):
                 try:
-                    i = self._parse_long_option(args_to_parse, i, result)
+                    i = self._parse_long_option(tokens_to_parse, i, result)
                 except:
-                    result._unknown_args.append(arg)
+                    result._unknown_arguments.append(token)
                     i += 1
                 continue
 
             # Short option — try to parse; collect as unknown if it fails.
-            if arg.startswith("-") and len(arg) > 1:
-                if _looks_like_number(arg):
+            if token.startswith("-") and len(token) > 1:
+                if _looks_like_number(token):
                     var has_digit_short = False
-                    for _ni in range(len(self.args)):
-                        var sn = self.args[_ni]._short_name
+                    for _ni in range(len(self.arguments)):
+                        var sn = self.arguments[_ni]._short_name
                         if sn >= "0" and sn <= "9":
                             has_digit_short = True
                             break
                     if self._allow_negative_numbers or not has_digit_short:
-                        result._positionals.append(arg)
+                        result._positionals.append(token)
                         i += 1
                         continue
                 # ── Negative-expression detection (same as parse_arguments) ──
                 if (
                     self._allow_negative_expressions
-                    and not self._is_known_option(arg)
+                    and not self._is_known_option(token)
                 ):
-                    result._positionals.append(arg)
+                    result._positionals.append(token)
                     i += 1
                     continue
                 # ─────────────────────────────────────────────────────────────
                 try:
-                    var key = String(arg[byte=1:])
+                    var key = String(token[byte=1:])
                     if len(key) == 1:
                         i = self._parse_short_single(
-                            key, args_to_parse, i, result
+                            key, tokens_to_parse, i, result
                         )
                     else:
                         i = self._parse_short_merged(
-                            key, args_to_parse, i, result
+                            key, tokens_to_parse, i, result
                         )
                 except:
-                    result._unknown_args.append(arg)
+                    result._unknown_arguments.append(token)
                     i += 1
                 continue
 
@@ -2733,13 +2770,13 @@ struct Command(Copyable, Movable, Writable):
             if (
                 self._completions_enabled
                 and self._completions_is_subcommand
-                and arg == self._completions_name
+                and token == self._completions_name
             ):
-                if i + 1 < len(args_to_parse):
+                if i + 1 < len(tokens_to_parse):
                     i += 1
-                    var shell_arg = args_to_parse[i]
+                    var shell_argument = tokens_to_parse[i]
                     try:
-                        print(self.generate_completion(shell_arg))
+                        print(self.generate_completion(shell_argument))
                     except e:
                         self._error(String(e))
                         exit(2)
@@ -2754,13 +2791,13 @@ struct Command(Copyable, Movable, Writable):
             # Subcommand dispatch.
             if len(self.subcommands) > 0:
                 var new_i = self._dispatch_subcommand(
-                    arg, args_to_parse, i, result
+                    token, tokens_to_parse, i, result
                 )
                 if new_i >= 0:
                     i = new_i
                     continue
 
-            result._positionals.append(arg)
+            result._positionals.append(token)
             i += 1
 
         self._apply_defaults(result)
@@ -2774,7 +2811,7 @@ struct Command(Copyable, Movable, Writable):
     # ===------------------------------------------------------------------=== #
 
     def _parse_long_option(
-        self, raw_args: List[String], start: Int, mut result: ParseResult
+        self, raw_tokens: List[String], start: Int, mut result: ParseResult
     ) raises -> Int:
         """Parses a long option token (``--key``, ``--key=value``, ``--no-X``).
 
@@ -2784,7 +2821,7 @@ struct Command(Copyable, Movable, Writable):
         warnings.
 
         Args:
-            raw_args: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current ``--key`` token.
             result: The ParseResult to store into.
 
@@ -2792,8 +2829,8 @@ struct Command(Copyable, Movable, Writable):
             The index of the next token to process.
         """
         var i = start
-        var arg = raw_args[i]
-        var key = String(arg[byte=2:])  # strip leading "--"
+        var token = raw_tokens[i]
+        var key = String(token[byte=2:])  # strip leading "--"
         var value = String("")
         var has_eq = False
 
@@ -2810,10 +2847,10 @@ struct Command(Copyable, Movable, Writable):
         if key.startswith("no-") and not has_eq:
             var base_key = String(key[byte=3:])
             # Exact match first.
-            for idx in range(len(self.args)):
+            for idx in range(len(self.arguments)):
                 if (
-                    self.args[idx]._long_name == base_key
-                    and self.args[idx]._is_negatable
+                    self.arguments[idx]._long_name == base_key
+                    and self.arguments[idx]._is_negatable
                 ):
                     is_negation = True
                     key = base_key
@@ -2822,17 +2859,17 @@ struct Command(Copyable, Movable, Writable):
             if not is_negation:
                 var neg_candidates = List[String]()
                 var neg_idx: Int = -1
-                for idx in range(len(self.args)):
+                for idx in range(len(self.arguments)):
                     if (
-                        self.args[idx]._long_name
-                        and self.args[idx]._long_name.startswith(base_key)
-                        and self.args[idx]._is_negatable
+                        self.arguments[idx]._long_name
+                        and self.arguments[idx]._long_name.startswith(base_key)
+                        and self.arguments[idx]._is_negatable
                     ):
-                        neg_candidates.append(self.args[idx]._long_name)
+                        neg_candidates.append(self.arguments[idx]._long_name)
                         neg_idx = idx
                 if len(neg_candidates) == 1:
                     is_negation = True
-                    key = self.args[neg_idx]._long_name
+                    key = self.arguments[neg_idx]._long_name
                 elif len(neg_candidates) > 1:
                     var opts = String("")
                     for j in range(len(neg_candidates)):
@@ -2878,7 +2915,7 @@ struct Command(Copyable, Movable, Writable):
                 result._lists[matched.name] = List[String]()
             for _n in range(matched._number_of_values):
                 i += 1
-                if i >= len(raw_args):
+                if i >= len(raw_tokens):
                     self._error(
                         "Option '--"
                         + key
@@ -2886,8 +2923,8 @@ struct Command(Copyable, Movable, Writable):
                         + String(matched._number_of_values)
                         + " values"
                     )
-                self._validate_choices(matched, raw_args[i])
-                result._lists[matched.name].append(raw_args[i])
+                self._validate_choices(matched, raw_tokens[i])
+                result._lists[matched.name].append(raw_tokens[i])
         else:
             if not has_eq:
                 if matched._require_equals:
@@ -2904,9 +2941,9 @@ struct Command(Copyable, Movable, Writable):
                         )
                 else:
                     i += 1
-                    if i >= len(raw_args):
+                    if i >= len(raw_tokens):
                         self._error("Option '--" + key + "' requires a value")
-                    value = raw_args[i]
+                    value = raw_tokens[i]
             if matched._is_map:
                 self._store_map_value(matched, value, result)
             elif matched._is_append:
@@ -2920,7 +2957,7 @@ struct Command(Copyable, Movable, Writable):
     def _parse_short_single(
         self,
         key: String,
-        raw_args: List[String],
+        raw_tokens: List[String],
         start: Int,
         mut result: ParseResult,
     ) raises -> Int:
@@ -2928,7 +2965,7 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             key: The short option character (without ``-``).
-            raw_args: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current ``-k`` token.
             result: The ParseResult to store into.
 
@@ -2957,7 +2994,7 @@ struct Command(Copyable, Movable, Writable):
                 result._lists[matched.name] = List[String]()
             for _n in range(matched._number_of_values):
                 i += 1
-                if i >= len(raw_args):
+                if i >= len(raw_tokens):
                     self._error(
                         "Option '-"
                         + key
@@ -2965,8 +3002,8 @@ struct Command(Copyable, Movable, Writable):
                         + String(matched._number_of_values)
                         + " values"
                     )
-                self._validate_choices(matched, raw_args[i])
-                result._lists[matched.name].append(raw_args[i])
+                self._validate_choices(matched, raw_tokens[i])
+                result._lists[matched.name].append(raw_tokens[i])
         else:
             if matched._has_default_if_no_value:
                 # No value given — use default-if-no-value.
@@ -2980,9 +3017,9 @@ struct Command(Copyable, Movable, Writable):
                     result._values[matched.name] = val
             else:
                 i += 1
-                if i >= len(raw_args):
+                if i >= len(raw_tokens):
                     self._error("Option '-" + key + "' requires a value")
-                var val = raw_args[i]
+                var val = raw_tokens[i]
                 if matched._is_map:
                     self._store_map_value(matched, val, result)
                 elif matched._is_append:
@@ -2996,7 +3033,7 @@ struct Command(Copyable, Movable, Writable):
     def _parse_short_merged(
         self,
         key: String,
-        raw_args: List[String],
+        raw_tokens: List[String],
         start: Int,
         mut result: ParseResult,
     ) raises -> Int:
@@ -3012,7 +3049,7 @@ struct Command(Copyable, Movable, Writable):
 
         Args:
             key: The characters after ``-`` (e.g., ``"abc"`` from ``-abc``).
-            raw_args: The full argument list.
+            raw_tokens: The full token list.
             start: Index of the current token.
             result: The ParseResult to store into.
 
@@ -3053,7 +3090,7 @@ struct Command(Copyable, Movable, Writable):
                         result._lists[m.name] = List[String]()
                     for _n in range(m._number_of_values):
                         i += 1
-                        if i >= len(raw_args):
+                        if i >= len(raw_tokens):
                             self._error(
                                 "Option '-"
                                 + ch
@@ -3061,8 +3098,8 @@ struct Command(Copyable, Movable, Writable):
                                 + String(m._number_of_values)
                                 + " values"
                             )
-                        self._validate_choices(m, raw_args[i])
-                        result._lists[m.name].append(raw_args[i])
+                        self._validate_choices(m, raw_tokens[i])
+                        result._lists[m.name].append(raw_tokens[i])
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -3075,11 +3112,11 @@ struct Command(Copyable, Movable, Writable):
                             val = m._default_if_no_value
                         else:
                             i += 1
-                            if i >= len(raw_args):
+                            if i >= len(raw_tokens):
                                 self._error(
                                     "Option '-" + ch + "' requires a value"
                                 )
-                            val = raw_args[i]
+                            val = raw_tokens[i]
                     if m._is_map:
                         self._store_map_value(m, val, result)
                     elif m._is_append:
@@ -3105,7 +3142,7 @@ struct Command(Copyable, Movable, Writable):
                     result._lists[first_match.name] = List[String]()
                 for _n in range(first_match._number_of_values):
                     i += 1
-                    if i >= len(raw_args):
+                    if i >= len(raw_tokens):
                         self._error(
                             "Option '-"
                             + first_char
@@ -3113,8 +3150,8 @@ struct Command(Copyable, Movable, Writable):
                             + String(first_match._number_of_values)
                             + " values"
                         )
-                    self._validate_choices(first_match, raw_args[i])
-                    result._lists[first_match.name].append(raw_args[i])
+                    self._validate_choices(first_match, raw_tokens[i])
+                    result._lists[first_match.name].append(raw_tokens[i])
             elif first_match._is_map:
                 var val = String(key[byte=1:])
                 self._store_map_value(first_match, val, result)
@@ -3130,39 +3167,39 @@ struct Command(Copyable, Movable, Writable):
 
     def _dispatch_subcommand(
         self,
-        arg: String,
-        raw_args: List[String],
+        token: String,
+        raw_tokens: List[String],
         i: Int,
         mut result: ParseResult,
     ) raises -> Int:
         """Attempts to dispatch to a matching subcommand.
 
         If a subcommand matches, it builds a child argv, injects
-        persistent args, parses via the child's ``parse_arguments()``,
+        persistent arguments, parses via the child's ``parse_arguments()``,
         and performs bidirectional sync of persistent values.
 
         Args:
-            arg: The current token (potential subcommand name).
-            raw_args: The full argument list.
+            token: The current token (potential subcommand name).
+            raw_tokens: The full token list.
             i: Index of the current token.
             result: The ParseResult to store into.
 
         Returns:
             The index of the next token to process if a subcommand was
-            dispatched (typically ``len(raw_args)``), or ``-1`` if no
+            dispatched (typically ``len(raw_tokens)``), or ``-1`` if no
             subcommand matched and the caller should fall through to
             positional argument handling.
         """
         # Exact subcommand (name or alias) match → dispatch.
-        var sub_idx = self._find_subcommand(arg)
+        var sub_idx = self._find_subcommand(token)
         if sub_idx >= 0:
             # Resolve canonical name (alias → real name).
             var canon = self.subcommands[sub_idx].name
             # Build child argv: ["parent sub", remaining tokens...].
             var child_argv = List[String]()
             child_argv.append(self.name + " " + canon)
-            for k in range(i + 1, len(raw_args)):
-                child_argv.append(raw_args[k])
+            for k in range(i + 1, len(raw_tokens)):
+                child_argv.append(raw_tokens[k])
             # Auto-registered 'help' subcommand: display sibling help.
             if self.subcommands[sub_idx]._is_help_subcommand:
                 if len(child_argv) > 1:
@@ -3176,14 +3213,14 @@ struct Command(Copyable, Movable, Writable):
                 # No target, unknown, or self-referential → root help.
                 print(self._generate_help())
                 exit(0)
-            # Build a child copy with persistent args injected so they
+            # Build a child copy with persistent arguments injected so they
             # are recognised wherever the user places them on the line.
             var child_copy = self.subcommands[sub_idx].copy()
             # Set full command path so child help/errors show "app sub".
             child_copy.name = self.name + " " + canon
-            for _pi in range(len(self.args)):
-                if self.args[_pi]._is_persistent:
-                    child_copy.args.append(self.args[_pi].copy())
+            for _pi in range(len(self.arguments)):
+                if self.arguments[_pi]._is_persistent:
+                    child_copy.arguments.append(self.arguments[_pi].copy())
             var child_result = child_copy.parse_arguments(child_argv)
             # Bubble up persistent values from child to root result so
             # that root_result.get_flag("x") always works regardless of
@@ -3192,10 +3229,10 @@ struct Command(Copyable, Movable, Writable):
             # the subcommand token, its value takes precedence.)
             # Also push down root-parsed persistent values to child
             # result so that sub_result.get_flag("x") always works too.
-            for _pi in range(len(self.args)):
-                if not self.args[_pi]._is_persistent:
+            for _pi in range(len(self.arguments)):
+                if not self.arguments[_pi]._is_persistent:
                     continue
-                var _pn = self.args[_pi].name
+                var _pn = self.arguments[_pi].name
                 # Bubble up: child parsed flag after subcommand token.
                 if _pn in child_result._flags and _pn not in result._flags:
                     result._flags[_pn] = child_result._flags[_pn]
@@ -3213,7 +3250,7 @@ struct Command(Copyable, Movable, Writable):
             result.subcommand = canon
             result._subcommand_results.append(child_result^)
             # All remaining tokens were consumed by the child.
-            return len(raw_args)
+            return len(raw_tokens)
         else:
             # No matching subcommand found.  When positionals are
             # not allowed (the usual case), produce a helpful error.
@@ -3234,7 +3271,7 @@ struct Command(Copyable, Movable, Writable):
                             sub_names.append(
                                 self.subcommands[_si2]._command_aliases[_ai2]
                             )
-                var suggestion = _suggest_similar(arg, sub_names)
+                var suggestion = _suggest_similar(token, sub_names)
 
                 # Multi-line error (pixi style):
                 #   error: unrecognized subcommand 'foo'
@@ -3242,9 +3279,7 @@ struct Command(Copyable, Movable, Writable):
                 #     tip: a similar subcommand exists: 'bar'
                 #
                 #   usage: prog <COMMAND> [OPTIONS]
-                var err_msg = "unrecognized subcommand '" + arg + "'"
-                if suggestion:
-                    err_msg += ". Did you mean '" + suggestion + "'?"
+                var err_msg = "unrecognized subcommand '" + token + "'"
                 if Self._no_color_env():
                     print(
                         "error: " + err_msg,
@@ -3260,14 +3295,14 @@ struct Command(Copyable, Movable, Writable):
                         )
                 else:
                     # error: unrecognized subcommand 'foo'
-                    # "error:" in red, message in plain, bad arg in red.
+                    # "error:" in red, message in plain, bad token in red.
                     print(
                         self._error_color
                         + "error:"
                         + _RESET
                         + " unrecognized subcommand '"
                         + self._error_color
-                        + arg
+                        + token
                         + _RESET
                         + "'",
                         file=stderr,
@@ -3332,7 +3367,7 @@ struct Command(Copyable, Movable, Writable):
     # Interactive prompting
     # ===------------------------------------------------------------------=== #
 
-    def _prompt_missing_args(self, mut result: ParseResult) raises:
+    def _prompt_missing_arguments(self, mut result: ParseResult) raises:
         """Prompts the user interactively for arguments marked with ``.prompt()``
         that were not provided on the command line.
 
@@ -3356,17 +3391,17 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error: If validation or conversion of a prompted value fails.
         """
-        # Fast path: skip entirely if no args have prompting enabled.
-        var has_prompt_args = False
-        for j in range(len(self.args)):
-            if self.args[j]._prompt:
-                has_prompt_args = True
+        # Fast path: skip entirely if no arguments have prompting enabled.
+        var has_prompt_arguments = False
+        for j in range(len(self.arguments)):
+            if self.arguments[j]._prompt:
+                has_prompt_arguments = True
                 break
-        if not has_prompt_args:
+        if not has_prompt_arguments:
             return
 
-        for j in range(len(self.args)):
-            var a = self.args[j].copy()
+        for j in range(len(self.arguments)):
+            var a = self.arguments[j].copy()
             if not a._prompt:
                 continue
             if result.has(a.name):
@@ -3503,8 +3538,8 @@ struct Command(Copyable, Movable, Writable):
 
         This method is made standalone so that subcommands can reuse it.
         """
-        for j in range(len(self.args)):
-            var a = self.args[j].copy()
+        for j in range(len(self.arguments)):
+            var a = self.arguments[j].copy()
             if a._has_default and not result.has(a.name):
                 if a._is_positional:
                     # Fill positional to the right slot.
@@ -3520,15 +3555,15 @@ struct Command(Copyable, Movable, Writable):
         # Populate remainder-positional lists from collected positionals.
         # A remainder arg at positional slot N collects positionals[N:].
         var pos_slot: Int = 0
-        for j in range(len(self.args)):
-            if self.args[j]._is_positional:
-                if self.args[j]._is_remainder:
+        for j in range(len(self.arguments)):
+            if self.arguments[j]._is_positional:
+                if self.arguments[j]._is_remainder:
                     # Always set the remainder list so callers can reliably
                     # get an empty list when no remainder tokens were present.
                     var lst = List[String]()
                     for k in range(pos_slot, len(result._positionals)):
                         lst.append(result._positionals[k])
-                    result._lists[self.args[j].name] = lst^
+                    result._lists[self.arguments[j].name] = lst^
                     break
                 pos_slot += 1
 
@@ -3584,19 +3619,19 @@ struct Command(Copyable, Movable, Writable):
             Error if any validation check fails.
         """
         # Validate required arguments.
-        for j in range(len(self.args)):
-            var a = self.args[j].copy()
+        for j in range(len(self.arguments)):
+            var a = self.arguments[j].copy()
             if a._is_required and not result.has(a.name):
                 self._error_with_usage(
                     "Required argument '" + a.name + "' was not provided"
                 )
 
-        # Validate positional argument count — too many args is an error.
+        # Validate positional argument count — too many arguments is an error.
         # Skip this check when a remainder positional is registered (it
         # deliberately collects an unbounded number of tokens).
         var has_remainder = False
-        for _ri in range(len(self.args)):
-            if self.args[_ri]._is_remainder:
+        for _ri in range(len(self.arguments)):
+            if self.arguments[_ri]._is_remainder:
                 has_remainder = True
                 break
         var expected_count: Int = len(result._positional_names)
@@ -3691,8 +3726,8 @@ struct Command(Copyable, Movable, Writable):
                 )
 
         # Validate count ceilings — clamp and warn.
-        for j in range(len(self.args)):
-            var a = self.args[j].copy()
+        for j in range(len(self.arguments)):
+            var a = self.arguments[j].copy()
             if a._is_count and a._has_count_max:
                 var cur: Int
                 try:
@@ -3712,8 +3747,8 @@ struct Command(Copyable, Movable, Writable):
                     result._counts[a.name] = a._count_max
 
         # Validate numeric range constraints.
-        for j in range(len(self.args)):
-            var a = self.args[j].copy()
+        for j in range(len(self.arguments)):
+            var a = self.arguments[j].copy()
             if a._has_range and result.has(a.name):
                 var display = self._display_name(a.name)
                 # Get the raw string value(s) for this argument.
@@ -3844,23 +3879,25 @@ struct Command(Copyable, Movable, Writable):
             var eq = key.find("=")
             if eq >= 0:
                 key = String(key[byte=:eq])
-            for idx in range(len(self.args)):
-                if self.args[idx]._long_name == key:
+            for idx in range(len(self.arguments)):
+                if self.arguments[idx]._long_name == key:
                     return True
-                if self.args[idx]._long_name and self.args[
+                if self.arguments[idx]._long_name and self.arguments[
                     idx
                 ]._long_name.startswith(key):
                     return True
-                for j in range(len(self.args[idx]._alias_names)):
-                    if self.args[idx]._alias_names[j] == key or self.args[
-                        idx
-                    ]._alias_names[j].startswith(key):
+                for j in range(len(self.arguments[idx]._alias_names)):
+                    if self.arguments[idx]._alias_names[
+                        j
+                    ] == key or self.arguments[idx]._alias_names[j].startswith(
+                        key
+                    ):
                         return True
             return False
         elif token.startswith("-") and len(token) > 1:
             var ch = String(token[byte=1:2])
-            for idx in range(len(self.args)):
-                if self.args[idx]._short_name == ch:
+            for idx in range(len(self.arguments)):
+                if self.arguments[idx]._short_name == ch:
                     return True
             return False
         return False
@@ -3884,42 +3921,42 @@ struct Command(Copyable, Movable, Writable):
             Error if no argument matches or the prefix is ambiguous.
         """
         # 1. Exact match on long_name.
-        for i in range(len(self.args)):
-            if self.args[i]._long_name == name:
-                return self.args[i].copy()
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._long_name == name:
+                return self.arguments[i].copy()
 
         # 2. Exact match on aliases.
-        for i in range(len(self.args)):
-            for j in range(len(self.args[i]._alias_names)):
-                if self.args[i]._alias_names[j] == name:
-                    return self.args[i].copy()
+        for i in range(len(self.arguments)):
+            for j in range(len(self.arguments[i]._alias_names)):
+                if self.arguments[i]._alias_names[j] == name:
+                    return self.arguments[i].copy()
 
         # 3. Prefix match on long_name.
         var candidates = List[String]()
         var candidate_idx: Int = -1
-        for i in range(len(self.args)):
-            if self.args[i]._long_name and self.args[i]._long_name.startswith(
-                name
-            ):
-                candidates.append(self.args[i]._long_name)
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._long_name and self.arguments[
+                i
+            ]._long_name.startswith(name):
+                candidates.append(self.arguments[i]._long_name)
                 candidate_idx = i
 
         # 4. Prefix match on aliases.
-        for i in range(len(self.args)):
-            for j in range(len(self.args[i]._alias_names)):
-                if self.args[i]._alias_names[j].startswith(name):
+        for i in range(len(self.arguments)):
+            for j in range(len(self.arguments[i]._alias_names)):
+                if self.arguments[i]._alias_names[j].startswith(name):
                     # Avoid duplicate if the same argument already matched via long_name.
                     var already = False
                     for k in range(len(candidates)):
-                        if candidates[k] == self.args[i]._long_name:
+                        if candidates[k] == self.arguments[i]._long_name:
                             already = True
                             break
                     if not already:
-                        candidates.append(self.args[i]._long_name)
+                        candidates.append(self.arguments[i]._long_name)
                         candidate_idx = i
 
         if len(candidates) == 1:
-            return self.args[candidate_idx].copy()
+            return self.arguments[candidate_idx].copy()
 
         if len(candidates) > 1:
             var opts = String("")
@@ -3933,47 +3970,70 @@ struct Command(Copyable, Movable, Writable):
 
         # Collect all known long names + aliases for typo suggestion.
         var all_longs = List[String]()
-        for i in range(len(self.args)):
-            if self.args[i]._long_name != "":
-                all_longs.append(self.args[i]._long_name)
-            for j in range(len(self.args[i]._alias_names)):
-                all_longs.append(self.args[i]._alias_names[j])
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._long_name != "":
+                all_longs.append(self.arguments[i]._long_name)
+            for j in range(len(self.arguments[i]._alias_names)):
+                all_longs.append(self.arguments[i]._alias_names[j])
 
         # CJK punctuation error recovery: try substituting common CJK
         # punctuation (e.g. em-dash → hyphen) before Levenshtein.
+        var cjk_suggestion = String("")
         if not self._disable_punctuation_correction:
             var corrected = _correct_cjk_punctuation(name)
             if corrected != name:
                 # Check if the corrected name matches a known option.
-                for i in range(len(self.args)):
-                    if self.args[i]._long_name == corrected:
-                        self._error(
-                            "Unknown option '--"
-                            + name
-                            + "'. Did you mean '--"
-                            + corrected
-                            + "'? (detected CJK punctuation)"
-                        )
-                    for j in range(len(self.args[i]._alias_names)):
-                        if self.args[i]._alias_names[j] == corrected:
-                            self._error(
-                                "Unknown option '--"
-                                + name
-                                + "'. Did you mean '--"
-                                + corrected
-                                + "'? (detected CJK punctuation)"
-                            )
+                for i in range(len(self.arguments)):
+                    if self.arguments[i]._long_name == corrected:
+                        cjk_suggestion = corrected
+                        break
+                    for j in range(len(self.arguments[i]._alias_names)):
+                        if self.arguments[i]._alias_names[j] == corrected:
+                            cjk_suggestion = corrected
+                            break
 
-        var suggestion = _suggest_similar(name, all_longs)
-        if suggestion != "":
-            self._error(
-                "Unknown option '--"
-                + name
-                + "'. Did you mean '--"
+        var suggestion = _suggest_similar(
+            name, all_longs
+        ) if not cjk_suggestion else cjk_suggestion
+
+        var err_msg = "Unknown option '--" + name + "'"
+        if suggestion:
+            var tip_detail = (
+                "a similar option exists: '--"
                 + suggestion
-                + "'?"
+                + "'"
+                + (" (detected CJK punctuation)" if cjk_suggestion else "")
             )
-        self._error("Unknown option '--" + name + "'")
+            if Self._no_color_env():
+                print(
+                    "error: " + self.name + ": " + err_msg,
+                    file=stderr,
+                )
+                print(file=stderr)
+                print("  tip: " + tip_detail, file=stderr)
+            else:
+                print(
+                    self._error_color
+                    + "error: "
+                    + self.name
+                    + ": "
+                    + err_msg
+                    + _RESET,
+                    file=stderr,
+                )
+                print(file=stderr)
+                print(
+                    "  "
+                    + _BOLD_YELLOW
+                    + _UNDERLINE
+                    + "tip:"
+                    + _RESET
+                    + " "
+                    + tip_detail,
+                    file=stderr,
+                )
+            raise Error(err_msg)
+        self._error(err_msg)
         raise Error(
             "unreachable"
         )  # _error() always raises; satisfies Mojo's return checker
@@ -3990,9 +4050,9 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error if no argument matches.
         """
-        for i in range(len(self.args)):
-            if self.args[i]._short_name == name:
-                return self.args[i].copy()
+        for i in range(len(self.arguments)):
+            if self.arguments[i]._short_name == name:
+                return self.arguments[i].copy()
         # Short options are always a single character; any two single-character
         # inputs have Levenshtein distance ≤ 1, so the threshold would always
         # fire and produce meaningless suggestions (e.g. "-z" → "Did you mean
@@ -4036,47 +4096,47 @@ struct Command(Copyable, Movable, Writable):
         Returns:
             A string such as ``'--output'``, ``'-o'``, or ``'name'``.
         """
-        for i in range(len(self.args)):
-            if self.args[i].name == name:
-                if self.args[i]._long_name:
-                    return "'--" + self.args[i]._long_name + "'"
-                elif self.args[i]._short_name:
-                    return "'-" + self.args[i]._short_name + "'"
+        for i in range(len(self.arguments)):
+            if self.arguments[i].name == name:
+                if self.arguments[i]._long_name:
+                    return "'--" + self.arguments[i]._long_name + "'"
+                elif self.arguments[i]._short_name:
+                    return "'-" + self.arguments[i]._short_name + "'"
                 break
         return "'" + name + "'"
 
-    def _validate_choices(self, arg: Argument, value: String) raises:
+    def _validate_choices(self, argument: Argument, value: String) raises:
         """Validates that the value is in the allowed choices.
 
         Args:
-            arg: The argument definition.
+            argument: The argument definition.
             value: The value to validate.
 
         Raises:
             Error if the value is not in the allowed choices.
         """
-        if len(arg._choice_values) == 0:
+        if len(argument._choice_values) == 0:
             return
-        for i in range(len(arg._choice_values)):
-            if arg._choice_values[i] == value:
+        for i in range(len(argument._choice_values)):
+            if argument._choice_values[i] == value:
                 return
         var allowed = String("")
-        for i in range(len(arg._choice_values)):
+        for i in range(len(argument._choice_values)):
             if i > 0:
                 allowed += ", "
-            allowed += "'" + arg._choice_values[i] + "'"
+            allowed += "'" + argument._choice_values[i] + "'"
         self._error(
             "Invalid value '"
             + value
             + "' for argument '"
-            + arg.name
+            + argument.name
             + "' (choose from "
             + allowed
             + ")"
         )
 
     def _store_append_value(
-        self, arg: Argument, value: String, mut result: ParseResult
+        self, argument: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a value for an append-type argument, handling delimiter splitting.
 
@@ -4085,28 +4145,28 @@ struct Command(Copyable, Movable, Writable):
         Otherwise, the whole value is validated and appended as-is.
 
         Args:
-            arg: The argument definition.
+            argument: The argument definition.
             value: The raw value string.
             result: The ParseResult to store into.
         """
-        if arg.name not in result._lists:
-            result._lists[arg.name] = List[String]()
-        if arg._delimiter_char:
+        if argument.name not in result._lists:
+            result._lists[argument.name] = List[String]()
+        if argument._delimiter_char:
             var val = value
             if not self._disable_fullwidth_correction:
                 val = _fullwidth_to_halfwidth(value)
-            var parts = val.split(arg._delimiter_char)
+            var parts = val.split(argument._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:  # skip empty pieces from e.g. trailing comma
-                    self._validate_choices(arg, piece)
-                    result._lists[arg.name].append(piece)
+                    self._validate_choices(argument, piece)
+                    result._lists[argument.name].append(piece)
         else:
-            self._validate_choices(arg, value)
-            result._lists[arg.name].append(value)
+            self._validate_choices(argument, value)
+            result._lists[argument.name].append(value)
 
     def _store_map_value(
-        self, arg: Argument, value: String, mut result: ParseResult
+        self, argument: Argument, value: String, mut result: ParseResult
     ) raises:
         """Stores a key=value pair for a map-type argument.
 
@@ -4115,21 +4175,21 @@ struct Command(Copyable, Movable, Writable):
         split by that delimiter and each piece is parsed as key=value.
 
         Args:
-            arg: The argument definition.
+            argument: The argument definition.
             value: The raw value string (e.g., "key=value").
             result: The ParseResult to store into.
         """
-        if arg.name not in result._maps:
-            result._maps[arg.name] = Dict[String, String]()
+        if argument.name not in result._maps:
+            result._maps[argument.name] = Dict[String, String]()
         # Also store in lists for has() detection.
-        if arg.name not in result._lists:
-            result._lists[arg.name] = List[String]()
+        if argument.name not in result._lists:
+            result._lists[argument.name] = List[String]()
 
-        if arg._delimiter_char:
+        if argument._delimiter_char:
             var val = value
             if not self._disable_fullwidth_correction:
                 val = _fullwidth_to_halfwidth(value)
-            var parts = val.split(arg._delimiter_char)
+            var parts = val.split(argument._delimiter_char)
             for p in range(len(parts)):
                 var piece = String(parts[p])
                 if piece:
@@ -4139,13 +4199,13 @@ struct Command(Copyable, Movable, Writable):
                             "Invalid key=value format '"
                             + piece
                             + "' for argument '"
-                            + arg.name
+                            + argument.name
                             + "'"
                         )
                     var k = String(piece[byte=:eq])
                     var v = String(piece[byte = eq + 1 :])
-                    result._maps[arg.name][k] = v
-                    result._lists[arg.name].append(piece)
+                    result._maps[argument.name][k] = v
+                    result._lists[argument.name].append(piece)
         else:
             var eq = value.find("=")
             if eq < 0:
@@ -4153,13 +4213,13 @@ struct Command(Copyable, Movable, Writable):
                     "Invalid key=value format '"
                     + value
                     + "' for argument '"
-                    + arg.name
+                    + argument.name
                     + "'"
                 )
             var k = String(value[byte=:eq])
             var v = String(value[byte = eq + 1 :])
-            result._maps[arg.name][k] = v
-            result._lists[arg.name].append(value)
+            result._maps[argument.name][k] = v
+            result._lists[argument.name].append(value)
 
     def _generate_help(self, color: Bool = True) -> String:
         """Generates a help message from registered arguments.
@@ -4178,12 +4238,12 @@ struct Command(Copyable, Movable, Writable):
         # NO_COLOR env var overrides the color parameter.
         var use_color = color and not Self._no_color_env()
         var header_color = (_BOLD_UL + self._header_color) if use_color else ""
-        var program_color = self._prog_color if use_color else ""
-        var short_option_color = self._short_opt_color if use_color else ""
-        var long_option_color = self._long_opt_color if use_color else ""
+        var program_color = self._program_color if use_color else ""
+        var short_option_color = self._short_option_color if use_color else ""
+        var long_option_color = self._long_option_color if use_color else ""
         var value_color = self._value_color if use_color else ""
-        var positional_color = self._pos_color if use_color else ""
-        var command_color = self._cmd_color if use_color else ""
+        var positional_color = self._positional_color if use_color else ""
+        var command_color = self._command_color if use_color else ""
         var reset_code = _RESET if use_color else ""
 
         # Dynamic line width (terminal columns − 2, capped at 120).
@@ -4267,13 +4327,16 @@ struct Command(Copyable, Movable, Writable):
         var usage_tokens_plain = List[String]()
         var usage_tokens_colored = List[String]()
 
-        # Show positional args in usage line.
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
-                var display = self.args[i].name
-                if self.args[i]._is_remainder:
+        # Show positional arguments in usage line.
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
+                var display = self.arguments[i].name
+                if self.arguments[i]._is_remainder:
                     display += "..."
-                if self.args[i]._is_required:
+                if self.arguments[i]._is_required:
                     usage_tokens_plain.append("<" + display + ">")
                     usage_tokens_colored.append(
                         positional_color + "<" + display + ">" + reset_code
@@ -4366,8 +4429,11 @@ struct Command(Copyable, Movable, Writable):
             The positional arguments section, or empty string if none.
         """
         var has_positional = False
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
                 has_positional = True
                 break
 
@@ -4378,10 +4444,13 @@ struct Command(Copyable, Movable, Writable):
         var pos_plains = List[String]()  # plain text for padding calc
         var pos_colors = List[String]()  # coloured text for display
         var pos_helps = List[String]()
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
-                var name_display = self.args[i].name
-                if self.args[i]._is_remainder:
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
+                var name_display = self.arguments[i].name
+                if self.arguments[i]._is_remainder:
                     name_display += "..."
                 var plain = String("  ") + name_display
                 var colored = (
@@ -4389,7 +4458,7 @@ struct Command(Copyable, Movable, Writable):
                 )
                 pos_plains.append(plain)
                 pos_colors.append(colored)
-                pos_helps.append(self.args[i].help_text)
+                pos_helps.append(self.arguments[i].help_text)
 
         var s = header_color + "arguments:" + reset_code + "\n"
         var pos_indices = List[Int]()
@@ -4447,73 +4516,81 @@ struct Command(Copyable, Movable, Writable):
         var opt_persistent = List[Bool]()
         var opt_groups = List[String]()
 
-        for i in range(len(self.args)):
-            if not self.args[i]._is_positional and not self.args[i]._is_hidden:
+        for i in range(len(self.arguments)):
+            if (
+                not self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
                 var plain = String("  ")
                 var colored = String("  ")
-                if self.args[i]._short_name:
-                    plain += "-" + self.args[i]._short_name
+                if self.arguments[i]._short_name:
+                    plain += "-" + self.arguments[i]._short_name
                     colored += (
                         short_option_color
                         + "-"
-                        + self.args[i]._short_name
+                        + self.arguments[i]._short_name
                         + reset_code
                     )
-                    if self.args[i]._long_name:
+                    if self.arguments[i]._long_name:
                         plain += ", "
                         colored += ", "
                 else:
                     plain += "    "
                     colored += "    "
-                if self.args[i]._long_name:
-                    var long_part = String("--") + self.args[i]._long_name
+                if self.arguments[i]._long_name:
+                    var long_part = String("--") + self.arguments[i]._long_name
                     plain += long_part
                     colored += long_option_color + long_part + reset_code
-                    if self.args[i]._is_negatable:
+                    if self.arguments[i]._is_negatable:
                         var neg_part = (
-                            String(" / --no-") + self.args[i]._long_name
+                            String(" / --no-") + self.arguments[i]._long_name
                         )
                         plain += neg_part
                         colored += (
                             " / "
                             + long_option_color
                             + "--no-"
-                            + self.args[i]._long_name
+                            + self.arguments[i]._long_name
                             + reset_code
                         )
                     # Show aliases.
-                    for j in range(len(self.args[i]._alias_names)):
+                    for j in range(len(self.arguments[i]._alias_names)):
                         var alias_part = (
-                            String(", --") + self.args[i]._alias_names[j]
+                            String(", --") + self.arguments[i]._alias_names[j]
                         )
                         plain += alias_part
                         colored += (
                             ", "
                             + long_option_color
                             + "--"
-                            + self.args[i]._alias_names[j]
+                            + self.arguments[i]._alias_names[j]
                             + reset_code
                         )
 
                 # Show value_name or choices for value-taking options.
-                if not self.args[i]._is_flag and not self.args[i]._is_count:
-                    var ncount = self.args[i]._number_of_values
+                if (
+                    not self.arguments[i]._is_flag
+                    and not self.arguments[i]._is_count
+                ):
+                    var ncount = self.arguments[i]._number_of_values
                     var repeat = ncount if ncount > 0 else 1
-                    var append_dots = self.args[i]._is_append and ncount == 0
+                    var append_dots = (
+                        self.arguments[i]._is_append and ncount == 0
+                    )
                     # Determine separator and wrapping for require_equals/default_if_no_value.
-                    var sep = String("=") if self.args[
+                    var sep = String("=") if self.arguments[
                         i
                     ]._require_equals else String(" ")
-                    var open_bracket = String("[") if self.args[
+                    var open_bracket = String("[") if self.arguments[
                         i
                     ]._has_default_if_no_value else String("")
-                    var close_bracket = String("]") if self.args[
+                    var close_bracket = String("]") if self.arguments[
                         i
                     ]._has_default_if_no_value else String("")
-                    if self.args[i]._value_name:
-                        var raw_mv = self.args[i]._value_name
+                    if self.arguments[i]._value_name:
+                        var raw_mv = self.arguments[i]._value_name
                         var mv: String
-                        if self.args[i]._value_name_wrapped:
+                        if self.arguments[i]._value_name_wrapped:
                             mv = "<" + raw_mv + ">"
                         else:
                             mv = raw_mv
@@ -4535,12 +4612,12 @@ struct Command(Copyable, Movable, Writable):
                         )
                         plain += mv_plain
                         colored += mv_colored
-                    elif len(self.args[i]._choice_values) > 0:
+                    elif len(self.arguments[i]._choice_values) > 0:
                         var choices_str = String("{")
-                        for j in range(len(self.args[i]._choice_values)):
+                        for j in range(len(self.arguments[i]._choice_values)):
                             if j > 0:
                                 choices_str += ","
-                            choices_str += self.args[i]._choice_values[j]
+                            choices_str += self.arguments[i]._choice_values[j]
                         choices_str += "}"
                         var suffix = choices_str
                         if append_dots:
@@ -4557,10 +4634,10 @@ struct Command(Copyable, Movable, Writable):
                     else:
                         # Default placeholder: <key=value> for map, <name> otherwise.
                         var tag: String
-                        if self.args[i]._is_map:
+                        if self.arguments[i]._is_map:
                             tag = "<key=value>"
                         else:
-                            tag = "<" + self.args[i].name + ">"
+                            tag = "<" + self.arguments[i].name + ">"
                         var ph_plain = String("")
                         var ph_colored = String("")
                         for _r in range(repeat - 1):
@@ -4582,14 +4659,18 @@ struct Command(Copyable, Movable, Writable):
 
                 opt_plains.append(plain)
                 opt_colors.append(colored)
-                opt_persistent.append(self.args[i]._is_persistent)
-                opt_groups.append(self.args[i]._group)
+                opt_persistent.append(self.arguments[i]._is_persistent)
+                opt_groups.append(self.arguments[i]._group)
                 # Append deprecation notice to help text if applicable.
-                var help = self.args[i].help_text
-                if self.args[i]._deprecated_msg:
+                var help = self.arguments[i].help_text
+                if self.arguments[i]._deprecated_msg:
                     if help:
                         help += " "
-                    help += "[deprecated: " + self.args[i]._deprecated_msg + "]"
+                    help += (
+                        "[deprecated: "
+                        + self.arguments[i]._deprecated_msg
+                        + "]"
+                    )
                 opt_helps.append(help)
 
         # Built-in options (always shown under local ungrouped "options:" section).
@@ -4842,12 +4923,15 @@ struct Command(Copyable, Movable, Writable):
             The tips section string, or empty string if no tips.
         """
         var has_positional = False
-        for i in range(len(self.args)):
-            if self.args[i]._is_positional and not self.args[i]._is_hidden:
+        for i in range(len(self.arguments)):
+            if (
+                self.arguments[i]._is_positional
+                and not self.arguments[i]._is_hidden
+            ):
                 has_positional = True
                 break
 
-        # Tip: show '--' separator hint when positional args are registered.
+        # Tip: show '--' separator hint when positional arguments are registered.
         # When negative numbers are already handled automatically (either via
         # explicit allow_negative_numbers(), allow_negative_expressions(),
         # or auto-detect: no digit short options), the example changes to
@@ -4864,8 +4948,8 @@ struct Command(Copyable, Movable, Writable):
                 var neg_auto = self._allow_negative_numbers
                 if not neg_auto:
                     var has_digit_short = False
-                    for _ti in range(len(self.args)):
-                        var sc = self.args[_ti]._short_name
+                    for _ti in range(len(self.arguments)):
+                        var sc = self.arguments[_ti]._short_name
                         if (
                             len(sc) == 1
                             and sc[byte=0:1] >= "0"
@@ -5067,28 +5151,32 @@ struct Command(Copyable, Movable, Writable):
                 s += self._fish_options_for(
                     self.name, sub_cond, persistent_only=True
                 )
-                # Iterate sub.args for subcommand's own arguments.
-                for j in range(len(sub.args)):
-                    var arg = sub.args[j].copy()
-                    if arg._is_hidden or arg._is_positional:
+                # Iterate sub.arguments for subcommand's own arguments.
+                for j in range(len(sub.arguments)):
+                    var argument = sub.arguments[j].copy()
+                    if argument._is_hidden or argument._is_positional:
                         continue
                     var line = "complete -c " + self.name
                     line += " -n '" + sub_cond + "'"
-                    if arg._short_name:
-                        line += " -s " + arg._short_name
-                    if arg._long_name:
-                        line += " -l " + arg._long_name
-                    if not arg._is_flag and not arg._is_count:
+                    if argument._short_name:
+                        line += " -s " + argument._short_name
+                    if argument._long_name:
+                        line += " -l " + argument._long_name
+                    if not argument._is_flag and not argument._is_count:
                         line += " -r"
-                    if len(arg._choice_values) > 0:
+                    if len(argument._choice_values) > 0:
                         var choices = String("")
-                        for k in range(len(arg._choice_values)):
+                        for k in range(len(argument._choice_values)):
                             if choices:
                                 choices += " "
-                            choices += arg._choice_values[k]
+                            choices += argument._choice_values[k]
                         line += " -a '" + choices + "'"
-                    if arg.help_text:
-                        line += " -d '" + self._fish_escape(arg.help_text) + "'"
+                    if argument.help_text:
+                        line += (
+                            " -d '"
+                            + self._fish_escape(argument.help_text)
+                            + "'"
+                        )
                     s += line + "\n"
 
             # Completions subcommand entry.
@@ -5116,43 +5204,46 @@ struct Command(Copyable, Movable, Writable):
         return s
 
     def _fish_options_for(
-        self, cmd_name: String, condition: String, persistent_only: Bool = False
+        self,
+        command_name: String,
+        condition: String,
+        persistent_only: Bool = False,
     ) -> String:
         """Generates ``complete`` lines for this command's own arguments.
 
         Args:
-            cmd_name: The top-level command name (for ``complete -c``).
+            command_name: The top-level command name (for ``complete -c``).
             condition: Fish condition string (empty for root-level).
             persistent_only: When True, only emit persistent arguments.
 
         Returns:
-            Lines of ``complete`` commands for non-hidden, non-positional args.
+            Lines of ``complete`` commands for non-hidden, non-positional arguments.
         """
         var s = String("")
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
-            if arg._is_hidden or arg._is_positional:
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
+            if argument._is_hidden or argument._is_positional:
                 continue
-            if persistent_only and not arg._is_persistent:
+            if persistent_only and not argument._is_persistent:
                 continue
-            var line = "complete -c " + cmd_name
+            var line = "complete -c " + command_name
             if condition:
                 line += " -n '" + condition + "'"
-            if arg._short_name:
-                line += " -s " + arg._short_name
-            if arg._long_name:
-                line += " -l " + arg._long_name
-            if not arg._is_flag and not arg._is_count:
+            if argument._short_name:
+                line += " -s " + argument._short_name
+            if argument._long_name:
+                line += " -l " + argument._long_name
+            if not argument._is_flag and not argument._is_count:
                 line += " -r"
-            if len(arg._choice_values) > 0:
+            if len(argument._choice_values) > 0:
                 var choices = String("")
-                for k in range(len(arg._choice_values)):
+                for k in range(len(argument._choice_values)):
                     if choices:
                         choices += " "
-                    choices += arg._choice_values[k]
+                    choices += argument._choice_values[k]
                 line += " -a '" + choices + "'"
-            if arg.help_text:
-                line += " -d '" + self._fish_escape(arg.help_text) + "'"
+            if argument.help_text:
+                line += " -d '" + self._fish_escape(argument.help_text) + "'"
             s += line + "\n"
         return s
 
@@ -5212,13 +5303,13 @@ struct Command(Copyable, Movable, Writable):
         var s = String("_" + self.name + "() {\n")
         s += "  _arguments \\\n"
         # User-defined arguments.
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
-            if arg._is_hidden:
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
+            if argument._is_hidden:
                 continue
-            if arg._is_positional:
+            if argument._is_positional:
                 continue
-            s += "    " + self._zsh_arg_spec(arg) + " \\\n"
+            s += "    " + self._zsh_argument_spec(argument) + " \\\n"
         # Built-in options.
         s += "    '(- *)'{-h,--help}'[Show this help message]' \\\n"
         if self._completions_enabled and not self._completions_is_subcommand:
@@ -5266,11 +5357,11 @@ struct Command(Copyable, Movable, Writable):
 
         s += "  _arguments -C \\\n"
         # Root-level options.
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
-            if arg._is_hidden or arg._is_positional:
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
+            if argument._is_hidden or argument._is_positional:
                 continue
-            s += "    " + self._zsh_arg_spec(arg) + " \\\n"
+            s += "    " + self._zsh_argument_spec(argument) + " \\\n"
         s += "    '(- *)'{-h,--help}'[Show this help message]' \\\n"
         s += "    '(- *)'{-V,--version}'[Show version]' \\\n"
         if self._completions_enabled and not self._completions_is_subcommand:
@@ -5281,13 +5372,13 @@ struct Command(Copyable, Movable, Writable):
                 " script]:shell:(bash zsh fish)' \\\n"
             )
         s += "    '1:command:->cmd' \\\n"
-        s += "    '*::arg:->args'\n\n"
+        s += "    '*::arg:->arguments'\n\n"
 
         s += "  case $state in\n"
         s += "    cmd)\n"
         s += "      _describe -t commands 'command' commands\n"
         s += "      ;;\n"
-        s += "    args)\n"
+        s += "    arguments)\n"
         s += "      case $words[1] in\n"
         for i in range(len(self.subcommands)):
             if (
@@ -5302,13 +5393,15 @@ struct Command(Copyable, Movable, Writable):
                 zsh_pat += "|" + sub._command_aliases[_ai]
             s += "        " + zsh_pat + ")\n"
             s += "          _arguments \\\n"
-            for j in range(len(sub.args)):
-                var arg = sub.args[j].copy()
-                if arg._is_hidden:
+            for j in range(len(sub.arguments)):
+                var argument = sub.arguments[j].copy()
+                if argument._is_hidden:
                     continue
-                if arg._is_positional:
+                if argument._is_positional:
                     continue
-                s += "            " + self._zsh_arg_spec(arg) + " \\\n"
+                s += (
+                    "            " + self._zsh_argument_spec(argument) + " \\\n"
+                )
             s += "            '(- *)'{-h,--help}'[Show this help message]'\n"
             s += "          ;;\n"
 
@@ -5326,64 +5419,70 @@ struct Command(Copyable, Movable, Writable):
         s += "}\n\n"
         return s
 
-    def _zsh_arg_spec(self, arg: Argument) -> String:
+    def _zsh_argument_spec(self, argument: Argument) -> String:
         """Builds a single ``_arguments`` spec string for an argument.
 
         Args:
-            arg: The argument to generate a spec for.
+            argument: The argument to generate a spec for.
 
         Returns:
             A ``_arguments``-compatible spec string, e.g.
             ``'--verbose[Enable verbose output]'``.
         """
         var spec = String("")
-        var desc = self._zsh_escape(arg.help_text) if arg.help_text else ""
+        var desc = self._zsh_escape(
+            argument.help_text
+        ) if argument.help_text else ""
 
-        if arg._short_name and arg._long_name:
+        if argument._short_name and argument._long_name:
             # Grouped short+long form.
             spec += (
                 "'(-"
-                + arg._short_name
+                + argument._short_name
                 + " --"
-                + arg._long_name
+                + argument._long_name
                 + ")'"
                 + "{-"
-                + arg._short_name
+                + argument._short_name
                 + ",--"
-                + arg._long_name
+                + argument._long_name
                 + "}"
             )
-        elif arg._long_name:
-            spec += "'--" + arg._long_name
-        elif arg._short_name:
-            spec += "'-" + arg._short_name
+        elif argument._long_name:
+            spec += "'--" + argument._long_name
+        elif argument._short_name:
+            spec += "'-" + argument._short_name
 
-        if arg._short_name and arg._long_name:
+        if argument._short_name and argument._long_name:
             # Description + value spec.
             spec += "'[" + desc + "]"
-            if not arg._is_flag and not arg._is_count:
-                if len(arg._choice_values) > 0:
+            if not argument._is_flag and not argument._is_count:
+                if len(argument._choice_values) > 0:
                     var choices = String("")
-                    for k in range(len(arg._choice_values)):
+                    for k in range(len(argument._choice_values)):
                         if choices:
                             choices += " "
-                        choices += arg._choice_values[k]
+                        choices += argument._choice_values[k]
                     spec += ":value:(" + choices + ")"
                 else:
-                    var mv = arg._value_name if arg._value_name else arg.name
+                    var mv = (
+                        argument._value_name if argument._value_name else argument.name
+                    )
                     spec += ":" + mv + ":"
             spec += "'"
         else:
-            if not arg._is_flag and not arg._is_count:
-                if len(arg._choice_values) > 0:
+            if not argument._is_flag and not argument._is_count:
+                if len(argument._choice_values) > 0:
                     var choices = String("")
-                    for k in range(len(arg._choice_values)):
+                    for k in range(len(argument._choice_values)):
                         if choices:
                             choices += " "
-                        choices += arg._choice_values[k]
+                        choices += argument._choice_values[k]
                     spec += "[" + desc + "]:value:(" + choices + ")'"
                 else:
-                    var mv = arg._value_name if arg._value_name else arg.name
+                    var mv = (
+                        argument._value_name if argument._value_name else argument.name
+                    )
                     spec += "[" + desc + "]:" + mv + ":'"
             else:
                 spec += "[" + desc + "]'"
@@ -5458,14 +5557,14 @@ struct Command(Copyable, Movable, Writable):
         var words = String("--help --version")
         if self._completions_enabled and not self._completions_is_subcommand:
             words += " --" + self._completions_name
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
-            if arg._is_hidden or arg._is_positional:
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
+            if argument._is_hidden or argument._is_positional:
                 continue
-            if arg._long_name:
-                words += " --" + arg._long_name
-            if arg._short_name:
-                words += " -" + arg._short_name
+            if argument._long_name:
+                words += " --" + argument._long_name
+            if argument._short_name:
+                words += " -" + argument._short_name
 
         # Handle value completion for prev.
         var s = self._bash_prev_cases()
@@ -5504,14 +5603,14 @@ struct Command(Copyable, Movable, Writable):
         var root_words = String("--help --version")
         if self._completions_enabled and not self._completions_is_subcommand:
             root_words += " --" + self._completions_name
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
-            if arg._is_hidden or arg._is_positional:
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
+            if argument._is_hidden or argument._is_positional:
                 continue
-            if arg._long_name:
-                root_words += " --" + arg._long_name
-            if arg._short_name:
-                root_words += " -" + arg._short_name
+            if argument._long_name:
+                root_words += " --" + argument._long_name
+            if argument._short_name:
+                root_words += " -" + argument._short_name
 
         # Detect subcommand in COMP_WORDS.
         s += "  local subcmd=''\n"
@@ -5526,7 +5625,7 @@ struct Command(Copyable, Movable, Writable):
 
         s += "  if [[ -z $subcmd ]]; then\n"
         # Root-level $prev choices completion.
-        s += self._bash_prev_cases_for_args(self.args, "    ")
+        s += self._bash_prev_cases_for_arguments(self.arguments, "    ")
         s += (
             '    COMPREPLY=($(compgen -W "'
             + root_words
@@ -5546,21 +5645,21 @@ struct Command(Copyable, Movable, Writable):
                 continue
             var sub = self.subcommands[i].copy()
             var sub_words = String("--help")
-            for j in range(len(sub.args)):
-                var arg = sub.args[j].copy()
-                if arg._is_hidden or arg._is_positional:
+            for j in range(len(sub.arguments)):
+                var argument = sub.arguments[j].copy()
+                if argument._is_hidden or argument._is_positional:
                     continue
-                if arg._long_name:
-                    sub_words += " --" + arg._long_name
-                if arg._short_name:
-                    sub_words += " -" + arg._short_name
+                if argument._long_name:
+                    sub_words += " --" + argument._long_name
+                if argument._short_name:
+                    sub_words += " -" + argument._short_name
             # Build pattern: name|alias1|alias2
             var bash_pat = sub.name
             for _ai in range(len(sub._command_aliases)):
                 bash_pat += "|" + sub._command_aliases[_ai]
             s += "    " + bash_pat + ")\n"
             # Subcommand-level $prev choices completion.
-            s += self._bash_prev_cases_for_args(sub.args, "      ")
+            s += self._bash_prev_cases_for_arguments(sub.arguments, "      ")
             s += (
                 '      COMPREPLY=($(compgen -W "'
                 + sub_words
@@ -5587,11 +5686,11 @@ struct Command(Copyable, Movable, Writable):
             self._completions_enabled and not self._completions_is_subcommand
         )
         if not has_choices:
-            for i in range(len(self.args)):
+            for i in range(len(self.arguments)):
                 if (
-                    not self.args[i]._is_hidden
-                    and not self.args[i]._is_positional
-                    and len(self.args[i]._choice_values) > 0
+                    not self.arguments[i]._is_hidden
+                    and not self.arguments[i]._is_positional
+                    and len(self.arguments[i]._choice_values) > 0
                 ):
                     has_choices = True
                     break
@@ -5605,26 +5704,26 @@ struct Command(Copyable, Movable, Writable):
             s += '      COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))\n'
             s += "      return\n"
             s += "      ;;\n"
-        for i in range(len(self.args)):
-            var arg = self.args[i].copy()
+        for i in range(len(self.arguments)):
+            var argument = self.arguments[i].copy()
             if (
-                arg._is_hidden
-                or arg._is_positional
-                or len(arg._choice_values) == 0
+                argument._is_hidden
+                or argument._is_positional
+                or len(argument._choice_values) == 0
             ):
                 continue
             var pattern = String("")
-            if arg._long_name:
-                pattern += "--" + arg._long_name
-            if arg._short_name:
+            if argument._long_name:
+                pattern += "--" + argument._long_name
+            if argument._short_name:
                 if pattern:
                     pattern += "|"
-                pattern += "-" + arg._short_name
+                pattern += "-" + argument._short_name
             var choices = String("")
-            for k in range(len(arg._choice_values)):
+            for k in range(len(argument._choice_values)):
                 if choices:
                     choices += " "
-                choices += arg._choice_values[k]
+                choices += argument._choice_values[k]
             s += "    " + pattern + ")\n"
             s += '      COMPREPLY=($(compgen -W "' + choices + '" -- "$cur"))\n'
             s += "      return\n"
@@ -5632,8 +5731,8 @@ struct Command(Copyable, Movable, Writable):
         s += "  esac\n"
         return s
 
-    def _bash_prev_cases_for_args(
-        self, args: List[Argument], indent: String
+    def _bash_prev_cases_for_arguments(
+        self, arguments: List[Argument], indent: String
     ) -> String:
         """Generates ``case $prev`` blocks for a given list of arguments.
 
@@ -5641,18 +5740,18 @@ struct Command(Copyable, Movable, Writable):
         completion for both root-level and subcommand-level options.
 
         Args:
-            args: The argument list to scan for choice-bearing options.
+            arguments: The argument list to scan for choice-bearing options.
             indent: Whitespace prefix for each emitted line.
 
         Returns:
             A ``case``/``esac`` block string, or empty if no choices.
         """
         var has_choices = False
-        for i in range(len(args)):
+        for i in range(len(arguments)):
             if (
-                not args[i]._is_hidden
-                and not args[i]._is_positional
-                and len(args[i]._choice_values) > 0
+                not arguments[i]._is_hidden
+                and not arguments[i]._is_positional
+                and len(arguments[i]._choice_values) > 0
             ):
                 has_choices = True
                 break
@@ -5660,26 +5759,26 @@ struct Command(Copyable, Movable, Writable):
             return ""
 
         var s = indent + "case $prev in\n"
-        for i in range(len(args)):
-            var arg = args[i].copy()
+        for i in range(len(arguments)):
+            var argument = arguments[i].copy()
             if (
-                arg._is_hidden
-                or arg._is_positional
-                or len(arg._choice_values) == 0
+                argument._is_hidden
+                or argument._is_positional
+                or len(argument._choice_values) == 0
             ):
                 continue
             var pattern = String("")
-            if arg._long_name:
-                pattern += "--" + arg._long_name
-            if arg._short_name:
+            if argument._long_name:
+                pattern += "--" + argument._long_name
+            if argument._short_name:
                 if pattern:
                     pattern += "|"
-                pattern += "-" + arg._short_name
+                pattern += "-" + argument._short_name
             var choices = String("")
-            for k in range(len(arg._choice_values)):
+            for k in range(len(argument._choice_values)):
                 if choices:
                     choices += " "
-                choices += arg._choice_values[k]
+                choices += argument._choice_values[k]
             s += indent + "  " + pattern + ")\n"
             s += (
                 indent
@@ -5703,6 +5802,6 @@ struct Command(Copyable, Movable, Writable):
         """
         writer.write("Command(name='")
         writer.write(self.name)
-        writer.write("', args=")
-        writer.write(String(len(self.args)))
+        writer.write("', arguments=")
+        writer.write(String(len(self.arguments)))
         writer.write(")")

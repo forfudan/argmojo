@@ -489,7 +489,7 @@ def test_invalid_color_caught_at_compile_time() raises:
         msg="Header color 'RED' should map to bright red (ANSI 91)",
     )
     assert_equal(
-        command._arg_color,
+        command._argument_color,
         "\x1b[92m",
         msg="Arg color 'GREEN' should map to bright green (ANSI 92)",
     )
@@ -775,12 +775,12 @@ def test_child_help_shows_inherited_persistent_args() raises:
     )
     app.add_subcommand(search^)
 
-    # Simulate child copy with injected persistent args.
+    # Simulate child copy with injected persistent arguments.
     # Note: subcommands[0] is auto-added 'help'; search is at index 1.
     var search_idx = app._find_subcommand("search")
     var child_copy = app.subcommands[search_idx].copy()
     child_copy.name = "app search"
-    child_copy.args.append(app.args[0].copy())  # Inject --verbose
+    child_copy.arguments.append(app.arguments[0].copy())  # Inject --verbose
 
     var help = child_copy._generate_help(color=False)
     assert_true(
@@ -1041,10 +1041,10 @@ def test_mixed_ascii_cjk_aligned() raises:
 
 def test_custom_usage_in_plain_help() raises:
     """Tests that custom usage appears in plain help output."""
-    var cmd = Command("git", "The stupid content tracker")
-    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+    var command = Command("git", "The stupid content tracker")
+    command.usage("git [-v | --version] [-C <path>] <command> [<args>]")
 
-    var help = cmd._generate_help(color=False)
+    var help = command._generate_help(color=False)
     assert_true(
         "usage: git [-v | --version] [-C <path>] <command> [<args>]" in help,
         msg="Custom usage should appear in plain help: " + help,
@@ -1053,10 +1053,10 @@ def test_custom_usage_in_plain_help() raises:
 
 def test_custom_usage_in_colored_help() raises:
     """Tests that custom usage appears in colored help output."""
-    var cmd = Command("git", "The stupid content tracker")
-    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+    var command = Command("git", "The stupid content tracker")
+    command.usage("git [-v | --version] [-C <path>] <command> [<args>]")
 
-    var help = cmd._generate_help(color=True)
+    var help = command._generate_help(color=True)
     # The custom text should appear (wrapped in ANSI codes for "usage:")
     assert_true(
         "git [-v | --version]" in help,
@@ -1066,14 +1066,16 @@ def test_custom_usage_in_colored_help() raises:
 
 def test_custom_usage_replaces_auto_generated() raises:
     """Tests that custom usage replaces the auto-generated positionals."""
-    var cmd = Command("myapp", "My app")
-    cmd.add_argument(
+    var command = Command("myapp", "My app")
+    command.add_argument(
         Argument("file", help="Input file").positional().required()
     )
-    cmd.add_argument(Argument("output", help="Output file").long["output"]())
-    cmd.usage("myapp FILE [--output FILE]")
+    command.add_argument(
+        Argument("output", help="Output file").long["output"]()
+    )
+    command.usage("myapp FILE [--output FILE]")
 
-    var help = cmd._generate_help(color=False)
+    var help = command._generate_help(color=False)
     assert_true(
         "usage: myapp FILE [--output FILE]" in help,
         msg="Custom usage should replace auto-generated: " + help,
@@ -1091,12 +1093,12 @@ def test_custom_usage_replaces_auto_generated() raises:
 
 def test_default_usage_when_no_custom() raises:
     """Tests that auto-generated usage is used when no custom is set."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("file", help="Input file").positional().required()
     )
 
-    var help = cmd._generate_help(color=False)
+    var help = command._generate_help(color=False)
     assert_true(
         "usage: test <file> [OPTIONS]" in help,
         msg="Default usage should show auto-generated format: " + help,
@@ -1105,12 +1107,12 @@ def test_default_usage_when_no_custom() raises:
 
 def test_default_usage_with_optional_positional() raises:
     """Tests auto-generated usage for optional positional."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("path", help="Search path").positional().default["."]()
     )
 
-    var help = cmd._generate_help(color=False)
+    var help = command._generate_help(color=False)
     assert_true(
         "usage: test [path] [OPTIONS]" in help,
         msg="Optional positional should be in brackets: " + help,
@@ -1164,10 +1166,10 @@ def test_custom_usage_with_subcommands() raises:
 
 def test_custom_usage_description_still_shown() raises:
     """Tests that description is still shown above custom usage."""
-    var cmd = Command("myapp", "A great application")
-    cmd.usage("myapp [options]")
+    var command = Command("myapp", "A great application")
+    command.usage("myapp [options]")
 
-    var help = cmd._generate_help(color=False)
+    var help = command._generate_help(color=False)
     assert_true(
         "A great application" in help,
         msg="Description should still appear: " + help,
@@ -1180,17 +1182,17 @@ def test_custom_usage_description_still_shown() raises:
 
 def test_custom_usage_parsing_still_works() raises:
     """Tests that custom usage doesn't affect parsing behavior."""
-    var cmd = Command("test", "Test app")
-    cmd.add_argument(
+    var command = Command("test", "Test app")
+    command.add_argument(
         Argument("file", help="Input file").positional().required()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("verbose", help="Verbose").long["verbose"]().flag()
     )
-    cmd.usage("test FILE [--verbose]")
+    command.usage("test FILE [--verbose]")
 
     var args: List[String] = ["test", "input.txt", "--verbose"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     assert_equal(result.get_string("file"), "input.txt")
     assert_true(result.get_flag("verbose"), msg="--verbose should work")
 
@@ -1198,11 +1200,11 @@ def test_custom_usage_parsing_still_works() raises:
 def test_custom_usage_in_plain_usage_hint() raises:
     """Tests that custom usage appears in the plain usage hint (_plain_usage).
     """
-    var cmd = Command("git", "The stupid content tracker")
-    cmd.usage("git [-v | --version] [-C <path>] <command> [<args>]")
+    var command = Command("git", "The stupid content tracker")
+    command.usage("git [-v | --version] [-C <path>] <command> [<args>]")
 
     # _plain_usage is used for error/usage hints; ensure it reflects custom usage.
-    var usage = cmd._plain_usage()
+    var usage = command._plain_usage()
     assert_true(
         "git [-v | --version] [-C <path>] <command> [<args>]" in usage,
         msg="Custom usage should appear in plain usage hint: " + usage,

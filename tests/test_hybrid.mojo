@@ -2,11 +2,11 @@
 
 Tests the bridge between declarative Parsable structs and
 builder-level customisations using to_command(), parse_arguments(),
-parse_args(), ParseResult, and from_parse_result().
+parse_arguments(), ParseResult, and from_parse_result().
 
 Covers:
   - to_command() + builder modifications + parse_arguments() + from_parse_result()
-  - Trait static methods: T.to_command(), T.parse_args(), T.from_parse_result()
+  - Trait static methods: T.to_command(), T.parse_arguments(), T.from_parse_result()
   - mutually_exclusive() via to_command()
   - required_together() via to_command()
   - implies() via to_command()
@@ -14,7 +14,7 @@ Covers:
   - configure() free function pattern
 
 Note: parse_from_command(), parse_full(), and parse_full_from_command() call
-cmd.parse() which reads sys.argv(), so they cannot be exercised in
+command.parse() which reads sys.argv(), so they cannot be exercised in
 unit tests with synthetic argument lists.  Their logic is identical
 to to_command() + parse_arguments() + from_parse_result() which IS tested.
 """
@@ -90,11 +90,11 @@ struct DebugArgs(Parsable):
 
 def test_to_command_with_tip() raises:
     """To_command() + add_tip() + parse still returns correct typed values."""
-    var cmd = Deploy.to_command()
-    cmd.add_tip("Use --dry-run to preview changes first")
+    var command = Deploy.to_command()
+    command.add_tip("Use --dry-run to preview changes first")
 
     var args: List[String] = ["command", "--tag", "v1.0", "-f", "staging"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "staging")
@@ -106,12 +106,12 @@ def test_to_command_with_tip() raises:
 
 def test_to_command_with_colors() raises:
     """Builder color customisation on to_command() works."""
-    var cmd = Deploy.to_command()
-    cmd.header_color["CYAN"]()
-    cmd.argument_color["GREEN"]()
+    var command = Deploy.to_command()
+    command.header_color["CYAN"]()
+    command.argument_color["GREEN"]()
 
     var args: List[String] = ["command", "--replicas", "5", "prod"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "prod")
@@ -120,11 +120,11 @@ def test_to_command_with_colors() raises:
 
 def test_to_command_with_usage() raises:
     """Custom usage line on to_command() works."""
-    var cmd = Deploy.to_command()
-    cmd.usage("deploy [flags] <target>")
+    var command = Deploy.to_command()
+    command.usage("deploy [flags] <target>")
 
     var args: List[String] = ["command", "staging"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_equal(deploy.target.value, "staging")
@@ -137,12 +137,12 @@ def test_to_command_with_usage() raises:
 
 def test_exclusive_one_allowed() raises:
     """Mutually exclusive on declarative flags: one flag is fine."""
-    var cmd = Deploy.to_command()
+    var command = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["command", "-f", "staging"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_true(deploy.force.value, msg="force should be True")
@@ -151,14 +151,14 @@ def test_exclusive_one_allowed() raises:
 
 def test_exclusive_conflict_raises() raises:
     """Mutually exclusive on declarative flags: both flags raises error."""
-    var cmd = Deploy.to_command()
+    var command = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["command", "-f", "--dry-run", "staging"]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -171,12 +171,12 @@ def test_exclusive_conflict_raises() raises:
 
 def test_exclusive_none_allowed() raises:
     """Mutually exclusive: providing neither is fine."""
-    var cmd = Deploy.to_command()
+    var command = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = ["command", "staging"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_false(deploy.force.value, msg="force should be False")
@@ -190,12 +190,12 @@ def test_exclusive_none_allowed() raises:
 
 def test_required_together_both_provided() raises:
     """Required together: providing both is fine."""
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["command", "-u", "admin", "-p", "secret"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var auth = AuthArgs.from_parse_result(result)
 
     assert_equal(auth.username.value, "admin")
@@ -204,12 +204,12 @@ def test_required_together_both_provided() raises:
 
 def test_required_together_none_provided() raises:
     """Required together: providing neither is fine."""
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["command"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var auth = AuthArgs.from_parse_result(result)
 
     assert_equal(auth.username.value, "")
@@ -218,14 +218,14 @@ def test_required_together_none_provided() raises:
 
 def test_required_together_partial_raises() raises:
     """Required together: providing only one raises error."""
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
     var group: List[String] = ["username", "password"]
-    cmd.required_together(group^)
+    command.required_together(group^)
 
     var args: List[String] = ["command", "-u", "admin"]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -243,11 +243,11 @@ def test_required_together_partial_raises() raises:
 
 def test_implies_sets_flag() raises:
     """Implies: --debug implies --verbose."""
-    var cmd = DebugArgs.to_command()
-    cmd.implies("debug", "verbose")
+    var command = DebugArgs.to_command()
+    command.implies("debug", "verbose")
 
     var args: List[String] = ["command", "-d"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var dbg = DebugArgs.from_parse_result(result)
 
     assert_true(dbg.debug.value, msg="debug should be True")
@@ -256,11 +256,11 @@ def test_implies_sets_flag() raises:
 
 def test_implies_not_triggered() raises:
     """Implies: without trigger, implied flag stays False."""
-    var cmd = DebugArgs.to_command()
-    cmd.implies("debug", "verbose")
+    var command = DebugArgs.to_command()
+    command.implies("debug", "verbose")
 
     var args: List[String] = ["command"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var dbg = DebugArgs.from_parse_result(result)
 
     assert_false(dbg.debug.value, msg="debug should be False")
@@ -269,12 +269,12 @@ def test_implies_not_triggered() raises:
 
 def test_implies_chain() raises:
     """Implies: debug → verbose → trace (chain)."""
-    var cmd = DebugArgs.to_command()
-    cmd.implies("debug", "verbose")
-    cmd.implies("verbose", "trace")
+    var command = DebugArgs.to_command()
+    command.implies("debug", "verbose")
+    command.implies("verbose", "trace")
 
     var args: List[String] = ["command", "--debug"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var dbg = DebugArgs.from_parse_result(result)
 
     assert_true(dbg.debug.value, msg="debug should be True")
@@ -289,14 +289,14 @@ def test_implies_chain() raises:
 
 def test_extra_builder_args() raises:
     """Extra builder args are accessible via ParseResult."""
-    var cmd = Convert.to_command()
-    cmd.add_argument(
+    var command = Convert.to_command()
+    command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .short["f"]()
         .default["json"]()
     )
-    cmd.add_argument(
+    command.add_argument(
         Argument("indent", help="Indent level").long["indent"]().default["2"]()
     )
 
@@ -310,7 +310,7 @@ def test_extra_builder_args() raises:
         "out.yaml",
         "input.json",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed access for declarative fields
     var conv = Convert.from_parse_result(result)
@@ -324,15 +324,15 @@ def test_extra_builder_args() raises:
 
 def test_extra_builder_args_defaults() raises:
     """Extra builder args fall back to defaults when not provided."""
-    var cmd = Convert.to_command()
-    cmd.add_argument(
+    var command = Convert.to_command()
+    command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .default["json"]()
     )
 
     var args: List[String] = ["command", "input.txt"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var conv = Convert.from_parse_result(result)
     assert_equal(conv.input.value, "input.txt")
@@ -348,8 +348,8 @@ def test_extra_builder_args_defaults() raises:
 def test_parse_full_from_command_manual() raises:
     """Simulate parse_full_from_command: to_command → customise → parse → both.
     """
-    var cmd = Deploy.to_command()
-    cmd.add_tip("Verify before deploying")
+    var command = Deploy.to_command()
+    command.add_tip("Verify before deploying")
 
     var args: List[String] = [
         "command",
@@ -360,7 +360,7 @@ def test_parse_full_from_command_manual() raises:
         "10",
         "prod",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed write-back
     var deploy = Deploy.from_parse_result(result)
@@ -381,22 +381,22 @@ def test_parse_full_from_command_manual() raises:
 # =======================================================================
 
 
-def configure_deploy(mut cmd: Command) raises:
+def configure_deploy(mut command: Command) raises:
     """Reusable configuration function for Deploy commands."""
     var group: List[String] = ["force", "dry_run"]
-    cmd.mutually_exclusive(group^)
-    cmd.add_tip("Use --dry-run to preview changes first")
+    command.mutually_exclusive(group^)
+    command.add_tip("Use --dry-run to preview changes first")
 
 
 def test_configure_function_pattern() raises:
     """Configure free function pattern: reusable Command customisation."""
-    var cmd = Deploy.to_command()
-    configure_deploy(cmd)
+    var command = Deploy.to_command()
+    configure_deploy(command)
 
     # configure_deploy sets a mutually exclusive group for --force/--dry-run.
     # This test covers the non-conflicting case where only --dry-run is used.
     var args: List[String] = ["command", "--dry-run", "staging"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var deploy = Deploy.from_parse_result(result)
 
     assert_false(deploy.force.value, msg="force should be False")
@@ -406,13 +406,13 @@ def test_configure_function_pattern() raises:
 
 def test_configure_exclusive_enforced() raises:
     """Configure with mutually_exclusive: conflict caught."""
-    var cmd = Deploy.to_command()
-    configure_deploy(cmd)
+    var command = Deploy.to_command()
+    configure_deploy(command)
 
     var args: List[String] = ["command", "-f", "--dry-run", "staging"]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -424,22 +424,23 @@ def test_configure_exclusive_enforced() raises:
 
 
 # =======================================================================
-# 8. Trait static methods: T.to_command(), T.parse_args(), T.from_parse_result()
+# 8. Trait static methods: T.to_command(), T.parse_arguments(), T.from_parse_result()
 # =======================================================================
 
 
 def test_to_command() raises:
     """Trait static method T.to_command() builds Command with all arguments."""
-    var cmd = Deploy.to_command()
+    var command = Deploy.to_command()
 
     # Same result as Deploy.to_command() — 5 args registered.
     assert_true(
-        len(cmd.args) == 5, "expected 5 args, got " + String(len(cmd.args))
+        len(command.arguments) == 5,
+        "expected 5 args, got " + String(len(command.arguments)),
     )
 
 
-def test_parse_args() raises:
-    """Trait static method T.parse_args() parses an argument list into a typed struct.
+def test_parse_arguments() raises:
+    """Trait static method T.parse_arguments() parses an argument list into a typed struct.
     """
     var args: List[String] = [
         "command",
@@ -450,7 +451,7 @@ def test_parse_args() raises:
         "7",
         "staging",
     ]
-    var deploy = Deploy.parse_args(args)
+    var deploy = Deploy.parse_arguments(args)
 
     assert_equal(deploy.target.value, "staging")
     assert_equal(deploy.tag.value, "v3.0")
@@ -461,9 +462,9 @@ def test_parse_args() raises:
 def test_from_result() raises:
     """Trait static method T.from_parse_result() populates struct from ParseResult.
     """
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
     var args: List[String] = ["command", "-u", "alice", "--token", "tok123"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Use the trait static method.
     var auth = AuthArgs.from_parse_result(result)
@@ -475,13 +476,13 @@ def test_from_result() raises:
 def test_methods_with_builder_mods() raises:
     """Trait methods + builder mods: to_command → customise → parse → from_parse_result.
     """
-    var cmd = Deploy.to_command()
+    var command = Deploy.to_command()
     var group: List[String] = ["force", "dry_run"]
-    cmd.mutually_exclusive(group^)
-    cmd.add_tip("Use --dry-run to preview")
+    command.mutually_exclusive(group^)
+    command.add_tip("Use --dry-run to preview")
 
     var args: List[String] = ["command", "--dry-run", "--replicas", "2", "prod"]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     var deploy = Deploy.from_parse_result(result)
     assert_equal(deploy.target.value, "prod")
@@ -493,8 +494,8 @@ def test_methods_with_builder_mods() raises:
 def test_dual_return_typed_and_raw() raises:
     """Dual return pattern: both typed struct AND raw ParseResult from same parse.
     """
-    var cmd = Convert.to_command()
-    cmd.add_argument(
+    var command = Convert.to_command()
+    command.add_argument(
         Argument("format", help="Output format")
         .long["format"]()
         .default["json"]()
@@ -508,7 +509,7 @@ def test_dual_return_typed_and_raw() raises:
         "out.yaml",
         "input.json",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed access via trait static method.
     var conv = Convert.from_parse_result(result)
@@ -529,14 +530,16 @@ def test_dual_return_typed_and_raw() raises:
 def test_combined_workflow() raises:
     """Full hybrid workflow: declarative struct + builder constraints + extra args.
     """
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
 
     # Builder: add cross-field constraints
     var group: List[String] = ["username", "token"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     # Builder: add extra argument not in struct
-    cmd.add_argument(Argument("mfa-code", help="MFA code").long["mfa-code"]())
+    command.add_argument(
+        Argument("mfa-code", help="MFA code").long["mfa-code"]()
+    )
 
     # Parse with username + password (no token, no mfa)
     var args: List[String] = [
@@ -546,7 +549,7 @@ def test_combined_workflow() raises:
         "-p",
         "secret123",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed access
     var auth = AuthArgs.from_parse_result(result)
@@ -560,9 +563,9 @@ def test_combined_workflow() raises:
 
 def test_combined_exclusive_conflict() raises:
     """Hybrid: username and token are mutually exclusive via builder."""
-    var cmd = AuthArgs.to_command()
+    var command = AuthArgs.to_command()
     var group: List[String] = ["username", "token"]
-    cmd.mutually_exclusive(group^)
+    command.mutually_exclusive(group^)
 
     var args: List[String] = [
         "command",
@@ -573,7 +576,7 @@ def test_combined_exclusive_conflict() raises:
     ]
     var caught = False
     try:
-        _ = cmd.parse_arguments(args)
+        _ = command.parse_arguments(args)
     except e:
         caught = True
         var msg = String(e)
@@ -586,8 +589,10 @@ def test_combined_exclusive_conflict() raises:
 
 def test_combined_extra_arg_with_mfa() raises:
     """Hybrid: builder-added mfa-code accessible via ParseResult."""
-    var cmd = AuthArgs.to_command()
-    cmd.add_argument(Argument("mfa-code", help="MFA code").long["mfa-code"]())
+    var command = AuthArgs.to_command()
+    command.add_argument(
+        Argument("mfa-code", help="MFA code").long["mfa-code"]()
+    )
 
     var args: List[String] = [
         "command",
@@ -596,7 +601,7 @@ def test_combined_extra_arg_with_mfa() raises:
         "--mfa-code",
         "987654",
     ]
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed struct
     var auth = AuthArgs.from_parse_result(result)

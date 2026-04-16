@@ -14,7 +14,7 @@ translate them to builder calls without any runtime metadata tables.
 All four conform to the ``ArgumentLike`` trait, which provides two
 reflection hooks:
 
-- ``add_to_command(field_name, mut cmd)`` — translate compile-time params
+- ``add_to_command(field_name, mut command)`` — translate compile-time params
   to an ``Argument`` and add it to the ``Command``.
 - ``read_from_result(mut self, field_name, result)`` — populate ``self.value``
   from a ``ParseResult``.
@@ -37,12 +37,12 @@ trait ArgumentLike:
     Implemented by Option, Flag, Positional, and Count.
     """
 
-    def add_to_command(self, field_name: String, mut cmd: Command) raises:
-        """Translates compile-time parameters into an Argument and adds it to cmd.
+    def add_to_command(self, field_name: String, mut command: Command) raises:
+        """Translates compile-time parameters into an Argument and adds it to command.
 
         Args:
             field_name: The struct field name (used as default long name).
-            cmd: The Command to register the argument on.
+            command: The Command to register the argument on.
         """
         ...
 
@@ -59,7 +59,7 @@ trait ArgumentLike:
 
 
 # Forward-import Command to avoid circular imports.
-# ArgumentLike methods receive `mut cmd: Command` via the trait.
+# ArgumentLike methods receive `mut command: Command` via the trait.
 from .command import Command
 
 
@@ -182,12 +182,12 @@ struct Option[
         """
         self.value = take.value^
 
-    def add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into an Argument and adds it to the Command.
 
         Args:
             field_name: The struct field name (used as default long name).
-            cmd: The Command to register the argument on.
+            command: The Command to register the argument on.
         """
 
         # == Compile-time schema validation ==
@@ -224,59 +224,59 @@ struct Option[
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
-        var arg = Argument(field_name, help=String(Self.help))
-        arg._long_name = long_name
+        var argument = Argument(field_name, help=String(Self.help))
+        argument._long_name = long_name
         comptime if Self.short != "":
-            arg._short_name = String(Self.short)
+            argument._short_name = String(Self.short)
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
-                arg._alias_names.append(String(a))
+                argument._alias_names.append(String(a))
         comptime if Self.default != "":
-            arg._has_default = True
-            arg._default_value = String(Self.default)
+            argument._has_default = True
+            argument._default_value = String(Self.default)
         comptime if Self.required:
-            arg._is_required = True
+            argument._is_required = True
         comptime if Self.choices != "":
             for c in String(Self.choices).split(","):
-                arg._choice_values.append(String(c))
+                argument._choice_values.append(String(c))
         comptime if Self.has_range:
-            arg._has_range = True
-            arg._range_min = Self.range_min
-            arg._range_max = Self.range_max
+            argument._has_range = True
+            argument._range_min = Self.range_min
+            argument._range_max = Self.range_max
         comptime if Self.clamp:
-            arg._is_clamp = True
+            argument._is_clamp = True
         comptime if Self.append:
-            arg._is_append = True
+            argument._is_append = True
         comptime if Self.delimiter != "":
-            arg._delimiter_char = String(Self.delimiter)
-            arg._is_append = True
+            argument._delimiter_char = String(Self.delimiter)
+            argument._is_append = True
         comptime if Self.nargs > 1:
-            arg._number_of_values = Self.nargs
+            argument._number_of_values = Self.nargs
         comptime if Self.map_option:
-            arg._is_map = True
+            argument._is_map = True
         comptime if Self.require_equals:
-            arg._require_equals = True
+            argument._require_equals = True
         comptime if Self.allow_hyphen:
-            arg._allow_hyphen_values = True
+            argument._allow_hyphen_values = True
         comptime if Self.persistent:
-            arg._is_persistent = True
+            argument._is_persistent = True
         comptime if Self.value_name != "":
-            arg._value_name = String(Self.value_name)
+            argument._value_name = String(Self.value_name)
         comptime if Self.hidden:
-            arg._is_hidden = True
+            argument._is_hidden = True
         comptime if Self.deprecated != "":
-            arg._deprecated_msg = String(Self.deprecated)
+            argument._deprecated_msg = String(Self.deprecated)
         comptime if Self.group != "":
-            arg._group = String(Self.group)
+            argument._group = String(Self.group)
         comptime if Self.prompt:
-            arg._prompt = True
+            argument._prompt = True
         comptime if Self.prompt_text != "":
-            arg._prompt = True
-            arg._prompt_text = String(Self.prompt_text)
+            argument._prompt = True
+            argument._prompt_text = String(Self.prompt_text)
         comptime if Self.password:
-            arg._prompt = True
-            arg._hide_input = True
-        cmd.add_argument(arg^)
+            argument._prompt = True
+            argument._hide_input = True
+        command.add_argument(argument^)
 
     def read_from_result(
         mut self, field_name: String, result: ParseResult
@@ -396,12 +396,12 @@ struct Flag[
         """
         return self.value
 
-    def add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into a flag Argument and adds it to the Command.
 
         Args:
             field_name: The struct field name (used as default long name).
-            cmd: The Command to register the flag on.
+            command: The Command to register the flag on.
         """
 
         # == Compile-time schema validation ==
@@ -422,21 +422,21 @@ struct Flag[
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
-        var arg = Argument(field_name, help=String(Self.help)).flag()
-        arg._long_name = long_name
+        var argument = Argument(field_name, help=String(Self.help)).flag()
+        argument._long_name = long_name
         comptime if Self.short != "":
-            arg._short_name = String(Self.short)
+            argument._short_name = String(Self.short)
         comptime if Self.negatable:
-            arg._is_negatable = True
+            argument._is_negatable = True
         comptime if Self.persistent:
-            arg._is_persistent = True
+            argument._is_persistent = True
         comptime if Self.hidden:
-            arg._is_hidden = True
+            argument._is_hidden = True
         comptime if Self.deprecated != "":
-            arg._deprecated_msg = String(Self.deprecated)
+            argument._deprecated_msg = String(Self.deprecated)
         comptime if Self.group != "":
-            arg._group = String(Self.group)
-        cmd.add_argument(arg^)
+            argument._group = String(Self.group)
+        command.add_argument(argument^)
 
     def read_from_result(
         mut self, field_name: String, result: ParseResult
@@ -527,12 +527,12 @@ struct Positional[
         """
         self.value = take.value^
 
-    def add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into a positional Argument and adds it to the Command.
 
         Args:
             field_name: The struct field name (used as the argument name).
-            cmd: The Command to register the positional on.
+            command: The Command to register the positional on.
         """
 
         # == Compile-time schema validation ==
@@ -549,25 +549,25 @@ struct Positional[
             )
 
         # == Translate fields of the wrapper struct into Argument properties ==
-        var arg = Argument(field_name, help=String(Self.help)).positional()
+        var argument = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
-            arg._is_remainder = True
-            arg._is_append = True
+            argument._is_remainder = True
+            argument._is_append = True
         comptime if Self.default != "":
-            arg._has_default = True
-            arg._default_value = String(Self.default)
+            argument._has_default = True
+            argument._default_value = String(Self.default)
         comptime if Self.required:
-            arg._is_required = True
+            argument._is_required = True
         comptime if Self.choices != "":
             for c in String(Self.choices).split(","):
-                arg._choice_values.append(String(c))
+                argument._choice_values.append(String(c))
         comptime if Self.allow_hyphen:
-            arg._allow_hyphen_values = True
+            argument._allow_hyphen_values = True
         comptime if Self.value_name != "":
-            arg._value_name = String(Self.value_name)
+            argument._value_name = String(Self.value_name)
         comptime if Self.group != "":
-            arg._group = String(Self.group)
-        cmd.add_argument(arg^)
+            argument._group = String(Self.group)
+        command.add_argument(argument^)
 
     def read_from_result(
         mut self, field_name: String, result: ParseResult
@@ -671,12 +671,12 @@ struct Count[
         """
         self.value = take.value
 
-    def add_to_command(self, field_name: String, mut cmd: Command) raises:
+    def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into a count Argument and adds it to the Command.
 
         Args:
             field_name: The struct field name (used as default long name).
-            cmd: The Command to register the count on.
+            command: The Command to register the count on.
         """
 
         # == Compile-time schema validation ==
@@ -697,20 +697,20 @@ struct Count[
         var long_name = String(Self.long) if Self.long else field_name.replace(
             "_", "-"
         )
-        var arg = Argument(field_name, help=String(Self.help)).count()
-        arg._long_name = long_name
+        var argument = Argument(field_name, help=String(Self.help)).count()
+        argument._long_name = long_name
         comptime if Self.short != "":
-            arg._short_name = String(Self.short)
+            argument._short_name = String(Self.short)
         comptime if Self.max > 0:
-            arg._has_count_max = True
-            arg._count_max = Self.max
+            argument._has_count_max = True
+            argument._count_max = Self.max
         comptime if Self.persistent:
-            arg._is_persistent = True
+            argument._is_persistent = True
         comptime if Self.hidden:
-            arg._is_hidden = True
+            argument._is_hidden = True
         comptime if Self.group != "":
-            arg._group = String(Self.group)
-        cmd.add_argument(arg^)
+            argument._group = String(Self.group)
+        command.add_argument(argument^)
 
     def read_from_result(
         mut self, field_name: String, result: ParseResult

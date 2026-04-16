@@ -1099,7 +1099,12 @@ def test_all_hidden_no_subcommand_completion() raises:
 
 
 def test_typo_long_option_suggests() raises:
-    """Tests that a typo like --verbos suggests --verbose."""
+    """Tests that a typo like --vrebose raises an error.
+
+    The suggestion ('tip: a similar option exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'Unknown option' message.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("verbose", help="Verbose output").long["verbose"]().flag()
@@ -1117,12 +1122,12 @@ def test_typo_long_option_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction",
+            "Unknown option" in msg,
+            msg="Error should say 'Unknown option'",
         )
         assert_true(
-            "verbose" in msg,
-            msg="Error should suggest --verbose",
+            "vrebose" in msg,
+            msg="Error should contain the bad token 'vrebose'",
         )
     assert_true(caught, msg="Should have raised error for --vrebose")
 
@@ -1141,15 +1146,20 @@ def test_typo_long_option_no_suggestion() raises:
     except e:
         caught = True
         var msg = String(e)
-        assert_false(
-            "Did you mean" in msg,
-            msg="Error should not suggest anything for unrelated option",
+        assert_true(
+            "Unknown option" in msg,
+            msg="Error should say 'Unknown option'",
         )
     assert_true(caught, msg="Should have raised error for --zzzzzzz")
 
 
 def test_typo_long_option_single_char_diff() raises:
-    """Tests that a single character difference triggers a suggestion."""
+    """Tests that a single character difference raises an error.
+
+    The suggestion ('tip: a similar option exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'Unknown option' message.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("output", help="Output file").long["output"]().short["o"]()
@@ -1163,12 +1173,12 @@ def test_typo_long_option_single_char_diff() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for --outptu",
+            "Unknown option" in msg,
+            msg="Error should say 'Unknown option'",
         )
         assert_true(
-            "output" in msg,
-            msg="Error should suggest --output",
+            "outptu" in msg,
+            msg="Error should contain the bad token 'outptu'",
         )
     assert_true(caught, msg="Should have raised error for --outptu")
 
@@ -1177,7 +1187,12 @@ def test_typo_long_option_single_char_diff() raises:
 
 
 def test_typo_subcommand_suggests() raises:
-    """Tests that a typo subcommand like 'serach' suggests 'search'."""
+    """Tests that a typo subcommand like 'serach' raises an error.
+
+    The suggestion ('tip: a similar subcommand exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'unrecognized subcommand' message.
+    """
     var root = Command("app", "Test app")
     var search = Command("search", "Search items")
     var list_cmd = Command("list", "List items")
@@ -1192,12 +1207,12 @@ def test_typo_subcommand_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for 'serach'",
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
         assert_true(
-            "search" in msg,
-            msg="Error should suggest 'search'",
+            "serach" in msg,
+            msg="Error should contain the bad token 'serach'",
         )
     assert_true(caught, msg="Should have raised error for 'serach'")
 
@@ -1216,9 +1231,9 @@ def test_typo_subcommand_no_suggestion() raises:
     except e:
         caught = True
         var msg = String(e)
-        assert_false(
-            "Did you mean" in msg,
-            msg="Error should not suggest anything for unrelated command",
+        assert_true(
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
     assert_true(caught, msg="Should have raised error for 'xxxxxxx'")
 
@@ -1227,7 +1242,12 @@ def test_typo_subcommand_no_suggestion() raises:
 
 
 def test_typo_alias_suggests() raises:
-    """Tests that a typo close to an alias triggers a suggestion."""
+    """Tests that a typo close to an alias raises an error.
+
+    The suggestion ('tip: a similar option exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'Unknown option' message.
+    """
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("colour", help="Enable colour output")
@@ -1244,14 +1264,19 @@ def test_typo_alias_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for --colro",
+            "Unknown option" in msg,
+            msg="Error should say 'Unknown option'",
         )
     assert_true(caught, msg="Should have raised error for --colro")
 
 
 def test_typo_subcommand_alias_suggests() raises:
-    """Tests that a typo near a subcommand alias triggers a suggestion."""
+    """Tests that a typo near a subcommand alias raises an error.
+
+    The suggestion ('tip: a similar subcommand exists') is printed to
+    stderr in pixi style; the raised error only contains the
+    'unrecognized subcommand' message.
+    """
     var root = Command("app", "Test app")
     var clone = Command("clone", "Clone a repo")
     var aliases: List[String] = ["cl"]
@@ -1267,12 +1292,12 @@ def test_typo_subcommand_alias_suggests() raises:
         caught = True
         var msg = String(e)
         assert_true(
-            "Did you mean" in msg,
-            msg="Error should suggest a correction for 'clon'",
+            "unrecognized subcommand" in msg,
+            msg="Error should say 'unrecognized subcommand'",
         )
         assert_true(
-            "clone" in msg,
-            msg="Error should suggest 'clone' for 'clon'",
+            "clon" in msg,
+            msg="Error should contain the bad token 'clon'",
         )
     assert_true(caught, msg="Should have raised error for 'clon'")
 

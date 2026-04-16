@@ -411,9 +411,9 @@ def test_add_subcommand_preserves_child_args() raises:
     app.add_subcommand(search^)
     assert_equal(len(app.subcommands), 2)
     var idx = app._find_subcommand("search")
-    assert_equal(len(app.subcommands[idx].args), 2)
-    assert_equal(app.subcommands[idx].args[0].name, "pattern")
-    assert_equal(app.subcommands[idx].args[1].name, "max-depth")
+    assert_equal(len(app.subcommands[idx].arguments), 2)
+    assert_equal(app.subcommands[idx].arguments[0].name, "pattern")
+    assert_equal(app.subcommands[idx].arguments[1].name, "max-depth")
 
 
 def test_subcommand_has_own_version() raises:
@@ -1284,17 +1284,19 @@ def test_hidden_subcommand_alias_dispatchable() raises:
 
 def test_hidden_is_hidden_field() raises:
     """Tests that _is_hidden is False by default and True after hidden()."""
-    var cmd = Command("test", "Test")
-    assert_false(cmd._is_hidden, msg="_is_hidden should default to False")
-    cmd.hidden()
-    assert_true(cmd._is_hidden, msg="hidden() should set _is_hidden to True")
+    var command = Command("test", "Test")
+    assert_false(command._is_hidden, msg="_is_hidden should default to False")
+    command.hidden()
+    assert_true(
+        command._is_hidden, msg="hidden() should set _is_hidden to True"
+    )
 
 
 def test_hidden_subcommand_copy() raises:
     """Tests that _is_hidden survives Command copy."""
-    var cmd = Command("debug", "Debug")
-    cmd.hidden()
-    var copy = cmd.copy()
+    var command = Command("debug", "Debug")
+    command.hidden()
+    var copy = command.copy()
     assert_true(copy._is_hidden, msg="_is_hidden should survive copy")
 
 
@@ -2012,10 +2014,10 @@ def test_parent_does_not_modify_parent() raises:
     child.add_parent(parent)
     child.add_argument(Argument("output", help="Output").long["output"]())
 
-    # Parent should still have only 1 arg.
-    assert_equal(len(parent.args), 1)
-    # Child should have 2 args (1 inherited + 1 own).
-    assert_equal(len(child.args), 2)
+    # Parent should still have only 1 argument.
+    assert_equal(len(parent.arguments), 1)
+    # Child should have 2 arguments (1 inherited + 1 own).
+    assert_equal(len(child.arguments), 2)
 
 
 def test_parent_with_subcommands() raises:

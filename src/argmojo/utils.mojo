@@ -52,12 +52,14 @@ comptime _TIOCGWINSZ_LINUX: Int = 0x5413
 
 
 def _help_line_width() -> Int:
-    """Returns the help line width: ``min(terminal_columns - 2, 120)``.
+    """Returns the help line width used by the formatter.
 
     Queries the terminal via ``ioctl(TIOCGWINSZ)`` on stdout (fd 1).
-    Falls back to 80 if the terminal width cannot be determined.
-    The result is clamped to [40, 120] and then reduced by 2
-    (matching argparse's ``width = columns - 2``).
+    If the terminal width can be determined and is positive, the
+    column count is clamped to ``[40, 120]`` and the function returns
+    ``clamped_columns - 2`` (so detected widths produce values in
+    ``[38, 118]``). If the terminal width cannot be determined, the
+    function falls back to the fixed value ``80``.
     """
     # struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; }
     # = 8 bytes total.  We only need ws_col (bytes 2-3).

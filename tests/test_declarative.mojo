@@ -1,7 +1,7 @@
 """End-to-end test for the declarative Parsable API (Phase 1).
 
 Tests to_command / from_parse_result via the Parsable trait
-static methods: to_command(), parse_args(), from_parse_result().
+static methods: to_command(), parse_arguments(), from_parse_result().
 """
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 
@@ -42,31 +42,32 @@ struct Grep(Parsable):
 
 def test_to_command() raises:
     """Test that to_command registers all arguments correctly."""
-    var cmd = Grep.to_command()
+    var command = Grep.to_command()
 
     # Should have 4 arguments.
     assert_true(
-        len(cmd.args) == 4, "expected 4 args, got " + String(len(cmd.args))
+        len(command.arguments) == 4,
+        "expected 4 args, got " + String(len(command.arguments)),
     )
 
-    assert_true(cmd.args[0].name == "output", "arg0 name")
-    assert_true(cmd.args[0]._long_name == "output", "arg0 long")
-    assert_true(cmd.args[0]._short_name == "o", "arg0 short")
+    assert_true(command.arguments[0].name == "output", "arg0 name")
+    assert_true(command.arguments[0]._long_name == "output", "arg0 long")
+    assert_true(command.arguments[0]._short_name == "o", "arg0 short")
 
     # Check verbose flag.
-    assert_true(cmd.args[1]._is_flag, "arg1 flag")
-    assert_true(cmd.args[1]._short_name == "v", "arg1 short")
+    assert_true(command.arguments[1]._is_flag, "arg1 flag")
+    assert_true(command.arguments[1]._short_name == "v", "arg1 short")
 
     # Check pattern positional.
-    assert_true(cmd.args[2]._is_positional, "arg2 positional")
-    assert_true(cmd.args[2]._is_required, "arg2 required")
+    assert_true(command.arguments[2]._is_positional, "arg2 positional")
+    assert_true(command.arguments[2]._is_required, "arg2 required")
 
     # Check debug count.
-    assert_true(cmd.args[3]._is_count, "arg3 count")
-    assert_true(cmd.args[3]._short_name == "d", "arg3 short")
+    assert_true(command.arguments[3]._is_count, "arg3 count")
+    assert_true(command.arguments[3]._short_name == "d", "arg3 short")
 
 
-def test_parse_args() raises:
+def test_parse_arguments() raises:
     """Test full parse + write-back flow."""
 
     var args = List[String]()
@@ -77,7 +78,7 @@ def test_parse_args() raises:
     args.append(String("-ddd"))
     args.append(String("hello.*world"))
 
-    var grep = Grep.parse_args(args)
+    var grep = Grep.parse_arguments(args)
 
     assert_true(grep.output.value == "result.txt", "output value")
     assert_true(grep.verbose.value, "verbose value")
@@ -88,14 +89,14 @@ def test_parse_args() raises:
 def test_from_result() raises:
     """Test from_parse_result writes back from an existing ParseResult."""
 
-    var cmd = Grep.to_command()
+    var command = Grep.to_command()
     var args = List[String]()
     args.append(String("grep"))
     args.append(String("--output"))
     args.append(String("out.txt"))
     args.append(String("pattern_str"))
 
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
     var grep = Grep.from_parse_result(result)
 
     assert_true(grep.output.value == "out.txt", "output")
@@ -115,10 +116,14 @@ struct AutoNameArgs(Parsable):
 def test_auto_naming() raises:
     """Test that underscore field names auto-convert to hyphen long names."""
 
-    var cmd = AutoNameArgs.to_command()
+    var command = AutoNameArgs.to_command()
 
-    assert_true(cmd.args[0]._long_name == "no-color", "no_color -> no-color")
-    assert_true(cmd.args[1]._long_name == "max-depth", "max_depth -> max-depth")
+    assert_true(
+        command.arguments[0]._long_name == "no-color", "no_color -> no-color"
+    )
+    assert_true(
+        command.arguments[1]._long_name == "max-depth", "max_depth -> max-depth"
+    )
 
 
 def test_trait_methods() raises:
@@ -126,10 +131,10 @@ def test_trait_methods() raises:
     """
 
     # Grep.to_command() — trait method
-    var cmd = Grep.to_command()
-    assert_true(len(cmd.args) == 4, "trait to_command arg count")
+    var command = Grep.to_command()
+    assert_true(len(command.arguments) == 4, "trait to_command arg count")
 
-    # Grep.parse_args() — trait method
+    # Grep.parse_arguments() — trait method
     var args = List[String]()
     args.append(String("grep"))
     args.append(String("--output"))
@@ -137,10 +142,14 @@ def test_trait_methods() raises:
     args.append(String("-v"))
     args.append(String("pattern"))
 
-    var grep = Grep.parse_args(args)
-    assert_true(grep.output.value == "trait.txt", "trait parse_args output")
-    assert_true(grep.verbose.value, "trait parse_args verbose")
-    assert_true(grep.pattern.value == "pattern", "trait parse_args pattern")
+    var grep = Grep.parse_arguments(args)
+    assert_true(
+        grep.output.value == "trait.txt", "trait parse_arguments output"
+    )
+    assert_true(grep.verbose.value, "trait parse_arguments verbose")
+    assert_true(
+        grep.pattern.value == "pattern", "trait parse_arguments pattern"
+    )
 
     # Grep.from_parse_result() — trait method
     var cmd2 = Grep.to_command()
@@ -157,7 +166,7 @@ def test_trait_methods() raises:
 def test_split_return() raises:
     """Test the split-return pattern: both typed struct AND raw ParseResult."""
 
-    var cmd = Grep.to_command()
+    var command = Grep.to_command()
     var args = List[String]()
     args.append(String("grep"))
     args.append(String("--output"))
@@ -167,7 +176,7 @@ def test_split_return() raises:
     args.append(String("split_pattern"))
 
     # Parse into a raw ParseResult.
-    var result = cmd.parse_arguments(args)
+    var result = command.parse_arguments(args)
 
     # Typed write-back (same as what parse_full returns as element 0).
     var grep = Grep.from_parse_result(result)
@@ -219,10 +228,10 @@ struct ValidChoicesDefault(Parsable):
 
 def test_valid_choices_default() raises:
     """Test that a valid choices+default schema compiles and parses."""
-    var cmd = ValidChoicesDefault.to_command()
-    assert_true(len(cmd.args) == 1, "expected 1 arg")
-    assert_true(cmd.args[0]._long_name == "format", "long name")
-    assert_true(len(cmd.args[0]._choice_values) == 3, "3 choices")
+    var command = ValidChoicesDefault.to_command()
+    assert_true(len(command.arguments) == 1, "expected 1 arg")
+    assert_true(command.arguments[0]._long_name == "format", "long name")
+    assert_true(len(command.arguments[0]._choice_values) == 3, "3 choices")
 
 
 struct ValidRange(Parsable):
@@ -244,11 +253,11 @@ struct ValidRange(Parsable):
 
 def test_valid_range() raises:
     """Test that a valid range schema compiles and parses."""
-    var cmd = ValidRange.to_command()
-    assert_true(len(cmd.args) == 1, "expected 1 arg")
-    assert_true(cmd.args[0]._has_range, "has_range set")
-    assert_true(cmd.args[0]._range_min == 1, "range_min")
-    assert_true(cmd.args[0]._range_max == 65535, "range_max")
+    var command = ValidRange.to_command()
+    assert_true(len(command.arguments) == 1, "expected 1 arg")
+    assert_true(command.arguments[0]._has_range, "has_range set")
+    assert_true(command.arguments[0]._range_min == 1, "range_min")
+    assert_true(command.arguments[0]._range_max == 65535, "range_max")
 
 
 struct ChoicesNoDefault(Parsable):
@@ -263,8 +272,8 @@ struct ChoicesNoDefault(Parsable):
 
 def test_choices_without_default() raises:
     """Test that choices without default compiles correctly."""
-    var cmd = ChoicesNoDefault.to_command()
-    assert_true(len(cmd.args[0]._choice_values) == 4, "4 choices")
+    var command = ChoicesNoDefault.to_command()
+    assert_true(len(command.arguments[0]._choice_values) == 4, "4 choices")
 
 
 struct HyphenPos(Parsable):
@@ -281,15 +290,16 @@ struct HyphenPos(Parsable):
 
 def test_positional_allow_hyphen() raises:
     """Test that Positional allow_hyphen=True sets _allow_hyphen_values."""
-    var cmd = HyphenPos.to_command()
+    var command = HyphenPos.to_command()
     assert_true(
-        cmd.args[0]._allow_hyphen_values, "allow_hyphen_values on positional"
+        command.arguments[0]._allow_hyphen_values,
+        "allow_hyphen_values on positional",
     )
 
     var args_list = List[String]()
     args_list.append(String("hp"))
     args_list.append(String("-1+2*sin(x)"))
-    var args = HyphenPos.parse_args(args_list)
+    var args = HyphenPos.parse_arguments(args_list)
     assert_equal(args.expr.value, "-1+2*sin(x)")
 
 

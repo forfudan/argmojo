@@ -205,20 +205,20 @@ def main() raises:
 Need builder-level features (mutually exclusive groups, implications, custom help colours) on top of a declarative struct? Use the hybrid bridge:
 
 ```mojo
-var cmd = Deploy.to_command()              # struct → Command
-cmd.mutually_exclusive(["force", "dry_run"])
-cmd.implies("force", "validated")
-var deploy = Deploy.parse_from_command(cmd^)     # Command → typed struct
+var command = Deploy.to_command()              # struct → Command
+command.mutually_exclusive(["force", "dry_run"])
+command.implies("force", "validated")
+var deploy = Deploy.parse_from_command(command^)     # Command → typed struct
 ```
 
 The `Parsable` trait provides four parsing methods:
 
-|                 | `sys.argv()`   | from `Command`                  |
-| --------------- | -------------- | ------------------------------- |
-| returns `Self`  | `parse()`      | `parse_from_command(cmd^)`      |
-| returns `Tuple` | `parse_full()` | `parse_full_from_command(cmd^)` |
+|                 | `sys.argv()`   | from `Command`                      |
+| --------------- | -------------- | ----------------------------------- |
+| returns `Self`  | `parse()`      | `parse_from_command(command^)`      |
+| returns `Tuple` | `parse_full()` | `parse_full_from_command(command^)` |
 
-Plus: `parse_args(arguments)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
+Plus: `parse_arguments(arguments)` for testing, `to_command()` to reflect a struct into a `Command`, and `from_parse_result(result)` for subcommand write-back.
 
 See `examples/declarative/` for more patterns: pure declarative, hybrid, full parse, and subcommands.
 

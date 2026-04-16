@@ -26,7 +26,7 @@ package = "mojo package src/argmojo -o argmojo.mojopkg"
 doc = """mojo doc --diagnose-missing-doc-strings src/argmojo > /dev/null"""
 
 # run tests
-test = """\
+test = """ set -e
     pixi run format \
     && pixi run package \
     && mojo run -I src -D ASSERT=all tests/test_parse.mojo \
@@ -48,7 +48,7 @@ test = """\
 # with -D ASSERT=all.  Re-enable when the compiler bug is fixed.
 
 # run tests (parallel, fail if any test fails)
-t = """\
+t = """set -e
   pixi run format \
   && pixi run package \
   && bash -c '\
@@ -115,6 +115,6 @@ all = """
 pixi run format \
 && pixi run package \
 && pixi run doc \
-&& pixi run t \
+&& pixi run test \
 && pixi run d \
 && pixi run clean"""
