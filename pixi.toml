@@ -115,6 +115,6 @@ all = """
 pixi run format \
 && pixi run package \
 && pixi run doc \
-&& pixi run t \
+&& pixi run test \
 && pixi run d \
 && pixi run clean"""
