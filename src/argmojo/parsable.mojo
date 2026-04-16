@@ -267,8 +267,8 @@ trait Parsable(Defaultable, Movable):
         """
         var command = Self.to_command()
         var result = command.parse()
-        var arguments = Self.from_parse_result(result)
-        return Tuple[Self, ParseResult](arguments^, result^)
+        var parsed = Self.from_parse_result(result)
+        return Tuple[Self, ParseResult](parsed^, result^)
 
     @staticmethod
     def parse_full_from_command(
@@ -286,8 +286,8 @@ trait Parsable(Defaultable, Movable):
             A tuple of (populated Self, raw ParseResult).
         """
         var result = command.parse()
-        var arguments = Self.from_parse_result(result)
-        return Tuple[Self, ParseResult](arguments^, result^)
+        var parsed = Self.from_parse_result(result)
+        return Tuple[Self, ParseResult](parsed^, result^)
 
     # == Subcommand write-back ==
 

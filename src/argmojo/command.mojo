@@ -3978,39 +3978,62 @@ struct Command(Copyable, Movable, Writable):
 
         # CJK punctuation error recovery: try substituting common CJK
         # punctuation (e.g. em-dash → hyphen) before Levenshtein.
+        var cjk_suggestion = String("")
         if not self._disable_punctuation_correction:
             var corrected = _correct_cjk_punctuation(name)
             if corrected != name:
                 # Check if the corrected name matches a known option.
                 for i in range(len(self.arguments)):
                     if self.arguments[i]._long_name == corrected:
-                        self._error(
-                            "Unknown option '--"
-                            + name
-                            + "'. Did you mean '--"
-                            + corrected
-                            + "'? (detected CJK punctuation)"
-                        )
+                        cjk_suggestion = corrected
+                        break
                     for j in range(len(self.arguments[i]._alias_names)):
                         if self.arguments[i]._alias_names[j] == corrected:
-                            self._error(
-                                "Unknown option '--"
-                                + name
-                                + "'. Did you mean '--"
-                                + corrected
-                                + "'? (detected CJK punctuation)"
-                            )
+                            cjk_suggestion = corrected
+                            break
 
-        var suggestion = _suggest_similar(name, all_longs)
-        if suggestion != "":
-            self._error(
-                "Unknown option '--"
-                + name
-                + "'. Did you mean '--"
+        var suggestion = _suggest_similar(
+            name, all_longs
+        ) if not cjk_suggestion else cjk_suggestion
+
+        var err_msg = "Unknown option '--" + name + "'"
+        if suggestion:
+            var tip_detail = (
+                "a similar option exists: '--"
                 + suggestion
-                + "'?"
+                + "'"
+                + (" (detected CJK punctuation)" if cjk_suggestion else "")
             )
-        self._error("Unknown option '--" + name + "'")
+            if Self._no_color_env():
+                print(
+                    "error: " + self.name + ": " + err_msg,
+                    file=stderr,
+                )
+                print(file=stderr)
+                print("  tip: " + tip_detail, file=stderr)
+            else:
+                print(
+                    self._error_color
+                    + "error: "
+                    + self.name
+                    + ": "
+                    + err_msg
+                    + _RESET,
+                    file=stderr,
+                )
+                print(file=stderr)
+                print(
+                    "  "
+                    + _BOLD_YELLOW
+                    + _UNDERLINE
+                    + "tip:"
+                    + _RESET
+                    + " "
+                    + tip_detail,
+                    file=stderr,
+                )
+            raise Error(err_msg)
+        self._error(err_msg)
         raise Error(
             "unreachable"
         )  # _error() always raises; satisfies Mojo's return checker
