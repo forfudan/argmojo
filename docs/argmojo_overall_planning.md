@@ -119,7 +119,29 @@ This gives us the raw list of argument strings, and the remaining task is to imp
 | Split          | `str.split("=")`       | Parse equals syntax |
 | Concatenation  | `str + str`            | Build help text     |
 
-### 3.3 Mojo's data structures ✓ Sufficient
+### 3.3 FFI Signature Convention (Cross-Package Alignment)
+
+When two Mojo packages call the same C function via `external_call` with different type signatures, LLVM emits conflicting function declarations, causing link-time or runtime errors. To prevent this, argmojo uses a canonical **`Int`-only convention** for all FFI calls: every integer, pointer, and size argument is passed as `Int` (similar to Mojo's native `i64` on a 64-bit system).
+
+Canonical signatures used by argmojo (in `utils.mojo`):
+
+| C function  | argmojo signature                                              |
+| ----------- | -------------------------------------------------------------- |
+| `ioctl`     | `external_call["ioctl", Int, Int, Int, Int](fd, req, ptr)`     |
+| `tcgetattr` | `external_call["tcgetattr", Int, Int, Int](fd, ptr)`           |
+| `tcsetattr` | `external_call["tcsetattr", Int, Int, Int, Int](fd, act, ptr)` |
+| `read`      | `external_call["read", Int, Int, Int, Int](fd, buf, count)`    |
+
+Any third-party Mojo package (e.g. decimo/limo) that matches these exact signatures avoids LLVM conflicts when linked alongside argmojo.
+
+**Future:** If argmojo ever adds direct FFI calls to `isatty` or `write` (currently handled via Mojo stdlib's `print()`/`stderr`), the same `Int`-only convention should apply:
+
+```txt
+external_call["isatty", Int, Int](fd)
+external_call["write", Int, Int, Int, Int](fd, buf, count)
+```
+
+### 3.4 Mojo's data structures ✓ Sufficient
 
 | Structure                     | Purpose                               |
 | ----------------------------- | ------------------------------------- |
