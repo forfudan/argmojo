@@ -202,7 +202,7 @@ if result.has("output"):
 
 Before we dive into the details of fine-tuning argument and command behaviour, let's first have a high-level overview of how the various builder methods relate to each other.
 
-The `Argument` builder has 27 chainable methods, and the `Command` struct has additional configuration methods and constraint methods. Not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
+The `Argument` builder has 28 chainable methods, and the `Command` struct has additional configuration methods and constraint methods. Not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
 
 ### ASCII Tree
 
@@ -252,6 +252,7 @@ Argument("name", help="...")
 ║   .prompt()                                   prompt interactively      (any)
 ║   .prompt["msg"]()                            custom prompt message     (any; implies .prompt())
 ║   .password()                                 hide input during prompt  (value / positional only)
+║   └── .password[True]()                       echo * per keystroke      (sudo-rs style)
 ║
 ╠══ Command-level constraints (called on Command, not Argument) ════════════════════════════════════
 ║   command.mutually_exclusive(["a","b"])  at most one from the group
@@ -269,9 +270,13 @@ Argument("name", help="...")
 ║   command.command_aliases(["co"])               alternate names for this subcommand
 ║   command.hidden()                              hide subcommand from help/completions
 ║   command.disable_help_subcommand()             opt out of auto-added help subcommand
+║   ├── Subcommands & dispatch
+║   │   command.add_subcommand(sub)               register a child command
+║   │   command.set_run_function(handler)         register dispatch handler
+║   │   command.execute()                         parse + dispatch to handler
 ║   ├── Colour customisation
 ║   │   command.header_color["CYAN"]()            section header colour
-║   │   command.argument_color["GREEN"]()              all argument name colours at once
+║   │   command.argument_color["GREEN"]()         all argument name colours at once
 ║   │   command.program_color["MAGENTA"]()        program name in usage line
 ║   │   command.short_option_color["GREEN"]()     short option names (-h, -p)
 ║   │   command.long_option_color["CYAN"]()       long option names (--help)
@@ -285,8 +290,8 @@ Argument("name", help="...")
 ║   │   command.completions_name("name")          custom trigger name
 ║   │   command.completions_as_subcommand()       expose as subcommand instead
 ║   ├── Response files
-║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
-║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
+║   │   command.response_file_prefix("@")         enable @args.txt expansion (*)
+║   │   command.response_file_max_depth[10]()     max recursive nesting depth (*)
 ║   ├── CJK / i18n
 ║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
 ║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
@@ -300,6 +305,9 @@ Argument("name", help="...")
 ╚═══════════════════════════════════════════════════════════════════════════════════════════════════
 ```
 
+> [!NOTE]
+> (*) Response files are temporarily disabled due to a Mojo compiler bug. [^respfile]
+>
 > **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
 > indented under `.range[min,max]()` because it requires range.  The three main
 > paths (value / flag / count) under *Named option* are **mutually
@@ -310,44 +318,42 @@ Argument("name", help="...")
 
 The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
 
-| Method                            | Named value | `.flag()` | `.count()` | `.positional()` |
-| --------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default["val"]()`               |      ✓      |     —     |     —      |        ✓        |
-| `.choice["a"]().choice["b"]()`    |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`               |      ✓      |     —     |     —      |        —        |
-| `.clamp()`                        |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`                       |      ✓      |     —     |     —      |        —        |
-| `.delimiter[","]()`               |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()`          |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`                   |      ✓      |     —     |     —      |        —        |
-| `.negatable()`                    |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`                       |      —      |     —     |     ✓      |        —        |
-| `.value_name["FILE"]()` ⁴         |      ✓      |     —     |     —      |        ✓        |
-| `.group["name"]()`                |      ✓      |     ✓     |     ✓      |        —        |
-| `.hidden()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.alias_name["alt"]()`            |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated["msg"]()`            |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value["val"]()`   |      ✓      |     —     |     —      |        —        |
-| `.allow_hyphen_values()`          |      ✓      |     —     |     —      |        ✓        |
-| `.remainder()`                    |      —      |     —     |     —      |        ✓        |
-| `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.password()`                     |      ✓      |     —     |     —      |        ✓        |
-| `.require_equals()`               |      ✓      |     —     |     —      |        —        |
-| `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
-| `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_together()` ³   |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_if()` ³         |      ✓      |     ✓     |     ✓      |        —        |
-| `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
-| `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
-| `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
-| `command.usage()` ³               |      —      |     —     |     —      |        —        |
-
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
+| Method                                 | Named value | `.flag()` | `.count()` | `.positional()` |
+| -------------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long["x"]()`                         |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                        |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.default["val"]()`                    |      ✓      |     —     |     —      |        ✓        |
+| `.choice["a"]().choice["b"]()`         |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`                    |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                             | ✓ [^range]  |     —     |     —      |        —        |
+| `.append()`                            |      ✓      |     —     |     —      |        —        |
+| `.delimiter[","]()`                    | ✓ [^append] |     —     |     —      |        —        |
+| `.number_of_values[N]()`               | ✓ [^append] |     —     |     —      |        —        |
+| `.map_option()`                        |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                         |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                            |      —      |     —     |     ✓      |        —        |
+| `.value_name["FILE"]()` [^vname]       |      ✓      |     —     |     —      |        ✓        |
+| `.group["name"]()`                     |      ✓      |     ✓     |     ✓      |        —        |
+| `.hidden()`                            |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.alias_name["alt"]()`                 |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated["msg"]()`                 |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                        |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value["val"]()`        |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`               |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                         |      —      |     —     |     —      |        ✓        |
+| `.prompt()`                            |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt["msg"]()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.password()` [^pw]                    |      ✓      |     —     |     —      |        ✓        |
+| `.require_equals()`                    |      ✓      |     —     |     —      |        —        |
+| `command.mutually_exclusive()` [^cmd]  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` [^cmd]        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` [^cmd]   |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` [^cmd]         |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` [^cmd]             |      ✓      |     ✓     |     ✓      |        —        |
+| `command.add_parent()` [^cmd]          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `command.confirmation_option()` [^cmd] |      —      |     —     |     —      |        —        |
+| `command.usage()` [^cmd]               |      —      |     —     |     —      |        —        |
 
 ## Defining Arguments
 
@@ -4167,39 +4173,39 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 ### Argument-Level Builder Methods
 
-| ArgMojo method                  | argparse                          | click                                    | clap (Rust)                     | cobra / pflag (Go)             |
-| ------------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------- | ------------------------------ |
-| `Argument("name", help="…")`    | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`      | `Arg::new("name").help("…")`    | `cmd.Flags().StringP(…)`       |
-| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                | `.long("x")`                    | implicit from flag name        |
-| `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long           | `.short('x')`                   | `StringP` → second arg         |
-| `.flag()`                       | `action="store_true"`             | `is_flag=True`                           | `action(ArgAction::SetTrue)`    | `BoolP` / `BoolVarP`           |
-| `.required()`                   | `required=True`                   |                                          | `.required(true)`               | `MarkFlagRequired()` ¹         |
-| `.positional()`                 | no prefix (positional by default) | `@click.argument()`                      | `.index(N)` ²                   | `cmd.Args` ³                   |
-| `.takes_value()`                | (default for non-flag)            | (default for options)                    | `.action(ArgAction::Set)`       | (default for non-bool)         |
-| `.default["val"]()`             | `default="val"`                   |                                          | `.default_value("val")`         | flag definition arg            |
-| `.choice["a"]().choice["b"]()`  | `choices=["a","b"]`               | `type=click.Choice(…)`                   | `.value_parser(["a","b"])`      | — ⁴                            |
-| `.value_name["FILE"]()`         | `metavar="FILE"`                  | `metavar="FILE"`                         | `.value_name("FILE")`           | —                              |
-| `.hidden()`                     | `help=argparse.SUPPRESS`          |                                          | `.hide(true)`                   | `MarkHidden()` ¹               |
-| `.count()`                      | `action="count"`                  | `count=True`                             | `.action(ArgAction::Count)`     | `CountP` / `CountVarP`         |
-| `.max[N]()`                     | —                                 | —                                        | —                               | —                              |
-| `.negatable()`                  | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` ⁵ | —                               | `--no-x` pattern ⁶             |
-| `.append()`                     | `action="append"`                 | `multiple=True`                          | `.action(ArgAction::Append)`    | `StringSliceP`                 |
-| `.delimiter[","]()`             | `type` + split                    | —                                        | `.value_delimiter(',')`         | `StringSliceP` (comma default) |
-| `.number_of_values[N]()`        | `nargs=N`                         | `nargs=N`                                | `.num_args(N)`                  | —                              |
-| `.range[min,max]()`             | `type` + manual check             | `type=IntRange(…)`                       | `.value_parser(RangedI64…)`     | — ⁴                            |
-| `.clamp()`                      | —                                 | `clamp=True` (on `IntRange`)             | —                               | —                              |
-| `.map_option()`                 | —                                 | —                                        | —                               | —                              |
-| `.alias_name["alt"]()`          | — (use multiple names)            | —                                        | `.visible_alias("alt")`         | —                              |
-| `.deprecated["msg"]()`          | `deprecated` (3.13+)              | `deprecated=True`                        | `.hide(true)` + manual          | `ShorthandDeprecated()` ¹      |
-| `.persistent()`                 | — ⁷                               | —                                        | `.global(true)`                 | `PersistentFlags()`            |
-| `.default_if_no_value["val"]()` | `const="val"` + `nargs="?"`       | — ⁸                                      | `.default_missing_value("val")` | `NoOptDefVal` field            |
-| `.require_equals()`             | —                                 | —                                        | `.require_equals(true)`         | —                              |
-| `.remainder()`                  | `nargs=argparse.REMAINDER`        | —                                        | `.trailing_var_arg(true)` ¹¹    | `TraverseChildren` ¹²          |
-| `.allow_hyphen_values()`        | —                                 | —                                        | `.allow_hyphen_values(true)`    | —                              |
-| `.prompt()`                     | —                                 | `prompt=True`                            | —                               | —                              |
-| `.prompt["msg"]()`              | —                                 | `prompt="msg"`                           | —                               | —                              |
-| `.password()`                   | —                                 | `hide_input=True`                        | —                               | —                              |
-| `.group["name"]()`              | — (manual section formatting)     | —                                        | `.help_heading("name")`         | — (manual grouping)            |
+| ArgMojo method                  | argparse                          | click                                            | clap (Rust)                          | cobra / pflag (Go)                |
+| ------------------------------- | --------------------------------- | ------------------------------------------------ | ------------------------------------ | --------------------------------- |
+| `Argument("name", help="…")`    | `add_argument("name", help="…")`  | `@click.option("--name", help="…")`              | `Arg::new("name").help("…")`         | `cmd.Flags().StringP(…)`          |
+| `.long["x"]()`                  | prefix `--x` in name string       | prefix `--x` in decorator                        | `.long("x")`                         | implicit from flag name           |
+| `.short["x"]()`                 | prefix `-x` in name string        | implicit or combined with long                   | `.short('x')`                        | `StringP` → second arg            |
+| `.flag()`                       | `action="store_true"`             | `is_flag=True`                                   | `action(ArgAction::SetTrue)`         | `BoolP` / `BoolVarP`              |
+| `.required()`                   | `required=True`                   |                                                  | `.required(true)`                    | `MarkFlagRequired()` [^xref-1]    |
+| `.positional()`                 | no prefix (positional by default) | `@click.argument()`                              | `.index(N)` [^xref-2]                | `cmd.Args` [^xref-3]              |
+| `.takes_value()`                | (default for non-flag)            | (default for options)                            | `.action(ArgAction::Set)`            | (default for non-bool)            |
+| `.default["val"]()`             | `default="val"`                   |                                                  | `.default_value("val")`              | flag definition arg               |
+| `.choice["a"]().choice["b"]()`  | `choices=["a","b"]`               | `type=click.Choice(…)`                           | `.value_parser(["a","b"])`           | — [^xref-4]                       |
+| `.value_name["FILE"]()`         | `metavar="FILE"`                  | `metavar="FILE"`                                 | `.value_name("FILE")`                | —                                 |
+| `.hidden()`                     | `help=argparse.SUPPRESS`          |                                                  | `.hide(true)`                        | `MarkHidden()` [^xref-1]          |
+| `.count()`                      | `action="count"`                  | `count=True`                                     | `.action(ArgAction::Count)`          | `CountP` / `CountVarP`            |
+| `.max[N]()`                     | —                                 | —                                                | —                                    | —                                 |
+| `.negatable()`                  | `BooleanOptionalAction`           | `flag_value` / `is_flag` + `secondary` [^xref-5] | —                                    | `--no-x` pattern [^xref-6]        |
+| `.append()`                     | `action="append"`                 | `multiple=True`                                  | `.action(ArgAction::Append)`         | `StringSliceP`                    |
+| `.delimiter[","]()`             | `type` + split                    | —                                                | `.value_delimiter(',')`              | `StringSliceP` (comma default)    |
+| `.number_of_values[N]()`        | `nargs=N`                         | `nargs=N`                                        | `.num_args(N)`                       | —                                 |
+| `.range[min,max]()`             | `type` + manual check             | `type=IntRange(…)`                               | `.value_parser(RangedI64…)`          | — [^xref-4]                       |
+| `.clamp()`                      | —                                 | `clamp=True` (on `IntRange`)                     | —                                    | —                                 |
+| `.map_option()`                 | —                                 | —                                                | —                                    | —                                 |
+| `.alias_name["alt"]()`          | — (use multiple names)            | —                                                | `.visible_alias("alt")`              | —                                 |
+| `.deprecated["msg"]()`          | `deprecated` (3.13+)              | `deprecated=True`                                | `.hide(true)` + manual               | `ShorthandDeprecated()` [^xref-1] |
+| `.persistent()`                 | — [^xref-7]                       | —                                                | `.global(true)`                      | `PersistentFlags()`               |
+| `.default_if_no_value["val"]()` | `const="val"` + `nargs="?"`       | — [^xref-8]                                      | `.default_missing_value("val")`      | `NoOptDefVal` field               |
+| `.require_equals()`             | —                                 | —                                                | `.require_equals(true)`              | —                                 |
+| `.remainder()`                  | `nargs=argparse.REMAINDER`        | —                                                | `.trailing_var_arg(true)` [^xref-11] | `TraverseChildren` [^xref-12]     |
+| `.allow_hyphen_values()`        | —                                 | —                                                | `.allow_hyphen_values(true)`         | —                                 |
+| `.prompt()`                     | —                                 | `prompt=True`                                    | —                                    | —                                 |
+| `.prompt["msg"]()`              | —                                 | `prompt="msg"`                                   | —                                    | —                                 |
+| `.password()`                   | —                                 | `hide_input=True`                                | —                                    | —                                 |
+| `.group["name"]()`              | — (manual section formatting)     | —                                                | `.help_heading("name")`              | — (manual grouping)               |
 
 ### Command-Level Methods
 
@@ -4217,38 +4223,38 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 #### Group Constraints <!-- omit from toc -->
 
-| ArgMojo method              | argparse                         | click                           | clap (Rust)                    | cobra / pflag (Go)              |
-| --------------------------- | -------------------------------- | ------------------------------- | ------------------------------ | ------------------------------- |
-| `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` ⁹ | `.conflicts_with("x")` per arg | — ⁴                             |
-| `one_required(…)`           | group + `required=True`          | —                               | `.group("G").required(true)`   | — ⁴                             |
-| `required_together(…)`      | —                                | —                               | `.requires("x")` per arg       | `MarkFlagsRequiredTogether()` ¹ |
-| `required_if(target, cond)` | —                                | —                               | `.required_if_eq("x","v")`     | `MarkFlagRequired…` ¹           |
-| `implies(trigger, implied)` | —                                | —                               | `.requires_if("v","x")` ¹⁰     | —                               |
+| ArgMojo method              | argparse                         | click                                   | clap (Rust)                        | cobra / pflag (Go)                      |
+| --------------------------- | -------------------------------- | --------------------------------------- | ---------------------------------- | --------------------------------------- |
+| `mutually_exclusive(…)`     | `add_mutually_exclusive_group()` | `cls=MutuallyExclusiveOption` [^xref-9] | `.conflicts_with("x")` per arg     | — [^xref-4]                             |
+| `one_required(…)`           | group + `required=True`          | —                                       | `.group("G").required(true)`       | — [^xref-4]                             |
+| `required_together(…)`      | —                                | —                                       | `.requires("x")` per arg           | `MarkFlagsRequiredTogether()` [^xref-1] |
+| `required_if(target, cond)` | —                                | —                                       | `.required_if_eq("x","v")`         | `MarkFlagRequired…` [^xref-1]           |
+| `implies(trigger, implied)` | —                                | —                                       | `.requires_if("v","x")` [^xref-10] | —                                       |
 
 #### Parser Behaviour <!-- omit from toc -->
 
-| ArgMojo method                     | argparse                    | click                          | clap (Rust)                     | cobra / pflag (Go)      |
-| ---------------------------------- | --------------------------- | ------------------------------ | ------------------------------- | ----------------------- |
-| `help_on_no_arguments()`           | —                           | `invoke_without_command=False` | `.arg_required_else_help(true)` | auto (shows usage)      |
-| `allow_negative_numbers()`         | —                           | —                              | `.allow_negative_numbers(true)` | —                       |
-| `allow_negative_expressions()`     | —                           | —                              | —                               | —                       |
-| `parse_known_arguments()`          | `parse_known_args()`        | —                              | — ¹¹                            | `FParseErrWhitelist` ¹² |
-| `response_file_prefix()`           | `fromfile_prefix_chars="@"` | —                              | —                               | —                       |
-| `response_file_max_depth[N]()`     | —                           | —                              | —                               | —                       |
-| `confirmation_option()`            | —                           | `confirmation_option`          | —                               | —                       |
-| `disable_fullwidth_correction()`   | —                           | —                              | —                               | —                       |
-| `disable_punctuation_correction()` | —                           | —                              | —                               | —                       |
+| ArgMojo method                     | argparse                    | click                          | clap (Rust)                     | cobra / pflag (Go)              |
+| ---------------------------------- | --------------------------- | ------------------------------ | ------------------------------- | ------------------------------- |
+| `help_on_no_arguments()`           | —                           | `invoke_without_command=False` | `.arg_required_else_help(true)` | auto (shows usage)              |
+| `allow_negative_numbers()`         | —                           | —                              | `.allow_negative_numbers(true)` | —                               |
+| `allow_negative_expressions()`     | —                           | —                              | —                               | —                               |
+| `parse_known_arguments()`          | `parse_known_args()`        | —                              | — [^xref-11]                    | `FParseErrWhitelist` [^xref-12] |
+| `response_file_prefix()`           | `fromfile_prefix_chars="@"` | —                              | —                               | —                               |
+| `response_file_max_depth[N]()`     | —                           | —                              | —                               | —                               |
+| `confirmation_option()`            | —                           | `confirmation_option`          | —                               | —                               |
+| `disable_fullwidth_correction()`   | —                           | —                              | —                               | —                               |
+| `disable_punctuation_correction()` | —                           | —                              | —                               | —                               |
 
 #### Help & Display <!-- omit from toc -->
 
-| ArgMojo method           | argparse     | click        | clap (Rust)            | cobra / pflag (Go) |
-| ------------------------ | ------------ | ------------ | ---------------------- | ------------------ |
-| `usage(text)`            | `usage="…"`  | —            | `.override_usage("…")` | `Use: "…"`         |
-| `add_tip(tip)`           | `epilog="…"` | `epilog="…"` | `.after_help("…")`     | `Example: "…"`     |
-| `header_color[name]()`   | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `argument_color[name]()` | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `warn_color[name]()`     | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
-| `error_color[name]()`    | —            | `style()` ¹³ | `Styles::styled()` ¹⁴  | —                  |
+| ArgMojo method           | argparse     | click                | clap (Rust)                   | cobra / pflag (Go) |
+| ------------------------ | ------------ | -------------------- | ----------------------------- | ------------------ |
+| `usage(text)`            | `usage="…"`  | —                    | `.override_usage("…")`        | `Use: "…"`         |
+| `add_tip(tip)`           | `epilog="…"` | `epilog="…"`         | `.after_help("…")`            | `Example: "…"`     |
+| `header_color[name]()`   | —            | `style()` [^xref-13] | `Styles::styled()` [^xref-14] | —                  |
+| `argument_color[name]()` | —            | `style()` [^xref-13] | `Styles::styled()` [^xref-14] | —                  |
+| `warn_color[name]()`     | —            | `style()` [^xref-13] | `Styles::styled()` [^xref-14] | —                  |
+| `error_color[name]()`    | —            | `style()` [^xref-13] | `Styles::styled()` [^xref-14] | —                  |
 
 #### Shell Completions <!-- omit from toc -->
 
@@ -4261,11 +4267,11 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 #### Auto-Dispatch <!-- omit from toc -->
 
-| ArgMojo method                  | argparse | click                         | clap (Rust) | cobra / pflag (Go) |
-| ------------------------------- | -------- | ----------------------------- | ----------- | ------------------ |
-| `set_run_function(handler)`     | —        | callback param on `@command`  | —           | `Run: func(…)` ¹⁵  |
-| `execute()`                     | —        | implicit via `cli()`          | —           | `cmd.Execute()`    |
-| `_execute_with_arguments(args)` | —        | `runner.invoke(cli, args)` ¹⁶ | —           | —                  |
+| ArgMojo method                  | argparse | click                                 | clap (Rust) | cobra / pflag (Go)        |
+| ------------------------------- | -------- | ------------------------------------- | ----------- | ------------------------- |
+| `set_run_function(handler)`     | —        | callback param on `@command`          | —           | `Run: func(…)` [^xref-15] |
+| `execute()`                     | —        | implicit via `cli()`                  | —           | `cmd.Execute()`           |
+| `_execute_with_arguments(args)` | —        | `runner.invoke(cli, args)` [^xref-16] | —           | —                         |
 
 #### Parse <!-- omit from toc -->
 
@@ -4276,19 +4282,29 @@ The table below maps every ArgMojo builder method / command-level method to its 
 
 ### Notes (Cross-Library Method Name Reference)
 
-1. Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command, not builder-chaining on the flag definition.
-2. clap positional args are defined by `.index(1)`, `.index(2)`, etc., or by omitting `.long()` / `.short()`.
-3. Cobra uses `cobra.ExactArgs(n)`, `cobra.MinimumNArgs(n)`, etc. — a completely different approach.
-4. No built-in support; typically implemented with custom validation logic.
-5. click supports `--flag/--no-flag` via `is_flag=True, flag_value=…` or the `secondary` parameter.
-6. Cobra / pflag has no first-class negatable flag; users manually add a `--no-x` flag.
-7. argparse has `parents=` for sharing argument definitions, but not inheritable persistent flags in a subcommand tree.
-8. click's closest equivalent is `is_eager` combined with a custom callback; there is no direct `const` equivalent for options.
-9. click has no built-in `MutuallyExclusiveOption`; it is typically implemented via a custom `cls` or callback.
-10. clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
-11. clap uses `.trailing_var_arg(true)` on the command (not the argument) for remainder-like behaviour. For `parse_known_arguments`, clap has no direct equivalent; use `allow_external_subcommands`.
-12. Cobra uses `TraverseChildren` for remainder-like behaviour. For partial parsing, Cobra's `FParseErrWhitelist{UnknownFlags: true}` ignores unknown flags.
-13. click uses `click.style()` and `click.echo()` for coloured output, not per-section colour configuration. Colour is applied manually per string, not as a command-level setting.
-14. clap uses `Styles::styled()` with `AnsiColor` enum values for header, literal, placeholder, and error colours. Applied at the `Command` level.
-15. Cobra's `Run` is a struct field of type `func(cmd *Command, args []string)`. Unlike ArgMojo, the handler receives both the command and positional args (not a `ParseResult`).
-16. click's test runner (`CliRunner.invoke()`) captures stdout and returns a `Result` object, rather than dispatching through the normal execution path.
+See the footnotes at the bottom of this document.
+
+<!-- Footnote definitions (all collected at file bottom for maintainability) -->
+
+[^range]: Requires `.range[min,max]()` first.
+[^append]: Implies `.append()` automatically.
+[^cmd]: Command-level method — called on `Command`, not chained on `Argument`.
+[^vname]: Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.
+[^respfile]: Response files temporarily disabled due to Mojo compiler bug.
+[^pw]: Also available as `.password[True]()` to echo `*` per keystroke (sudo-rs style), or `.password[False]()` (same as plain `.password()`).
+[^xref-1]: Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command, not builder-chaining on the flag definition.
+[^xref-2]: clap positional args are defined by `.index(1)`, `.index(2)`, etc., or by omitting `.long()` / `.short()`.
+[^xref-3]: Cobra uses `cobra.ExactArgs(n)`, `cobra.MinimumNArgs(n)`, etc. — a completely different approach.
+[^xref-4]: No built-in support; typically implemented with custom validation logic.
+[^xref-5]: click supports `--flag/--no-flag` via `is_flag=True, flag_value=…` or the `secondary` parameter.
+[^xref-6]: Cobra / pflag has no first-class negatable flag; users manually add a `--no-x` flag.
+[^xref-7]: argparse has `parents=` for sharing argument definitions, but not inheritable persistent flags in a subcommand tree.
+[^xref-8]: click's closest equivalent is `is_eager` combined with a custom callback; there is no direct `const` equivalent for options.
+[^xref-9]: click has no built-in `MutuallyExclusiveOption`; it is typically implemented via a custom `cls` or callback.
+[^xref-10]: clap's `.requires_if("val", "other_arg")` means "if this arg has value `val`, then `other_arg` is also required", which is a superset of ArgMojo's `implies`.
+[^xref-11]: clap uses `.trailing_var_arg(true)` on the command (not the argument) for remainder-like behaviour. For `parse_known_arguments`, clap has no direct equivalent; use `allow_external_subcommands`.
+[^xref-12]: Cobra uses `TraverseChildren` for remainder-like behaviour. For partial parsing, Cobra's `FParseErrWhitelist{UnknownFlags: true}` ignores unknown flags.
+[^xref-13]: click uses `click.style()` and `click.echo()` for coloured output, not per-section colour configuration. Colour is applied manually per string, not as a command-level setting.
+[^xref-14]: clap uses `Styles::styled()` with `AnsiColor` enum values for header, literal, placeholder, and error colours. Applied at the `Command` level.
+[^xref-15]: Cobra's `Run` is a struct field of type `func(cmd *Command, args []string)`. Unlike ArgMojo, the handler receives both the command and positional args (not a `ParseResult`).
+[^xref-16]: click's test runner (`CliRunner.invoke()`) captures stdout and returns a `Result` object, rather than dispatching through the normal execution path.
