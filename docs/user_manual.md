@@ -11,6 +11,9 @@ from argmojo import Argument, Command
 - [Getting Started](#getting-started)
   - [Creating a Command](#creating-a-command)
   - [Reading Parsed Results](#reading-parsed-results)
+- [Builder Method Overview](#builder-method-overview)
+  - [ASCII Tree](#ascii-tree)
+  - [Compatibility Table](#compatibility-table)
 - [Defining Arguments](#defining-arguments)
   - [Positional Arguments](#positional-arguments)
   - [Long Options](#long-options)
@@ -19,9 +22,6 @@ from argmojo import Argument, Command
   - [Default Values](#default-values)
   - [Required Arguments](#required-arguments)
   - [Aliases](#aliases)
-- [Builder Method Compatibility](#builder-method-compatibility)
-  - [ASCII Tree](#ascii-tree)
-  - [Compatibility Table](#compatibility-table)
 - [Short Option Details](#short-option-details)
   - [Short Flag Merging](#short-flag-merging)
   - [Attached Short Values](#attached-short-values)
@@ -198,6 +198,157 @@ if result.has("output"):
     print("Output was specified:", result.get_string("output"))
 ```
 
+## Builder Method Overview
+
+Before we dive into the details of fine-tuning argument and command behaviour, let's first have a high-level overview of how the various builder methods relate to each other.
+
+The `Argument` builder has 27 chainable methods, and the `Command` struct has additional configuration methods and constraint methods. Not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
+
+### ASCII Tree
+
+```txt
+Argument("name", help="...")
+║
+╠══ Named option ═══════════════════════════════════════════════════════════════════════════════════
+║   .long["x"]() ─── .short["x"]()         ← pick one or both
+║   │
+║   ├── [value mode] (default)             ← takes a string value
+║   │   ├── .required()
+║   │   ├── .default["val"]()
+║   │   ├── .choice["a"]().choice["b"]().choice["c"]()
+║   │   ├── .range[1, 100]() ─── .clamp()
+║   │   ├── .append()
+║   │   │   ├── .delimiter[","]()
+║   │   │   └── .number_of_values[2]()
+║   │   ├── .map_option()
+║   │   └── .allow_hyphen_values()           accept -x as a value, not option
+║   │
+║   ├── .flag()                            ← boolean, no value
+║   │   └── .negatable()                     adds --no-X form
+║   │
+║   └── .count()                           ← counter: -vvv → 3
+║       └── .max[3]()                        cap the counter
+║
+╠══ Positional ═════════════════════════════════════════════════════════════════════════════════════
+║   .positional()                          ← matched by position
+║   ├── .required()
+║   ├── .default["val"]()
+║   ├── .choice["a"]().choice["b"]().choice["c"]()
+║   ├── .allow_hyphen_values()               accept -x as a value, not option
+║   └── .remainder()                         consume ALL remaining tokens
+║       └── (implies .allow_hyphen_values())
+║
+╠══ Decorators (combine with any path above) ═══════════════════════════════════════════════════════
+║   .value_name["FILE"]()                       display name in help      (value / positional)
+║   └── [wrapped=False]                         wrap in <> (default); [False] = bare
+║   .group["Network"]()                         section heading in help
+║                                               (named options only; ignored for positionals)
+║   .hidden()                                   hide from --help          (any)
+║   .alias_name["alt"]().alias_name["other"]()  alternative --names       (named only)
+║   .deprecated["msg"]()                        deprecation warning       (any)
+║   .persistent()                               inherit to subcommands    (named only)
+║   .default_if_no_value["val"]()               default-if-no-value       (value only)
+║   .require_equals()                           force --key=value syntax  (named value only)
+║   .prompt()                                   prompt interactively      (any)
+║   .prompt["msg"]()                            custom prompt message     (any; implies .prompt())
+║   .password()                                 hide input during prompt  (value / positional only)
+║
+╠══ Command-level constraints (called on Command, not Argument) ════════════════════════════════════
+║   command.mutually_exclusive(["a","b"])  at most one from the group
+║   command.one_required(["a","b"])        at least one from the group
+║   command.required_together(["a","b"])   all or none from the group
+║   command.required_if("target","cond")   target required when cond is set
+║   command.implies("trigger","implied")   auto-set implied when trigger is set
+║
+╠══ Command-level configuration (called on Command) ════════════════════════════════════════════════
+║   command.help_on_no_arguments()                show help when invoked with no args
+║   command.allow_negative_numbers()              negative tokens treated as positionals
+║   command.allow_negative_expressions()          dash-prefixed expressions as positionals
+║   command.allow_positional_with_subcommands()   allow positionals + subcommands
+║   command.add_tip("...")                        custom tip shown in help footer
+║   command.command_aliases(["co"])               alternate names for this subcommand
+║   command.hidden()                              hide subcommand from help/completions
+║   command.disable_help_subcommand()             opt out of auto-added help subcommand
+║   ├── Colour customisation
+║   │   command.header_color["CYAN"]()            section header colour
+║   │   command.argument_color["GREEN"]()              all argument name colours at once
+║   │   command.program_color["MAGENTA"]()        program name in usage line
+║   │   command.short_option_color["GREEN"]()     short option names (-h, -p)
+║   │   command.long_option_color["CYAN"]()       long option names (--help)
+║   │   command.value_color["YELLOW"]()           value names / metavar
+║   │   command.positional_color["GREEN"]()       positional argument names
+║   │   command.command_color["CYAN"]()           subcommand names
+║   │   command.warn_color["YELLOW"]()            deprecation warning colour
+║   │   command.error_color["RED"]()              error message colour
+║   ├── Shell completion
+║   │   command.disable_default_completions()     disable built-in --completions
+║   │   command.completions_name("name")          custom trigger name
+║   │   command.completions_as_subcommand()       expose as subcommand instead
+║   ├── Response files
+║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
+║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
+║   ├── CJK / i18n
+║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
+║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
+║   ├── Argument inheritance
+║   │   command.add_parent(parent)                copy arguments from a parent command
+║   ├── Confirmation
+║   │   command.confirmation_option()             add --yes/-y confirmation prompt
+║   │   command.confirmation_option["text"]()     custom confirmation prompt text
+║   └── Usage
+║       command.usage("...")                      override the auto-generated usage line
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════
+```
+
+> **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
+> indented under `.range[min,max]()` because it requires range.  The three main
+> paths (value / flag / count) under *Named option* are **mutually
+> exclusive** — pick exactly one mode per argument.  Command-level methods
+> are called on `Command`, not chained on `Argument`.
+
+### Compatibility Table
+
+The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
+
+| Method                            | Named value | `.flag()` | `.count()` | `.positional()` |
+| --------------------------------- | :---------: | :-------: | :--------: | :-------------: |
+| `.long["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
+| `.short["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.required()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.default["val"]()`               |      ✓      |     —     |     —      |        ✓        |
+| `.choice["a"]().choice["b"]()`    |      ✓      |     —     |     —      |        ✓        |
+| `.range[min,max]()`               |      ✓      |     —     |     —      |        —        |
+| `.clamp()`                        |     ✓ ¹     |     —     |     —      |        —        |
+| `.append()`                       |      ✓      |     —     |     —      |        —        |
+| `.delimiter[","]()`               |     ✓ ²     |     —     |     —      |        —        |
+| `.number_of_values[N]()`          |     ✓ ²     |     —     |     —      |        —        |
+| `.map_option()`                   |      ✓      |     —     |     —      |        —        |
+| `.negatable()`                    |      —      |     ✓     |     —      |        —        |
+| `.max[N]()`                       |      —      |     —     |     ✓      |        —        |
+| `.value_name["FILE"]()` ⁴         |      ✓      |     —     |     —      |        ✓        |
+| `.group["name"]()`                |      ✓      |     ✓     |     ✓      |        —        |
+| `.hidden()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.alias_name["alt"]()`            |      ✓      |     ✓     |     ✓      |        —        |
+| `.deprecated["msg"]()`            |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.persistent()`                   |      ✓      |     ✓     |     ✓      |        —        |
+| `.default_if_no_value["val"]()`   |      ✓      |     —     |     —      |        —        |
+| `.allow_hyphen_values()`          |      ✓      |     —     |     —      |        ✓        |
+| `.remainder()`                    |      —      |     —     |     —      |        ✓        |
+| `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
+| `.password()`                     |      ✓      |     —     |     —      |        ✓        |
+| `.require_equals()`               |      ✓      |     —     |     —      |        —        |
+| `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
+| `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_together()` ³   |      ✓      |     ✓     |     ✓      |        —        |
+| `command.required_if()` ³         |      ✓      |     ✓     |     ✓      |        —        |
+| `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
+| `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
+| `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
+| `command.usage()` ³               |      —      |     —     |     —      |        —        |
+
+> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
+
 ## Defining Arguments
 
 ### Positional Arguments
@@ -367,155 +518,6 @@ command.add_argument(
         .alias_name["out"]().alias_name["fmt"]()
 )
 ```
-
-## Builder Method Compatibility
-
-The `Argument` builder has 27 chainable methods, and the `Command` struct has additional configuration methods and constraint methods. Not all combinations make sense. The diagrams below show **which methods can be used together** at a glance.
-
-### ASCII Tree
-
-```txt
-Argument("name", help="...")
-║
-╠══ Named option ═══════════════════════════════════════════════════════════════
-║   .long["x"]() ─── .short["x"]()             ← pick one or both
-║   │
-║   ├── [value mode] (default)             ← takes a string value
-║   │   ├── .required()
-║   │   ├── .default["val"]()
-║   │   ├── .choice["a"]().choice["b"]().choice["c"]()
-║   │   ├── .range[1, 100]() ─── .clamp()
-║   │   ├── .append()
-║   │   │   ├── .delimiter[","]()
-║   │   │   └── .number_of_values[2]()
-║   │   ├── .map_option()
-║   │   └── .allow_hyphen_values()               accept -x as a value, not option
-║   │
-║   ├── .flag()                            ← boolean, no value
-║   │   └── .negatable()                     adds --no-X form
-║   │
-║   └── .count()                           ← counter: -vvv → 3
-║       └── .max[3]()                        cap the counter
-║
-╠══ Positional ═════════════════════════════════════════════════════════════════
-║   .positional()                          ← matched by position
-║   ├── .required()
-║   ├── .default["val"]()
-║   ├── .choice["a"]().choice["b"]().choice["c"]()
-║   ├── .allow_hyphen_values()               accept -x as a value, not option
-║   └── .remainder()                         consume ALL remaining tokens
-║       └── (implies .allow_hyphen_values())
-║
-╠══ Decorators (combine with any path above) ═══════════════════════════════════
-║   .value_name["FILE"]()                       display name in help      (value / positional)
-║   └── [wrapped=False]                         wrap in <> (default); [False] = bare
-║   .group["Network"]()                         section heading in help
-║                                               (named options only; ignored for positionals)
-║   .hidden()                                   hide from --help          (any)
-║   .alias_name["alt"]().alias_name["other"]()  alternative --names       (named only)
-║   .deprecated["msg"]()                        deprecation warning       (any)
-║   .persistent()                               inherit to subcommands    (named only)
-║   .default_if_no_value["val"]()               default-if-no-value       (value only)
-║   .require_equals()                           force --key=value syntax  (named value only)
-║   .prompt()                                   prompt interactively      (any)
-║   .prompt["msg"]()                            custom prompt message     (any; implies .prompt())
-║   .password()                                 hide input during prompt  (value / positional only)
-║
-╠══ Command-level constraints (called on Command, not Argument) ════════════════
-║   command.mutually_exclusive(["a","b"])  at most one from the group
-║   command.one_required(["a","b"])        at least one from the group
-║   command.required_together(["a","b"])   all or none from the group
-║   command.required_if("target","cond")   target required when cond is set
-║   command.implies("trigger","implied")   auto-set implied when trigger is set
-║
-╠══ Command-level configuration (called on Command) ════════════════════════════
-║   command.help_on_no_arguments()                show help when invoked with no args
-║   command.allow_negative_numbers()              negative tokens treated as positionals
-║   command.allow_negative_expressions()          dash-prefixed expressions as positionals
-║   command.allow_positional_with_subcommands()   allow positionals + subcommands
-║   command.add_tip("...")                        custom tip shown in help footer
-║   command.command_aliases(["co"])               alternate names for this subcommand
-║   command.hidden()                              hide subcommand from help/completions
-║   command.disable_help_subcommand()             opt out of auto-added help subcommand
-║   ├── Colour customisation
-║   │   command.header_color["CYAN"]()            section header colour
-║   │   command.argument_color["GREEN"]()              all argument name colours at once
-║   │   command.program_color["MAGENTA"]()        program name in usage line
-║   │   command.short_option_color["GREEN"]()     short option names (-h, -p)
-║   │   command.long_option_color["CYAN"]()       long option names (--help)
-║   │   command.value_color["YELLOW"]()           value names / metavar
-║   │   command.positional_color["GREEN"]()       positional argument names
-║   │   command.command_color["CYAN"]()           subcommand names
-║   │   command.warn_color["YELLOW"]()            deprecation warning colour
-║   │   command.error_color["RED"]()              error message colour
-║   ├── Shell completion
-║   │   command.disable_default_completions()     disable built-in --completions
-║   │   command.completions_name("name")          custom trigger name
-║   │   command.completions_as_subcommand()       expose as subcommand instead
-║   ├── Response files
-║   │   command.response_file_prefix("@")         enable @args.txt expansion ⁵
-║   │   command.response_file_max_depth[10]()     max recursive nesting depth ⁵
-║   ├── CJK / i18n
-║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
-║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
-║   ├── Argument inheritance
-║   │   command.add_parent(parent)                copy arguments from a parent command
-║   ├── Confirmation
-║   │   command.confirmation_option()             add --yes/-y confirmation prompt
-║   │   command.confirmation_option["text"]()     custom confirmation prompt text
-║   └── Usage
-║       command.usage("...")                      override the auto-generated usage line
-╚═══════════════════════════════════════════════════════════════════════════════
-```
-
-> **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
-> indented under `.range[min,max]()` because it requires range.  The three main
-> paths (value / flag / count) under *Named option* are **mutually
-> exclusive** — pick exactly one mode per argument.  Command-level methods
-> are called on `Command`, not chained on `Argument`.
-
-### Compatibility Table
-
-The table below shows which builder methods can be used with each argument mode. **✓** = compatible, **—** = not applicable.
-
-| Method                            | Named value | `.flag()` | `.count()` | `.positional()` |
-| --------------------------------- | :---------: | :-------: | :--------: | :-------------: |
-| `.long["x"]()`                    |      ✓      |     ✓     |     ✓      |        —        |
-| `.short["x"]()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.required()`                     |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.default["val"]()`               |      ✓      |     —     |     —      |        ✓        |
-| `.choice["a"]().choice["b"]()`    |      ✓      |     —     |     —      |        ✓        |
-| `.range[min,max]()`               |      ✓      |     —     |     —      |        —        |
-| `.clamp()`                        |     ✓ ¹     |     —     |     —      |        —        |
-| `.append()`                       |      ✓      |     —     |     —      |        —        |
-| `.delimiter[","]()`               |     ✓ ²     |     —     |     —      |        —        |
-| `.number_of_values[N]()`          |     ✓ ²     |     —     |     —      |        —        |
-| `.map_option()`                   |      ✓      |     —     |     —      |        —        |
-| `.negatable()`                    |      —      |     ✓     |     —      |        —        |
-| `.max[N]()`                       |      —      |     —     |     ✓      |        —        |
-| `.value_name["FILE"]()` ⁴         |      ✓      |     —     |     —      |        ✓        |
-| `.group["name"]()`                |      ✓      |     ✓     |     ✓      |        —        |
-| `.hidden()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.alias_name["alt"]()`            |      ✓      |     ✓     |     ✓      |        —        |
-| `.deprecated["msg"]()`            |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.persistent()`                   |      ✓      |     ✓     |     ✓      |        —        |
-| `.default_if_no_value["val"]()`   |      ✓      |     —     |     —      |        —        |
-| `.allow_hyphen_values()`          |      ✓      |     —     |     —      |        ✓        |
-| `.remainder()`                    |      —      |     —     |     —      |        ✓        |
-| `.prompt()`                       |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.prompt["msg"]()`                |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.password()`                     |      ✓      |     —     |     —      |        ✓        |
-| `.require_equals()`               |      ✓      |     —     |     —      |        —        |
-| `command.mutually_exclusive()` ³  |      ✓      |     ✓     |     ✓      |        —        |
-| `command.one_required()` ³        |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_together()` ³   |      ✓      |     ✓     |     ✓      |        —        |
-| `command.required_if()` ³         |      ✓      |     ✓     |     ✓      |        —        |
-| `command.implies()` ³             |      ✓      |     ✓     |     ✓      |        —        |
-| `command.add_parent()` ³          |      ✓      |     ✓     |     ✓      |        ✓        |
-| `command.confirmation_option()` ³ |      —      |     —     |     —      |        —        |
-| `command.usage()` ³               |      —      |     —     |     —      |        —        |
-
-> ¹ Requires `.range[min,max]()` first.  ² Implies `.append()` automatically.  ³ Command-level method — called on `Command`, not chained on `Argument`.  ⁴ Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.  ⁵ Response files temporarily disabled due to Mojo compiler bug.
 
 ## Short Option Details
 
@@ -1109,7 +1111,8 @@ myapp -ldebug              # (if short name is "l") OK
 myapp -l trace             # Error, same as above
 ```
 
-> **Note:** You need to pass the `List[String]` with `^` (ownership transfer) or `.copy()` (a new copy) because `List[String]` is not implicitly copyable.
+> [!TIP]
+> You need to pass the `List[String]` with `^` (ownership transfer) or `.copy()` (a new copy) because `List[String]` is not implicitly copyable in Mojo. This design choice avoids unnecessary copying.
 
 ### Positional Argument Count Validation
 
