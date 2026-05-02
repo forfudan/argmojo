@@ -2314,46 +2314,12 @@ struct Command(Copyable, Movable, Writable):
         parsing process does not mutate the Command instance itself, which
         prevents contamination and conflicts between multiple parses, e.g.,
         in testing scenarios, REPL usage, and autocompletion.
-        """
 
-        # Here is a high-level outline of the parsing algorithm implemented in
-        # ``parse_arguments``:
-        #
-        # 1. Initialize ParseResult and register positional names.
-        # 2. If ``help_on_no_arguments`` is enabled and only argv[0] is present:
-        #    print help and exit.
-        # 3. Iterate from argv[1] with cursor ``i``:
-        #    ├─ If token is "--": enter positional-only mode.
-        #    ├─ If in positional-only mode: append token to positionals.
-        #    ├─ If token is --help / -h / -?: print help and exit.
-        #    ├─ If token is --version / -V: print version and exit.
-        #    ├─ If token starts with "--":
-        #    │  Parse long option
-        #    │   ├─ Support --key=value split.
-        #    │   ├─ Support --no-key for negatable flags (with prefix matching).
-        #    │   ├─ Resolve by exact long name → exact alias → prefix match.
-        #    │   ├─ Emit deprecation warning if the matched arg is deprecated.
-        #    │   ├─ Handle count / flag / nargs / map / value-taking variants.
-        #    │   └─ For append arguments, store via delimiter-aware append logic.
-        #    ├─ If token starts with "-" and len > 1:
-        #    │  Parse short option(s)
-        #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
-        #    │   └─ Multi-short: merged flags and attached value forms.
-        #    └─ Otherwise (bare word):
-        #       ├─ Subcommands registered + "help <sub>": print child help & exit.
-        #       ├─ Subcommands registered + token matches subcommand name:
-        #       │   build child argv, call child.parse_arguments(), store result, break.
-        #       └─ Otherwise: treat as positional argument.
-        # 4. Apply defaults for missing arguments (named + positional slots).
-        # 5. Validate:
-        #    ├─ Required arguments
-        #    ├─ Positional count (too many)
-        #    ├─ Mutually-exclusive groups
-        #    ├─ Required-together groups
-        #    ├─ One-required groups
-        #    ├─ Conditional requirements
-        #    └─ Numeric range constraints
-        # 6. Return ParseResult.
+        For a step-by-step description of the parsing algorithm — including
+        the exact match order of every branch, which errors each step can
+        raise, and the post-parse validation phases — see
+        ``docs/parsing_algorithm.md``.
+        """
 
         var result = ParseResult()
 
@@ -2454,21 +2420,9 @@ struct Command(Copyable, Movable, Writable):
         """Shared lexing/dispatch loop used by both ``parse_arguments`` and
         ``parse_known_arguments``.
 
-        High-level outline::
-
-            1. CJK auto-correction on ``tokens_to_parse``.
-            2. Register positional argument names.
-            3. If ``help_on_no_arguments`` is enabled and only argv[0]
-               is present: print help and exit.
-            4. Iterate from argv[1]:
-               ├─ ``--`` enters positional-only mode.
-               ├─ ``--help`` / ``-h`` / ``-?`` prints help and exits.
-               ├─ ``--version`` / ``-V`` prints version and exits.
-               ├─ Built-in completions option / subcommand.
-               ├─ allow_hyphen_values fast-path.
-               ├─ Long option (``--key`` / ``--key=value`` / ``--no-key``).
-               ├─ Short option (single, merged flags, attached value).
-               └─ Otherwise: subcommand dispatch or positional argument.
+        See ``docs/parsing_algorithm.md`` for the full step-by-step
+        description, including the exact match order of every branch
+        and the errors each step can raise.
 
         When ``collect_unknown`` is True, an unrecognised long/short
         option is appended to ``result._unknown_arguments`` instead of
