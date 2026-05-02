@@ -62,9 +62,9 @@ def _expand_response_files(
     """Expands response-file tokens in the argument list.
 
     Free function (not a Command method) to work around a Mojo compiler
-    deadlock when ``open()`` or complex I/O appears inside a method of a
-    struct that contains ``List[Self]`` and is compiled with
-    ``-D ASSERT=all``.
+    deadlock when `open()` or complex I/O appears inside a method of a
+    struct that contains `List[Self]` and is compiled with
+    `-D ASSERT=all`.
     """
     var expanded = List[String]()
     var plen = len(prefix)
@@ -105,7 +105,7 @@ def _read_response_file(
 ) raises:
     """Reads a single response file and appends its arguments.
 
-    Free function (not a Command method) — see ``_expand_response_files``
+    Free function (not a Command method) — see `_expand_response_files`
     docstring for rationale.
     """
     if depth >= max_depth:
@@ -196,21 +196,21 @@ struct Command(Copyable, Movable, Writable):
     # === Private fields — Subcommand behavior ===
     var _is_help_subcommand: Bool
     """True for the auto-inserted 'help' pseudo-subcommand.
-    Never set this manually; use ``add_subcommand()`` to register subcommands and
-    ``disable_help_subcommand()`` to opt out.
+    Never set this manually; use `add_subcommand()` to register subcommands and
+    `disable_help_subcommand()` to opt out.
     """
     var _help_subcommand_enabled: Bool
     """When True (default), auto-insert a 'help' subcommand on first 
-    ``add_subcommand()`` call."""
+    `add_subcommand()` call."""
     var _command_aliases: List[String]
     """Alternate names for this command when used as a subcommand.
-    Add entries via ``command_aliases()``.  Aliases are matched during
+    Add entries via `command_aliases()`.  Aliases are matched during
     subcommand dispatch and appear inline next to the primary name in
     help (e.g., "clone, cl"), but are not shown as separate entries."""
     var _is_hidden: Bool
     """When True, this command is excluded from help output, shell
     completions, and 'available commands' error lists, but remains
-    dispatchable by exact name or alias.  Set via ``hidden()``."""
+    dispatchable by exact name or alias.  Set via `hidden()`."""
 
     # === Private fields — Parser behavior ===
     var _help_on_no_arguments: Bool
@@ -220,61 +220,61 @@ struct Command(Copyable, Movable, Writable):
     are always treated as positional arguments.
     When False (default), the same treatment applies automatically whenever
     no registered short option uses a digit character (auto-detect).
-    Enable explicitly via ``allow_negative_numbers()`` when you have a digit
+    Enable explicitly via `allow_negative_numbers()` when you have a digit
     short option and still need negative-number literals to pass through."""
     var _allow_negative_expressions: Bool
     """When True, single-hyphen tokens that are not known short options
     are treated as positional arguments.  This handles expressions like
-    ``-1/3*pi`` or ``-e`` (when ``-e`` is not a registered short flag).
+    `-1/3*pi` or `-e` (when `-e` is not a registered short flag).
     For tokens with one or more characters after the hyphen, this applies
-    only when the first character after ``-`` does not match a registered
+    only when the first character after `-` does not match a registered
     short option; otherwise the token continues to parse as a short option
     sequence or short option with attached value."""
     var _allow_positional_with_subcommands: Bool
     """When True, allows mixing positional arguments with subcommands.
     By default (False), registering a positional arg on a Command that already 
     has subcommands (or vice versa) raises an Error at registration time.
-    Call ``allow_positional_with_subcommands()`` to opt in explicitly."""
+    Call `allow_positional_with_subcommands()` to opt in explicitly."""
     var _response_file_prefix: String
-    """Character prefix that marks a response-file token (e.g. ``@``).
+    """Character prefix that marks a response-file token (e.g. `@`).
     When a token starts with this prefix, the remainder is treated as a
     file path.  Each line of the file is inserted as a separate argument.
-    Set via ``response_file_prefix()``.  Empty string means disabled."""
+    Set via `response_file_prefix()`.  Empty string means disabled."""
     var _response_file_max_depth: Int
     """Maximum nesting depth for recursive response-file expansion.
     Prevents infinite loops when file A references file B and vice versa."""
     var _disable_fullwidth_correction: Bool
     """When True, disable automatic full-width → half-width character
     correction on option tokens.  By default (False), tokens starting
-    with ``-`` that contain fullwidth ASCII characters (``U+FF01``–
-    ``U+FF5E``) or fullwidth spaces (``U+3000``) are auto-corrected
-    with a warning.  Call ``disable_fullwidth_correction()`` to opt out."""
+    with `-` that contain fullwidth ASCII characters (`U+FF01`–
+    `U+FF5E`) or fullwidth spaces (`U+3000`) are auto-corrected
+    with a warning.  Call `disable_fullwidth_correction()` to opt out."""
     var _disable_punctuation_correction: Bool
     """When True, disable CJK punctuation detection in error recovery.
     By default (False), when an unknown option is encountered, common
-    CJK punctuation (e.g. em-dash ``U+2014``) is substituted before
+    CJK punctuation (e.g. em-dash `U+2014`) is substituted before
     running Levenshtein typo suggestion.  Call
-    ``disable_punctuation_correction()`` to opt out."""
+    `disable_punctuation_correction()` to opt out."""
 
     # === Private fields — Interactive & confirmation ===
     var _confirmation_enabled: Bool
     """When True, the command prompts the user for confirmation before
-    returning the parse result.  If ``--yes`` / ``-y`` is provided on
+    returning the parse result.  If `--yes` / `-y` is provided on
     the command line, the prompt is skipped.  Enable via
-    ``confirmation_option()``."""
+    `confirmation_option()`."""
     var _confirmation_prompt: String
     """The prompt text shown when asking for confirmation.
-    Empty until ``confirmation_option()`` is called."""
+    Empty until `confirmation_option()` is called."""
 
     # === Private fields — Help & display ===
     var _header_color: String
     """ANSI code for section headers (Usage, Arguments, Options)."""
     var _argument_color: String
-    """Last bulk colour set via ``argument_color[]()``.
+    """Last bulk colour set via `argument_color[]()`.
 
     Not used directly in rendering — the six granular fields
-    (``_program_color``, ``_short_option_color``, ``_long_option_color``,
-    ``_value_color``, ``_positional_color``, ``_command_color``) are what the
+    (`_program_color`, `_short_option_color`, `_long_option_color`,
+    `_value_color`, `_positional_color`, `_command_color`) are what the
     formatter reads.  Retained so callers can query the most-recent
     bulk colour if needed.
     """
@@ -296,31 +296,31 @@ struct Command(Copyable, Movable, Writable):
     """ANSI code for subcommand names in the Commands section."""
     var _custom_usage: String
     """When non-empty, replaces the auto-generated usage line.
-    Set via ``usage("...")``."""
+    Set via `usage("...")`."""
     var _tips: List[String]
     """User-defined tips shown at the bottom of the help message.
-    Add entries via ``add_tip()``.  Each tip is printed on its own line
-    prefixed with the same bold ``tip:`` label as the built-in hint."""
+    Add entries via `add_tip()`.  Each tip is printed on its own line
+    prefixed with the same bold `tip:` label as the built-in hint."""
 
     # === Private fields — Shell completions ===
     var _completions_enabled: Bool
     """When True (default), a built-in completion trigger is active.
-    Call ``disable_default_completions()`` to opt out entirely."""
+    Call `disable_default_completions()` to opt out entirely."""
     var _completions_name: String
     """The name used for the built-in completion trigger.
-    Defaults to ``"completions"`` → ``--completions <shell>``.
-    Change via ``completions_name()``."""
+    Defaults to `"completions"` → `--completions <shell>`.
+    Change via `completions_name()`."""
     var _completions_is_subcommand: Bool
     """When True, the completion trigger is a subcommand instead of an
-    option.  Default False → ``--completions``.  Call
-    ``completions_as_subcommand()`` to switch to ``myapp completions bash``."""
+    option.  Default False → `--completions`.  Call
+    `completions_as_subcommand()` to switch to `myapp completions bash`."""
 
     # === Private fields — Auto-dispatch ===
     var _run_function: Optional[def(ParseResult) raises]
     """Optional run function for auto-dispatch.  When set via
-    ``set_run_function()``, the ``execute()`` method will call this
+    `set_run_function()`, the `execute()` method will call this
     function with the parsed result.  For commands with subcommands,
-    ``execute()`` walks the subcommand chain and invokes the matching
+    `execute()` walks the subcommand chain and invokes the matching
     handler."""
 
     # ===------------------------------------------------------------------=== #
@@ -450,9 +450,9 @@ struct Command(Copyable, Movable, Writable):
         """Creates a deep copy of a Command.
 
         All field data — including registered arguments and subcommands — is
-        duplicated.  Builder-pattern usage with ``add_subcommand(sub^)``
+        duplicated.  Builder-pattern usage with `add_subcommand(sub^)`
         moves rather than copies, so this is only triggered when a
-        ``Command`` value is assigned via ``=``.
+        `Command` value is assigned via `=`.
 
         Args:
             copy: The Command to copy from.
@@ -533,7 +533,7 @@ struct Command(Copyable, Movable, Writable):
         Raises:
             Error if adding a positional argument to a Command that already
             has subcommands registered (unless
-            ``allow_positional_with_subcommands()`` has been called), or if
+            `allow_positional_with_subcommands()` has been called), or if
             the argument's name, long flag, short flag, or any alias
             collides with an already-registered argument.
 
@@ -729,17 +729,17 @@ struct Command(Copyable, Movable, Writable):
     def add_subcommand(mut self, var sub: Command) raises:
         """Registers a subcommand.
 
-        A subcommand is a full ``Command`` instance that handles a specific verb
-        (e.g. ``app search …``, ``app init …``).  After parsing, the selected
-        subcommand name is stored in ``result.subcommand`` and its own parsed
-        values are available via ``result.get_subcommand_result()``.
+        A subcommand is a full `Command` instance that handles a specific verb
+        (e.g. `app search …`, `app init …`).  After parsing, the selected
+        subcommand name is stored in `result.subcommand` and its own parsed
+        values are available via `result.get_subcommand_result()`.
 
         Args:
-            sub: The subcommand ``Command`` to register.
+            sub: The subcommand `Command` to register.
 
         Raises:
-            Error if a persistent argument on this command shares a ``long_name``
-            or ``short_name`` with any local argument on ``sub``.
+            Error if a persistent argument on this command shares a `long_name`
+            or `short_name` with any local argument on `sub`.
 
         Examples:
 
@@ -826,17 +826,17 @@ struct Command(Copyable, Movable, Writable):
     def add_parent(mut self, parent: Command) raises:
         """Inherits argument definitions and group constraints from a parent.
 
-        All arguments registered on ``parent`` are copied into this command,
+        All arguments registered on `parent` are copied into this command,
         and all group constraints (mutually exclusive, required together,
         one-required, conditional requirements, implications) are inherited.
 
-        This is equivalent to Python argparse's ``parents`` parameter — it
-        lets you share a common set of ``Argument`` definitions across
-        multiple ``Command`` instances without repeating them.
+        This is equivalent to Python argparse's `parents` parameter — it
+        lets you share a common set of `Argument` definitions across
+        multiple `Command` instances without repeating them.
 
-        The parent should **not** have ``--help`` / ``-h`` registered as a
+        The parent should **not** have `--help` / `-h` registered as a
         user argument (the built-in help is always present), but any other
-        argument is fine.  All validation guards in ``add_argument()`` run
+        argument is fine.  All validation guards in `add_argument()` run
         on each inherited argument as usual.
 
         Args:
@@ -906,7 +906,7 @@ struct Command(Copyable, Movable, Writable):
         will fail if more than one is present.
 
         All names must refer to arguments already registered via
-        ``add_argument()``.  An ``Error`` is raised immediately if any
+        `add_argument()`.  An `Error` is raised immediately if any
         name is unknown, so that typos are caught during command
         construction rather than at end-user runtime.
 
@@ -956,7 +956,7 @@ struct Command(Copyable, Movable, Writable):
         group must also be provided. Parsing will fail otherwise.
 
         All names must refer to arguments already registered via
-        ``add_argument()``.  An ``Error`` is raised immediately if any
+        `add_argument()`.  An `Error` is raised immediately if any
         name is unknown, so that typos are caught during command
         construction rather than at end-user runtime.
 
@@ -1006,7 +1006,7 @@ struct Command(Copyable, Movable, Writable):
         present on the command line.
 
         All names must refer to arguments already registered via
-        ``add_argument()``.  An ``Error`` is raised immediately if any
+        `add_argument()`.  An `Error` is raised immediately if any
         name is unknown, so that typos are caught during command
         construction rather than at end-user runtime.
 
@@ -1052,11 +1052,11 @@ struct Command(Copyable, Movable, Writable):
     def required_if(mut self, target: String, condition: String) raises:
         """Declares that an argument is required when another is present.
 
-        When ``condition`` is provided on the command line, ``target``
+        When `condition` is provided on the command line, `target`
         must also be provided.  Parsing will fail otherwise.
 
-        Both ``target`` and ``condition`` must refer to arguments already
-        registered via ``add_argument()``.  An ``Error`` is raised
+        Both `target` and `condition` must refer to arguments already
+        registered via `add_argument()`.  An `Error` is raised
         immediately if either name is unknown, so that typos are caught
         during command construction rather than at end-user runtime.
 
@@ -1100,14 +1100,14 @@ struct Command(Copyable, Movable, Writable):
     def implies(mut self, trigger: String, implied: String) raises:
         """Declares that setting one argument automatically sets another.
 
-        When ``trigger`` is present in the parse result, ``implied`` is
-        automatically set (as a flag set to ``True``, or a count
+        When `trigger` is present in the parse result, `implied` is
+        automatically set (as a flag set to `True`, or a count
         incremented by 1).  Chains are supported: if A implies B and B
         implies C, setting A will also set C.  Circular implications are
         detected at registration time and raise an error.
 
-        Both ``trigger`` and ``implied`` must be registered arguments.
-        The ``implied`` argument must be a ``.flag()`` or ``.count()``
+        Both `trigger` and `implied` must be registered arguments.
+        The `implied` argument must be a `.flag()` or `.count()`
         argument — value-taking, positional, append, and map arguments
         are not supported as implication targets.
 
@@ -1203,7 +1203,7 @@ struct Command(Copyable, Movable, Writable):
 
         Aliases are matched during subcommand dispatch and included in
         shell completion scripts, but they do **not** appear as separate
-        entries in the ``Commands:`` help section.  Instead, aliases are
+        entries in the `Commands:` help section.  Instead, aliases are
         shown inline next to the primary name.
 
         Args:
@@ -1245,16 +1245,16 @@ struct Command(Copyable, Movable, Writable):
         self._is_hidden = True
 
     def disable_help_subcommand(mut self):
-        """Opts out of the auto-added ``help`` subcommand.
+        """Opts out of the auto-added `help` subcommand.
 
-        By default, the first call to ``add_subcommand()`` automatically
-        registers a ``help`` subcommand so that ``app help <sub>`` works as
-        an alias for ``app <sub> --help``.
+        By default, the first call to `add_subcommand()` automatically
+        registers a `help` subcommand so that `app help <sub>` works as
+        an alias for `app <sub> --help`.
 
-        Call this before or after ``add_subcommand()`` to suppress the
-        feature — useful when ``"help"`` is a legitimate first positional
+        Call this before or after `add_subcommand()` to suppress the
+        feature — useful when `"help"` is a legitimate first positional
         value (e.g. a search pattern or entity name).  After disabling, use
-        ``app <sub> --help`` directly.
+        `app <sub> --help` directly.
 
         Examples:
 
@@ -1262,9 +1262,9 @@ struct Command(Copyable, Movable, Writable):
         from argmojo import Command
         var app = Command("search", "Search engine")
         app.disable_help_subcommand()   # "help" is a valid search query
-        # Now: ``search help init``  →  positionals ["help", "init"] on root,
+        # Now: `search help init`  →  positionals ["help", "init"] on root,
         #    so that you can do something like: search "help" in path "init".
-        #    ``search init --help``  →  shows init's help page
+        #    `search init --help`  →  shows init's help page
         ```
         """
         self._help_subcommand_enabled = False
@@ -1312,7 +1312,7 @@ struct Command(Copyable, Movable, Writable):
         program name) will print the help message and exit.
 
         Raises:
-            Error if any registered argument has ``.prompt()`` enabled,
+            Error if any registered argument has `.prompt()` enabled,
             since prompting is unreachable when help is shown on no arguments.
 
         Examples:
@@ -1341,10 +1341,10 @@ struct Command(Copyable, Movable, Writable):
         """Treats tokens that look like negative numbers as positional arguments.
 
         By default ArgMojo already auto-detects negative-number tokens
-        (``-9``, ``-3.14``, ``-1.5e10``) and passes them through as
+        (`-9`, `-3.14`, `-1.5e10`) and passes them through as
         positionals **when no registered short option starts with a digit**.
         Call this method explicitly when you have registered a digit short
-        option (e.g., ``-3`` for ``--triple``) and still need negative-number
+        option (e.g., `-3` for `--triple`) and still need negative-number
         literals to be treated as positionals.
 
         Examples:
@@ -1363,19 +1363,19 @@ struct Command(Copyable, Movable, Writable):
         """Treats single-hyphen tokens as positional arguments when they
         don't conflict with a known short option.
 
-        This is a superset of ``allow_negative_numbers()`` — it also
-        handles mathematical expressions like ``-1/3*pi``, ``-sin(2)``,
-        or even arbitrary dash-prefixed strings like ``-e`` (when ``-e``
+        This is a superset of `allow_negative_numbers()` — it also
+        handles mathematical expressions like `-1/3*pi`, `-sin(2)`,
+        or even arbitrary dash-prefixed strings like `-e` (when `-e`
         is not a registered short option).
 
         Rules:
 
         - If the first character after the hyphen does **not** match a
           registered short option, the token is consumed as a positional
-          (e.g. ``-1/3*pi`` when ``-1`` is not registered).
+          (e.g. `-1/3*pi` when `-1` is not registered).
         - If the first character **does** match a registered short option,
-          the token is parsed normally (merged shorts like ``-vp`` or
-          attached values like ``-p10`` continue to work).
+          the token is parsed normally (merged shorts like `-vp` or
+          attached values like `-p10` continue to work).
 
         Examples:
 
@@ -1397,28 +1397,28 @@ struct Command(Copyable, Movable, Writable):
 
         Warning: **Temporarily disabled** — the underlying expansion
         logic is compiled out to work around a Mojo compiler deadlock
-        triggered by ``-D ASSERT=all``.  Calling this method still
-        stores the prefix, but ``parse_arguments()`` will **not**
+        triggered by `-D ASSERT=all`.  Calling this method still
+        stores the prefix, but `parse_arguments()` will **not**
         expand response-file tokens until the compiler bug is fixed.
 
-        When enabled, any token that starts with the given ``prefix``
+        When enabled, any token that starts with the given `prefix`
         is treated as a response-file reference.  The remainder of
         the token is the file path; each non-empty, non-comment line
         of that file is inserted as a separate argument in place of
         the original token.
 
-        - Blank lines and lines starting with ``#`` are ignored.
+        - Blank lines and lines starting with `#` are ignored.
         - Leading / trailing whitespace on each line is stripped.
         - Response files may reference other response files (recursive),
           up to the configured nesting depth (set via
-          ``response_file_max_depth[depth]()``; default 10).
+          `response_file_max_depth[depth]()`; default 10).
         - To pass a literal token that starts with the prefix (e.g. an
-          email ``@user``), escape it by doubling the prefix: ``@@user``
-          is inserted as ``@user``.
+          email `@user`), escape it by doubling the prefix: `@@user`
+          is inserted as `@user`.
 
         Args:
             prefix: The prefix character(s) that introduce a response
-                file (default ``"@"``).
+                file (default `"@"`).
 
         Examples:
 
@@ -1435,7 +1435,7 @@ struct Command(Copyable, Movable, Writable):
         """Sets the maximum nesting depth for response-file expansion.
 
         Warning: **Temporarily disabled** — see
-        ``response_file_prefix()`` docstring for details.
+        `response_file_prefix()` docstring for details.
 
         Parameters:
             depth: Maximum recursion depth (default 10).
@@ -1447,8 +1447,8 @@ struct Command(Copyable, Movable, Writable):
         """Disables automatic full-width → half-width character correction.
 
         By default, ArgMojo detects fullwidth ASCII characters
-        (``U+FF01``–``U+FF5E``) and fullwidth spaces (``U+3000``) in
-        option tokens (those starting with ``-``) and auto-corrects them
+        (`U+FF01`–`U+FF5E`) and fullwidth spaces (`U+3000`) in
+        option tokens (those starting with `-`) and auto-corrects them
         to their halfwidth equivalents with a warning.  This helps CJK
         users who forget to switch input methods.
 
@@ -1470,8 +1470,8 @@ struct Command(Copyable, Movable, Writable):
         """Disables CJK punctuation detection in error recovery.
 
         By default, when an unknown option is encountered, ArgMojo tries
-        substituting common CJK punctuation (e.g. em-dash ``——`` →
-        ``--``) before running Levenshtein typo suggestion.  This helps
+        substituting common CJK punctuation (e.g. em-dash `——` →
+        `--`) before running Levenshtein typo suggestion.  This helps
         CJK users who accidentally type Chinese punctuation.
 
         Call this method to disable that behaviour — useful when strict
@@ -1491,19 +1491,19 @@ struct Command(Copyable, Movable, Writable):
     # ── Interactive & confirmation ──
 
     def confirmation_option(mut self) raises:
-        """Adds a ``--yes`` / ``-y`` flag to skip a confirmation prompt.
+        """Adds a `--yes` / `-y` flag to skip a confirmation prompt.
 
         When enabled, the command will prompt the user with
-        ``"Are you sure? [y/N]: "`` after parsing (and after interactive
+        `"Are you sure? [y/N]: "` after parsing (and after interactive
         prompting, if any) but before validation.  If the user does not
-        answer ``y`` or ``yes``, the command aborts with an error.
+        answer `y` or `yes`, the command aborts with an error.
 
-        Passing ``--yes`` or ``-y`` on the command line skips the prompt
-        entirely.  This is equivalent to Click's ``confirmation_option``
+        Passing `--yes` or `-y` on the command line skips the prompt
+        entirely.  This is equivalent to Click's `confirmation_option`
         decorator.
 
         Raises:
-            Error if a ``--yes`` / ``-y`` argument is already registered.
+            Error if a `--yes` / `-y` argument is already registered.
 
         Examples:
 
@@ -1541,16 +1541,16 @@ struct Command(Copyable, Movable, Writable):
         )
 
     def confirmation_option[prompt: StringLiteral](mut self) raises:
-        """Adds a ``--yes`` / ``-y`` flag with a custom confirmation prompt.
+        """Adds a `--yes` / `-y` flag with a custom confirmation prompt.
 
-        Behaves like ``confirmation_option()`` but uses the provided
-        ``prompt`` text instead of the default ``"Are you sure?"``.
+        Behaves like `confirmation_option()` but uses the provided
+        `prompt` text instead of the default `"Are you sure?"`.
 
         Parameters:
             prompt: The custom prompt text to display.
 
         Raises:
-            Error if a ``--yes`` / ``-y`` argument is already registered.
+            Error if a `--yes` / `-y` argument is already registered.
 
         Examples:
 
@@ -1588,12 +1588,12 @@ struct Command(Copyable, Movable, Writable):
             usage: myapp <file> [OPTIONS]
 
         Call this method to override it with a completely custom string.
-        The string should **not** include the ``usage:`` prefix — it will
+        The string should **not** include the `usage:` prefix — it will
         be added automatically.
 
         Args:
-            text: The custom usage text (e.g. ``"myapp [-v | --version]
-                [-C <path>] <command> [<arguments>]"``).
+            text: The custom usage text (e.g. `"myapp [-v | --version]
+                [-C <path>] <command> [<arguments>]"`).
 
         Examples:
 
@@ -1610,8 +1610,8 @@ struct Command(Copyable, Movable, Writable):
     def add_tip(mut self, tip: String):
         """Adds a custom tip line to the bottom of the help message.
 
-        Each tip is printed on its own line below the built-in ``--``
-        separator hint, prefixed with a bold ``tip:`` label.  Useful for
+        Each tip is printed on its own line below the built-in `--`
+        separator hint, prefixed with a bold `tip:` label.  Useful for
         documenting shell idioms, environment variables, or any other
         usage notes that don't fit in argument help strings.
 
@@ -1635,8 +1635,8 @@ struct Command(Copyable, Movable, Writable):
         Headers are always rendered in **bold + underline**; this method
         controls only the foreground colour.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1655,13 +1655,13 @@ struct Command(Copyable, Movable, Writable):
     def argument_color[name: StringLiteral](mut self):
         """Sets a single colour for ALL option and argument names in help.
 
-        This is a convenience method that sets ``program_color``,
-        ``short_option_color``, ``long_option_color``, ``value_color``,
-        ``positional_color``, and ``command_color`` to the same colour at once.
+        This is a convenience method that sets `program_color`,
+        `short_option_color`, `long_option_color`, `value_color`,
+        `positional_color`, and `command_color` to the same colour at once.
         Use the individual setters for fine-grained control.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1687,8 +1687,8 @@ struct Command(Copyable, Movable, Writable):
     def warn_color[name: StringLiteral](mut self):
         """Sets the colour for deprecation warning messages.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1707,8 +1707,8 @@ struct Command(Copyable, Movable, Writable):
     def error_color[name: StringLiteral](mut self):
         """Sets the colour for parse error messages.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1727,8 +1727,8 @@ struct Command(Copyable, Movable, Writable):
     def program_color[name: StringLiteral](mut self):
         """Sets the colour for the program name in the usage line.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1737,10 +1737,10 @@ struct Command(Copyable, Movable, Writable):
         self._program_color = _resolve_color[name]()
 
     def short_option_color[name: StringLiteral](mut self):
-        """Sets the colour for short option names (e.g. ``-h``, ``-p``).
+        """Sets the colour for short option names (e.g. `-h`, `-p`).
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1749,10 +1749,10 @@ struct Command(Copyable, Movable, Writable):
         self._short_option_color = _resolve_color[name]()
 
     def long_option_color[name: StringLiteral](mut self):
-        """Sets the colour for long option names (e.g. ``--help``, ``--port``).
+        """Sets the colour for long option names (e.g. `--help`, `--port`).
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1761,10 +1761,10 @@ struct Command(Copyable, Movable, Writable):
         self._long_option_color = _resolve_color[name]()
 
     def value_color[name: StringLiteral](mut self):
-        """Sets the colour for value names / metavar (e.g. ``PORT``, ``<HOST>``).
+        """Sets the colour for value names / metavar (e.g. `PORT`, `<HOST>`).
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1775,8 +1775,8 @@ struct Command(Copyable, Movable, Writable):
     def positional_color[name: StringLiteral](mut self):
         """Sets the colour for positional argument names.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1787,8 +1787,8 @@ struct Command(Copyable, Movable, Writable):
     def command_color[name: StringLiteral](mut self):
         """Sets the colour for subcommand names in the Commands section.
 
-        Accepted colour names: ``RED``, ``GREEN``, ``YELLOW``, ``BLUE``,
-        ``MAGENTA``, ``PINK``, ``CYAN``, ``WHITE``, ``ORANGE``.
+        Accepted colour names: `RED`, `GREEN`, `YELLOW`, `BLUE`,
+        `MAGENTA`, `PINK`, `CYAN`, `WHITE`, `ORANGE`.
         Invalid names are caught at compile time.
 
         Parameters:
@@ -1801,11 +1801,11 @@ struct Command(Copyable, Movable, Writable):
     def disable_default_completions(mut self):
         """Disables the built-in completion trigger entirely.
 
-        By default, every ``Command`` has a built-in ``--completions bash``
-        (or ``zsh`` / ``fish``) that prints a shell completion script and
+        By default, every `Command` has a built-in `--completions bash`
+        (or `zsh` / `fish`) that prints a shell completion script and
         exits.  Call this method to remove that trigger completely.
 
-        The ``generate_completion()`` method is still available for
+        The `generate_completion()` method is still available for
         programmatic use — only the automatic trigger is removed.
 
         Examples:
@@ -1823,19 +1823,19 @@ struct Command(Copyable, Movable, Writable):
     def completions_name(mut self, name: String):
         """Sets the name used for the built-in completion trigger.
 
-        Default is ``"completions"`` → ``--completions <shell>``.
+        Default is `"completions"` → `--completions <shell>`.
         Change to any name you prefer:
 
-        - ``app.completions_name("autocomp")`` → ``--autocomp bash``
-        - ``app.completions_name("generate-completions")`` → ``--generate-completions bash``
+        - `app.completions_name("autocomp")` → `--autocomp bash`
+        - `app.completions_name("generate-completions")` → `--generate-completions bash`
 
-        Combine with ``completions_as_subcommand()`` to use as a subcommand:
+        Combine with `completions_as_subcommand()` to use as a subcommand:
 
-        - ``app.completions_name("comp")`` + ``app.completions_as_subcommand()``
-          → ``myapp comp bash``
+        - `app.completions_name("comp")` + `app.completions_as_subcommand()`
+          → `myapp comp bash`
 
         Args:
-            name: The new trigger name (without ``--`` prefix).
+            name: The new trigger name (without `--` prefix).
 
         Examples:
 
@@ -2314,46 +2314,12 @@ struct Command(Copyable, Movable, Writable):
         parsing process does not mutate the Command instance itself, which
         prevents contamination and conflicts between multiple parses, e.g.,
         in testing scenarios, REPL usage, and autocompletion.
-        """
 
-        # Here is a high-level outline of the parsing algorithm implemented in
-        # ``parse_arguments``:
-        #
-        # 1. Initialize ParseResult and register positional names.
-        # 2. If ``help_on_no_arguments`` is enabled and only argv[0] is present:
-        #    print help and exit.
-        # 3. Iterate from argv[1] with cursor ``i``:
-        #    ├─ If token is "--": enter positional-only mode.
-        #    ├─ If in positional-only mode: append token to positionals.
-        #    ├─ If token is --help / -h / -?: print help and exit.
-        #    ├─ If token is --version / -V: print version and exit.
-        #    ├─ If token starts with "--":
-        #    │  Parse long option
-        #    │   ├─ Support --key=value split.
-        #    │   ├─ Support --no-key for negatable flags (with prefix matching).
-        #    │   ├─ Resolve by exact long name → exact alias → prefix match.
-        #    │   ├─ Emit deprecation warning if the matched arg is deprecated.
-        #    │   ├─ Handle count / flag / nargs / map / value-taking variants.
-        #    │   └─ For append arguments, store via delimiter-aware append logic.
-        #    ├─ If token starts with "-" and len > 1:
-        #    │  Parse short option(s)
-        #    │   ├─ Single short: deprecation warning / count / flag / nargs / map / value.
-        #    │   └─ Multi-short: merged flags and attached value forms.
-        #    └─ Otherwise (bare word):
-        #       ├─ Subcommands registered + "help <sub>": print child help & exit.
-        #       ├─ Subcommands registered + token matches subcommand name:
-        #       │   build child argv, call child.parse_arguments(), store result, break.
-        #       └─ Otherwise: treat as positional argument.
-        # 4. Apply defaults for missing arguments (named + positional slots).
-        # 5. Validate:
-        #    ├─ Required arguments
-        #    ├─ Positional count (too many)
-        #    ├─ Mutually-exclusive groups
-        #    ├─ Required-together groups
-        #    ├─ One-required groups
-        #    ├─ Conditional requirements
-        #    └─ Numeric range constraints
-        # 6. Return ParseResult.
+        For a step-by-step description of the parsing algorithm — including
+        the exact match order of every branch, which errors each step can
+        raise, and the post-parse validation phases — see
+        ``docs/parsing_algorithm.md``.
+        """
 
         var result = ParseResult()
 
@@ -2372,200 +2338,11 @@ struct Command(Copyable, Movable, Writable):
         #         self.name,
         #     )
 
-        # ── CJK auto-correction (fullwidth + punctuation) ───────────
-        self._preprocess_cjk_arguments(tokens_to_parse)
-
-        # Register positional argument names in order.
-        for i in range(len(self.arguments)):
-            if self.arguments[i]._is_positional:
-                result._positional_names.append(self.arguments[i].name)
-
-        # Skip argv[0] and start from argv[1].
-        var i: Int = 1
-        var stop_parsing_options = False
-
-        # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
-            print(self._generate_help())
-            exit(0)
-
         # === PARSING PHASE === #
+        # Delegate the lexing/dispatch loop to the shared implementation.
+        self._run_parse_loop(tokens_to_parse, result, False)
 
-        # Check if there is a remainder positional and which slot it is.
-        var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.arguments)):
-            if self.arguments[_ri]._is_remainder:
-                # Find its positional slot index.
-                var slot: Int = 0
-                for _rj in range(len(self.arguments)):
-                    if self.arguments[_rj]._is_positional:
-                        if self.arguments[_rj].name == self.arguments[_ri].name:
-                            remainder_pos_idx = slot
-                            break
-                        slot += 1
-                break
-
-        while i < len(tokens_to_parse):
-            var token = tokens_to_parse[i]
-
-            # Handle "--" stop marker.
-            if token == "--" and not stop_parsing_options:
-                stop_parsing_options = True
-                i += 1
-                continue
-
-            if stop_parsing_options:
-                result._positionals.append(token)
-                i += 1
-                continue
-
-            # ── Remainder mode: if the current positional slot is a
-            # remainder argument, consume ALL remaining tokens verbatim. ──
-            if (
-                remainder_pos_idx >= 0
-                and len(result._positionals) >= remainder_pos_idx
-            ):
-                # We've reached or passed the remainder slot — consume everything.
-                result._positionals.append(token)
-                i += 1
-                continue
-
-            # Handle --help / -h / -?
-            if token == "--help" or token == "-h" or token == "-?":
-                print(self._generate_help())
-                exit(0)
-
-            # Handle --version / -V
-            if token == "--version" or token == "-V":
-                print(self.name + " " + self.version)
-                exit(0)
-
-            # Handle --<completions_name> <shell>  (built-in, like --help/--version)
-            if (
-                self._completions_enabled
-                and not self._completions_is_subcommand
-                and token == "--" + self._completions_name
-            ):
-                if i + 1 < len(tokens_to_parse):
-                    i += 1
-                    var shell_argument = tokens_to_parse[i]
-                    try:
-                        print(self.generate_completion(shell_argument))
-                    except e:
-                        self._error(String(e))
-                        exit(2)
-                    exit(0)
-                else:
-                    self._error(
-                        "--"
-                        + self._completions_name
-                        + " requires a shell name: bash, zsh, or fish"
-                    )
-                    exit(2)
-
-            # ── allow_hyphen_values ──────────────────────────────────
-            # If the next positional slot accepts dash-prefixed tokens
-            # and this token is NOT a known option, consume as positional.
-            if token.startswith("-") and len(token) > 1:
-                var _ahv_consumed = False
-                var _ahv_slot = len(result._positionals)
-                if _ahv_slot < len(result._positional_names):
-                    var _ahv_name = result._positional_names[_ahv_slot]
-                    for _ai in range(len(self.arguments)):
-                        if (
-                            self.arguments[_ai].name == _ahv_name
-                            and self.arguments[_ai]._allow_hyphen_values
-                        ):
-                            if not self._is_known_option(token):
-                                result._positionals.append(token)
-                                i += 1
-                                _ahv_consumed = True
-                            break
-                if _ahv_consumed:
-                    continue
-            # ────────────────────────────────────────────────────────
-
-            # Long option: --key, --key=value, --key value
-            if token.startswith("--"):
-                i = self._parse_long_option(tokens_to_parse, i, result)
-                continue
-
-            # Short option: -k, -k value, -abc (merged flags), -ofile.txt
-            if token.startswith("-") and len(token) > 1:
-                # ── Negative-number detection (argparse-style) ──────────────
-                # A token like "-10.18e3" is treated as a positional value when:
-                #   (a) allow_negative_numbers() was called explicitly, OR
-                #   (b) the token looks numeric AND no registered short option
-                #       uses a digit character (auto-detect, no naming clash).
-                if _looks_like_number(token):
-                    var has_digit_short = False
-                    for _ni in range(len(self.arguments)):
-                        var sn = self.arguments[_ni]._short_name
-                        if sn >= "0" and sn <= "9":
-                            has_digit_short = True
-                            break
-                    if self._allow_negative_numbers or not has_digit_short:
-                        result._positionals.append(token)
-                        i += 1
-                        continue
-                # ────────────────────────────────────────────────────────────
-                # ── Negative-expression detection ───────────────────────────
-                # A token like "-1/3*pi" is treated as a positional when
-                # allow_negative_expressions() was called.  Reuse the
-                # shared _is_known_option() helper so this stays aligned
-                # with parse_known_arguments() and avoids duplicate scans.
-                if (
-                    self._allow_negative_expressions
-                    and not self._is_known_option(token)
-                ):
-                    result._positionals.append(token)
-                    i += 1
-                    continue
-                # ────────────────────────────────────────────────────────────
-                var key = String(token[byte=1:])
-                if len(key) == 1:
-                    i = self._parse_short_single(
-                        key, tokens_to_parse, i, result
-                    )
-                else:
-                    i = self._parse_short_merged(
-                        key, tokens_to_parse, i, result
-                    )
-                continue
-
-            # Positional argument — check for subcommand dispatch first.
-            # Built-in completions subcommand (when in subcommand mode).
-            if (
-                self._completions_enabled
-                and self._completions_is_subcommand
-                and token == self._completions_name
-            ):
-                if i + 1 < len(tokens_to_parse):
-                    i += 1
-                    var shell_argument = tokens_to_parse[i]
-                    try:
-                        print(self.generate_completion(shell_argument))
-                    except e:
-                        self._error(String(e))
-                        exit(2)
-                    exit(0)
-                else:
-                    self._error(
-                        self._completions_name
-                        + " requires a shell name: bash, zsh, or fish"
-                    )
-                    exit(2)
-            if len(self.subcommands) > 0:
-                var new_i = self._dispatch_subcommand(
-                    token, tokens_to_parse, i, result
-                )
-                if new_i >= 0:
-                    i = new_i
-                    continue
-
-            result._positionals.append(token)
-            i += 1
-
+        # === POST-PARSE PHASE === #
         # Apply defaults, propagate implications, prompt for remaining
         # values, re-apply implications (in case prompts triggered new
         # ones), confirm if required, then validate constraints.
@@ -2614,9 +2391,53 @@ struct Command(Copyable, Movable, Writable):
         options reliably.
         """
         var result = ParseResult()
-
         var tokens_to_parse = raw_tokens.copy()
 
+        # Shared lex/dispatch loop (collect_unknown=True suppresses
+        # unknown-option errors and routes them to ``_unknown_arguments``).
+        self._run_parse_loop(tokens_to_parse, result, True)
+
+        # Post-parse: defaults, implications, validation.  Prompting and
+        # confirmation are intentionally skipped — callers of
+        # ``parse_known_arguments`` typically forward unknown options to
+        # a downstream tool and should not be interrupted by prompts.
+        self._apply_defaults(result)
+        self._apply_implications(result)
+        self._validate(result)
+
+        return result^
+
+    # ===------------------------------------------------------------------=== #
+    # Parsing sub-methods (extracted from parse_arguments for readability)
+    # ===------------------------------------------------------------------=== #
+
+    def _run_parse_loop(
+        self,
+        mut tokens_to_parse: List[String],
+        mut result: ParseResult,
+        collect_unknown: Bool,
+    ) raises:
+        """Shared lexing/dispatch loop used by both ``parse_arguments`` and
+        ``parse_known_arguments``.
+
+        See ``docs/parsing_algorithm.md`` for the full step-by-step
+        description, including the exact match order of every branch
+        and the errors each step can raise.
+
+        When ``collect_unknown`` is True, an unrecognised long/short
+        option is appended to ``result._unknown_arguments`` instead of
+        being routed through the option parsers. The decision is made
+        up-front by ``_is_known_option``: tokens that *do* match a
+        registered option are dispatched to the regular parser, so
+        real parse errors on known options (missing required value,
+        invalid choice, ambiguous prefix, ...) still propagate. This
+        is the only behavioural difference between ``parse_arguments``
+        and ``parse_known_arguments``.
+
+        Validation (defaults, implications, prompting, confirmation,
+        constraint checks) is **not** performed here — callers run
+        whatever post-parse phases they need.
+        """
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
         self._preprocess_cjk_arguments(tokens_to_parse)
 
@@ -2625,29 +2446,22 @@ struct Command(Copyable, Movable, Writable):
             if self.arguments[i]._is_positional:
                 result._positional_names.append(self.arguments[i].name)
 
-        var i: Int = 1
-        var stop_parsing_options = False
-
+        # Show help when invoked with no arguments (if enabled).
         if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
             print(self._generate_help())
             exit(0)
 
-        # Remainder positional detection (same as parse_arguments).
-        var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.arguments)):
-            if self.arguments[_ri]._is_remainder:
-                var slot: Int = 0
-                for _rj in range(len(self.arguments)):
-                    if self.arguments[_rj]._is_positional:
-                        if self.arguments[_rj].name == self.arguments[_ri].name:
-                            remainder_pos_idx = slot
-                            break
-                        slot += 1
-                break
+        # Cache the remainder positional slot (if any).
+        var remainder_pos_idx = self._find_remainder_slot()
+
+        # Skip argv[0] and start from argv[1].
+        var i: Int = 1
+        var stop_parsing_options = False
 
         while i < len(tokens_to_parse):
             var token = tokens_to_parse[i]
 
+            # Handle "--" stop marker.
             if token == "--" and not stop_parsing_options:
                 stop_parsing_options = True
                 i += 1
@@ -2658,7 +2472,8 @@ struct Command(Copyable, Movable, Writable):
                 i += 1
                 continue
 
-            # Remainder mode.
+            # Remainder mode: once the current positional slot is the
+            # remainder slot, swallow ALL remaining tokens verbatim.
             if (
                 remainder_pos_idx >= 0
                 and len(result._positionals) >= remainder_pos_idx
@@ -2677,7 +2492,7 @@ struct Command(Copyable, Movable, Writable):
                 print(self.name + " " + self.version)
                 exit(0)
 
-            # Completions (long-option form).
+            # Built-in --<completions_name> <shell> (long-option form).
             if (
                 self._completions_enabled
                 and not self._completions_is_subcommand
@@ -2700,7 +2515,9 @@ struct Command(Copyable, Movable, Writable):
                     )
                     exit(2)
 
-            # ── allow_hyphen_values (same logic as parse_arguments) ──
+            # ── allow_hyphen_values ─────────────────────────────────
+            # If the next positional slot accepts dash-prefixed tokens
+            # and this token is NOT a known option, consume as positional.
             if token.startswith("-") and len(token) > 1:
                 var _ahv_consumed = False
                 var _ahv_slot = len(result._positionals)
@@ -2718,19 +2535,25 @@ struct Command(Copyable, Movable, Writable):
                             break
                 if _ahv_consumed:
                     continue
-            # ────────────────────────────────────────────────────────
 
-            # Long option — try to parse; collect as unknown if it fails.
+            # Long option: --key, --key=value, --key value.
             if token.startswith("--"):
-                try:
-                    i = self._parse_long_option(tokens_to_parse, i, result)
-                except:
+                # In `collect_unknown` mode, only *unrecognised* long
+                # options are diverted into `_unknown_arguments`; real
+                # parse errors on *known* options (missing required value,
+                # ambiguous prefix, invalid choice, ...) must still raise
+                # so that callers can surface them. This matches the
+                # docstring of `parse_known_arguments`.
+                if collect_unknown and not self._is_known_option(token):
                     result._unknown_arguments.append(token)
                     i += 1
+                else:
+                    i = self._parse_long_option(tokens_to_parse, i, result)
                 continue
 
-            # Short option — try to parse; collect as unknown if it fails.
+            # Short option: -k, -k value, -abc, -ofile.txt.
             if token.startswith("-") and len(token) > 1:
+                # Negative-number detection (argparse-style).
                 if _looks_like_number(token):
                     var has_digit_short = False
                     for _ni in range(len(self.arguments)):
@@ -2742,7 +2565,7 @@ struct Command(Copyable, Movable, Writable):
                         result._positionals.append(token)
                         i += 1
                         continue
-                # ── Negative-expression detection (same as parse_arguments) ──
+                # Negative-expression detection.
                 if (
                     self._allow_negative_expressions
                     and not self._is_known_option(token)
@@ -2750,23 +2573,30 @@ struct Command(Copyable, Movable, Writable):
                     result._positionals.append(token)
                     i += 1
                     continue
-                # ─────────────────────────────────────────────────────────────
-                try:
-                    var key = String(token[byte=1:])
-                    if len(key) == 1:
-                        i = self._parse_short_single(
-                            key, tokens_to_parse, i, result
-                        )
-                    else:
-                        i = self._parse_short_merged(
-                            key, tokens_to_parse, i, result
-                        )
-                except:
+                # Short option dispatch. As with long options, the
+                # ``collect_unknown`` mode only diverts *unrecognised*
+                # short options to ``_unknown_arguments``; real parse
+                # errors on known shorts (e.g. missing required value)
+                # still raise.
+                var key = String(token[byte=1:])
+                # An unrecognised short option is one whose leading
+                # character is not a registered short. ``_is_known_option``
+                # handles single-char and merged forms (``-abc``,
+                # ``-ofile``) the same way: it inspects the first char.
+                if collect_unknown and not self._is_known_option(token):
                     result._unknown_arguments.append(token)
                     i += 1
+                elif len(key) == 1:
+                    i = self._parse_short_single(
+                        key, tokens_to_parse, i, result
+                    )
+                else:
+                    i = self._parse_short_merged(
+                        key, tokens_to_parse, i, result
+                    )
                 continue
 
-            # Completions subcommand.
+            # Built-in completions subcommand (subcommand form).
             if (
                 self._completions_enabled
                 and self._completions_is_subcommand
@@ -2788,7 +2618,7 @@ struct Command(Copyable, Movable, Writable):
                     )
                     exit(2)
 
-            # Subcommand dispatch.
+            # Subcommand dispatch (or fall through to positional).
             if len(self.subcommands) > 0:
                 var new_i = self._dispatch_subcommand(
                     token, tokens_to_parse, i, result
@@ -2799,16 +2629,6 @@ struct Command(Copyable, Movable, Writable):
 
             result._positionals.append(token)
             i += 1
-
-        self._apply_defaults(result)
-        self._apply_implications(result)
-        self._validate(result)
-
-        return result^
-
-    # ===------------------------------------------------------------------=== #
-    # Parsing sub-methods (extracted from parse_arguments for readability)
-    # ===------------------------------------------------------------------=== #
 
     def _parse_long_option(
         self, raw_tokens: List[String], start: Int, mut result: ParseResult
@@ -2892,13 +2712,7 @@ struct Command(Copyable, Movable, Writable):
         if is_negation:
             result._flags[matched.name] = False
         elif matched._is_count and not has_eq:
-            # Count flag: increment counter.
-            var cur: Int = 0
-            try:
-                cur = result._counts[matched.name]
-            except:
-                pass
-            result._counts[matched.name] = cur + 1
+            Self._increment_count(matched.name, result)
         elif matched._is_flag and not has_eq:
             result._flags[matched.name] = True
         elif matched._number_of_values > 0:
@@ -2911,20 +2725,7 @@ struct Command(Copyable, Movable, Writable):
                     + String(matched._number_of_values)
                     + " values; '=' syntax is not supported"
                 )
-            if matched.name not in result._lists:
-                result._lists[matched.name] = List[String]()
-            for _n in range(matched._number_of_values):
-                i += 1
-                if i >= len(raw_tokens):
-                    self._error(
-                        "Option '--"
-                        + key
-                        + "' requires "
-                        + String(matched._number_of_values)
-                        + " values"
-                    )
-                self._validate_choices(matched, raw_tokens[i])
-                result._lists[matched.name].append(raw_tokens[i])
+            i = self._consume_nargs(matched, raw_tokens, i, "--" + key, result)
         else:
             if not has_eq:
                 if matched._require_equals:
@@ -2944,13 +2745,7 @@ struct Command(Copyable, Movable, Writable):
                     if i >= len(raw_tokens):
                         self._error("Option '--" + key + "' requires a value")
                     value = raw_tokens[i]
-            if matched._is_map:
-                self._store_map_value(matched, value, result)
-            elif matched._is_append:
-                self._store_append_value(matched, value, result)
-            else:
-                self._validate_choices(matched, value)
-                result._values[matched.name] = value
+            self._store_scalar_value(matched, value, result)
         i += 1
         return i
 
@@ -2980,53 +2775,23 @@ struct Command(Copyable, Movable, Writable):
                 "'-" + key + "' is deprecated: " + matched._deprecated_msg
             )
         if matched._is_count:
-            var cur: Int = 0
-            try:
-                cur = result._counts[matched.name]
-            except:
-                pass
-            result._counts[matched.name] = cur + 1
+            Self._increment_count(matched.name, result)
         elif matched._is_flag:
             result._flags[matched.name] = True
         elif matched._number_of_values > 0:
             # nargs: consume exactly N values.
-            if matched.name not in result._lists:
-                result._lists[matched.name] = List[String]()
-            for _n in range(matched._number_of_values):
-                i += 1
-                if i >= len(raw_tokens):
-                    self._error(
-                        "Option '-"
-                        + key
-                        + "' requires "
-                        + String(matched._number_of_values)
-                        + " values"
-                    )
-                self._validate_choices(matched, raw_tokens[i])
-                result._lists[matched.name].append(raw_tokens[i])
+            i = self._consume_nargs(matched, raw_tokens, i, "-" + key, result)
         else:
+            var val: String
             if matched._has_default_if_no_value:
                 # No value given — use default-if-no-value.
-                var val = matched._default_if_no_value
-                if matched._is_map:
-                    self._store_map_value(matched, val, result)
-                elif matched._is_append:
-                    self._store_append_value(matched, val, result)
-                else:
-                    self._validate_choices(matched, val)
-                    result._values[matched.name] = val
+                val = matched._default_if_no_value
             else:
                 i += 1
                 if i >= len(raw_tokens):
                     self._error("Option '-" + key + "' requires a value")
-                var val = raw_tokens[i]
-                if matched._is_map:
-                    self._store_map_value(matched, val, result)
-                elif matched._is_append:
-                    self._store_append_value(matched, val, result)
-                else:
-                    self._validate_choices(matched, val)
-                    result._values[matched.name] = val
+                val = raw_tokens[i]
+            self._store_scalar_value(matched, val, result)
         i += 1
         return i
 
@@ -3073,12 +2838,7 @@ struct Command(Copyable, Movable, Writable):
                         "'-" + ch + "' is deprecated: " + m._deprecated_msg
                     )
                 if m._is_count:
-                    var cur: Int = 0
-                    try:
-                        cur = result._counts[m.name]
-                    except:
-                        pass
-                    result._counts[m.name] = cur + 1
+                    Self._increment_count(m.name, result)
                     j += 1
                 elif m._is_flag:
                     result._flags[m.name] = True
@@ -3086,20 +2846,7 @@ struct Command(Copyable, Movable, Writable):
                 elif m._number_of_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
-                    if m.name not in result._lists:
-                        result._lists[m.name] = List[String]()
-                    for _n in range(m._number_of_values):
-                        i += 1
-                        if i >= len(raw_tokens):
-                            self._error(
-                                "Option '-"
-                                + ch
-                                + "' requires "
-                                + String(m._number_of_values)
-                                + " values"
-                            )
-                        self._validate_choices(m, raw_tokens[i])
-                        result._lists[m.name].append(raw_tokens[i])
+                    i = self._consume_nargs(m, raw_tokens, i, "-" + ch, result)
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -3117,13 +2864,7 @@ struct Command(Copyable, Movable, Writable):
                                     "Option '-" + ch + "' requires a value"
                                 )
                             val = raw_tokens[i]
-                    if m._is_map:
-                        self._store_map_value(m, val, result)
-                    elif m._is_append:
-                        self._store_append_value(m, val, result)
-                    else:
-                        self._validate_choices(m, val)
-                        result._values[m.name] = val
+                    self._store_scalar_value(m, val, result)
                     j = len(key)  # break
         else:
             # First char takes a value — rest of string is the
@@ -3138,30 +2879,12 @@ struct Command(Copyable, Movable, Writable):
                 )
             if first_match._number_of_values > 0:
                 # nargs: consume N values from argv (ignore attached).
-                if first_match.name not in result._lists:
-                    result._lists[first_match.name] = List[String]()
-                for _n in range(first_match._number_of_values):
-                    i += 1
-                    if i >= len(raw_tokens):
-                        self._error(
-                            "Option '-"
-                            + first_char
-                            + "' requires "
-                            + String(first_match._number_of_values)
-                            + " values"
-                        )
-                    self._validate_choices(first_match, raw_tokens[i])
-                    result._lists[first_match.name].append(raw_tokens[i])
-            elif first_match._is_map:
-                var val = String(key[byte=1:])
-                self._store_map_value(first_match, val, result)
-            elif first_match._is_append:
-                var val = String(key[byte=1:])
-                self._store_append_value(first_match, val, result)
+                i = self._consume_nargs(
+                    first_match, raw_tokens, i, "-" + first_char, result
+                )
             else:
                 var val = String(key[byte=1:])
-                self._validate_choices(first_match, val)
-                result._values[first_match.name] = val
+                self._store_scalar_value(first_match, val, result)
         i += 1
         return i
 
@@ -3877,8 +3600,30 @@ struct Command(Copyable, Movable, Writable):
         if token.startswith("--"):
             var key = String(token[byte=2:])
             var eq = key.find("=")
-            if eq >= 0:
+            var has_eq = eq >= 0
+            if has_eq:
                 key = String(key[byte=:eq])
+            # Recognise the `--no-<flag>` negation form for negatable long
+            # options. Without this, `allow_hyphen_values` could swallow
+            # `--no-foo` as a positional even though `foo` is a known
+            # negatable flag. We mirror `_parse_long_option`'s resolution
+            # rules here, which accept both an exact match and an
+            # unambiguous prefix (e.g. `--no-col` -> `--no-color`).
+            #
+            # Negation is only valid without `=`: `_parse_long_option`
+            # treats `--no-color=value` as a regular long option named
+            # `no-color`, not as the negation of `color`. Skip the
+            # negation special-case when the token uses `=` syntax so
+            # that `--no-flag=value` is classified as known iff there is
+            # an actual registered long name `no-flag`.
+            if not has_eq and key.startswith("no-") and len(key) > 3:
+                var neg_key = String(key[byte=3:])
+                for idx in range(len(self.arguments)):
+                    if self.arguments[idx]._is_negatable and (
+                        self.arguments[idx]._long_name == neg_key
+                        or self.arguments[idx]._long_name.startswith(neg_key)
+                    ):
+                        return True
             for idx in range(len(self.arguments)):
                 if self.arguments[idx]._long_name == key:
                     return True
@@ -4063,7 +3808,7 @@ struct Command(Copyable, Movable, Writable):
         )  # _error() always raises; satisfies Mojo's return checker
 
     def _find_subcommand(self, name: String) -> Int:
-        """Returns the index of the registered subcommand matching ``name``.
+        """Returns the index of the registered subcommand matching `name`.
 
         Checks primary names first, then aliases.
 
@@ -4071,7 +3816,7 @@ struct Command(Copyable, Movable, Writable):
             name: Subcommand name or alias to look up.
 
         Returns:
-            The index into ``self.subcommands``, or ``-1`` if not found.
+            The index into `self.subcommands`, or `-1` if not found.
         """
         # 1. Exact match on primary name.
         for i in range(len(self.subcommands)):
@@ -4094,7 +3839,7 @@ struct Command(Copyable, Movable, Writable):
             name: The internal argument name.
 
         Returns:
-            A string such as ``'--output'``, ``'-o'``, or ``'name'``.
+            A string such as `'--output'`, `'-o'`, or `'name'`.
         """
         for i in range(len(self.arguments)):
             if self.arguments[i].name == name:
@@ -4134,6 +3879,90 @@ struct Command(Copyable, Movable, Writable):
             + allowed
             + ")"
         )
+
+    def _store_scalar_value(
+        self, argument: Argument, value: String, mut result: ParseResult
+    ) raises:
+        """Stores a single value for a scalar/append/map argument.
+
+        Centralises the three-way dispatch repeated by every option
+        parser (long, short-single, short-merged):
+
+        - map arguments parse `key=value` via `_store_map_value`;
+        - append arguments accumulate via `_store_append_value`
+          (with delimiter splitting handled there);
+        - scalar arguments validate choices and overwrite `_values`.
+        """
+        if argument._is_map:
+            self._store_map_value(argument, value, result)
+        elif argument._is_append:
+            self._store_append_value(argument, value, result)
+        else:
+            self._validate_choices(argument, value)
+            result._values[argument.name] = value
+
+    @staticmethod
+    def _increment_count(name: String, mut result: ParseResult):
+        """Increments the count for a count-flag argument (`-vvv` style)."""
+        var cur: Int = 0
+        try:
+            cur = result._counts[name]
+        except:
+            pass
+        result._counts[name] = cur + 1
+
+    def _consume_nargs(
+        self,
+        argument: Argument,
+        raw_tokens: List[String],
+        start: Int,
+        display: String,
+        mut result: ParseResult,
+    ) raises -> Int:
+        """Consumes exactly `argument._number_of_values` value tokens.
+
+        Used by all three option parsers.  `display` is the user-facing
+        option spelling (`--key` or `-k`) used in the error message;
+        `start` is the index of the option token itself, and the
+        returned index points at the last consumed value (the caller
+        advances past it).
+        """
+        var i = start
+        if argument.name not in result._lists:
+            result._lists[argument.name] = List[String]()
+        for _n in range(argument._number_of_values):
+            i += 1
+            if i >= len(raw_tokens):
+                self._error(
+                    "Option '"
+                    + display
+                    + "' requires "
+                    + String(argument._number_of_values)
+                    + " values"
+                )
+            self._validate_choices(argument, raw_tokens[i])
+            result._lists[argument.name].append(raw_tokens[i])
+        return i
+
+    def _find_remainder_slot(self) -> Int:
+        """Returns the positional-slot index of the remainder argument
+        (the one declared with `.remainder()`), or `-1` if none.
+
+        Extracted so that `parse_arguments` and `parse_known_arguments`
+        share a single canonical implementation.
+        """
+        var remainder_pos_idx: Int = -1
+        for _ri in range(len(self.arguments)):
+            if self.arguments[_ri]._is_remainder:
+                var slot: Int = 0
+                for _rj in range(len(self.arguments)):
+                    if self.arguments[_rj]._is_positional:
+                        if self.arguments[_rj].name == self.arguments[_ri].name:
+                            remainder_pos_idx = slot
+                            break
+                        slot += 1
+                break
+        return remainder_pos_idx
 
     def _store_append_value(
         self, argument: Argument, value: String, mut result: ParseResult
@@ -4495,9 +4324,9 @@ struct Command(Copyable, Movable, Writable):
         """Generates the 'options:', group, and 'global options:' sections.
 
         Separates local options from persistent (global) options and
-        displays them under distinct headings.  Options with a ``.group()``
-        are shown under their group heading.  Built-in ``--help`` and
-        ``--version`` are always appended to the ungrouped local section.
+        displays them under distinct headings.  Options with a `.group()`
+        are shown under their group heading.  Built-in `--help` and
+        `--version` are always appended to the ungrouped local section.
 
         Args:
             short_option_color: ANSI colour code for short option names.
@@ -4911,9 +4740,9 @@ struct Command(Copyable, Movable, Writable):
     ) -> String:
         """Generates the 'tips:' section with hints and user-defined tips.
 
-        Automatically adds a ``--`` separator hint when positional
+        Automatically adds a `--` separator hint when positional
         arguments are registered.  User-defined tips (added via
-        ``add_tip()``) are always included.
+        `add_tip()`) are always included.
 
         Args:
             header_color: ANSI colour code for section headers.
@@ -4992,11 +4821,11 @@ struct Command(Copyable, Movable, Writable):
     def generate_completion[shell: StringLiteral](self) -> String:
         """Generates a shell completion script (compile-time validated).
 
-        The shell name is validated at compile time via ``comptime assert``.
+        The shell name is validated at compile time via `comptime assert`.
         Use this overload when the shell is known at development time.
 
         Parameters:
-            shell: One of ``"bash"``, ``"zsh"``, or ``"fish"``
+            shell: One of `"bash"`, `"zsh"`, or `"fish"`
                    (case-sensitive). Invalid names are caught at compile
                    time.
 
@@ -5026,10 +4855,10 @@ struct Command(Copyable, Movable, Writable):
         """Generates a shell completion script (runtime dispatch).
 
         The shell name is validated at runtime.  Use this overload when
-        the shell name comes from user input (e.g. ``--completions``).
+        the shell name comes from user input (e.g. `--completions`).
 
         Args:
-            shell: One of ``"bash"``, ``"zsh"``, or ``"fish"``
+            shell: One of `"bash"`, `"zsh"`, or `"fish"`
                    (case-insensitive).
 
         Returns:
@@ -5052,9 +4881,9 @@ struct Command(Copyable, Movable, Writable):
     def _completion_fish(self) -> String:
         """Generates a Fish shell completion script.
 
-        Each option/subcommand becomes a single ``complete`` line.
+        Each option/subcommand becomes a single `complete` line.
         Subcommand-specific completions use
-        ``-n '__fish_seen_subcommand_from <sub>'``
+        `-n '__fish_seen_subcommand_from <sub>'`
         to scope them.
 
         Returns:
@@ -5209,15 +5038,15 @@ struct Command(Copyable, Movable, Writable):
         condition: String,
         persistent_only: Bool = False,
     ) -> String:
-        """Generates ``complete`` lines for this command's own arguments.
+        """Generates `complete` lines for this command's own arguments.
 
         Args:
-            command_name: The top-level command name (for ``complete -c``).
+            command_name: The top-level command name (for `complete -c`).
             condition: Fish condition string (empty for root-level).
             persistent_only: When True, only emit persistent arguments.
 
         Returns:
-            Lines of ``complete`` commands for non-hidden, non-positional arguments.
+            Lines of `complete` commands for non-hidden, non-positional arguments.
         """
         var s = String("")
         for i in range(len(self.arguments)):
@@ -5254,7 +5083,7 @@ struct Command(Copyable, Movable, Writable):
             text: The text to escape.
 
         Returns:
-            The escaped text with ``'`` replaced by ``\\'``.
+            The escaped text with `'` replaced by `\\'`.
         """
         var result = String("")
         for ch in text.codepoint_slices():
@@ -5265,7 +5094,7 @@ struct Command(Copyable, Movable, Writable):
         return result
 
     def _completion_zsh(self) -> String:
-        """Generates a Zsh completion script using ``_arguments``.
+        """Generates a Zsh completion script using `_arguments`.
 
         Returns:
             A complete Zsh completion script.
@@ -5420,14 +5249,14 @@ struct Command(Copyable, Movable, Writable):
         return s
 
     def _zsh_argument_spec(self, argument: Argument) -> String:
-        """Builds a single ``_arguments`` spec string for an argument.
+        """Builds a single `_arguments` spec string for an argument.
 
         Args:
             argument: The argument to generate a spec for.
 
         Returns:
-            A ``_arguments``-compatible spec string, e.g.
-            ``'--verbose[Enable verbose output]'``.
+            A `_arguments`-compatible spec string, e.g.
+            `'--verbose[Enable verbose output]'`.
         """
         var spec = String("")
         var desc = self._zsh_escape(
@@ -5492,8 +5321,8 @@ struct Command(Copyable, Movable, Writable):
     def _zsh_escape(self, text: String) -> String:
         """Escapes special characters in text for Zsh completion specs.
 
-        Escapes ``[``, ``]``, ``'``, and ``:`` which have special meaning
-        in ``_arguments`` spec syntax.
+        Escapes `[`, `]`, `'`, and `:` which have special meaning
+        in `_arguments` spec syntax.
 
         Args:
             text: The text to escape.
@@ -5514,7 +5343,7 @@ struct Command(Copyable, Movable, Writable):
         return result
 
     def _completion_bash(self) -> String:
-        """Generates a Bash completion script using ``complete -F``.
+        """Generates a Bash completion script using `complete -F`.
 
         Returns:
             A complete Bash completion script.
@@ -5574,7 +5403,7 @@ struct Command(Copyable, Movable, Writable):
     def _bash_with_subcommands(self) -> String:
         """Generates the body of a Bash completion function with subcommands.
 
-        Uses ``COMP_WORDS`` scanning to detect which subcommand is active,
+        Uses `COMP_WORDS` scanning to detect which subcommand is active,
         then scopes completions accordingly.
 
         Returns:
@@ -5674,13 +5503,13 @@ struct Command(Copyable, Movable, Writable):
         return s
 
     def _bash_prev_cases(self) -> String:
-        """Generates ``case $prev`` blocks for options with choices.
+        """Generates `case $prev` blocks for options with choices.
 
         When the previous word is an option that has a fixed set of
         choices, completes those values.
 
         Returns:
-            A ``case``/``esac`` block string, or empty if no choices.
+            A `case`/`esac` block string, or empty if no choices.
         """
         var has_choices = (
             self._completions_enabled and not self._completions_is_subcommand
@@ -5734,9 +5563,9 @@ struct Command(Copyable, Movable, Writable):
     def _bash_prev_cases_for_arguments(
         self, arguments: List[Argument], indent: String
     ) -> String:
-        """Generates ``case $prev`` blocks for a given list of arguments.
+        """Generates `case $prev` blocks for a given list of arguments.
 
-        Used by ``_bash_with_subcommands()`` to emit choice-value
+        Used by `_bash_with_subcommands()` to emit choice-value
         completion for both root-level and subcommand-level options.
 
         Args:
@@ -5744,7 +5573,7 @@ struct Command(Copyable, Movable, Writable):
             indent: Whitespace prefix for each emitted line.
 
         Returns:
-            A ``case``/``esac`` block string, or empty if no choices.
+            A `case`/`esac` block string, or empty if no choices.
         """
         var has_choices = False
         for i in range(len(arguments)):
