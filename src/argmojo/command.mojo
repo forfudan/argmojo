@@ -2470,11 +2470,15 @@ struct Command(Copyable, Movable, Writable):
                ├─ Short option (single, merged flags, attached value).
                └─ Otherwise: subcommand dispatch or positional argument.
 
-        When ``collect_unknown`` is True, exceptions raised by the
-        long/short option parsers are caught and the offending token
-        is appended to ``result._unknown_arguments`` instead of
-        propagating; this is the only behavioural difference between
-        ``parse_arguments`` and ``parse_known_arguments``.
+        When ``collect_unknown`` is True, an unrecognised long/short
+        option is appended to ``result._unknown_arguments`` instead of
+        being routed through the option parsers. The decision is made
+        up-front by ``_is_known_option``: tokens that *do* match a
+        registered option are dispatched to the regular parser, so
+        real parse errors on known options (missing required value,
+        invalid choice, ambiguous prefix, ...) still propagate. This
+        is the only behavioural difference between ``parse_arguments``
+        and ``parse_known_arguments``.
 
         Validation (defaults, implications, prompting, confirmation,
         constraint checks) is **not** performed here — callers run
@@ -3647,13 +3651,15 @@ struct Command(Copyable, Movable, Writable):
             # Recognise the `--no-<flag>` negation form for negatable long
             # options. Without this, `allow_hyphen_values` could swallow
             # `--no-foo` as a positional even though `foo` is a known
-            # negatable flag.
+            # negatable flag. We mirror `_parse_long_option`'s resolution
+            # rules here, which accept both an exact match and an
+            # unambiguous prefix (e.g. `--no-col` -> `--no-color`).
             if key.startswith("no-") and len(key) > 3:
                 var neg_key = String(key[byte=3:])
                 for idx in range(len(self.arguments)):
-                    if (
-                        self.arguments[idx]._is_negatable
-                        and self.arguments[idx]._long_name == neg_key
+                    if self.arguments[idx]._is_negatable and (
+                        self.arguments[idx]._long_name == neg_key
+                        or self.arguments[idx]._long_name.startswith(neg_key)
                     ):
                         return True
             for idx in range(len(self.arguments)):

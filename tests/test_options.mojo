@@ -1508,7 +1508,7 @@ def test_parse_known_known_short_missing_value_still_raises() raises:
     )
 
 
-def test_parse_known_negation_not_swallowed_by_hyphen_values() raises:
+def test_negation_not_swallowed_by_hyphen_values() raises:
     """``--no-<flag>`` of a registered negatable option must be
     recognised as a known option and NOT consumed as a positional even
     when the next positional slot has allow_hyphen_values()."""
@@ -1536,6 +1536,66 @@ def test_parse_known_negation_not_swallowed_by_hyphen_values() raises:
         "pat",
         msg="positional must be 'pat', not '--no-color'",
     )
+
+
+def test_parse_known_negation_not_swallowed_by_hyphen_values() raises:
+    """Same as above but exercises ``parse_known_arguments``: a known
+    negatable ``--no-<flag>`` must NOT end up in ``_unknown_arguments``
+    nor be eaten by the next allow_hyphen_values positional."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colorize").long["color"]().flag().negatable()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    var args: List[String] = ["test", "--no-color", "pat"]
+    var result = command.parse_known_arguments(args)
+    assert_false(
+        result.get_flag("color"),
+        msg="--no-color must toggle the negatable flag off",
+    )
+    assert_equal(
+        result.get_string("expr"),
+        "pat",
+        msg="positional must be 'pat', not '--no-color'",
+    )
+    assert_equal(
+        len(result.get_unknown_arguments()),
+        0,
+        msg="--no-color must not be classified as unknown",
+    )
+
+
+def test_parse_known_negation_prefix_not_swallowed() raises:
+    """``--no-<prefix>`` of a registered negatable long must also be
+    classified as known so it goes through the normal parser (which
+    resolves the prefix), instead of being swallowed by an
+    allow_hyphen_values positional or filed as unknown."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colorize").long["color"]().flag().negatable()
+    )
+    command.add_argument(
+        Argument("expr", help="Expression")
+        .positional()
+        .required()
+        .allow_hyphen_values()
+    )
+
+    # --no-col is an unambiguous prefix for --no-color.
+    var args: List[String] = ["test", "--no-col", "pat"]
+    var result = command.parse_known_arguments(args)
+    assert_false(
+        result.get_flag("color"),
+        msg="--no-col (prefix of --no-color) must toggle the flag off",
+    )
+    assert_equal(result.get_string("expr"), "pat")
+    assert_equal(len(result.get_unknown_arguments()), 0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
