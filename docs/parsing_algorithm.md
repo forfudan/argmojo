@@ -32,6 +32,10 @@ parse_arguments(raw_tokens)
            ├── Built-in --<completions_name> <shell> (long form).
            ├── allow_hyphen_values fast-path.
            ├── Long option (--key, --key=value, --no-key) → _parse_long_option.
+           │   (Note: `--no-<flag>` negation is only recognised without `=`;
+           │    `--no-flag=value` is treated as a regular long option named
+           │    `no-flag` and will raise / be collected as unknown unless
+           │    such an option is actually registered.)
            ├── Short option (-k, -k value, -abc, -ofile) → _parse_short_*.
            ├── Built-in <completions_name> <shell> (subcommand form).
            ├── Subcommand dispatch.
@@ -103,6 +107,11 @@ _run_parse_loop(tokens, result, collect_unknown)
     │   └── result._positionals.append(token); i += 1
     │
     ├── 2.1.8  token startswith "--"  (long option)
+    │   │   note: `--no-<flag>` is recognised as the negation form only
+    │   │         when there is no `=` in the token; `--no-flag=value`
+    │   │         is parsed as a regular long option named `no-flag`
+    │   │         (and will raise / be collected as unknown if no such
+    │   │         option is registered).
     │   ├── if collect_unknown and not _is_known_option(token):
     │   │   └── result._unknown_arguments.append(token); i += 1
     │   └── else:
@@ -199,11 +208,14 @@ interrupted by interactive UI.
    makes repeated parses (tests, REPLs, completion) safe.
 2. **`_is_known_option` must mirror `_parse_long_option`'s resolution
    rules.** This includes `--no-<flag>` exact and prefix matches against
-   *negatable* long names. Whenever the long-option resolver gains a
-   new way to recognise a token, `_is_known_option` needs the
-   corresponding update or the `allow_hyphen_values` fast-path (2.1.7)
-   and the `parse_known_arguments` unknown-collection logic (2.1.8 /
-   2.1.9) will silently misclassify tokens.
+   *negatable* long names, but **only when the token has no `=`** —
+   `--no-flag=value` is not negation and must be classified the same
+   way `_parse_long_option` would (i.e. as the long option `no-flag`).
+   Whenever the long-option resolver gains a new way to recognise a
+   token, `_is_known_option` needs the corresponding update or the
+   `allow_hyphen_values` fast-path (2.1.7) and the
+   `parse_known_arguments` unknown-collection logic (2.1.8 / 2.1.9)
+   will silently misclassify tokens.
 3. **`collect_unknown` only diverts unrecognised options.** Real parse
    errors on *known* options always propagate — the
    `parse_known_arguments` docstring promises exactly this and it is

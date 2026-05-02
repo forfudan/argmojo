@@ -3600,7 +3600,8 @@ struct Command(Copyable, Movable, Writable):
         if token.startswith("--"):
             var key = String(token[byte=2:])
             var eq = key.find("=")
-            if eq >= 0:
+            var has_eq = eq >= 0
+            if has_eq:
                 key = String(key[byte=:eq])
             # Recognise the `--no-<flag>` negation form for negatable long
             # options. Without this, `allow_hyphen_values` could swallow
@@ -3608,7 +3609,14 @@ struct Command(Copyable, Movable, Writable):
             # negatable flag. We mirror `_parse_long_option`'s resolution
             # rules here, which accept both an exact match and an
             # unambiguous prefix (e.g. `--no-col` -> `--no-color`).
-            if key.startswith("no-") and len(key) > 3:
+            #
+            # Negation is only valid without `=`: `_parse_long_option`
+            # treats `--no-color=value` as a regular long option named
+            # `no-color`, not as the negation of `color`. Skip the
+            # negation special-case when the token uses `=` syntax so
+            # that `--no-flag=value` is classified as known iff there is
+            # an actual registered long name `no-flag`.
+            if not has_eq and key.startswith("no-") and len(key) > 3:
                 var neg_key = String(key[byte=3:])
                 for idx in range(len(self.arguments)):
                     if self.arguments[idx]._is_negatable and (

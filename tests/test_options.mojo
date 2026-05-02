@@ -1598,6 +1598,32 @@ def test_parse_known_negation_prefix_not_swallowed() raises:
     assert_equal(len(result.get_unknown_arguments()), 0)
 
 
+def test_parse_known_negation_with_equals_is_unknown() raises:
+    """``--no-<flag>=value`` is NOT the negation form: ``_parse_long_option``
+    only treats ``--no-<flag>`` as negation when there is no ``=`` in the
+    token. ``_is_known_option`` must agree, otherwise
+    ``parse_known_arguments`` would route ``--no-color=false`` through
+    the long-option parser (which raises ``Unknown option``) instead of
+    silently collecting it as unknown.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colorize").long["color"]().flag().negatable()
+    )
+
+    var args: List[String] = ["test", "--no-color=false"]
+    var result = command.parse_known_arguments(args)
+    # Flag must remain at its default (not toggled by the malformed
+    # token), and the token must end up in the unknown-argument bucket.
+    assert_false(
+        result.get_flag("color"),
+        msg="--no-color=false must not toggle 'color'",
+    )
+    var unknowns = result.get_unknown_arguments()
+    assert_equal(len(unknowns), 1)
+    assert_equal(unknowns[0], "--no-color=false")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # allow_hyphen_values() / stdin convention
 # ═══════════════════════════════════════════════════════════════════════════════
