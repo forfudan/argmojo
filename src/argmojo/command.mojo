@@ -2372,200 +2372,11 @@ struct Command(Copyable, Movable, Writable):
         #         self.name,
         #     )
 
-        # ── CJK auto-correction (fullwidth + punctuation) ───────────
-        self._preprocess_cjk_arguments(tokens_to_parse)
-
-        # Register positional argument names in order.
-        for i in range(len(self.arguments)):
-            if self.arguments[i]._is_positional:
-                result._positional_names.append(self.arguments[i].name)
-
-        # Skip argv[0] and start from argv[1].
-        var i: Int = 1
-        var stop_parsing_options = False
-
-        # Show help when invoked with no arguments (if enabled).
-        if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
-            print(self._generate_help())
-            exit(0)
-
         # === PARSING PHASE === #
+        # Delegate the lexing/dispatch loop to the shared implementation.
+        self._run_parse_loop(tokens_to_parse, result, False)
 
-        # Check if there is a remainder positional and which slot it is.
-        var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.arguments)):
-            if self.arguments[_ri]._is_remainder:
-                # Find its positional slot index.
-                var slot: Int = 0
-                for _rj in range(len(self.arguments)):
-                    if self.arguments[_rj]._is_positional:
-                        if self.arguments[_rj].name == self.arguments[_ri].name:
-                            remainder_pos_idx = slot
-                            break
-                        slot += 1
-                break
-
-        while i < len(tokens_to_parse):
-            var token = tokens_to_parse[i]
-
-            # Handle "--" stop marker.
-            if token == "--" and not stop_parsing_options:
-                stop_parsing_options = True
-                i += 1
-                continue
-
-            if stop_parsing_options:
-                result._positionals.append(token)
-                i += 1
-                continue
-
-            # ── Remainder mode: if the current positional slot is a
-            # remainder argument, consume ALL remaining tokens verbatim. ──
-            if (
-                remainder_pos_idx >= 0
-                and len(result._positionals) >= remainder_pos_idx
-            ):
-                # We've reached or passed the remainder slot — consume everything.
-                result._positionals.append(token)
-                i += 1
-                continue
-
-            # Handle --help / -h / -?
-            if token == "--help" or token == "-h" or token == "-?":
-                print(self._generate_help())
-                exit(0)
-
-            # Handle --version / -V
-            if token == "--version" or token == "-V":
-                print(self.name + " " + self.version)
-                exit(0)
-
-            # Handle --<completions_name> <shell>  (built-in, like --help/--version)
-            if (
-                self._completions_enabled
-                and not self._completions_is_subcommand
-                and token == "--" + self._completions_name
-            ):
-                if i + 1 < len(tokens_to_parse):
-                    i += 1
-                    var shell_argument = tokens_to_parse[i]
-                    try:
-                        print(self.generate_completion(shell_argument))
-                    except e:
-                        self._error(String(e))
-                        exit(2)
-                    exit(0)
-                else:
-                    self._error(
-                        "--"
-                        + self._completions_name
-                        + " requires a shell name: bash, zsh, or fish"
-                    )
-                    exit(2)
-
-            # ── allow_hyphen_values ──────────────────────────────────
-            # If the next positional slot accepts dash-prefixed tokens
-            # and this token is NOT a known option, consume as positional.
-            if token.startswith("-") and len(token) > 1:
-                var _ahv_consumed = False
-                var _ahv_slot = len(result._positionals)
-                if _ahv_slot < len(result._positional_names):
-                    var _ahv_name = result._positional_names[_ahv_slot]
-                    for _ai in range(len(self.arguments)):
-                        if (
-                            self.arguments[_ai].name == _ahv_name
-                            and self.arguments[_ai]._allow_hyphen_values
-                        ):
-                            if not self._is_known_option(token):
-                                result._positionals.append(token)
-                                i += 1
-                                _ahv_consumed = True
-                            break
-                if _ahv_consumed:
-                    continue
-            # ────────────────────────────────────────────────────────
-
-            # Long option: --key, --key=value, --key value
-            if token.startswith("--"):
-                i = self._parse_long_option(tokens_to_parse, i, result)
-                continue
-
-            # Short option: -k, -k value, -abc (merged flags), -ofile.txt
-            if token.startswith("-") and len(token) > 1:
-                # ── Negative-number detection (argparse-style) ──────────────
-                # A token like "-10.18e3" is treated as a positional value when:
-                #   (a) allow_negative_numbers() was called explicitly, OR
-                #   (b) the token looks numeric AND no registered short option
-                #       uses a digit character (auto-detect, no naming clash).
-                if _looks_like_number(token):
-                    var has_digit_short = False
-                    for _ni in range(len(self.arguments)):
-                        var sn = self.arguments[_ni]._short_name
-                        if sn >= "0" and sn <= "9":
-                            has_digit_short = True
-                            break
-                    if self._allow_negative_numbers or not has_digit_short:
-                        result._positionals.append(token)
-                        i += 1
-                        continue
-                # ────────────────────────────────────────────────────────────
-                # ── Negative-expression detection ───────────────────────────
-                # A token like "-1/3*pi" is treated as a positional when
-                # allow_negative_expressions() was called.  Reuse the
-                # shared _is_known_option() helper so this stays aligned
-                # with parse_known_arguments() and avoids duplicate scans.
-                if (
-                    self._allow_negative_expressions
-                    and not self._is_known_option(token)
-                ):
-                    result._positionals.append(token)
-                    i += 1
-                    continue
-                # ────────────────────────────────────────────────────────────
-                var key = String(token[byte=1:])
-                if len(key) == 1:
-                    i = self._parse_short_single(
-                        key, tokens_to_parse, i, result
-                    )
-                else:
-                    i = self._parse_short_merged(
-                        key, tokens_to_parse, i, result
-                    )
-                continue
-
-            # Positional argument — check for subcommand dispatch first.
-            # Built-in completions subcommand (when in subcommand mode).
-            if (
-                self._completions_enabled
-                and self._completions_is_subcommand
-                and token == self._completions_name
-            ):
-                if i + 1 < len(tokens_to_parse):
-                    i += 1
-                    var shell_argument = tokens_to_parse[i]
-                    try:
-                        print(self.generate_completion(shell_argument))
-                    except e:
-                        self._error(String(e))
-                        exit(2)
-                    exit(0)
-                else:
-                    self._error(
-                        self._completions_name
-                        + " requires a shell name: bash, zsh, or fish"
-                    )
-                    exit(2)
-            if len(self.subcommands) > 0:
-                var new_i = self._dispatch_subcommand(
-                    token, tokens_to_parse, i, result
-                )
-                if new_i >= 0:
-                    i = new_i
-                    continue
-
-            result._positionals.append(token)
-            i += 1
-
+        # === POST-PARSE PHASE === #
         # Apply defaults, propagate implications, prompt for remaining
         # values, re-apply implications (in case prompts triggered new
         # ones), confirm if required, then validate constraints.
@@ -2614,9 +2425,61 @@ struct Command(Copyable, Movable, Writable):
         options reliably.
         """
         var result = ParseResult()
-
         var tokens_to_parse = raw_tokens.copy()
 
+        # Shared lex/dispatch loop (collect_unknown=True suppresses
+        # unknown-option errors and routes them to ``_unknown_arguments``).
+        self._run_parse_loop(tokens_to_parse, result, True)
+
+        # Post-parse: defaults, implications, validation.  Prompting and
+        # confirmation are intentionally skipped — callers of
+        # ``parse_known_arguments`` typically forward unknown options to
+        # a downstream tool and should not be interrupted by prompts.
+        self._apply_defaults(result)
+        self._apply_implications(result)
+        self._validate(result)
+
+        return result^
+
+    # ===------------------------------------------------------------------=== #
+    # Parsing sub-methods (extracted from parse_arguments for readability)
+    # ===------------------------------------------------------------------=== #
+
+    def _run_parse_loop(
+        self,
+        mut tokens_to_parse: List[String],
+        mut result: ParseResult,
+        collect_unknown: Bool,
+    ) raises:
+        """Shared lexing/dispatch loop used by both ``parse_arguments`` and
+        ``parse_known_arguments``.
+
+        High-level outline::
+
+            1. CJK auto-correction on ``tokens_to_parse``.
+            2. Register positional argument names.
+            3. If ``help_on_no_arguments`` is enabled and only argv[0]
+               is present: print help and exit.
+            4. Iterate from argv[1]:
+               ├─ ``--`` enters positional-only mode.
+               ├─ ``--help`` / ``-h`` / ``-?`` prints help and exits.
+               ├─ ``--version`` / ``-V`` prints version and exits.
+               ├─ Built-in completions option / subcommand.
+               ├─ allow_hyphen_values fast-path.
+               ├─ Long option (``--key`` / ``--key=value`` / ``--no-key``).
+               ├─ Short option (single, merged flags, attached value).
+               └─ Otherwise: subcommand dispatch or positional argument.
+
+        When ``collect_unknown`` is True, exceptions raised by the
+        long/short option parsers are caught and the offending token
+        is appended to ``result._unknown_arguments`` instead of
+        propagating; this is the only behavioural difference between
+        ``parse_arguments`` and ``parse_known_arguments``.
+
+        Validation (defaults, implications, prompting, confirmation,
+        constraint checks) is **not** performed here — callers run
+        whatever post-parse phases they need.
+        """
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
         self._preprocess_cjk_arguments(tokens_to_parse)
 
@@ -2625,29 +2488,22 @@ struct Command(Copyable, Movable, Writable):
             if self.arguments[i]._is_positional:
                 result._positional_names.append(self.arguments[i].name)
 
-        var i: Int = 1
-        var stop_parsing_options = False
-
+        # Show help when invoked with no arguments (if enabled).
         if self._help_on_no_arguments and len(tokens_to_parse) <= 1:
             print(self._generate_help())
             exit(0)
 
-        # Remainder positional detection (same as parse_arguments).
-        var remainder_pos_idx: Int = -1
-        for _ri in range(len(self.arguments)):
-            if self.arguments[_ri]._is_remainder:
-                var slot: Int = 0
-                for _rj in range(len(self.arguments)):
-                    if self.arguments[_rj]._is_positional:
-                        if self.arguments[_rj].name == self.arguments[_ri].name:
-                            remainder_pos_idx = slot
-                            break
-                        slot += 1
-                break
+        # Cache the remainder positional slot (if any).
+        var remainder_pos_idx = self._find_remainder_slot()
+
+        # Skip argv[0] and start from argv[1].
+        var i: Int = 1
+        var stop_parsing_options = False
 
         while i < len(tokens_to_parse):
             var token = tokens_to_parse[i]
 
+            # Handle "--" stop marker.
             if token == "--" and not stop_parsing_options:
                 stop_parsing_options = True
                 i += 1
@@ -2658,7 +2514,8 @@ struct Command(Copyable, Movable, Writable):
                 i += 1
                 continue
 
-            # Remainder mode.
+            # Remainder mode: once the current positional slot is the
+            # remainder slot, swallow ALL remaining tokens verbatim.
             if (
                 remainder_pos_idx >= 0
                 and len(result._positionals) >= remainder_pos_idx
@@ -2677,7 +2534,7 @@ struct Command(Copyable, Movable, Writable):
                 print(self.name + " " + self.version)
                 exit(0)
 
-            # Completions (long-option form).
+            # Built-in --<completions_name> <shell> (long-option form).
             if (
                 self._completions_enabled
                 and not self._completions_is_subcommand
@@ -2700,7 +2557,9 @@ struct Command(Copyable, Movable, Writable):
                     )
                     exit(2)
 
-            # ── allow_hyphen_values (same logic as parse_arguments) ──
+            # ── allow_hyphen_values ─────────────────────────────────
+            # If the next positional slot accepts dash-prefixed tokens
+            # and this token is NOT a known option, consume as positional.
             if token.startswith("-") and len(token) > 1:
                 var _ahv_consumed = False
                 var _ahv_slot = len(result._positionals)
@@ -2718,19 +2577,22 @@ struct Command(Copyable, Movable, Writable):
                             break
                 if _ahv_consumed:
                     continue
-            # ────────────────────────────────────────────────────────
 
-            # Long option — try to parse; collect as unknown if it fails.
+            # Long option: --key, --key=value, --key value.
             if token.startswith("--"):
-                try:
+                if collect_unknown:
+                    try:
+                        i = self._parse_long_option(tokens_to_parse, i, result)
+                    except:
+                        result._unknown_arguments.append(token)
+                        i += 1
+                else:
                     i = self._parse_long_option(tokens_to_parse, i, result)
-                except:
-                    result._unknown_arguments.append(token)
-                    i += 1
                 continue
 
-            # Short option — try to parse; collect as unknown if it fails.
+            # Short option: -k, -k value, -abc, -ofile.txt.
             if token.startswith("-") and len(token) > 1:
+                # Negative-number detection (argparse-style).
                 if _looks_like_number(token):
                     var has_digit_short = False
                     for _ni in range(len(self.arguments)):
@@ -2742,7 +2604,7 @@ struct Command(Copyable, Movable, Writable):
                         result._positionals.append(token)
                         i += 1
                         continue
-                # ── Negative-expression detection (same as parse_arguments) ──
+                # Negative-expression detection.
                 if (
                     self._allow_negative_expressions
                     and not self._is_known_option(token)
@@ -2750,8 +2612,21 @@ struct Command(Copyable, Movable, Writable):
                     result._positionals.append(token)
                     i += 1
                     continue
-                # ─────────────────────────────────────────────────────────────
-                try:
+                if collect_unknown:
+                    try:
+                        var key = String(token[byte=1:])
+                        if len(key) == 1:
+                            i = self._parse_short_single(
+                                key, tokens_to_parse, i, result
+                            )
+                        else:
+                            i = self._parse_short_merged(
+                                key, tokens_to_parse, i, result
+                            )
+                    except:
+                        result._unknown_arguments.append(token)
+                        i += 1
+                else:
                     var key = String(token[byte=1:])
                     if len(key) == 1:
                         i = self._parse_short_single(
@@ -2761,12 +2636,9 @@ struct Command(Copyable, Movable, Writable):
                         i = self._parse_short_merged(
                             key, tokens_to_parse, i, result
                         )
-                except:
-                    result._unknown_arguments.append(token)
-                    i += 1
                 continue
 
-            # Completions subcommand.
+            # Built-in completions subcommand (subcommand form).
             if (
                 self._completions_enabled
                 and self._completions_is_subcommand
@@ -2788,7 +2660,7 @@ struct Command(Copyable, Movable, Writable):
                     )
                     exit(2)
 
-            # Subcommand dispatch.
+            # Subcommand dispatch (or fall through to positional).
             if len(self.subcommands) > 0:
                 var new_i = self._dispatch_subcommand(
                     token, tokens_to_parse, i, result
@@ -2799,16 +2671,6 @@ struct Command(Copyable, Movable, Writable):
 
             result._positionals.append(token)
             i += 1
-
-        self._apply_defaults(result)
-        self._apply_implications(result)
-        self._validate(result)
-
-        return result^
-
-    # ===------------------------------------------------------------------=== #
-    # Parsing sub-methods (extracted from parse_arguments for readability)
-    # ===------------------------------------------------------------------=== #
 
     def _parse_long_option(
         self, raw_tokens: List[String], start: Int, mut result: ParseResult
@@ -2892,13 +2754,7 @@ struct Command(Copyable, Movable, Writable):
         if is_negation:
             result._flags[matched.name] = False
         elif matched._is_count and not has_eq:
-            # Count flag: increment counter.
-            var cur: Int = 0
-            try:
-                cur = result._counts[matched.name]
-            except:
-                pass
-            result._counts[matched.name] = cur + 1
+            Self._increment_count(matched.name, result)
         elif matched._is_flag and not has_eq:
             result._flags[matched.name] = True
         elif matched._number_of_values > 0:
@@ -2911,20 +2767,7 @@ struct Command(Copyable, Movable, Writable):
                     + String(matched._number_of_values)
                     + " values; '=' syntax is not supported"
                 )
-            if matched.name not in result._lists:
-                result._lists[matched.name] = List[String]()
-            for _n in range(matched._number_of_values):
-                i += 1
-                if i >= len(raw_tokens):
-                    self._error(
-                        "Option '--"
-                        + key
-                        + "' requires "
-                        + String(matched._number_of_values)
-                        + " values"
-                    )
-                self._validate_choices(matched, raw_tokens[i])
-                result._lists[matched.name].append(raw_tokens[i])
+            i = self._consume_nargs(matched, raw_tokens, i, "--" + key, result)
         else:
             if not has_eq:
                 if matched._require_equals:
@@ -2944,13 +2787,7 @@ struct Command(Copyable, Movable, Writable):
                     if i >= len(raw_tokens):
                         self._error("Option '--" + key + "' requires a value")
                     value = raw_tokens[i]
-            if matched._is_map:
-                self._store_map_value(matched, value, result)
-            elif matched._is_append:
-                self._store_append_value(matched, value, result)
-            else:
-                self._validate_choices(matched, value)
-                result._values[matched.name] = value
+            self._store_scalar_value(matched, value, result)
         i += 1
         return i
 
@@ -2980,53 +2817,23 @@ struct Command(Copyable, Movable, Writable):
                 "'-" + key + "' is deprecated: " + matched._deprecated_msg
             )
         if matched._is_count:
-            var cur: Int = 0
-            try:
-                cur = result._counts[matched.name]
-            except:
-                pass
-            result._counts[matched.name] = cur + 1
+            Self._increment_count(matched.name, result)
         elif matched._is_flag:
             result._flags[matched.name] = True
         elif matched._number_of_values > 0:
             # nargs: consume exactly N values.
-            if matched.name not in result._lists:
-                result._lists[matched.name] = List[String]()
-            for _n in range(matched._number_of_values):
-                i += 1
-                if i >= len(raw_tokens):
-                    self._error(
-                        "Option '-"
-                        + key
-                        + "' requires "
-                        + String(matched._number_of_values)
-                        + " values"
-                    )
-                self._validate_choices(matched, raw_tokens[i])
-                result._lists[matched.name].append(raw_tokens[i])
+            i = self._consume_nargs(matched, raw_tokens, i, "-" + key, result)
         else:
+            var val: String
             if matched._has_default_if_no_value:
                 # No value given — use default-if-no-value.
-                var val = matched._default_if_no_value
-                if matched._is_map:
-                    self._store_map_value(matched, val, result)
-                elif matched._is_append:
-                    self._store_append_value(matched, val, result)
-                else:
-                    self._validate_choices(matched, val)
-                    result._values[matched.name] = val
+                val = matched._default_if_no_value
             else:
                 i += 1
                 if i >= len(raw_tokens):
                     self._error("Option '-" + key + "' requires a value")
-                var val = raw_tokens[i]
-                if matched._is_map:
-                    self._store_map_value(matched, val, result)
-                elif matched._is_append:
-                    self._store_append_value(matched, val, result)
-                else:
-                    self._validate_choices(matched, val)
-                    result._values[matched.name] = val
+                val = raw_tokens[i]
+            self._store_scalar_value(matched, val, result)
         i += 1
         return i
 
@@ -3073,12 +2880,7 @@ struct Command(Copyable, Movable, Writable):
                         "'-" + ch + "' is deprecated: " + m._deprecated_msg
                     )
                 if m._is_count:
-                    var cur: Int = 0
-                    try:
-                        cur = result._counts[m.name]
-                    except:
-                        pass
-                    result._counts[m.name] = cur + 1
+                    Self._increment_count(m.name, result)
                     j += 1
                 elif m._is_flag:
                     result._flags[m.name] = True
@@ -3086,20 +2888,7 @@ struct Command(Copyable, Movable, Writable):
                 elif m._number_of_values > 0:
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
-                    if m.name not in result._lists:
-                        result._lists[m.name] = List[String]()
-                    for _n in range(m._number_of_values):
-                        i += 1
-                        if i >= len(raw_tokens):
-                            self._error(
-                                "Option '-"
-                                + ch
-                                + "' requires "
-                                + String(m._number_of_values)
-                                + " values"
-                            )
-                        self._validate_choices(m, raw_tokens[i])
-                        result._lists[m.name].append(raw_tokens[i])
+                    i = self._consume_nargs(m, raw_tokens, i, "-" + ch, result)
                     j = len(key)  # break
                 else:
                     # This char takes a value — rest of string is
@@ -3117,13 +2906,7 @@ struct Command(Copyable, Movable, Writable):
                                     "Option '-" + ch + "' requires a value"
                                 )
                             val = raw_tokens[i]
-                    if m._is_map:
-                        self._store_map_value(m, val, result)
-                    elif m._is_append:
-                        self._store_append_value(m, val, result)
-                    else:
-                        self._validate_choices(m, val)
-                        result._values[m.name] = val
+                    self._store_scalar_value(m, val, result)
                     j = len(key)  # break
         else:
             # First char takes a value — rest of string is the
@@ -3138,30 +2921,12 @@ struct Command(Copyable, Movable, Writable):
                 )
             if first_match._number_of_values > 0:
                 # nargs: consume N values from argv (ignore attached).
-                if first_match.name not in result._lists:
-                    result._lists[first_match.name] = List[String]()
-                for _n in range(first_match._number_of_values):
-                    i += 1
-                    if i >= len(raw_tokens):
-                        self._error(
-                            "Option '-"
-                            + first_char
-                            + "' requires "
-                            + String(first_match._number_of_values)
-                            + " values"
-                        )
-                    self._validate_choices(first_match, raw_tokens[i])
-                    result._lists[first_match.name].append(raw_tokens[i])
-            elif first_match._is_map:
-                var val = String(key[byte=1:])
-                self._store_map_value(first_match, val, result)
-            elif first_match._is_append:
-                var val = String(key[byte=1:])
-                self._store_append_value(first_match, val, result)
+                i = self._consume_nargs(
+                    first_match, raw_tokens, i, "-" + first_char, result
+                )
             else:
                 var val = String(key[byte=1:])
-                self._validate_choices(first_match, val)
-                result._values[first_match.name] = val
+                self._store_scalar_value(first_match, val, result)
         i += 1
         return i
 
@@ -4134,6 +3899,90 @@ struct Command(Copyable, Movable, Writable):
             + allowed
             + ")"
         )
+
+    def _store_scalar_value(
+        self, argument: Argument, value: String, mut result: ParseResult
+    ) raises:
+        """Stores a single value for a scalar/append/map argument.
+
+        Centralises the three-way dispatch repeated by every option
+        parser (long, short-single, short-merged):
+
+        - map arguments parse ``key=value`` via ``_store_map_value``;
+        - append arguments accumulate via ``_store_append_value``
+          (with delimiter splitting handled there);
+        - scalar arguments validate choices and overwrite ``_values``.
+        """
+        if argument._is_map:
+            self._store_map_value(argument, value, result)
+        elif argument._is_append:
+            self._store_append_value(argument, value, result)
+        else:
+            self._validate_choices(argument, value)
+            result._values[argument.name] = value
+
+    @staticmethod
+    def _increment_count(name: String, mut result: ParseResult):
+        """Increments the count for a count-flag argument (``-vvv`` style)."""
+        var cur: Int = 0
+        try:
+            cur = result._counts[name]
+        except:
+            pass
+        result._counts[name] = cur + 1
+
+    def _consume_nargs(
+        self,
+        argument: Argument,
+        raw_tokens: List[String],
+        start: Int,
+        display: String,
+        mut result: ParseResult,
+    ) raises -> Int:
+        """Consumes exactly ``argument._number_of_values`` value tokens.
+
+        Used by all three option parsers.  ``display`` is the user-facing
+        option spelling (``--key`` or ``-k``) used in the error message;
+        ``start`` is the index of the option token itself, and the
+        returned index points at the last consumed value (the caller
+        advances past it).
+        """
+        var i = start
+        if argument.name not in result._lists:
+            result._lists[argument.name] = List[String]()
+        for _n in range(argument._number_of_values):
+            i += 1
+            if i >= len(raw_tokens):
+                self._error(
+                    "Option '"
+                    + display
+                    + "' requires "
+                    + String(argument._number_of_values)
+                    + " values"
+                )
+            self._validate_choices(argument, raw_tokens[i])
+            result._lists[argument.name].append(raw_tokens[i])
+        return i
+
+    def _find_remainder_slot(self) -> Int:
+        """Returns the positional-slot index of the remainder argument
+        (the one declared with ``.remainder()``), or ``-1`` if none.
+
+        Extracted so that ``parse_arguments`` and ``parse_known_arguments``
+        share a single canonical implementation.
+        """
+        var remainder_pos_idx: Int = -1
+        for _ri in range(len(self.arguments)):
+            if self.arguments[_ri]._is_remainder:
+                var slot: Int = 0
+                for _rj in range(len(self.arguments)):
+                    if self.arguments[_rj]._is_positional:
+                        if self.arguments[_rj].name == self.arguments[_ri].name:
+                            remainder_pos_idx = slot
+                            break
+                        slot += 1
+                break
+        return remainder_pos_idx
 
     def _store_append_value(
         self, argument: Argument, value: String, mut result: ParseResult
