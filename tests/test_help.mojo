@@ -1,11 +1,11 @@
 """Tests for argmojo help and display features:
-  • Help output formatting (hidden args, value_name, padding, alignment)
-  • ANSI colour customisation (header_color, argument_color, etc.)
-  • Subcommand help (Commands section, aliases, hidden subs, tips)
-  • CJK-aware help alignment (_display_width)
-  • NO_COLOR environment variable
-  • Custom usage line
-  • Full-width → half-width auto-correction (CJK/Unicode)
+  • Help output formatting (hidden args, value_name, padding, alignment).
+  • ANSI colour customisation (header_color, argument_color, etc.).
+  • Subcommand help (Commands section, aliases, hidden subs, tips).
+  • CJK-aware help alignment (_display_width).
+  • NO_COLOR environment variable.
+  • Custom usage line.
+  • Full-width → half-width auto-correction (CJK/Unicode).
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
@@ -640,13 +640,13 @@ def test_root_help_commands_excludes_help_sub() raises:
         if in_commands:
             # End of section if we hit a blank line or another heading.
             if not lines[i] or (
-                len(lines[i]) > 0 and not lines[i].startswith(" ")
+                lines[i].byte_length() > 0 and not lines[i].startswith(" ")
             ):
                 in_commands = False
                 continue
             # Check for '  help' as a subcommand entry.
             var stripped = String("")
-            for c in range(len(lines[i])):
+            for c in range(lines[i].byte_length()):
                 if lines[i].as_bytes()[c] != 32:
                     stripped = String(lines[i][byte=c:])
                     break

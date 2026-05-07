@@ -67,7 +67,7 @@ def _expand_response_files(
     `-D ASSERT=all`.
     """
     var expanded = List[String]()
-    var plen = len(prefix)
+    var plen = prefix.byte_length()
 
     for idx in range(len(raw_tokens)):
         var token = raw_tokens[idx]
@@ -79,13 +79,13 @@ def _expand_response_files(
 
         # Check for escape: doubled prefix → literal.
         if (
-            len(token) > plen * 2 - 1
+            token.byte_length() > plen * 2 - 1
             and String(token[byte = : plen * 2]) == prefix + prefix
         ):
             expanded.append(String(token[byte=plen:]))
             continue
 
-        if len(token) > plen and String(token[byte=:plen]) == prefix:
+        if token.byte_length() > plen and String(token[byte=:plen]) == prefix:
             var filepath = String(token[byte=plen:])
             _read_response_file(
                 filepath, expanded, 0, prefix, max_depth, command_name
@@ -123,26 +123,26 @@ def _read_response_file(
         print("error: " + command_name + ": " + msg, file=stderr)
         raise Error(msg)
 
-    var plen = len(prefix)
+    var plen = prefix.byte_length()
     var content = _read_file_content(filepath)
 
     var lines = content.split("\n")
     for li in range(len(lines)):
         var line = String(String(lines[li]).strip())
 
-        if len(line) == 0 or line.startswith("#"):
+        if line.byte_length() == 0 or line.startswith("#"):
             continue
 
         # Escape: doubled prefix → literal.
         if (
-            len(line) > plen * 2 - 1
+            line.byte_length() > plen * 2 - 1
             and String(line[byte = : plen * 2]) == prefix + prefix
         ):
             out_arguments.append(String(line[byte=plen:]))
             continue
 
         # Recursive response file.
-        if len(line) > plen and String(line[byte=:plen]) == prefix:
+        if line.byte_length() > plen and String(line[byte=:plen]) == prefix:
             var nested_path = String(line[byte=plen:])
             _read_response_file(
                 nested_path,
@@ -316,7 +316,7 @@ struct Command(Copyable, Movable, Writable):
     `completions_as_subcommand()` to switch to `myapp completions bash`."""
 
     # === Private fields — Auto-dispatch ===
-    var _run_function: Optional[def(ParseResult) raises]
+    var _run_function: Optional[def(ParseResult) thin raises -> None]
     """Optional run function for auto-dispatch.  When set via
     `set_run_function()`, the `execute()` method will call this
     function with the parsed result.  For commands with subcommands,
@@ -1566,7 +1566,7 @@ struct Command(Copyable, Movable, Writable):
         ```
         """
         comptime assert (
-            len(prompt) > 0
+            prompt.byte_length() > 0
         ), "confirmation_option: prompt text must not be empty"
         self.confirmation_option()
         self._confirmation_prompt = String(prompt)
@@ -2088,7 +2088,9 @@ struct Command(Copyable, Movable, Writable):
     # Auto-dispatch: set_run_function / execute
     # ===------------------------------------------------------------------=== #
 
-    def set_run_function(mut self, handler: def(ParseResult) raises):
+    def set_run_function(
+        mut self, handler: def(ParseResult) thin raises -> None
+    ):
         """Registers a run function for auto-dispatch via ``execute()``.
 
         When ``execute()`` is called, the command tree is parsed and the
@@ -2101,15 +2103,15 @@ struct Command(Copyable, Movable, Writable):
         ``get_subcommand_result()``.
 
         Args:
-            handler: A function ``def (ParseResult) raises`` to
-                call when this command is selected.
+            handler: A function ``def (ParseResult) thin raises -> None``
+                to call when this command is selected.
 
         Examples:
 
         ```mojo
         from argmojo import Command, Argument, ParseResult
 
-        def handle_build(result: ParseResult) raises:
+        def handle_build(result: ParseResult) raises -> None:
             print("Building target: " + result.get_string("target"))
 
         def main() raises:
@@ -2518,7 +2520,7 @@ struct Command(Copyable, Movable, Writable):
             # ── allow_hyphen_values ─────────────────────────────────
             # If the next positional slot accepts dash-prefixed tokens
             # and this token is NOT a known option, consume as positional.
-            if token.startswith("-") and len(token) > 1:
+            if token.startswith("-") and token.byte_length() > 1:
                 var _ahv_consumed = False
                 var _ahv_slot = len(result._positionals)
                 if _ahv_slot < len(result._positional_names):
@@ -2552,7 +2554,7 @@ struct Command(Copyable, Movable, Writable):
                 continue
 
             # Short option: -k, -k value, -abc, -ofile.txt.
-            if token.startswith("-") and len(token) > 1:
+            if token.startswith("-") and token.byte_length() > 1:
                 # Negative-number detection (argparse-style).
                 if _looks_like_number(token):
                     var has_digit_short = False
@@ -2586,7 +2588,7 @@ struct Command(Copyable, Movable, Writable):
                 if collect_unknown and not self._is_known_option(token):
                     result._unknown_arguments.append(token)
                     i += 1
-                elif len(key) == 1:
+                elif key.byte_length() == 1:
                     i = self._parse_short_single(
                         key, tokens_to_parse, i, result
                     )
@@ -2829,7 +2831,7 @@ struct Command(Copyable, Movable, Writable):
             # First char is a flag — treat entire string as merged
             # flags, except the last char which may take a value.
             var j: Int = 0
-            while j < len(key):
+            while j < key.byte_length():
                 var ch = String(key[byte = j : j + 1])
                 var m = self._find_by_short(ch)
                 # Emit deprecation warning if applicable.
@@ -2847,12 +2849,12 @@ struct Command(Copyable, Movable, Writable):
                     # nargs in merged flags: rest of string is
                     # ignored; consume N values from argv.
                     i = self._consume_nargs(m, raw_tokens, i, "-" + ch, result)
-                    j = len(key)  # break
+                    j = key.byte_length()  # break
                 else:
                     # This char takes a value — rest of string is
                     # the value.
                     var val = String(key[byte = j + 1 :])
-                    if len(val) == 0:
+                    if val.byte_length() == 0:
                         if m._has_default_if_no_value:
                             # No value given — use default-if-no-value,
                             # don't consume next token.
@@ -2865,7 +2867,7 @@ struct Command(Copyable, Movable, Writable):
                                 )
                             val = raw_tokens[i]
                     self._store_scalar_value(m, val, result)
-                    j = len(key)  # break
+                    j = key.byte_length()  # break
         else:
             # First char takes a value — rest of string is the
             # attached value (e.g., -ofile.txt).
@@ -3192,7 +3194,7 @@ struct Command(Copyable, Movable, Writable):
                     # This handles non-interactive / piped usage gracefully.
                     return
 
-            if len(value) == 0:
+            if value.byte_length() == 0:
                 # Empty input — fall through to _apply_defaults.
                 continue
             if a._is_flag:
@@ -3616,7 +3618,7 @@ struct Command(Copyable, Movable, Writable):
             # negation special-case when the token uses `=` syntax so
             # that `--no-flag=value` is classified as known iff there is
             # an actual registered long name `no-flag`.
-            if not has_eq and key.startswith("no-") and len(key) > 3:
+            if not has_eq and key.startswith("no-") and key.byte_length() > 3:
                 var neg_key = String(key[byte=3:])
                 for idx in range(len(self.arguments)):
                     if self.arguments[idx]._is_negatable and (
@@ -3639,7 +3641,7 @@ struct Command(Copyable, Movable, Writable):
                     ):
                         return True
             return False
-        elif token.startswith("-") and len(token) > 1:
+        elif token.startswith("-") and token.byte_length() > 1:
             var ch = String(token[byte=1:2])
             for idx in range(len(self.arguments)):
                 if self.arguments[idx]._short_name == ch:
@@ -4780,7 +4782,7 @@ struct Command(Copyable, Movable, Writable):
                     for _ti in range(len(self.arguments)):
                         var sc = self.arguments[_ti]._short_name
                         if (
-                            len(sc) == 1
+                            sc.byte_length() == 1
                             and sc[byte=0:1] >= "0"
                             and sc[byte=0:1] <= "9"
                         ):

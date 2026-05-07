@@ -350,7 +350,7 @@ struct Argument(Copyable, Movable, Writable):
             - Must not start with ``-`` (the ``--`` prefix is added automatically).
             - Must not contain ``=`` (conflicts with ``--key=value`` syntax).
         """
-        comptime assert len(name) > 0, "long name must not be empty"
+        comptime assert name.byte_length() > 0, "long name must not be empty"
         comptime assert not name.startswith(
             "-"
         ), "long name must not start with '-'; omit the '--' prefix"
@@ -375,7 +375,9 @@ struct Argument(Copyable, Movable, Writable):
             character (e.g., ``"v"``, ``"o"``), and must not be ``"-"``
             (which would conflict with the ``--`` end-of-options sentinel).
         """
-        comptime assert len(name) == 1, "short name must be exactly 1 character"
+        comptime assert (
+            name.byte_length() == 1
+        ), "short name must be exactly 1 character"
         comptime assert name != "-", (
             "short name must not be '-'; it conflicts with the"
             " end-of-options sentinel '--'"
@@ -403,7 +405,7 @@ struct Argument(Copyable, Movable, Writable):
             ``.long[]``): must not be empty, must not start with ``-``,
             and must not contain ``=``.
         """
-        comptime assert len(name) > 0, "alias name must not be empty"
+        comptime assert name.byte_length() > 0, "alias name must not be empty"
         comptime assert not name.startswith(
             "-"
         ), "alias name must not start with '-'; omit the '--' prefix"
@@ -632,7 +634,9 @@ struct Argument(Copyable, Movable, Writable):
         Constraints:
             The value must not be empty.
         """
-        comptime assert len(value) > 0, "choice value must not be empty"
+        comptime assert (
+            value.byte_length() > 0
+        ), "choice value must not be empty"
         self._choice_values.append(value)
         return self^
 
@@ -858,7 +862,9 @@ struct Argument(Copyable, Movable, Writable):
         Constraints:
             The value name must be a non-empty string.
         """
-        comptime assert len(name) > 0, "value name must be a non-empty string"
+        comptime assert (
+            name.byte_length() > 0
+        ), "value name must be a non-empty string"
         self._value_name = name
         self._value_name_wrapped = wrapped
         return self^
@@ -888,7 +894,7 @@ struct Argument(Copyable, Movable, Writable):
             The message must not be empty.
         """
         comptime assert (
-            len(message) > 0
+            message.byte_length() > 0
         ), "deprecation message must not be empty"
         self._deprecated_msg = message
         return self^
@@ -910,7 +916,7 @@ struct Argument(Copyable, Movable, Writable):
         Constraints:
             The group name must not be empty.
         """
-        comptime assert len(name) > 0, "group name must not be empty"
+        comptime assert name.byte_length() > 0, "group name must not be empty"
         self._group = name
         return self^
 
@@ -969,7 +975,7 @@ struct Argument(Copyable, Movable, Writable):
         _ = Argument("token", help="API token").long["token"]().prompt["Enter your API token"]()
         ```
         """
-        comptime assert len(text) > 0, "prompt text must not be empty"
+        comptime assert text.byte_length() > 0, "prompt text must not be empty"
         self._prompt = True
         self._prompt_text = text
         return self^

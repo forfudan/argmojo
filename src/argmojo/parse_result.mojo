@@ -287,7 +287,7 @@ struct ParseResult(Copyable, Movable, Writable):
         for _ in range(indent):
             prefix += " "
 
-        if len(name) == 0:
+        if name.byte_length() == 0:
             print(prefix + "=== Parsed Arguments ===")
         else:
             print(prefix + "=== Subcommand: " + name + " ===")
@@ -351,14 +351,14 @@ struct ParseResult(Copyable, Movable, Writable):
         # Compute padding width.
         var max_len: Int = 0
         for k in range(len(names)):
-            if len(names[k]) > max_len:
-                max_len = len(names[k])
+            if names[k].byte_length() > max_len:
+                max_len = names[k].byte_length()
         var pad_width = max_len + 2
 
         # Print with aligned columns.
         for k in range(len(names)):
             var line = prefix + "  " + names[k]
-            var padding = pad_width - len(names[k])
+            var padding = pad_width - names[k].byte_length()
             for _p in range(padding):
                 line += " "
             line += vals[k]
