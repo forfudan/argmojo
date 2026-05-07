@@ -2103,15 +2103,15 @@ struct Command(Copyable, Movable, Writable):
         ``get_subcommand_result()``.
 
         Args:
-            handler: A function ``def (ParseResult) raises`` to
-                call when this command is selected.
+            handler: A function ``def (ParseResult) thin raises -> None``
+                to call when this command is selected.
 
         Examples:
 
         ```mojo
         from argmojo import Command, Argument, ParseResult
 
-        def handle_build(result: ParseResult) raises:
+        def handle_build(result: ParseResult) raises -> None:
             print("Building target: " + result.get_string("target"))
 
         def main() raises:

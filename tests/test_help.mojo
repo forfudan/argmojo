@@ -1,11 +1,11 @@
 """Tests for argmojo help and display features:
-  • Help output formatting (hidden args, value_name, padding, alignment)
-  • ANSI colour customisation (header_color, argument_color, etc.)
-  • Subcommand help (Commands section, aliases, hidden subs, tips)
-  • CJK-aware help alignment (_display_width)
-  • NO_COLOR environment variable
-  • Custom usage line
-  • Full-width → half-width auto-correction (CJK/Unicode)
+  • Help output formatting (hidden args, value_name, padding, alignment).
+  • ANSI colour customisation (header_color, argument_color, etc.).
+  • Subcommand help (Commands section, aliases, hidden subs, tips).
+  • CJK-aware help alignment (_display_width).
+  • NO_COLOR environment variable.
+  • Custom usage line.
+  • Full-width → half-width auto-correction (CJK/Unicode).
 """
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
