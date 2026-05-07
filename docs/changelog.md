@@ -7,6 +7,7 @@ Unreleased changes should be commented out from here. This file will be edited j
 
 - Add `allow_negative_expressions()` on `Command` — treats single-hyphen tokens as positional arguments when they don't conflict with registered short options. Handles mathematical expressions like `-1/3*pi`, `-sin(2)`, `-e^2`. Superset of `allow_negative_numbers()`.
 - Add **auto-dispatch** — `set_run_function(handler)` registers a `def (ParseResult) raises` handler on a `Command`; `execute()` parses and auto-dispatches to the matching handler, eliminating manual `if/elif` subcommand chains. `_execute_with_arguments(args)` provides the same dispatch for testing with explicit argument lists. Works with nested subcommands, aliases, and persistent flags.
+- **Mojo 1.0.0b1 compatibility** — migrate to the new `thin` function effect for stored function-pointer fields (`set_run_function` handler), add `& ImplicitlyDestructible` to generic bounds for `Defaultable`/`Movable`/`Parsable` (the trait hierarchy no longer implies it), replace `len(String)` with `String.byte_length()`, and switch reflection to the unified `reflect[T]()` API (`get_type_name[T]()` and `struct_field_*[T]()` are deprecated).
 -->
 
 ## 20260404 (v0.5.0)

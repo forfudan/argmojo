@@ -12,7 +12,7 @@ from .command import Command
 from .parse_result import ParseResult
 
 
-trait Parsable(Defaultable, Movable):
+trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
     """Trait for structs that can be parsed from CLI arguments.
 
     Provides default methods for building a Command, parsing argv,
@@ -60,8 +60,9 @@ trait Parsable(Defaultable, Movable):
         # initialized so that we can reflect over the fields and initialize them
         # in a loop using unsafe pointer operations.
         __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
-        comptime field_count = struct_field_count[Self]()
-        comptime field_types = struct_field_types[Self]()
+        comptime r = reflect[Self]()
+        comptime field_count = r.field_count()
+        comptime field_types = r.field_types()
         comptime for i in range(field_count):
             comptime FieldType = field_types[i]
             _constrained_field_conforms_to[
@@ -204,9 +205,10 @@ trait Parsable(Defaultable, Movable):
 
         # Comptime calculation of field count, types, and names
         var instance = Self()
-        comptime field_count = struct_field_count[Self]()
-        comptime field_types = struct_field_types[Self]()
-        comptime field_names = struct_field_names[Self]()
+        comptime r = reflect[Self]()
+        comptime field_count = r.field_count()
+        comptime field_types = r.field_types()
+        comptime field_names = r.field_names()
 
         # Runtime duplicate detection
         # [Mojo Miji]
@@ -305,9 +307,10 @@ trait Parsable(Defaultable, Movable):
             A populated instance of Self.
         """
         var out = Self()
-        comptime field_count = struct_field_count[Self]()
-        comptime field_types = struct_field_types[Self]()
-        comptime field_names = struct_field_names[Self]()
+        comptime r = reflect[Self]()
+        comptime field_count = r.field_count()
+        comptime field_types = r.field_types()
+        comptime field_names = r.field_names()
 
         comptime for field_index in range(field_count):
             comptime field_type = field_types[field_index]

@@ -640,13 +640,13 @@ def test_root_help_commands_excludes_help_sub() raises:
         if in_commands:
             # End of section if we hit a blank line or another heading.
             if not lines[i] or (
-                len(lines[i]) > 0 and not lines[i].startswith(" ")
+                lines[i].byte_length() > 0 and not lines[i].startswith(" ")
             ):
                 in_commands = False
                 continue
             # Check for '  help' as a subcommand entry.
             var stripped = String("")
-            for c in range(len(lines[i])):
+            for c in range(lines[i].byte_length()):
                 if lines[i].as_bytes()[c] != 32:
                     stripped = String(lines[i][byte=c:])
                     break

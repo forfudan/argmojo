@@ -15,7 +15,9 @@ comptime _BLUE = "\x1b[94m"
 comptime _MAGENTA = "\x1b[95m"
 comptime _CYAN = "\x1b[96m"
 comptime _WHITE = "\x1b[97m"
-comptime _ORANGE = "\x1b[33m"  # dark yellow — renders as orange on most terminals
+comptime _ORANGE = (  # dark yellow — renders as orange on most terminals
+    "\x1b[33m"
+)
 
 # Bold foreground colours (for argparse-like detailed help coloring).
 comptime _BOLD_GREEN = "\x1b[1;32m"
@@ -425,13 +427,13 @@ def _looks_like_number(token: String) -> Bool:
     ``-N.NEX``, ``-.NE+X``, and the corresponding ``-Ne+X``, ``-Ne-X``,
     ``-NE+X``, ``-NE-X`` variants.
     """
-    if len(token) < 2 or not token.startswith("-"):
+    if token.byte_length() < 2 or not token.startswith("-"):
         return False
     var j = 1
     # Optional leading '.' after minus (e.g. -.5).
     if token[byte = j : j + 1] == ".":
         j += 1
-        if j >= len(token) or not (
+        if j >= token.byte_length() or not (
             token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             return False
@@ -440,35 +442,35 @@ def _looks_like_number(token: String) -> Bool:
     ):
         return False
     # Integer digits.
-    while j < len(token) and (
+    while j < token.byte_length() and (
         token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
     ):
         j += 1
     # Optional fractional part.
-    if j < len(token) and token[byte = j : j + 1] == ".":
+    if j < token.byte_length() and token[byte = j : j + 1] == ".":
         j += 1
-        while j < len(token) and (
+        while j < token.byte_length() and (
             token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             j += 1
     # Optional exponent.
-    if j < len(token) and (
+    if j < token.byte_length() and (
         token[byte = j : j + 1] == "e" or token[byte = j : j + 1] == "E"
     ):
         j += 1
-        if j < len(token) and (
+        if j < token.byte_length() and (
             token[byte = j : j + 1] == "+" or token[byte = j : j + 1] == "-"
         ):
             j += 1
-        if j >= len(token) or not (
+        if j >= token.byte_length() or not (
             token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             return False
-        while j < len(token) and (
+        while j < token.byte_length() and (
             token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
         ):
             j += 1
-    return j == len(token)
+    return j == token.byte_length()
 
 
 def _is_ascii_digit(ch: String) -> Bool:
@@ -529,8 +531,8 @@ def _levenshtein(a: String, b: String) -> Int:
     The classic dynamic-programming algorithm, O(m*n) time and O(min(m,n))
     space (only the previous row is kept).
     """
-    var m = len(a)
-    var n = len(b)
+    var m = a.byte_length()
+    var n = b.byte_length()
     if m == 0:
         return n
     if n == 0:
@@ -583,9 +585,9 @@ def _suggest_similar(input: String, candidates: List[String]) -> String:
     """
     if len(candidates) == 0:
         return ""
-    var best_dist = len(input) + 1
+    var best_dist = input.byte_length() + 1
     var best_name = String("")
-    var threshold = len(input) // 2
+    var threshold = input.byte_length() // 2
     if threshold < 2:
         threshold = 2
     for i in range(len(candidates)):
@@ -654,7 +656,7 @@ def _split_on_fullwidth_spaces(token: String) -> List[String]:
     var result = List[String]()
     for k in range(len(parts)):
         var part = String(String(parts[k]).strip())
-        if len(part) > 0:
+        if part.byte_length() > 0:
             result.append(part)
     return result^
 

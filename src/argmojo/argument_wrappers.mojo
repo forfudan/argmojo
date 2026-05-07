@@ -69,7 +69,7 @@ from .command import Command
 
 
 struct Option[
-    T: Defaultable & Copyable & Movable,
+    T: Defaultable & Copyable & Movable & ImplicitlyDestructible,
     *,
     # -- Naming --
     long: StringLiteral = "",
@@ -196,7 +196,7 @@ struct Option[
         # - If a range is specified, min must be <= max.
         # - If choices and default are both specified, default must be one of the choices.
         comptime if Self.short != "":
-            comptime assert len(Self.short) == 1, (
+            comptime assert Self.short.byte_length() == 1, (
                 "Option short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
@@ -289,7 +289,7 @@ struct Option[
         """
         if not result.has(field_name):
             return
-        comptime type_name = get_type_name[Self.T]()
+        comptime type_name = reflect[Self.T]().name()
         comptime if type_name == "List[String]":
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Dict[String, String]":
@@ -301,7 +301,7 @@ struct Option[
         else:
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
-                + get_type_name[Self.T]()
+                + reflect[Self.T]().name()
                 + ". Supported: String, Int, List[String], Dict[String,"
                 " String]."
             )
@@ -408,7 +408,7 @@ struct Flag[
         # - The short name must be exactly 1 character if provided.
         # - The short name must not be '-' (conflicts with '--' end-of-options marker).
         comptime if Self.short != "":
-            comptime assert len(Self.short) == 1, (
+            comptime assert Self.short.byte_length() == 1, (
                 "Flag short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
@@ -456,7 +456,7 @@ struct Flag[
 
 
 struct Positional[
-    T: Defaultable & Copyable & Movable,
+    T: Defaultable & Copyable & Movable & ImplicitlyDestructible,
     *,
     help: StringLiteral = "",
     # -- Argument type --
@@ -580,7 +580,7 @@ struct Positional[
         """
         if not result.has(field_name):
             return
-        comptime type_name = get_type_name[Self.T]()
+        comptime type_name = reflect[Self.T]().name()
         comptime if type_name == "List[String]":
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Int":
@@ -590,7 +590,7 @@ struct Positional[
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
-                + get_type_name[Self.T]()
+                + reflect[Self.T]().name()
                 + ". Supported: String, Int, List[String]."
             )
 
@@ -683,7 +683,7 @@ struct Count[
         # - The short name must be exactly 1 character if provided.
         # - The short name must not be '-' (conflicts with '--' end-of-options marker).
         comptime if Self.short != "":
-            comptime assert len(Self.short) == 1, (
+            comptime assert Self.short.byte_length() == 1, (
                 "Count short flag must be exactly 1 character, got '"
                 + Self.short
                 + "'"
