@@ -20,6 +20,8 @@ Try these:
   grep "pattern" --format json --tag fixme --tag urgent
   grep -E "foo|bar" ./src --color --max-depth 3
   grep -- "-pattern-with-dashes" ./src
+
+Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Argument, Command

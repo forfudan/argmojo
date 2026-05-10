@@ -7,6 +7,8 @@ pixi run mojo build -I src ./examples/declarative/convert.mojo
 ./convert func.txt -o output.txt --format yaml --indent 4
 ./convert
 ```
+
+Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Command, Argument

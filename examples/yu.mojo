@@ -36,6 +36,8 @@ Full-width auto-correction examples (CJK users may type these accidentally):
 
   ./yu －－ａｌｌ 宇浩      # auto-corrected to: ./yu --all 宇浩
   ./yu －ｊ 字根           # auto-corrected to: ./yu -j 字根
+
+Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Argument, Command

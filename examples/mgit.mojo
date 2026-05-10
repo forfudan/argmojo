@@ -27,6 +27,8 @@ Try these:
   mgit config set user.name "Alice"    # config sub-subcommand
   mgit config get user.name
   mgit --completions bash              # shell completion script (built-in)
+
+Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Argument, Command, ParseResult
