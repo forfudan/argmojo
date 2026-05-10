@@ -9,7 +9,7 @@ ArgMojo v0.6.0 introduces auto-dispatch for subcommands, improves parser behavio
 ### ⭐️ New in v0.6.0
 
 1. Add `allow_negative_expressions()` on `Command` — treats single-hyphen tokens as positional arguments when they do not conflict with registered short options. Handles mathematical expressions like `-1/3*pi`, `-sin(2)`, and `-e^2`. This is a strict superset of `allow_negative_numbers()`. This is useful for mathematical tools, e.g., [decimo CLI](https://github.com/forfudan/decimo/blob/main/src/cli/main.mojo). (PR #52)
-2. Add **auto-dispatch** — `set_run_function(handler)` registers a `def (ParseResult) thin raises -> None` handler on a `Command`; `execute()` parses and auto-dispatches to the matching handler, eliminating manual `if/elif` subcommand chains. `_execute_with_arguments(args)` provides equivalent dispatch for tests with explicit argument lists. Works with nested subcommands, aliases, and persistent flags. (PR #53)
+2. Add **auto-dispatch** — `set_run_function(handler)` registers a `def(ParseResult) thin raises -> None` handler on a `Command`; `execute()` parses and auto-dispatches to the matching handler, eliminating manual `if/elif` subcommand chains. `_execute_with_arguments(args)` provides equivalent dispatch for tests with explicit argument lists. Works with nested subcommands, aliases, and persistent flags. (PR #53)
 
 ### 🔄 Mojo v1.0.0b1 migration
 
