@@ -48,7 +48,7 @@ def handle_clone(result: ParseResult) raises:
         var parts = repo.split("/")
         var last = parts[len(parts) - 1]
         if last.endswith(".git"):
-            msg += last[byte = : len(last) - 4]
+            msg += last[byte = : last.byte_length() - 4]
         else:
             msg += last
     msg += "'..."

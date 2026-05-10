@@ -9,7 +9,7 @@ ArgMojo has been successfully deployed in production in [Decimo](https://github.
  -->
 
 [![Version](https://img.shields.io/github/v/tag/forfudan/argmojo?label=version&color=blue)](https://github.com/forfudan/argmojo/releases)
-[![Mojo](https://img.shields.io/badge/mojo-0.26.2-orange)](https://docs.modular.com/mojo/manual/)
+[![Mojo](https://img.shields.io/badge/mojo-1.0.0b1-orange)](https://docs.modular.com/mojo/manual/)
 [![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
 [![User manual](https://img.shields.io/badge/user-manual-purple)](https://github.com/forfudan/argmojo/wiki)
 
@@ -28,6 +28,8 @@ ArgMojo has been successfully deployed in production in [Decimo](https://github.
 ## Overview
 
 ArgMojo provides two complementary styles for defining and parsing command-line arguments in Mojo: a **builder API** for maximum control (`Command` + `Argument` chains) and an optional **struct-based declarative API** inspired by Swift's [swift-argument-parser](https://github.com/apple/swift-argument-parser) (define a `Parsable` struct, call `MyArgs.parse()`, get typed results). You can mix both freely — put most of your arguments in a struct and drop down to builder methods whenever you need finer control.
+
+ArgMojo v0.6.0 targets Mojo v1.0.0b1.
 
 ArgMojo currently supports:
 
@@ -89,7 +91,7 @@ ArgMojo currently supports:
 
 I created this project to support my experiments with a CLI-based Chinese character search engine in Mojo, as well as a CLI-based calculator for [Decimo](https://github.com/forfudan/decimo). It is inspired by Python's `argparse`, Rust's `clap`, Go's `cobra`, Swift's `swift-argument-parser`, and other popular argument parsing libraries, but designed to fit Mojo's unique features and constraints.
 
-My goal is to provide a Mojo-idiomatic argument parsing library that can be easily adopted by the growing Mojo community for their CLI applications. **Before Mojo v1.0** (which means Mojo is not yet stable), my focus is on building core features and ensuring correctness. "Core features" refer to those who are commonly used in famous CLI apps. "Correctness" means that the library should handle edge cases properly, provide clear error messages, and have good test coverage. Some fancy features will be piloted depending on my time and interest, and will be optional for users.
+My goal is to provide a Mojo-idiomatic argument parsing library that can be easily adopted by the growing Mojo community for their CLI applications. While Mojo is still in beta, my focus is on building core features and ensuring correctness. "Core features" refer to those commonly used in famous CLI apps. "Correctness" means that the library should handle edge cases properly, provide clear error messages, and have good test coverage. Some fancy features will be piloted depending on my time and interest, and will be optional for users.
 
 ## Installation
 

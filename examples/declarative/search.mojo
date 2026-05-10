@@ -1,4 +1,4 @@
-"""Example: Pure Declarative (simple tool)
+"""Example: Pure Declarative (simple tool).
 
 Try it out with:
 

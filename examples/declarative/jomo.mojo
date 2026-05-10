@@ -1,4 +1,4 @@
-"""Example: Subcommands with Declarative
+"""Example: Subcommands with Declarative.
 
 Simulates the interface of the ``mojo`` command-line tool:
 

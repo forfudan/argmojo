@@ -1,4 +1,4 @@
-"""Example: Declarative + Builder Hybrid (granular control with Command API)
+"""Example: Declarative + Builder Hybrid (granular control with Command API).
 
 Try it out with:
 
