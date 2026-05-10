@@ -27,8 +27,6 @@ Try these:
   mgit config set user.name "Alice"    # config sub-subcommand
   mgit config get user.name
   mgit --completions bash              # shell completion script (built-in)
-
-Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Argument, Command, ParseResult
@@ -50,7 +48,7 @@ def handle_clone(result: ParseResult) raises:
         var parts = repo.split("/")
         var last = parts[len(parts) - 1]
         if last.endswith(".git"):
-            msg += last[byte = : len(last) - 4]
+            msg += last[byte = : last.byte_length() - 4]
         else:
             msg += last
     msg += "'..."

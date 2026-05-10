@@ -1,4 +1,4 @@
-"""Example: Declarative + Builder Hybrid (granular control with Command API)
+"""Example: Declarative + Builder Hybrid (granular control with Command API).
 
 Try it out with:
 
@@ -7,8 +7,6 @@ pixi run mojo build -I src ./examples/declarative/deploy.mojo
 ./deploy "./file" --force --tag "v1.0" --replicas 1000
 ./deploy --help
 ```
-
-Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Command, Argument

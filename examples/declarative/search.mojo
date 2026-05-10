@@ -1,4 +1,4 @@
-"""Example: Pure Declarative (simple tool)
+"""Example: Pure Declarative (simple tool).
 
 Try it out with:
 
@@ -7,8 +7,6 @@ pixi run mojo build -I src ./examples/declarative/search.mojo
 ./search "text" ./ --ignore-case --max-count 1000 -vvvvvvv --ext "txt" --ext "md"
 ./search --help
 ```
-
-Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Parsable, Option, Flag, Positional, Count

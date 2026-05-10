@@ -1,4 +1,4 @@
-"""Example: Subcommands with Declarative
+"""Example: Subcommands with Declarative.
 
 Simulates the interface of the ``mojo`` command-line tool:
 
@@ -32,8 +32,6 @@ Try these (build first with: pixi run mojo build -I src -o jomo examples/jomo.mo
   jomo format --line-length 100 src/main.mojo
   jomo format -q src/main.mojo
   jomo doc src/mylib/__init__.mojo
-
-Compatible with Mojo v1.0.0b1.
 """
 
 

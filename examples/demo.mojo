@@ -104,8 +104,6 @@ Try these (build first with: pixi run package && mojo build -I src -o demo examp
   ./demo login                                # prompts for user, token, and pin
   ./demo login --user alice --token s --pin 1 # no prompts needed
   ./demo login --user alice                   # prompts for token (hidden) and pin (****)
-
-Compatible with Mojo v1.0.0b1.
 """
 
 from argmojo import Argument, Command
