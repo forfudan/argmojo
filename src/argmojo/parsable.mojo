@@ -1,11 +1,6 @@
 """Declares the Parsable trait and its reflection-based default methods."""
 
 from std.builtin.constrained import _constrained_field_conforms_to
-from std.reflection import (
-    struct_field_count,
-    struct_field_names,
-    struct_field_types,
-)
 
 from .argument_wrappers import ArgumentLike
 from .command import Command
@@ -60,7 +55,7 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
         # initialized so that we can reflect over the fields and initialize them
         # in a loop using unsafe pointer operations.
         __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
-        comptime r = reflect[Self]()
+        comptime r = reflect[Self]
         comptime field_count = r.field_count()
         comptime field_types = r.field_types()
         comptime for i in range(field_count):
@@ -133,6 +128,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A list of Command instances (empty by default).
+
+        Raises:
+            Error if constructing a child Command fails.
         """
         return List[Command]()
 
@@ -140,6 +138,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
         """Executes this command's logic after parsing.
 
         Override in leaf commands. The default does nothing.
+
+        Raises:
+            Error if the command's logic fails.
         """
         pass
 
@@ -153,6 +154,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A populated instance of Self.
+
+        Raises:
+            Error if building the Command or parsing the arguments fails.
         """
         var command = Self.to_command()
         var result = command.parse()
@@ -169,6 +173,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A populated instance of Self.
+
+        Raises:
+            Error if building the Command or parsing the arguments fails.
         """
         var command = Self.to_command()
         var result = command.parse_arguments(arguments)
@@ -188,6 +195,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A fully configured Command.
+
+        Raises:
+            Error if a field collides with an already-registered argument.
         """
         var cmd_name = String(Self.name())
         if not cmd_name:
@@ -205,7 +215,7 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         # Comptime calculation of field count, types, and names
         var instance = Self()
-        comptime r = reflect[Self]()
+        comptime r = reflect[Self]
         comptime field_count = r.field_count()
         comptime field_types = r.field_types()
         comptime field_names = r.field_names()
@@ -252,6 +262,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A populated instance of Self.
+
+        Raises:
+            Error if parsing the arguments fails.
         """
         var result = command.parse()
         return Self.from_parse_result(result)
@@ -266,6 +279,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A tuple of (populated Self, raw ParseResult).
+
+        Raises:
+            Error if building the Command or parsing the arguments fails.
         """
         var command = Self.to_command()
         var result = command.parse()
@@ -286,6 +302,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A tuple of (populated Self, raw ParseResult).
+
+        Raises:
+            Error if parsing the arguments fails.
         """
         var result = command.parse()
         var parsed = Self.from_parse_result(result)
@@ -305,9 +324,12 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Returns:
             A populated instance of Self.
+
+        Raises:
+            Error if reading values from the result fails.
         """
         var out = Self()
-        comptime r = reflect[Self]()
+        comptime r = reflect[Self]
         comptime field_count = r.field_count()
         comptime field_types = r.field_types()
         comptime field_names = r.field_names()

@@ -1,4 +1,5 @@
-"""Tests for argmojo option features:
+"""Tests for argmojo option features.
+
   • default_if_no_value and require_equals (const semantics)
   • Range validation, clamping, key-value map, aliases, deprecated arguments
   • Remainder nargs, parse_known_arguments, value_name, allow_hyphen_values

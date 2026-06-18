@@ -1,4 +1,5 @@
-"""Tests for argmojo argument group features:
+"""Tests for argmojo argument group features.
+
   • Mutually exclusive groups
   • Required-together groups
   • One-required groups

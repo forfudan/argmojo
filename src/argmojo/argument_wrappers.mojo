@@ -20,7 +20,6 @@ reflection hooks:
   from a ``ParseResult``.
 """
 
-from std.reflection import get_type_name
 from .argument import Argument
 from .parse_result import ParseResult
 
@@ -43,6 +42,10 @@ trait ArgumentLike:
         Args:
             field_name: The struct field name (used as default long name).
             command: The Command to register the argument on.
+
+        Raises:
+            Error if the argument's name, long flag, alias, or short flag
+            collides with an already-registered argument.
         """
         ...
 
@@ -54,6 +57,9 @@ trait ArgumentLike:
         Args:
             field_name: The struct field name (used as lookup key).
             result: The ParseResult containing parsed values.
+
+        Raises:
+            Error if the parsed value cannot be read from the result.
         """
         ...
 
@@ -188,6 +194,10 @@ struct Option[
         Args:
             field_name: The struct field name (used as default long name).
             command: The Command to register the argument on.
+
+        Raises:
+            Error if the argument's name, long flag, alias, or short flag
+            collides with an already-registered argument.
         """
 
         # == Compile-time schema validation ==
@@ -286,10 +296,13 @@ struct Option[
         Args:
             field_name: The struct field name (used as lookup key).
             result: The ParseResult containing parsed values.
+
+        Raises:
+            Error if the parsed value cannot be read from the result.
         """
         if not result.has(field_name):
             return
-        comptime type_name = reflect[Self.T]().name()
+        comptime type_name = reflect[Self.T].name()
         comptime if type_name == "List[String]":
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Dict[String, String]":
@@ -301,7 +314,7 @@ struct Option[
         else:
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
-                + reflect[Self.T]().name()
+                + reflect[Self.T].name()
                 + ". Supported: String, Int, List[String], Dict[String,"
                 " String]."
             )
@@ -402,6 +415,10 @@ struct Flag[
         Args:
             field_name: The struct field name (used as default long name).
             command: The Command to register the flag on.
+
+        Raises:
+            Error if the argument's name, long flag, alias, or short flag
+            collides with an already-registered argument.
         """
 
         # == Compile-time schema validation ==
@@ -446,6 +463,9 @@ struct Flag[
         Args:
             field_name: The struct field name (used as lookup key).
             result: The ParseResult containing parsed values.
+
+        Raises:
+            Error if the parsed value cannot be read from the result.
         """
         self.value = result.get_flag(field_name)
 
@@ -533,6 +553,10 @@ struct Positional[
         Args:
             field_name: The struct field name (used as the argument name).
             command: The Command to register the positional on.
+
+        Raises:
+            Error if the argument's name, long flag, alias, or short flag
+            collides with an already-registered argument.
         """
 
         # == Compile-time schema validation ==
@@ -577,10 +601,13 @@ struct Positional[
         Args:
             field_name: The struct field name (used as lookup key).
             result: The ParseResult containing parsed values.
+
+        Raises:
+            Error if the parsed value cannot be read from the result.
         """
         if not result.has(field_name):
             return
-        comptime type_name = reflect[Self.T]().name()
+        comptime type_name = reflect[Self.T].name()
         comptime if type_name == "List[String]":
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == "Int":
@@ -590,7 +617,7 @@ struct Positional[
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
-                + reflect[Self.T]().name()
+                + reflect[Self.T].name()
                 + ". Supported: String, Int, List[String]."
             )
 
@@ -677,6 +704,10 @@ struct Count[
         Args:
             field_name: The struct field name (used as default long name).
             command: The Command to register the count on.
+
+        Raises:
+            Error if the argument's name, long flag, alias, or short flag
+            collides with an already-registered argument.
         """
 
         # == Compile-time schema validation ==
@@ -720,5 +751,8 @@ struct Count[
         Args:
             field_name: The struct field name (used as lookup key).
             result: The ParseResult containing parsed values.
+
+        Raises:
+            Error if the parsed value cannot be read from the result.
         """
         self.value = result.get_count(field_name)
