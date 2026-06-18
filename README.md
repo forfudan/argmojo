@@ -115,9 +115,9 @@ Then, you can install ArgMojo using any of these methods:
 
     Then run `pixi install` to download and install the package.
 
-### Using mojopkg
+### Using mojoc
 
-The package manager may not be up to date with the latest ArgMojo release. If you want to use the latest version, you can download the `mojopkg` file from the [latest release](https://github.com/forfudan/argmojo/releases) and include it in your project directory.
+The package manager may not be up to date with the latest ArgMojo release. If you want to use the latest version, you can download the `mojoc` file from the [latest release](https://github.com/forfudan/argmojo/releases) and include it in your project directory.
 
 ## Quick Start
 
