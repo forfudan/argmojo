@@ -2270,6 +2270,11 @@ struct Command(Copyable, Movable, Writable):
 
         Returns:
             A ParseResult containing all parsed values.
+
+        Raises:
+            Error if an unexpected internal error occurs while parsing
+            (ordinary parse errors are handled internally and exit with
+            code 2).
         """
         # [Mojo Miji]
         # The result of `argv()` is called "tokens" in argmojo.

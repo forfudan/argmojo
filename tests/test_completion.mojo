@@ -1,4 +1,5 @@
-"""Tests for argmojo completion and suggestion features:
+"""Tests for argmojo completion and suggestion features.
+
   • Shell completion script generation (Fish, Zsh, Bash)
   • Built-in --completions flag
   • completions_name() / completions_as_subcommand()

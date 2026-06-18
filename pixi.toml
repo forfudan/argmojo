@@ -10,17 +10,17 @@ license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]
 readme = "README.md"
-version = "0.6.0"
+version = "0.7.0"
 
 [dependencies]
-mojo = "==1.0.0b1"
+mojo = "==1.0.0b2"
 
 [tasks]
 # format the code
 format = "mojo format ./src ./tests ./examples"
 
 # compile the package
-package = "mojo package src/argmojo -o argmojo.mojopkg"
+package = "mojo precompile src/argmojo -o argmojo.mojoc"
 
 # doc
 doc = """mojo doc --diagnose-missing-doc-strings src/argmojo > /dev/null"""
@@ -108,7 +108,7 @@ d = """pixi run package && bash -c '\
 """
 
 # clean build artifacts
-clean = "rm -f argmojo.mojopkg mgrep mgit demo yu jomo search deploy convert"
+clean = "rm -f argmojo.mojoc mgrep mgit demo yu jomo search deploy convert"
 
 # Run all
 all = """

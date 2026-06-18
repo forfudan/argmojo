@@ -2,6 +2,10 @@
 
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
+## 20260618 (v0.7.0)
+
+ArgMojo v0.7.0 migrates the codebase to Mojo v1.0.0b2.
+
 ## 20260510 (v0.6.0)
 
 ArgMojo v0.6.0 introduces auto-dispatch for subcommands, improves parser behavior for mathematical-expression tokens, and migrates the codebase to Mojo v1.0.0b1.

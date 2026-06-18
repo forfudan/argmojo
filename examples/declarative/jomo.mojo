@@ -4,7 +4,7 @@ Simulates the interface of the ``mojo`` command-line tool:
 
     jomo run hello.mojo
     jomo build -o hello hello.mojo
-    jomo package src/mylib -o mylib.mojopkg
+    jomo package src/mylib -o mylib.mojoc
     jomo format --line-length 100 src/*.mojo
     jomo doc src/mylib/__init__.mojo
 
@@ -28,7 +28,7 @@ Try these (build first with: pixi run mojo build -I src -o jomo examples/jomo.mo
   jomo run -O0 -I src hello.mojo -- arg1 arg2
   jomo build -o hello hello.mojo
   jomo build --emit llvm hello.mojo
-  jomo package src/mylib -o mylib.mojopkg
+  jomo package src/mylib -o mylib.mojoc
   jomo format --line-length 100 src/main.mojo
   jomo format -q src/main.mojo
   jomo doc src/mylib/__init__.mojo
@@ -184,7 +184,7 @@ struct JomoPackage(Parsable):
         String,
         long="output",
         short="o",
-        help="Output path (.mojopkg)",
+        help="Output path (.mojoc)",
         value_name="PATH",
         group="Output options",
     ]

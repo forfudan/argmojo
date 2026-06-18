@@ -29,7 +29,7 @@ ArgMojo has been successfully deployed in production in [Decimo](https://github.
 
 ArgMojo provides two complementary styles for defining and parsing command-line arguments in Mojo: a **builder API** for maximum control (`Command` + `Argument` chains) and an optional **struct-based declarative API** inspired by Swift's [swift-argument-parser](https://github.com/apple/swift-argument-parser) (define a `Parsable` struct, call `MyArgs.parse()`, get typed results). You can mix both freely — put most of your arguments in a struct and drop down to builder methods whenever you need finer control.
 
-ArgMojo v0.6.0 targets Mojo v1.0.0b1.
+ArgMojo v0.7.0 targets Mojo v1.0.0b2.
 
 ArgMojo currently supports:
 
@@ -115,9 +115,9 @@ Then, you can install ArgMojo using any of these methods:
 
     Then run `pixi install` to download and install the package.
 
-### Using mojopkg
+### Using mojoc
 
-The package manager may not be up to date with the latest ArgMojo release. If you want to use the latest version, you can download the `mojopkg` file from the [latest release](https://github.com/forfudan/argmojo/releases) and include it in your project directory.
+The package manager may not be up to date with the latest ArgMojo release. If you want to use the latest version, you can download the `mojoc` file from the [latest release](https://github.com/forfudan/argmojo/releases) and include it in your project directory.
 
 ## Quick Start
 

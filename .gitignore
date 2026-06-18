@@ -1,6 +1,6 @@
 # Mojo build artifacts
-*.mojopkg
-*.mojopkg.tmp
+*.mojoc
+*.mojoc.tmp
 
 # pixi environments
 .pixi/
@@ -25,7 +25,7 @@ kgen.trace*
 logs/
 
 # Packages
-*.mojopkg
+*.mojoc
 
 # Built example binaries
 /mgrep
