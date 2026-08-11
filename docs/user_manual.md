@@ -129,7 +129,7 @@ from argmojo import Argument, Command
   - [Command-Level Methods](#command-level-methods)
   - [Notes (Cross-Library Method Name Reference)](#notes-cross-library-method-name-reference)
 
-<!-- Response Files (temporarily disabled — Mojo compiler deadlock with -D ASSERT=all) -->
+<!-- Response Files (currently disabled — Mojo compiler deadlock with -D ASSERT=all, still on Mojo v1.0.0) -->
 
 ## Getting Started
 
@@ -306,7 +306,7 @@ Argument("name", help="...")
 ```
 
 > [!NOTE]
-> (*) Response files are temporarily disabled due to a Mojo compiler bug. [^respfile]
+> (*) Response files are currently disabled due to a Mojo compiler bug. [^respfile]
 >
 > **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
 > indented under `.range[min,max]()` because it requires range.  The three main
@@ -3178,7 +3178,7 @@ All other validation (required arguments, choices, range) still applies. Only th
 
 > **Note:** Unknown options using `=` syntax (e.g., `--color=auto`) are captured as a single token. For space-separated syntax (`--color auto`), only `--color` is recorded as unknown; `auto` flows to positional arguments because the parser cannot tell whether the unknown option takes a value. Use `=` syntax when forwarding unknown options reliably.
 
-<!-- Response Files section temporarily disabled — Mojo compiler deadlock with -D ASSERT=all.
+<!-- Response Files section currently disabled — Mojo compiler deadlock with -D ASSERT=all (still on Mojo v1.0.0).
      The implementation is preserved as module-level functions and will be re-enabled
      when the Mojo compiler bug is fixed.
      
@@ -4290,7 +4290,7 @@ See the footnotes at the bottom of this document.
 [^append]: Implies `.append()` automatically.
 [^cmd]: Command-level method — called on `Command`, not chained on `Argument`.
 [^vname]: Accepts compile-time parameter: `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in `<NAME>`, `False` displays bare `NAME`.
-[^respfile]: Response files temporarily disabled due to Mojo compiler bug.
+[^respfile]: Response files are currently disabled due to a Mojo compiler bug (a compilation deadlock under `-D ASSERT=all`). It still reproduces on Mojo v1.0.0. The implementation is kept in the source code and will be re-enabled once the compiler bug is fixed.
 [^pw]: Also available as `.password[True]()` to echo `*` per keystroke (sudo-rs style), or `.password[False]()` (same as plain `.password()`).
 [^xref-1]: Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command, not builder-chaining on the flag definition.
 [^xref-2]: clap positional args are defined by `.index(1)`, `.index(2)`, etc., or by omitting `.long()` / `.short()`.

@@ -244,7 +244,7 @@ examples/
 | Usage line customisation (`command.usage("...")` → override auto-generated usage line)                | ✓      | ✓     |
 | Password / masked input (`.password()` → hide typed characters during prompt via POSIX termios)       | ✓      | ✓     |
 
-> ⚠ Response file support is temporarily disabled due to a Mojo compiler deadlock under `-D ASSERT=all`. The implementation is preserved and will be re-enabled when the compiler bug is fixed.
+> ⚠ Response file support is currently disabled due to a Mojo compiler deadlock under `-D ASSERT=all` (still reproducing on Mojo v1.0.0). The implementation is preserved and will be re-enabled when the compiler bug is fixed.
 
 ### 4.3 API Design (Current)
 
@@ -591,7 +591,7 @@ Before adding Phase 5 features, further decompose `parse_arguments()` for readab
 - [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised options instead of erroring; access via `result.get_unknown_arguments()` (argparse `parse_known_args`) (PR #13)
 - [x] **Require equals syntax** — `.require_equals()` forces `--key=value`, disallows `--key value` (clap `require_equals`) (PR #12)
 - [x] **Default-if-no-value** — `.default_if_no_value["val"]()`: `--opt` uses fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR #12)
-- [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Temporarily disabled — Mojo compiler deadlock under `-D ASSERT=all`*
+- [x] **Response file** — `mytool @args.txt` expands file contents as arguments (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Currently disabled — Mojo compiler deadlock under `-D ASSERT=all`, still on Mojo v1.0.0*
 - [x] **Argument parents** — `add_parent(parent)` copies all arguments and group constraints from a parent Command, sharing definitions across multiple commands (argparse `parents`) (PR #25)
 - [x] **Interactive prompting** — prompt user for missing required args instead of erroring (Click `prompt=True`) (PR #23)
 - [x] **Password / masked input** — hide typed characters for sensitive values (Click `hide_input=True`)
@@ -838,19 +838,26 @@ ArgMojo follows a consistent naming philosophy. When in doubt, apply these prior
 
 ## 8. Notes on Mojo versions
 
-Here are some important Mojo-specific patterns used throughout this project. Mojo is rapidly evolving, so these may need to be updated in the future.
+Here are some important Mojo-specific patterns used throughout this project. Mojo is rapidly evolving, so these may need to be updated in the future. As of ArgMojo v0.8.0, the codebase targets **Mojo v1.0.0**, the first stable release.
 
 These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji) too.
 
-| Pattern                | What & Why                                          |
-| ---------------------- | --------------------------------------------------- |
-| `"""Tests..."""`       | Docstring convention                                |
-| `@fieldwise_init`      | Replaces `@value`                                   |
-| `var self`             | Used for builder methods instead of `owned self`    |
-| `String()`             | Explicit conversion; `str()` is not available       |
-| `[a, b, c]` for `List` | List literal syntax instead of variadic constructor |
-| `.copy()`              | Explicit copy for non-ImplicitlyCopyable types      |
-| `Movable` conformance  | Required for structs stored in containers           |
+| Pattern                             | What & Why                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `"""Tests..."""`                    | Docstring convention                                                       |
+| `@fieldwise_init`                   | Replaces `@value`                                                          |
+| `var self`                          | Used for builder methods instead of `owned self`                           |
+| `String()`                          | Explicit conversion; `str()` is not available                              |
+| `[a, b, c]` for `List`              | List literal syntax instead of variadic constructor                        |
+| `.copy()`                           | Explicit copy for non-ImplicitlyCopyable types                             |
+| `Movable` conformance               | Required for structs stored in containers                                  |
+| `Deinitable`                        | Renamed from `ImplicitlyDestructible` in Mojo v1.0.0                       |
+| `__init__(out self, *, deinit move: Self)` | Move constructor; the argument was called `take` before Mojo v1.0.0 |
+| `reflect[T]`                        | Unified reflection API: `field_count()`, `field_names()`, `field_types()`, `field_ref[i]()`, `name()` |
+| `comptime assert conforms_to(...)`  | Replaces `constrained[]` and the internal `_constrained_field_conforms_to`  |
+| `Pointer(to=x).unsafe_write(v)`     | Replaces `UnsafePointer(to=x).init_pointee_move(v)`                        |
+| `Array[T, N]`                       | Fixed-size, stack-allocated buffer; preferred over `List` for FFI scratch space |
+| Explicit `__deinit__()`             | Needed to break the deduction cycle of recursive structs, e.g., a `Command` holding `List[Command]` |
 
 ## 9. Pending Renames
 

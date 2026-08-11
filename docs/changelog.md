@@ -4,38 +4,40 @@ This document tracks all notable changes to ArgMojo, including new features, API
 
 ## 20260811 (v0.8.0)
 
-ArgMojo v0.8.0 migrates the codebase to the first stable Mojo release, **v1.0.0**.
+ArgMojo v0.8.0 migrates the codebase to the first stable Mojo release, **v1.0.0**. It also fixes an FFI signature collision that could break the build of the users' projects, and removes several heap allocations from the terminal-handling paths.
 
-### 🐞 Bug fixes
+ArgMojo v0.8.0 targets Mojo v1.0.0.
 
-- Fix a latent FFI signature collision in `_read_password_asterisk()`. The `read(2)` binding passed its buffer as `Int(ptr)`, declaring `read` as `(Int, Int, Int) -> Int`, which conflicts with the standard library's `(Int, Pointer, Int) -> Int` declaration of the same symbol. Any module that linked both failed to lower to LLVM IR. The buffer is now passed as a real pointer.
+### 🔧 Fixes in v0.8.0
 
-### 🔄 Mojo v1.0.0 migration
+1. Fix a latent FFI signature collision in `_read_password_asterisk()`. The `read(2)` binding passed its buffer as `Int(ptr)`, which declares the symbol `read` as `(Int, Int, Int) -> Int`. The standard library declares the same symbol as `(Int, Pointer, Int) -> Int`, so any module that links both of them failed to lower to LLVM IR. The buffer is now passed as a real pointer (PR #59).
 
-- Bump the Mojo dependency to `>=1.0.0, <1.1.0` in `pixi.toml`.
-- Replace the removed `_constrained_field_conforms_to` helper with `comptime assert conforms_to(...)` plus `_field_conforms_to_error`, matching how the standard library now writes reflection-driven trait defaults.
-- Drop `trait_downcast[…]()` calls in `Parsable`. A `comptime if conforms_to(...)` guard (or `comptime assert`) is now enough for the compiler to resolve trait methods on a reflected field.
+### 🔄 Mojo v1.0.0 migration (PR #59)
+
+- Bump the Mojo dependency from `==1.0.0b2` to `>=1.0.0, <1.1.0` in `pixi.toml`, so that ArgMojo builds against any Mojo v1.0.x release.
+- Replace the removed `_constrained_field_conforms_to` helper with `comptime assert conforms_to(...)` plus `_field_conforms_to_error`, which is how the standard library now writes reflection-driven trait defaults.
+- Drop the `trait_downcast[…]()` calls in `Parsable`. A `comptime if conforms_to(...)` guard (or a `comptime assert`) is now enough for the compiler to resolve trait methods on a reflected field.
 - Replace `__struct_field_ref(i, x)` with the public `reflect[Self].field_ref[i](x)`.
-- Rename `ImplicitlyDestructible` to `Deinitable`, and drop `Movable` from `Defaultable & Copyable & Movable` bounds, which the compiler now flags as redundant.
-- Rename the move constructor argument from `deinit take:` to `deinit move:` across `Argument`, `Command`, `ParseResult`, and the four argument wrappers.
+- Rename `ImplicitlyDestructible` to `Deinitable`, and drop `Movable` from the `Defaultable & Copyable & Movable` bounds, because the compiler now reports it as redundant.
+- Rename the move constructor argument from `deinit take:` to `deinit move:` in `Argument`, `Command`, `ParseResult`, and the four argument wrappers.
 - Replace `UnsafePointer(to=f).init_pointee_move(v)` with `Pointer(to=f).unsafe_write(v)`.
-- Give `Command` and `ParseResult` explicit no-op `__deinit__` methods. Both hold a `List[Self]` field, and deducing `List[Command]: Deinitable` now requires `Command: Deinitable` — the very thing being deduced. Declaring the destructor breaks the cycle; fields are still destroyed automatically.
-- Introduce temporaries where a `String` is rebuilt from a slice of itself (`key = String(key[byte=:eq])`), which now trips the exclusivity checker.
-- Dispatch the declarative wrappers on `reflect[T].name()` compared against the reflected names of the supported types themselves, rather than against string literals. `Int` became an alias for `Scalar[DType.int]` in v1.0.0, so it reflects as `"SIMD[DType.int, 1]"`; comparing reflected name to reflected name keeps working across such renames.
+- Give `Command` and `ParseResult` an explicit, empty `__deinit__()`. Both structs hold a `List[Self]` field, and deducing `List[Command]: Deinitable` now requires `Command: Deinitable` — which is exactly what is being deduced. Declaring the destructor breaks this cycle, and the fields are still destroyed automatically.
+- Introduce temporary variables where a `String` is rebuilt from a slice of itself (e.g., `key = String(key[byte=:eq])`), because such statements now trip the exclusivity checker.
+- Dispatch the declarative wrappers on `reflect[T].name()` compared against the reflected names of the supported types, instead of against string literals. In Mojo v1.0.0, `Int` became an alias of `Scalar[DType.int]` and therefore reflects as `"SIMD[DType.int, 1]"`. Comparing a reflected name with another reflected name keeps working across such renames.
 - Update `tests/test_wrappers.mojo` to call the move constructor as `(move=a^)`.
 
-### ⚡️ Performance
+### ⚡️ Performance in v0.8.0
 
-- Replace the fixed-size `List` scratch buffers with inline `Array`, removing four heap allocations from the terminal-handling paths: the 8-byte `ioctl(TIOCGWINSZ)` buffer in `_help_line_width()`, the 96-byte termios buffers in `_disable_echo()` and `_read_password_asterisk()`, and the 1-byte read buffer in the password loop. `_disable_echo()` now returns `Optional[Array[UInt32, 24]]` instead of signalling failure with an empty list.
-- Use a stack `Array[String, 2]` for the argument-name scratch buffer in `required_if()`.
+- Replace the fixed-size `List` scratch buffers with the inline `Array` type. This removes four heap allocations from the terminal-handling paths: the 8-byte `ioctl(TIOCGWINSZ)` buffer in `_help_line_width()`, the 96-byte termios buffers in `_disable_echo()` and `_read_password_asterisk()`, and the 1-byte read buffer of the password loop. `_disable_echo()` now returns `Optional[Array[UInt32, 24]]`, instead of signalling failure with an empty list (PR #59).
+- Use a stack-allocated `Array[String, 2]` for the argument-name scratch buffer in `required_if()` (PR #59).
 
-### ⚠️ Known issues
+### ⚠️ Known issues in v0.8.0
 
-- Response-file expansion (`response_file_prefix()`) is **still disabled**. The Mojo compiler deadlock that blocked it in v0.4.0 continues to reproduce on v1.0.0: re-enabling the call from `parse_arguments()` hangs compilation of `tests/test_parse.mojo` at 0% CPU under `-D ASSERT=all`. Notably `tests/test_response_file.mojo` itself *does* compile and pass (17/17) with the call re-enabled, so the trigger depends on the surrounding instantiation set rather than on the expansion code alone. The implementation is preserved as module-level free functions and `tests/test_response_file.mojo` remains excluded from the `test` and `t` tasks.
+- Response-file expansion (`response_file_prefix()`) is **still disabled**. The Mojo compiler deadlock that blocked it in v0.4.0 also reproduces on Mojo v1.0.0: if we re-enable the call in `parse_arguments()`, the compilation of `tests/test_parse.mojo` hangs at 0% CPU under `-D ASSERT=all`. Interestingly, `tests/test_response_file.mojo` itself *does* compile and pass (17/17) with the call re-enabled. So the trigger depends on the surrounding set of instantiations, and not on the expansion code alone. The implementation is kept as module-level free functions, and `tests/test_response_file.mojo` remains excluded from the `test` and `t` tasks.
 
 ## 20260618 (v0.7.0)
 
-ArgMojo v0.7.0 migrates the codebase to Mojo v1.0.0b2.
+ArgMojo v0.7.0 migrates the codebase to Mojo v1.0.0b2 (PR #58).
 
 ## 20260510 (v0.6.0)
 

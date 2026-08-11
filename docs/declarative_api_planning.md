@@ -22,22 +22,25 @@ I want the declarative API to satisfy five goals:
 
 5. **Five innovations** — I think there are five features I can offer beyond what Swift Argument Parser does (see [§6](#6-innovations)).
 
-## 2. Mojo Reflection Capabilities (v0.26.2)
+## 2. Mojo Reflection Capabilities (v1.0.0)
 
 Available compile-time reflection primitives:
 
 | API                                 | Purpose                                                    |
 | ----------------------------------- | ---------------------------------------------------------- |
-| `struct_field_count[T]()`           | Number of fields in struct T                               |
-| `struct_field_names[T]()`           | Indexable list of field name strings                       |
-| `struct_field_types[T]()`           | Indexable list of field types                              |
-| `get_type_name[T]()`                | String name of type T                                      |
-| `__struct_field_ref(idx, instance)` | Reference to field by compile-time index                   |
+| `reflect[T]`                        | Reflection handle for struct T                             |
+| `reflect[T].field_count()`          | Number of fields in struct T                               |
+| `reflect[T].field_names()`          | Indexable list of field name strings                       |
+| `reflect[T].field_types()`          | Indexable list of field types                              |
+| `reflect[T].name()`                 | String name of type T                                      |
+| `reflect[T].field_ref[idx](x)`      | Reference to field by compile-time index                   |
 | `conforms_to(type, Trait)`          | Compile-time trait conformance check                       |
-| `trait_downcast[Trait](value)`      | Cast value to trait-conforming type                        |
 | ~~`@fieldwise_init`~~               | ~~Auto-generate constructor from fields~~[^fieldwise_init] |
 | `comptime for idx in range(N)`      | Compile-time loop                                          |
 | `comptime if condition`             | Compile-time conditional                                   |
+
+A `comptime if conforms_to(...)` guard is enough for the compiler to resolve
+trait methods on a reflected field, so no explicit downcast is needed.
 
 **Key limitation**: No proc macros, no custom decorators, no `#[derive(...)]`. So all declarative behavior has to be implemented via parametric functions that reflect over user-defined structs.
 
@@ -363,10 +366,10 @@ from argmojo import Parsable, Option, Flag, Positional
 
 ### 4.2 The `Parsable` Trait
 
-The `Parsable` trait is the **heart** of the declarative API. Unlike the old `Parser[T]` design, there is no separate orchestrator struct — the trait's default methods handle everything: building, parsing, validation, and hybrid bridging. This is possible because Mojo 0.26.2 supports `struct_field_count[Self]()` inside trait default `@staticmethod` methods.
+The `Parsable` trait is the **heart** of the declarative API. Unlike the old `Parser[T]` design, there is no separate orchestrator struct — the trait's default methods handle everything: building, parsing, validation, and hybrid bridging. This is possible because Mojo supports `reflect[Self].field_count()` inside trait default `@staticmethod` methods.
 
 ```mojo
-trait Parsable(Defaultable, Movable):
+trait Parsable(Defaultable, Deinitable, Movable):
     """Trait for structs that can be parsed from CLI arguments.
     
     Default methods use compile-time reflection over Self to translate
@@ -511,7 +514,7 @@ The four parsing methods follow a 2×2 naming convention:
 
 All reflection logic lives directly inside the `Parsable` trait's default methods — there are **no standalone helper functions**:
 
-- **`to_command()`** — creates a `Command`, iterates Self's fields via `comptime for` + `struct_field_types[Self]()`, downcasts each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, command)`. Registers subcommands via `subcommands()` hook.
+- **`to_command()`** — creates a `Command`, iterates Self's fields via `comptime for` + `reflect[Self].field_types()`, picks each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, command)`. Registers subcommands via `subcommands()` hook.
 - **`from_parse_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_arguments()`, `parse_from_command()`, `parse_full()`, `parse_full_from_command()`, and directly by users for subcommand dispatch.
 
 This design keeps `parsable.mojo` self-contained: the trait IS the entire declarative API.
@@ -521,7 +524,7 @@ This design keeps `parsable.mojo` self-contained: the trait IS the entire declar
 > **Update**: As of Phase 1 implementation, users **no longer need to write `__init__`**.
 > The `Parsable` trait provides a default `__init__` that uses
 > `__mlir_op.lit.ownership.mark_initialized` + `comptime for` +
-> `UnsafePointer.init_pointee_move(type_of(field)())` to auto-initialise
+> `Pointer.unsafe_write(type_of(field)())` to auto-initialise
 > every field via reflection. The compiler auto-synthesises the move init
 > from `Movable` conformance. Users only need to declare fields and
 > provide `description()`.
@@ -1117,11 +1120,11 @@ struct MyArgs(Parsable):
 | `depends_on="password"`      | `command.required_if("password", "username")`                |
 | `conflicts_with="json,yaml"` | `command.mutually_exclusive(["this_field", "json", "yaml"])` |
 
-**Compile-time name validation**: Since `depends_on` and `conflicts_with` are `StringLiteral` parameters, and all field names are known at compile time via `struct_field_names`, I can verify at compile time that every referenced name actually exists in the struct:
+**Compile-time name validation**: Since `depends_on` and `conflicts_with` are `StringLiteral` parameters, and all field names are known at compile time via `reflect[T].field_names()`, I can verify at compile time that every referenced name actually exists in the struct:
 
 ```mojo
 # In to_command(), at comptime:
-# depends_on="password" → verify "password" is in struct_field_names[T]()
+# depends_on="password" → verify "password" is in reflect[T].field_names()
 # If not → comptime assert failure with a clear error message
 ```
 

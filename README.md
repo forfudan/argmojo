@@ -73,7 +73,7 @@ ArgMojo currently supports:
 - **Confirmation option**: `confirmation_option()` to add a `--yes`/`-y` skip-confirmation flag
 - **Argument parents**: `add_parent()` to share argument definitions across commands
 - **Custom usage line**: `usage()` to override the auto-generated usage string
-- **Response files**: `@args.txt` expansion (temporarily disabled due to a Mojo compiler bug)
+- **Response files**: `@args.txt` expansion (currently disabled due to a Mojo compiler bug, see the [changelog](docs/changelog.md))
 - **CJK-aware help alignment**: CJK characters treated as 2-column-wide
 - **CJK full-width auto-correction**: fullwidth `－－ｖｅｒｂｏｓｅ` → `--verbose` with a warning
 - **CJK punctuation detection**: em-dash `——verbose` → `--verbose`
