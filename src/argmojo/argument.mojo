@@ -277,57 +277,57 @@ struct Argument(Copyable, Movable, Writable):
         self._hide_input = copy._hide_input
         self._show_asterisk = copy._show_asterisk
 
-    def __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit move: Self):
         """Moves the value from another Argument.
 
         Args:
-            take: The Argument to move from.
+            move: The Argument to move from.
         """
-        self.name = take.name^
-        self.help_text = take.help_text^
+        self.name = move.name^
+        self.help_text = move.help_text^
         # ── Naming ──
-        self._long_name = take._long_name^
-        self._short_name = take._short_name^
-        self._alias_names = take._alias_names^
+        self._long_name = move._long_name^
+        self._short_name = move._short_name^
+        self._alias_names = move._alias_names^
         # ── Argument type ──
-        self._is_flag = take._is_flag
-        self._is_positional = take._is_positional
-        self._is_count = take._is_count
-        self._count_max = take._count_max
-        self._has_count_max = take._has_count_max
-        self._is_negatable = take._is_negatable
-        self._is_remainder = take._is_remainder
+        self._is_flag = move._is_flag
+        self._is_positional = move._is_positional
+        self._is_count = move._is_count
+        self._count_max = move._count_max
+        self._has_count_max = move._has_count_max
+        self._is_negatable = move._is_negatable
+        self._is_remainder = move._is_remainder
         # ── Value defaults & validation ──
-        self._default_value = take._default_value^
-        self._has_default = take._has_default
-        self._default_if_no_value = take._default_if_no_value^
-        self._has_default_if_no_value = take._has_default_if_no_value
-        self._is_required = take._is_required
-        self._choice_values = take._choice_values^
-        self._range_min = take._range_min
-        self._range_max = take._range_max
-        self._has_range = take._has_range
-        self._is_clamp = take._is_clamp
+        self._default_value = move._default_value^
+        self._has_default = move._has_default
+        self._default_if_no_value = move._default_if_no_value^
+        self._has_default_if_no_value = move._has_default_if_no_value
+        self._is_required = move._is_required
+        self._choice_values = move._choice_values^
+        self._range_min = move._range_min
+        self._range_max = move._range_max
+        self._has_range = move._has_range
+        self._is_clamp = move._is_clamp
         # ── Collection modes ──
-        self._is_append = take._is_append
-        self._delimiter_char = take._delimiter_char^
-        self._number_of_values = take._number_of_values
-        self._is_map = take._is_map
+        self._is_append = move._is_append
+        self._delimiter_char = move._delimiter_char^
+        self._number_of_values = move._number_of_values
+        self._is_map = move._is_map
         # ── Parsing behavior ──
-        self._require_equals = take._require_equals
-        self._allow_hyphen_values = take._allow_hyphen_values
-        self._is_persistent = take._is_persistent
+        self._require_equals = move._require_equals
+        self._allow_hyphen_values = move._allow_hyphen_values
+        self._is_persistent = move._is_persistent
         # ── Display & help ──
-        self._value_name = take._value_name^
-        self._value_name_wrapped = take._value_name_wrapped
-        self._is_hidden = take._is_hidden
-        self._deprecated_msg = take._deprecated_msg^
-        self._group = take._group^
+        self._value_name = move._value_name^
+        self._value_name_wrapped = move._value_name_wrapped
+        self._is_hidden = move._is_hidden
+        self._deprecated_msg = move._deprecated_msg^
+        self._group = move._group^
         # ── Interactive prompting ──
-        self._prompt = take._prompt
-        self._prompt_text = take._prompt_text^
-        self._hide_input = take._hide_input
-        self._show_asterisk = take._show_asterisk
+        self._prompt = move._prompt
+        self._prompt_text = move._prompt_text^
+        self._hide_input = move._hide_input
+        self._show_asterisk = move._show_asterisk
 
     # ===------------------------------------------------------------------=== #
     # Builder methods for configuring the argument

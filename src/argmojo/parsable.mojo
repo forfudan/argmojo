@@ -1,13 +1,13 @@
 """Declares the Parsable trait and its reflection-based default methods."""
 
-from std.builtin.constrained import _constrained_field_conforms_to
+from std.builtin.constrained import _field_conforms_to_error
 
 from .argument_wrappers import ArgumentLike
 from .command import Command
 from .parse_result import ParseResult
 
 
-trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
+trait Parsable(Defaultable, Deinitable, Movable):
     """Trait for structs that can be parsed from CLI arguments.
 
     Provides default methods for building a Command, parsing argv,
@@ -43,7 +43,7 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
         compiler's definite-assignment check, then placement-news each
-        field with ``UnsafePointer.init_pointee_move(type_of(field)())``.
+        field with ``Pointer.unsafe_write(type_of(field)())``.
         Otherwise, the user would have to write a custom ``__init__`` that
         manually default-constructs each field.
         """
@@ -55,24 +55,23 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
         # initialized so that we can reflect over the fields and initialize them
         # in a loop using unsafe pointer operations.
         __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
-        comptime r = reflect[Self]
-        comptime field_count = r.field_count()
-        comptime field_types = r.field_types()
+        comptime reflected = reflect[Self]
+        comptime field_count = reflected.field_count()
+        comptime field_types = reflected.field_types()
         comptime for i in range(field_count):
             comptime FieldType = field_types[i]
-            _constrained_field_conforms_to[
-                conforms_to(FieldType, Defaultable & Movable),
+            comptime assert conforms_to(
+                FieldType, Defaultable & Movable
+            ), _field_conforms_to_error[
                 Parent=Self,
                 FieldIndex=i,
                 ParentConformsTo="Defaultable & Movable",
             ]()
-            ref field = trait_downcast[Movable & Defaultable](
-                __struct_field_ref(i, self)
-            )
+            ref field = reflected.field_ref[i](self)
             # [Mojo Miji]
             # type_of(field)() calls the default constructor for the field's
             # type, which is an instance of one of the argument wrapper structs.
-            UnsafePointer(to=field).init_pointee_move(type_of(field)())
+            Pointer(to=field).unsafe_write(type_of(field)())
 
     @staticmethod
     def description() -> String:
@@ -215,10 +214,10 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
 
         # Comptime calculation of field count, types, and names
         var instance = Self()
-        comptime r = reflect[Self]
-        comptime field_count = r.field_count()
-        comptime field_types = r.field_types()
-        comptime field_names = r.field_names()
+        comptime reflected = reflect[Self]
+        comptime field_count = reflected.field_count()
+        comptime field_types = reflected.field_types()
+        comptime field_names = reflected.field_names()
 
         # Runtime duplicate detection
         # [Mojo Miji]
@@ -240,11 +239,9 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
         comptime for field_index in range(field_count):
             comptime field_type = field_types[field_index]
             comptime if conforms_to(field_type, ArgumentLike):
-                ref field = __struct_field_ref(field_index, instance)
+                ref field = reflected.field_ref[field_index](instance)
                 comptime field_name = field_names[field_index]
-                trait_downcast[ArgumentLike](field).add_to_command(
-                    String(field_name), command
-                )
+                field.add_to_command(String(field_name), command)
 
         var subs = Self.subcommands()
         while len(subs) > 0:
@@ -329,18 +326,16 @@ trait Parsable(Defaultable, ImplicitlyDestructible, Movable):
             Error if reading values from the result fails.
         """
         var out = Self()
-        comptime r = reflect[Self]
-        comptime field_count = r.field_count()
-        comptime field_types = r.field_types()
-        comptime field_names = r.field_names()
+        comptime reflected = reflect[Self]
+        comptime field_count = reflected.field_count()
+        comptime field_types = reflected.field_types()
+        comptime field_names = reflected.field_names()
 
         comptime for field_index in range(field_count):
             comptime field_type = field_types[field_index]
             comptime if conforms_to(field_type, ArgumentLike):
-                ref field = __struct_field_ref(field_index, out)
+                ref field = reflected.field_ref[field_index](out)
                 comptime field_name = field_names[field_index]
-                trait_downcast[ArgumentLike](field).read_from_result(
-                    String(field_name), result
-                )
+                field.read_from_result(String(field_name), result)
 
         return out^

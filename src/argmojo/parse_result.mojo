@@ -69,22 +69,34 @@ struct ParseResult(Copyable, Movable, Writable):
         self._subcommand_results = copy._subcommand_results.copy()
         self._unknown_arguments = copy._unknown_arguments.copy()
 
-    def __init__(out self, *, deinit take: Self):
+    def __deinit__(deinit self):
+        """Destroys the ParseResult, releasing all owned fields.
+
+        The compiler cannot synthesise this destructor implicitly: the
+        ``_subcommand_results`` field makes ParseResult recursive, and deducing
+        ``List[ParseResult]: Deinitable`` would require ``ParseResult: Deinitable``,
+        which is what is being deduced.  Declaring ``__deinit__`` explicitly
+        breaks that cycle.  The body is empty because the fields are still
+        destroyed automatically once it returns.
+        """
+        pass
+
+    def __init__(out self, *, deinit move: Self):
         """Moves a ParseResult, transferring all field ownership.
 
         Args:
-            take: The ParseResult to move from.
+            move: The ParseResult to move from.
         """
-        self._flags = take._flags^
-        self._values = take._values^
-        self._positionals = take._positionals^
-        self._counts = take._counts^
-        self._lists = take._lists^
-        self._maps = take._maps^
-        self._positional_names = take._positional_names^
-        self.subcommand = take.subcommand^
-        self._subcommand_results = take._subcommand_results^
-        self._unknown_arguments = take._unknown_arguments^
+        self._flags = move._flags^
+        self._values = move._values^
+        self._positionals = move._positionals^
+        self._counts = move._counts^
+        self._lists = move._lists^
+        self._maps = move._maps^
+        self._positional_names = move._positional_names^
+        self.subcommand = move.subcommand^
+        self._subcommand_results = move._subcommand_results^
+        self._unknown_arguments = move._unknown_arguments^
 
     def get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
@@ -249,8 +261,8 @@ struct ParseResult(Copyable, Movable, Writable):
                 "No subcommand result available. Did you forget to check"
                 " has_subcommand_result()?"
             )
-        var r: ParseResult = self._subcommand_results[0].copy()
-        return r^
+        var parse_result: ParseResult = self._subcommand_results[0].copy()
+        return parse_result^
 
     def get_unknown_arguments(self) -> List[String]:
         """Returns the list of unrecognised arguments.

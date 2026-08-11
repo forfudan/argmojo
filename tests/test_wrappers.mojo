@@ -43,7 +43,7 @@ def test_option_move() raises:
     """Option[String] move transfers ownership."""
     var a = Option[String, long="path"]()
     a.value = String("moved")
-    var b = Option[String, long="path"](take=a^)
+    var b = Option[String, long="path"](move=a^)
     assert_equal(b.value, "moved")
 
 
@@ -83,7 +83,7 @@ def test_flag_copy() raises:
 def test_flag_move() raises:
     """Flag move transfers ownership."""
     var a = Flag[long="force"](True)
-    var b = Flag[long="force"](take=a^)
+    var b = Flag[long="force"](move=a^)
     assert_true(b.value)
 
 
@@ -115,7 +115,7 @@ def test_positional_move() raises:
     """Positional[String] move transfers ownership."""
     var a = Positional[String, help="Path"]()
     a.value = String("foo.txt")
-    var b = Positional[String, help="Path"](take=a^)
+    var b = Positional[String, help="Path"](move=a^)
     assert_equal(b.value, "foo.txt")
 
 
@@ -145,7 +145,7 @@ def test_count_copy() raises:
 def test_count_move() raises:
     """Count move transfers ownership."""
     var a = Count[long="debug"](7)
-    var b = Count[long="debug"](take=a^)
+    var b = Count[long="debug"](move=a^)
     assert_equal(b.value, 7)
 
 
