@@ -65,7 +65,7 @@ def _help_line_width() -> Int:
     """
     # struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; }
     # = 8 bytes total.  We only need ws_col (bytes 2-3).
-    var buf = List[UInt8](length=8, fill=0)
+    var buf = Array[UInt8, 8](fill=0)
     var ptr = buf.unsafe_ptr()
     # Try macOS ioctl number first, then Linux.
     var rc = external_call["ioctl", Int, Int, Int, Int](
@@ -710,13 +710,16 @@ def _correct_cjk_punctuation(token: String) -> String:
 # unavailable" and fall back to normal (visible) input.
 
 comptime _TERMIOS_BUF_LEN = 24  # 24 × UInt32 = 96 bytes ≥ sizeof(struct termios)
+# The buffer is a fixed-size `Array`, so it lives inline on the stack and
+# costs no heap allocation on the interactive-prompt path.
+comptime _TermiosBuf = Array[UInt32, _TERMIOS_BUF_LEN]
 # c_lflag UInt32 offset varies by platform (see _lflag_offset below).
 comptime _ECHO: UInt32 = 0x00000008
 comptime _TCSANOW = 0
 
 
 @always_inline
-def _lflag_offset(buf: List[UInt32]) -> Int:
+def _lflag_offset(buf: Array[UInt32, _TERMIOS_BUF_LEN]) -> Int:
     """Returns the UInt32 index of c_lflag in a tcgetattr buffer.
 
     On macOS (tcflag_t = 8 bytes), c_lflag is at UInt32 offset 6.
@@ -735,52 +738,53 @@ def _lflag_offset(buf: List[UInt32]) -> Int:
     return -1
 
 
-def _disable_echo() -> List[UInt32]:
+def _disable_echo() -> Optional[_TermiosBuf]:
     """Disables terminal echo on stdin.
 
     Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
     bit in ``c_lflag``.  Returns the original termios settings (so
-    ``_restore_echo`` can restore them exactly), or an empty list if
+    ``_restore_echo`` can restore them exactly), or ``None`` if
     stdin is not a terminal or the termios layout cannot be determined
     safely.
     """
-    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
+    var buf = _TermiosBuf(fill=0)
     var ptr = buf.unsafe_ptr()
     var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
     if rc != 0:
-        return List[UInt32]()
+        return None
     # Save the original termios settings before modifying.
     var saved = buf.copy()
     var offset = _lflag_offset(buf)
     if offset < 0:
         # Cannot safely locate c_lflag — do not modify termios.
-        return List[UInt32]()
+        return None
     buf[offset] = buf[offset] & ~_ECHO
     ptr = buf.unsafe_ptr()
     rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
     # Keep buf alive until tcsetattr has finished reading from it.
-    # Without this, the compiler may destroy buf (freeing the heap
-    # memory) before tcsetattr copies the data into kernel space.
+    # Without this, the compiler may destroy buf (invalidating the
+    # pointer) before tcsetattr copies the data into kernel space.
     _ = buf^
     if rc != 0:
-        return List[UInt32]()
+        return None
     return saved^
 
 
-def _restore_echo(var saved: List[UInt32]) -> Bool:
+def _restore_echo(var saved: Optional[_TermiosBuf]) -> Bool:
     """Restores terminal echo on stdin.
 
     Restores the original termios settings saved by ``_disable_echo``.
     Returns ``True`` on success.
     """
-    if len(saved) == 0:
+    if not saved:
         return True
-    var ptr = saved.unsafe_ptr()
+    var buf = saved.take()
+    var ptr = buf.unsafe_ptr()
     var rc = external_call["tcsetattr", Int, Int, Int, Int](
         0, _TCSANOW, Int(ptr)
     )
-    # Keep saved alive — see _disable_echo comment.
-    _ = saved^
+    # Keep buf alive — see _disable_echo comment.
+    _ = buf^
     return rc == 0
 
 
@@ -835,7 +839,7 @@ def _read_password_asterisk(msg: String) raises -> String:
     print(msg, end="", file=stderr)
 
     # ── tcgetattr — save original terminal settings ──────────────
-    var buf = List[UInt32](length=_TERMIOS_BUF_LEN, fill=0)
+    var buf = _TermiosBuf(fill=0)
     var ptr = buf.unsafe_ptr()
     var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
     if rc != 0:
@@ -867,13 +871,17 @@ def _read_password_asterisk(msg: String) raises -> String:
 
     # ── Read one byte at a time ──────────────────────────────────
     var password = List[UInt8]()
-    var one = List[UInt8](length=1, fill=0)
+    var one = Array[UInt8, 1](fill=0)
     var cancelled = False
     var cancel_reason = String()
 
     while True:
-        var one_ptr = one.unsafe_ptr()
-        var n = external_call["read", Int, Int, Int, Int](0, Int(one_ptr), 1)
+        # NOTE: the buffer is passed as a real pointer (not `Int(ptr)`).
+        # The standard library declares `read` as
+        # `(Int, Pointer, Int) -> Int`; passing the pointer as an integer
+        # declares a conflicting signature for the same symbol, which makes
+        # the module fail to lower whenever std's file I/O is linked in too.
+        var n = external_call["read", Int](0, one.unsafe_ptr(), 1)
         if n <= 0:
             cancelled = True
             cancel_reason = "password input read error"
@@ -900,10 +908,7 @@ def _read_password_asterisk(msg: String) raises -> String:
             # 2-3 bytes (e.g. ESC [ A), but we read up to 8 to be safe.
             var discard_count = 0
             while discard_count < 8:
-                var esc_ptr = one.unsafe_ptr()
-                var n2 = external_call["read", Int, Int, Int, Int](
-                    0, Int(esc_ptr), 1
-                )
+                var n2 = external_call["read", Int](0, one.unsafe_ptr(), 1)
                 if n2 <= 0:
                     break
                 # Stop after the terminating letter of a CSI sequence.

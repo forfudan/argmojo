@@ -46,7 +46,9 @@ from .utils import (
 # ---------- module-level file reader (workaround for Mojo compiler issue) ----
 # Placing `open()` inside a method of a struct that contains `List[Self]` causes
 # the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
-# Moving the I/O into a free function avoids the trigger.
+# Moving the I/O into a free function avoids the trigger.  Still reproducing on
+# Mojo v1.0.0: re-enabling the call from parse_arguments() hangs the compiler
+# on tests/test_parse.mojo even though tests/test_response_file.mojo builds.
 def _read_file_content(filepath: String) raises -> String:
     """Reads and returns the entire contents of *filepath*."""
     with open(filepath, "r") as f:
@@ -388,63 +390,75 @@ struct Command(Copyable, Movable, Writable):
         # ── Auto-dispatch ──
         self._run_function = None
 
-    def __init__(out self, *, deinit take: Self):
+    def __deinit__(deinit self):
+        """Destroys the Command, releasing all owned fields.
+
+        The compiler cannot synthesise this destructor implicitly: the
+        ``subcommands`` field makes Command recursive, and deducing
+        ``List[Command]: Deinitable`` would require ``Command: Deinitable``,
+        which is what is being deduced.  Declaring ``__deinit__`` explicitly
+        breaks that cycle.  The body is empty because the fields are still
+        destroyed automatically once it returns.
+        """
+        pass
+
+    def __init__(out self, *, deinit move: Self):
         """Moves a Command, transferring ownership of all fields.
 
         Args:
-            take: The Command to move from.
+            move: The Command to move from.
         """
-        self.name = take.name^
-        self.description = take.description^
-        self.version = take.version^
-        self.arguments = take.arguments^
-        self.subcommands = take.subcommands^
+        self.name = move.name^
+        self.description = move.description^
+        self.version = move.version^
+        self.arguments = move.arguments^
+        self.subcommands = move.subcommands^
         # ── Group constraints ──
-        self._exclusive_groups = take._exclusive_groups^
-        self._required_groups = take._required_groups^
-        self._one_required_groups = take._one_required_groups^
-        self._conditional_reqs = take._conditional_reqs^
-        self._implications = take._implications^
+        self._exclusive_groups = move._exclusive_groups^
+        self._required_groups = move._required_groups^
+        self._one_required_groups = move._one_required_groups^
+        self._conditional_reqs = move._conditional_reqs^
+        self._implications = move._implications^
         # ── Subcommand behavior ──
-        self._is_help_subcommand = take._is_help_subcommand
-        self._help_subcommand_enabled = take._help_subcommand_enabled
-        self._command_aliases = take._command_aliases^
-        self._is_hidden = take._is_hidden
+        self._is_help_subcommand = move._is_help_subcommand
+        self._help_subcommand_enabled = move._help_subcommand_enabled
+        self._command_aliases = move._command_aliases^
+        self._is_hidden = move._is_hidden
         # ── Parser behavior ──
-        self._help_on_no_arguments = take._help_on_no_arguments
-        self._allow_negative_numbers = take._allow_negative_numbers
-        self._allow_negative_expressions = take._allow_negative_expressions
+        self._help_on_no_arguments = move._help_on_no_arguments
+        self._allow_negative_numbers = move._allow_negative_numbers
+        self._allow_negative_expressions = move._allow_negative_expressions
         self._allow_positional_with_subcommands = (
-            take._allow_positional_with_subcommands
+            move._allow_positional_with_subcommands
         )
-        self._response_file_prefix = take._response_file_prefix^
-        self._response_file_max_depth = take._response_file_max_depth
-        self._disable_fullwidth_correction = take._disable_fullwidth_correction
+        self._response_file_prefix = move._response_file_prefix^
+        self._response_file_max_depth = move._response_file_max_depth
+        self._disable_fullwidth_correction = move._disable_fullwidth_correction
         self._disable_punctuation_correction = (
-            take._disable_punctuation_correction
+            move._disable_punctuation_correction
         )
         # ── Interactive & confirmation ──
-        self._confirmation_enabled = take._confirmation_enabled
-        self._confirmation_prompt = take._confirmation_prompt^
+        self._confirmation_enabled = move._confirmation_enabled
+        self._confirmation_prompt = move._confirmation_prompt^
         # ── Help & display ──
-        self._header_color = take._header_color^
-        self._argument_color = take._argument_color^
-        self._warn_color = take._warn_color^
-        self._error_color = take._error_color^
-        self._program_color = take._program_color^
-        self._short_option_color = take._short_option_color^
-        self._long_option_color = take._long_option_color^
-        self._value_color = take._value_color^
-        self._positional_color = take._positional_color^
-        self._command_color = take._command_color^
-        self._custom_usage = take._custom_usage^
-        self._tips = take._tips^
+        self._header_color = move._header_color^
+        self._argument_color = move._argument_color^
+        self._warn_color = move._warn_color^
+        self._error_color = move._error_color^
+        self._program_color = move._program_color^
+        self._short_option_color = move._short_option_color^
+        self._long_option_color = move._long_option_color^
+        self._value_color = move._value_color^
+        self._positional_color = move._positional_color^
+        self._command_color = move._command_color^
+        self._custom_usage = move._custom_usage^
+        self._tips = move._tips^
         # ── Shell completions ──
-        self._completions_enabled = take._completions_enabled
-        self._completions_name = take._completions_name^
-        self._completions_is_subcommand = take._completions_is_subcommand
+        self._completions_enabled = move._completions_enabled
+        self._completions_name = move._completions_name^
+        self._completions_is_subcommand = move._completions_is_subcommand
         # ── Auto-dispatch ──
-        self._run_function = take._run_function^
+        self._run_function = move._run_function^
 
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a Command.
@@ -1083,8 +1097,10 @@ struct Command(Copyable, Movable, Writable):
                 + target
                 + "'"
             )
-        var checks: List[String] = [target, condition]
-        for ci in range(len(checks)):
+        # Fixed-size, never grown and never escapes: an `Array` keeps this
+        # validation scratch buffer inline on the stack (no heap allocation).
+        var checks: Array[String, 2] = [target.copy(), condition.copy()]
+        for ci in range(checks.length):
             var found = False
             for ai in range(len(self.arguments)):
                 if self.arguments[ai].name == checks[ci]:
@@ -2332,12 +2348,14 @@ struct Command(Copyable, Movable, Writable):
 
         # Expand response files if enabled.
         var tokens_to_parse = raw_tokens.copy()
-        # NOTE: Response file expansion temporarily disabled to work around
-        # Mojo compiler deadlock with -D ASSERT=all.  The module-level
+        # NOTE: Response file expansion remains disabled: calling it from this
+        # method still deadlocks the Mojo compiler under `-D ASSERT=all`
+        # (`Command` holds `List[Command]`, and the expansion reaches `open()`).
+        # Verified still reproducing on Mojo v1.0.0 — `tests/test_parse.mojo`
+        # hangs at 0% CPU during compilation.  The module-level
         # _expand_response_files / _read_response_file functions are still
-        # available and tested; only the automatic call from parse_arguments
-        # is commented out.
-        # if len(self._response_file_prefix) > 0:
+        # available and tested by tests/test_response_file.mojo.
+        # if self._response_file_prefix.byte_length() > 0:
         #     tokens_to_parse = _expand_response_files(
         #         raw_tokens,
         #         self._response_file_prefix,
@@ -2666,7 +2684,8 @@ struct Command(Copyable, Movable, Writable):
         if eq_pos >= 0:
             # Split into key and value parts.
             value = String(key[byte = eq_pos + 1 :])
-            key = String(key[byte=:eq_pos])
+            var key_part = String(key[byte=:eq_pos])
+            key = key_part^
             has_eq = True
 
         # Check for --no-X negation pattern (with prefix matching).
@@ -3179,7 +3198,7 @@ struct Command(Copyable, Movable, Writable):
                     # then print a newline (since the user's Enter is not
                     # echoed either on some terminals).
                     var saved = _disable_echo()
-                    var echo_disabled = len(saved) > 0
+                    var echo_disabled = Bool(saved)
                     try:
                         value = input(msg)
                     except e:
@@ -3609,7 +3628,8 @@ struct Command(Copyable, Movable, Writable):
             var eq = key.find("=")
             var has_eq = eq >= 0
             if has_eq:
-                key = String(key[byte=:eq])
+                var key_part = String(key[byte=:eq])
+                key = key_part^
             # Recognise the `--no-<flag>` negation form for negatable long
             # options. Without this, `allow_hyphen_values` could swallow
             # `--no-foo` as a positional even though `foo` is a known

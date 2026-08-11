@@ -10,10 +10,10 @@ license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]
 readme = "README.md"
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies]
-mojo = "==1.0.0b2"
+mojo = ">=1.0.0, <1.1.0"
 
 [tasks]
 # format the code
@@ -44,8 +44,9 @@ test = """ set -e
     && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
     && bash tests/check_schema_errors.sh"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
-# is temporarily disabled to work around a Mojo compiler deadlock
-# with -D ASSERT=all.  Re-enable when the compiler bug is fixed.
+# is disabled to work around a Mojo compiler deadlock with -D ASSERT=all.
+# Still reproducing on Mojo v1.0.0 (tests/test_parse.mojo hangs at 0% CPU
+# during compilation when the expansion call is re-enabled).
 
 # run tests (parallel, fail if any test fails)
 t = """set -e

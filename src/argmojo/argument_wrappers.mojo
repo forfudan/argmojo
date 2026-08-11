@@ -75,7 +75,7 @@ from .command import Command
 
 
 struct Option[
-    T: Defaultable & Copyable & Movable & ImplicitlyDestructible,
+    T: Defaultable & Copyable & Deinitable,
     *,
     # -- Naming --
     long: StringLiteral = "",
@@ -180,13 +180,13 @@ struct Option[
         """
         self.value = copy.value.copy()
 
-    def __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit move: Self):
         """Moves from an existing instance.
 
         Args:
-            take: The Option to move from.
+            move: The Option to move from.
         """
-        self.value = take.value^
+        self.value = move.value^
 
     def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into an Argument and adds it to the Command.
@@ -302,14 +302,19 @@ struct Option[
         """
         if not result.has(field_name):
             return
+        # Dispatch on the reflected type name.  The expected names are
+        # obtained by reflecting the supported types themselves rather than
+        # being spelled as literals, so this keeps working when the standard
+        # library renames a type (e.g. in Mojo v1.0.0 `Int` became an alias
+        # for `Scalar[DType.int]`, so it now reflects as "SIMD[DType.int, 1]").
         comptime type_name = reflect[Self.T].name()
-        comptime if type_name == "List[String]":
+        comptime if type_name == reflect[List[String]].name():
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
-        elif type_name == "Dict[String, String]":
+        elif type_name == reflect[Dict[String, String]].name():
             self.value = rebind[Self.T](result.get_map(field_name)).copy()
-        elif type_name == "Int":
+        elif type_name == reflect[Int].name():
             self.value = rebind[Self.T](result.get_int(field_name)).copy()
-        elif type_name == "String":
+        elif type_name == reflect[String].name():
             self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
@@ -391,13 +396,13 @@ struct Flag[
         """
         self.value = copy.value
 
-    def __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit move: Self):
         """Moves from an existing instance.
 
         Args:
-            take: The Flag to move from.
+            move: The Flag to move from.
         """
-        self.value = take.value
+        self.value = move.value
 
     def __bool__(self) -> Bool:
         """Converts to ``Bool`` implicitly for convenience.
@@ -476,7 +481,7 @@ struct Flag[
 
 
 struct Positional[
-    T: Defaultable & Copyable & Movable & ImplicitlyDestructible,
+    T: Defaultable & Copyable & Deinitable,
     *,
     help: StringLiteral = "",
     # -- Argument type --
@@ -539,13 +544,13 @@ struct Positional[
         """
         self.value = copy.value.copy()
 
-    def __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit move: Self):
         """Moves from an existing instance.
 
         Args:
-            take: The Positional to move from.
+            move: The Positional to move from.
         """
-        self.value = take.value^
+        self.value = move.value^
 
     def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into a positional Argument and adds it to the Command.
@@ -607,12 +612,14 @@ struct Positional[
         """
         if not result.has(field_name):
             return
+        # See the note in `Option.read_from_result` on why the expected type
+        # names are reflected rather than spelled as string literals.
         comptime type_name = reflect[Self.T].name()
-        comptime if type_name == "List[String]":
+        comptime if type_name == reflect[List[String]].name():
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
-        elif type_name == "Int":
+        elif type_name == reflect[Int].name():
             self.value = rebind[Self.T](result.get_int(field_name)).copy()
-        elif type_name == "String":
+        elif type_name == reflect[String].name():
             self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
@@ -690,13 +697,13 @@ struct Count[
         """
         self.value = copy.value
 
-    def __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit move: Self):
         """Moves from an existing instance.
 
         Args:
-            take: The Count to move from.
+            move: The Count to move from.
         """
-        self.value = take.value
+        self.value = move.value
 
     def add_to_command(self, field_name: String, mut command: Command) raises:
         """Translates compile-time parameters into a count Argument and adds it to the Command.
