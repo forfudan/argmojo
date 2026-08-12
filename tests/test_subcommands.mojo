@@ -2046,5 +2046,111 @@ def test_parent_with_subcommands() raises:
     assert_equal(sub_result.get_string("target"), "main")
 
 
+# ── Persistent conflicts are detected in either registration order ───────────
+
+
+def test_persistent_conflict_when_argument_added_after_subcommand() raises:
+    """The conflict check does not depend on the order of the two calls.
+
+    ``add_subcommand()`` checks the persistent arguments registered so far;
+    this covers the mirror case, where the persistent argument is registered
+    after the subcommand.
+    """
+    var app = Command("app", "")
+    var build = Command("build", "")
+    build.add_argument(
+        Argument("verbose", help="").long["verbose"]().short["v"]().flag()
+    )
+    app.add_subcommand(build^)
+
+    var raised = False
+    try:
+        app.add_argument(
+            Argument("verbose", help="")
+            .long["verbose"]()
+            .short["v"]()
+            .flag()
+            .persistent()
+        )
+    except:
+        raised = True
+    assert_true(
+        raised,
+        msg="a late persistent argument must still report the conflict",
+    )
+
+
+def test_persistent_short_conflict_after_subcommand() raises:
+    """Short-flag collisions are caught in the same order."""
+    var app = Command("app", "")
+    var build = Command("build", "")
+    build.add_argument(
+        Argument("version", help="").long["ver"]().short["v"]().flag()
+    )
+    app.add_subcommand(build^)
+
+    var raised = False
+    try:
+        app.add_argument(
+            Argument("verbose", help="")
+            .long["verbose"]()
+            .short["v"]()
+            .flag()
+            .persistent()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="short-flag conflict must be reported")
+
+
+def test_non_persistent_argument_after_subcommand_is_fine() raises:
+    """Only persistent arguments are checked against subcommands."""
+    var app = Command("app", "")
+    var build = Command("build", "")
+    build.add_argument(
+        Argument("verbose", help="").long["verbose"]().short["v"]().flag()
+    )
+    app.add_subcommand(build^)
+
+    app.add_argument(
+        Argument("verbose", help="").long["verbose"]().short["v"]().flag()
+    )
+    assert_true(True, msg="a non-persistent argument must not conflict")
+
+
+def test_persistent_argument_injected_once_into_child() raises:
+    """A persistent argument reaches the child exactly once.
+
+    The injection in ``_dispatch_subcommand`` bypasses ``add_argument()``, so
+    it does its own duplicate check; registering the same flag on both sides
+    is refused earlier, in ``add_argument()`` / ``add_subcommand()``.
+    """
+    var app = Command("app", "")
+    app.add_argument(
+        Argument("verbose", help="Root verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+        .persistent()
+    )
+    var build = Command("build", "Build it")
+    build.add_argument(Argument("target", help="Target").positional())
+    app.add_subcommand(build^)
+
+    var args: List[String] = ["app", "build", "mylib", "--verbose"]
+    var result = app.parse_arguments(args)
+    assert_equal(result.subcommand, "build")
+    assert_true(
+        result.get_flag("verbose"),
+        msg="the persistent flag must bubble up to the root result",
+    )
+    var child = result.get_subcommand_result()
+    assert_true(
+        child.get_flag("verbose"),
+        msg="the persistent flag must be readable on the child result",
+    )
+    assert_equal(child.get_string("target"), "mylib")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

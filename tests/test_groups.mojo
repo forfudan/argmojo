@@ -1845,5 +1845,311 @@ def test_implies_rejects_value_taking_implied() raises:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+# ── Defaults must not be mistaken for user input ─────────────────────────────
+
+
+def test_exclusive_group_ignores_default() raises:
+    """A default value does not trigger a mutually-exclusive conflict."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(
+        Argument("format", help="Format").long["format"]().default["text"]()
+    )
+    command.mutually_exclusive(["json", "format"])
+
+    var args: List[String] = ["test", "--json"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("json"), msg="--json should be set")
+    assert_equal(result.get_string("format"), "text")
+    assert_false(
+        result.was_provided("format"),
+        msg="a defaulted argument was not provided by the user",
+    )
+
+
+def test_exclusive_group_still_catches_two_real_arguments() raises:
+    """Two arguments actually typed by the user still conflict."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(
+        Argument("format", help="Format").long["format"]().default["text"]()
+    )
+    command.mutually_exclusive(["json", "format"])
+
+    var args: List[String] = ["test", "--json", "--format", "yaml"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="two user-supplied arguments must conflict")
+
+
+def test_required_together_ignores_default() raises:
+    """A default does not make a required-together group half-provided."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("user", help="User").long["user"]())
+    command.add_argument(
+        Argument("pass", help="Password").long["pass"]().default["secret"]()
+    )
+    command.required_together(["user", "pass"])
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("pass"), "secret")
+
+
+def test_required_together_still_catches_partial_input() raises:
+    """Supplying only one member of the group is still an error."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("user", help="User").long["user"]())
+    command.add_argument(
+        Argument("pass", help="Password").long["pass"]().default["secret"]()
+    )
+    command.required_together(["user", "pass"])
+
+    var args: List[String] = ["test", "--user", "zhu"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--user without --pass must raise")
+
+
+def test_one_required_not_satisfied_by_default() raises:
+    """A default value cannot satisfy a one-required group."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("json", help="JSON").long["json"]().flag())
+    command.add_argument(
+        Argument("format", help="Format").long["format"]().default["text"]()
+    )
+    command.one_required(["json", "format"])
+
+    var args: List[String] = ["test"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(
+        raised, msg="a default must not satisfy one_required on its own"
+    )
+
+
+def test_conditional_requirement_ignores_default() raises:
+    """A defaulted condition does not make the target required."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(Argument("key", help="Key").long["key"]())
+    command.required_if("key", "mode")
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("mode"), "fast")
+
+
+def test_conditional_requirement_fires_on_real_input() raises:
+    """Typing the condition still makes the target required."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(Argument("key", help="Key").long["key"]())
+    command.required_if("key", "mode")
+
+    var args: List[String] = ["test", "--mode", "slow"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--mode given by the user must require --key")
+
+
+def test_was_provided_reports_user_input() raises:
+    """Tests that was_provided() separates typed values from defaults."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Format").long["format"]().default["json"]()
+    )
+    command.add_argument(Argument("out", help="Out").long["out"]())
+
+    var args: List[String] = ["test", "--out", "file.txt"]
+    var result = command.parse_arguments(args)
+    assert_true(result.was_provided("out"), msg="--out was typed")
+    assert_false(result.was_provided("format"), msg="--format is a default")
+    assert_true(result.has("format"), msg="has() still sees the default")
+    assert_false(result.was_provided("missing"), msg="unknown name is False")
+
+
+def test_implied_argument_counts_as_provided() raises:
+    """An implies() rule marks the implied argument as provided."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("debug", help="Debug").long["debug"]().flag())
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+    command.implies("debug", "verbose")
+
+    var args: List[String] = ["test", "--debug"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("verbose"), msg="verbose is implied")
+    assert_true(
+        result.was_provided("verbose"),
+        msg="an implied argument counts as user intent",
+    )
+
+
+def test_default_on_trigger_does_not_fire_implication() raises:
+    """A default on the trigger must not fire an implies() rule."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(
+        Argument("parallel", help="Parallel").long["parallel"]().flag()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_false(
+        result.get_flag("parallel"),
+        msg="a default trigger must not imply --parallel",
+    )
+    assert_false(
+        result.was_provided("parallel"), msg="and must not mark it provided"
+    )
+
+
+def test_default_trigger_does_not_break_exclusive_group() raises:
+    """The implication path must not resurrect a false exclusive error."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(
+        Argument("parallel", help="Parallel").long["parallel"]().flag()
+    )
+    command.add_argument(Argument("quiet", help="Quiet").long["quiet"]().flag())
+    command.implies("mode", "parallel")
+    var group: List[String] = ["parallel", "quiet"]
+    command.mutually_exclusive(group^)
+
+    var args: List[String] = ["test", "--quiet"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("quiet"), msg="--quiet parses cleanly")
+    assert_false(result.get_flag("parallel"), msg="--parallel stays unset")
+
+
+def test_typed_trigger_still_fires_implication() raises:
+    """A trigger the user typed must still imply, even with a default set."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(
+        Argument("parallel", help="Parallel").long["parallel"]().flag()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test", "--mode", "slow"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("parallel"), msg="a typed --mode still implies")
+
+
+def test_parse_known_default_trigger_does_not_fire_implication() raises:
+    """Test that parse_known_arguments() must not imply from a default either.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(
+        Argument("parallel", help="Parallel").long["parallel"]().flag()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test", "--unknown"]
+    var result = command.parse_known_arguments(args)
+    assert_equal(
+        result.get_string("mode"), "fast", msg="the default still applies"
+    )
+    assert_false(
+        result.get_flag("parallel"),
+        msg="a default trigger must not imply --parallel",
+    )
+    assert_false(
+        result.was_provided("parallel"), msg="and must not mark it provided"
+    )
+
+
+def test_parse_known_implication_outranks_a_default_on_the_implied_arg() raises:
+    """Implications must run before defaults in parse_known_arguments().
+
+    An implication only fires while the implied argument is still unset, so
+    filling defaults first would let a `.default()` on --parallel swallow the
+    rule and leave the flag false even though the user typed the trigger.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("mode", help="Mode").long["mode"]())
+    command.add_argument(
+        Argument("parallel", help="Parallel")
+        .long["parallel"]()
+        .flag()
+        .default["false"]()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test", "--mode", "slow", "--unknown"]
+    var result = command.parse_known_arguments(args)
+    assert_true(
+        result.get_flag("parallel"),
+        msg="the implication must beat the default on --parallel",
+    )
+    assert_true(
+        result.was_provided("parallel"),
+        msg="an implied argument counts as user intent",
+    )
+
+
+def test_both_entry_points_agree_on_an_implied_default_argument() raises:
+    """Tests that parse_arguments() and parse_known_arguments() must not
+    disagree.
+
+    Same command line, same implication, same `.default()` on the implied
+    argument: both entry points have to answer identically, which is what
+    the shared implications-before-defaults order guarantees.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("mode", help="Mode").long["mode"]())
+    command.add_argument(
+        Argument("parallel", help="Parallel")
+        .long["parallel"]()
+        .flag()
+        .default["false"]()
+    )
+    command.implies("mode", "parallel")
+
+    var full_args: List[String] = ["test", "--mode", "slow"]
+    var known_args: List[String] = ["test", "--mode", "slow"]
+    var full = command.parse_arguments(full_args)
+    var known = command.parse_known_arguments(known_args)
+
+    assert_equal(
+        full.get_flag("parallel"),
+        known.get_flag("parallel"),
+        msg="both entry points set the implied --parallel the same way",
+    )
+    assert_equal(
+        full.was_provided("parallel"),
+        known.was_provided("parallel"),
+        msg="both entry points mark it provided the same way",
+    )
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

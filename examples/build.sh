@@ -50,13 +50,22 @@ list_examples() {
 # ── Build + time one example ─────────────────────────────────────────────
 #   build_one <name> <source>
 #   Sets TIMES[name]=seconds
+# `-I .` builds against the precompiled argmojo.mojoc produced by the
+# packaging step above, rather than recompiling src/argmojo from source
+# into every one of the eight binaries.  Measured on this repo, that is
+# roughly 10% off the total.
+#
+# `date +%s` only has whole-second resolution, which rounds a 5.4 s build
+# and a 5.6 s build to different integers while hiding real differences
+# inside a second.  Python gives sub-second numbers so the summary can
+# actually be compared between runs.
 build_one() {
     local name="$1" src="$2"
     local t0 t1 elapsed
-    t0=$(date +%s)
-    mojo build -I src "$src" -o "$name"
-    t1=$(date +%s)
-    elapsed=$((t1 - t0))
+    t0=$(python3 -c 'import time; print(time.time())')
+    mojo build -I . "$src" -o "$name"
+    t1=$(python3 -c 'import time; print(time.time())')
+    elapsed=$(python3 -c "print(f'{$t1 - $t0:.2f}')")
     TIMES+=("$name:${elapsed}s")
 }
 
@@ -76,12 +85,19 @@ print_summary() {
     echo "├────────────┬─────────────────────────────┤"
     printf "│ %-10s │ %-27s │\n" "Example" "Compile time"
     echo "├────────────┼─────────────────────────────┤"
-    local entry
+    local entry total=0
     for entry in "${TIMES[@]}"; do
         local n="${entry%%:*}"
         local t="${entry#*:}"
         printf "│ %-10s │ %27s │\n" "$n" "$t"
+        total=$(python3 -c "print(f'{$total + ${t%s}:.2f}')")
     done
+    if [ "${#TIMES[@]}" -gt 1 ]; then
+        echo "├────────────┼─────────────────────────────┤"
+        printf "│ %-10s │ %27s │\n" "total" "${total}s"
+        printf "│ %-10s │ %27s │\n" "mean" \
+            "$(python3 -c "print(f'{$total / ${#TIMES[@]}:.2f}s')")"
+    fi
     echo "└────────────┴─────────────────────────────┘"
 }
 

@@ -420,6 +420,32 @@ def _format_two_column_line(
     return line
 
 
+# ── ASCII byte constants ────────────────────────────────────────────────────
+# Used by the byte-scanning helpers below.  Writing the byte value directly
+# avoids the one-byte `String` slices that the character-oriented versions of
+# these functions used to build, which are what made them expensive to
+# compile (see the note in `_looks_like_number`).
+comptime _BYTE_ZERO: UInt8 = 0x30  # '0'
+comptime _BYTE_NINE: UInt8 = 0x39  # '9'
+comptime _BYTE_MINUS: UInt8 = 0x2D  # '-'
+comptime _BYTE_PLUS: UInt8 = 0x2B  # '+'
+comptime _BYTE_DOT: UInt8 = 0x2E  # '.'
+comptime _BYTE_LOWER_E: UInt8 = 0x65  # 'e'
+comptime _BYTE_UPPER_E: UInt8 = 0x45  # 'E'
+
+
+def _is_digit_byte(b: UInt8) -> Bool:
+    """Returns True if byte *b* is an ASCII digit.
+
+    Args:
+        b: The byte to test.
+
+    Returns:
+        True when the byte is in the range ``'0'`` to ``'9'``.
+    """
+    return b >= _BYTE_ZERO and b <= _BYTE_NINE
+
+
 def _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
@@ -427,50 +453,75 @@ def _looks_like_number(token: String) -> Bool:
     ``-N.NEX``, ``-.NE+X``, and the corresponding ``-Ne+X``, ``-Ne-X``,
     ``-NE+X``, ``-NE-X`` variants.
     """
-    if token.byte_length() < 2 or not token.startswith("-"):
+    # [Mojo Miji]
+    # This walks raw bytes rather than one-byte string slices.  Every
+    # `token[byte=j:j+1] >= "0"` writes out a whole string comparison that
+    # the compiler then inlines; there are ~30 of them here, and they cost
+    # more compile time than the rest of the parser put together.  Comparing
+    # `UInt8` against a byte constant is a single machine instruction, and it
+    # is equally correct: all the characters matched below are ASCII, and a
+    # UTF-8 continuation byte is always >= 0x80 so it can never be mistaken
+    # for one of them.
+    var bytes = token.as_bytes()
+    var n = len(bytes)
+    if n < 2 or bytes[0] != _BYTE_MINUS:
         return False
     var j = 1
     # Optional leading '.' after minus (e.g. -.5).
-    if token[byte = j : j + 1] == ".":
+    if bytes[j] == _BYTE_DOT:
         j += 1
-        if j >= token.byte_length() or not (
-            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-        ):
+        if j >= n or not _is_digit_byte(bytes[j]):
             return False
-    elif not (
-        token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-    ):
+    elif not _is_digit_byte(bytes[j]):
         return False
     # Integer digits.
-    while j < token.byte_length() and (
-        token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-    ):
+    while j < n and _is_digit_byte(bytes[j]):
         j += 1
     # Optional fractional part.
-    if j < token.byte_length() and token[byte = j : j + 1] == ".":
+    if j < n and bytes[j] == _BYTE_DOT:
         j += 1
-        while j < token.byte_length() and (
-            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-        ):
+        while j < n and _is_digit_byte(bytes[j]):
             j += 1
     # Optional exponent.
-    if j < token.byte_length() and (
-        token[byte = j : j + 1] == "e" or token[byte = j : j + 1] == "E"
-    ):
+    if j < n and (bytes[j] == _BYTE_LOWER_E or bytes[j] == _BYTE_UPPER_E):
         j += 1
-        if j < token.byte_length() and (
-            token[byte = j : j + 1] == "+" or token[byte = j : j + 1] == "-"
-        ):
+        if j < n and (bytes[j] == _BYTE_PLUS or bytes[j] == _BYTE_MINUS):
             j += 1
-        if j >= token.byte_length() or not (
-            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-        ):
+        if j >= n or not _is_digit_byte(bytes[j]):
             return False
-        while j < token.byte_length() and (
-            token[byte = j : j + 1] >= "0" and token[byte = j : j + 1] <= "9"
-        ):
+        while j < n and _is_digit_byte(bytes[j]):
             j += 1
-    return j == token.byte_length()
+    return j == n
+
+
+def _is_bool_literal(text: String) -> Bool:
+    """Returns True if *text* spells out a boolean value.
+
+    Accepted (case-insensitive): ``true``/``false``, ``1``/``0``,
+    ``yes``/``no``, ``on``/``off``.  Used to validate the default value of a
+    flag argument at registration time.
+    """
+    var lower = text.lower()
+    return (
+        lower == "true"
+        or lower == "false"
+        or lower == "1"
+        or lower == "0"
+        or lower == "yes"
+        or lower == "no"
+        or lower == "on"
+        or lower == "off"
+    )
+
+
+def _parse_bool_literal(text: String) -> Bool:
+    """Returns the boolean meaning of *text*.
+
+    Only the true-ish spellings are listed; everything else is False.  Call
+    ``_is_bool_literal`` first if the input has not been validated yet.
+    """
+    var lower = text.lower()
+    return lower == "true" or lower == "1" or lower == "yes" or lower == "on"
 
 
 def _is_ascii_digit(ch: String) -> Bool:
@@ -531,8 +582,13 @@ def _levenshtein(a: String, b: String) -> Int:
     The classic dynamic-programming algorithm, O(m*n) time and O(min(m,n))
     space (only the previous row is kept).
     """
-    var m = a.byte_length()
-    var n = b.byte_length()
+    # Compare raw bytes: the inner loop runs m*n times, and a one-byte
+    # string slice there expands into a full string comparison both at
+    # runtime and in the emitted code.
+    var ab = a.as_bytes()
+    var bb = b.as_bytes()
+    var m = len(ab)
+    var n = len(bb)
     if m == 0:
         return n
     if n == 0:
@@ -550,7 +606,7 @@ def _levenshtein(a: String, b: String) -> Int:
     for i in range(1, m + 1):
         curr[0] = i
         for j in range(1, n + 1):
-            var cost = 0 if a[byte = i - 1 : i] == b[byte = j - 1 : j] else 1
+            var cost = 0 if ab[i - 1] == bb[j - 1] else 1
             var ins = prev[j] + 1
             var dele = curr[j - 1] + 1
             var sub = prev[j - 1] + cost
@@ -826,12 +882,17 @@ def _read_password_asterisk(msg: String) raises -> String:
     - ``"password input EOF"`` for Ctrl-D / EOF
     - ``"password input read error"`` for a read(2) failure
 
-    Note: passwords are assumed to be ASCII (the overwhelmingly common
-    case).  Non-ASCII / UTF-8 multi-byte input will produce one ``*``
-    per byte rather than per character, and backspace operates on bytes.
-    The plain ``.password()`` mode (using ``input()``) handles UTF-8
-    correctly and should be preferred when Unicode passphrases are
-    expected.
+    Multi-byte UTF-8 passphrases are read correctly: the bytes are
+    collected as typed and decoded once at the end.  Only the *echo* is
+    per-byte — a two-byte character prints two ``*`` and needs two
+    backspaces to erase.  The plain ``.password()`` mode (using
+    ``input()``) echoes nothing at all and has no such quirk, so prefer
+    it when Unicode passphrases are common.
+
+    The collected bytes are overwritten with zeros before this function
+    returns, so the plaintext does not linger in the freed buffer.  The
+    returned ``String`` is of course still plaintext and is the caller's
+    responsibility.
     """
     from std.sys import stderr
 
@@ -928,7 +989,26 @@ def _read_password_asterisk(msg: String) raises -> String:
     if cancelled:
         raise cancel_reason
 
+    # Decode the collected bytes as UTF-8 in one step.  Going byte by byte
+    # through `chr()` would treat each byte as a code point and re-encode
+    # it, turning a typed "é" (0xC3 0xA9) into "Ã©" (0xC3 0x83 0xC2 0xA9).
+    # `from_utf8` validates; a terminal in a UTF-8 locale always satisfies
+    # it, but a raw byte sequence that does not is reported rather than
+    # silently mangled.
     var result = String()
+    var decode_failed = False
+    try:
+        result = String(from_utf8=Span(password))
+    except:
+        decode_failed = True
+
+    # Wipe the plaintext bytes before the buffer is freed — on the error
+    # path too, which is why this is not simply written after the decode.
     for i in range(len(password)):
-        result += chr(Int(password[i]))
+        password[i] = 0
+    one[0] = 0
+
+    if decode_failed:
+        raise Error("password input is not valid UTF-8")
+
     return result^

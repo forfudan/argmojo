@@ -39,6 +39,8 @@ ArgMojo currently supports:
 - **Positional arguments**: matched by position
 - **Default values**: fallback when an argument is not provided
 - **Required arguments**: validation that mandatory arguments are present
+- **Typed result accessors**: `get_string()`, `get_int()`, `get_float()`, `get_flag()`, `get_count()`, `get_list()`, `get_map()` read a value back in its own type
+- **User-input detection**: `was_provided()` tells a value the user actually supplied (on the command line, at a prompt, or through `.implies()`) from one that came from a `.default()`
 - **Auto-generated help**: `--help` / `-h` / `-?` with dynamic column alignment, pixi-style ANSI colours, and customisable header/argument colours
 - **Help on no arguments**: optionally show help when invoked with no arguments
 - **Version display**: `--version` / `-V` (also auto-generated)
@@ -73,7 +75,7 @@ ArgMojo currently supports:
 - **Confirmation option**: `confirmation_option()` to add a `--yes`/`-y` skip-confirmation flag
 - **Argument parents**: `add_parent()` to share argument definitions across commands
 - **Custom usage line**: `usage()` to override the auto-generated usage string
-- **Response files**: `@args.txt` expansion (temporarily disabled due to a Mojo compiler bug)
+- **Response files**: `@args.txt` expansion (currently disabled due to a Mojo compiler bug, see the [changelog](docs/changelog.md))
 - **CJK-aware help alignment**: CJK characters treated as 2-column-wide
 - **CJK full-width auto-correction**: fullwidth `－－ｖｅｒｂｏｓｅ` → `--verbose` with a warning
 - **CJK punctuation detection**: em-dash `——verbose` → `--verbose`
@@ -81,7 +83,7 @@ ArgMojo currently supports:
 - **Default-if-no-value**: `--compress` uses a fallback; `--compress=bzip2` overrides
 - **Require equals syntax**: `--key=value` required, `--key value` rejected
 - **Remainder positional**: `.remainder()` consumes all remaining tokens
-- **Allow hyphen values**: `.allow_hyphen_values()` accepts `-` as a regular value (stdin convention)
+- **Allow hyphen values**: `.allow_hyphen_values()` accepts dash-prefixed tokens as values, including registered options (`--cflag --verbose`) and the stdin `-` convention
 - **Partial parsing**: `parse_known_arguments()` collects unrecognised options instead of erroring
 - **Compile-time validation**: builder parameters validated at `mojo build` time via `comptime assert`
 - **Registration-time validation**: group constraint typos caught when the program starts, not when the user runs it

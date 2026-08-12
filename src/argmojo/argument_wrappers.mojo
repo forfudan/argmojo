@@ -219,6 +219,17 @@ struct Option[
             comptime assert (
                 Self.range_min <= Self.range_max
             ), "Option range_min must be <= range_max"
+
+        # 2. Range validation is integer-only: `_validate` parses the value
+        #    with `atol` and holds the bounds as `Int`.  A Float64 value
+        #    would be rejected at runtime as "not an integer", so refuse the
+        #    combination here where the message can point at the cause.
+        comptime if Self.has_range:
+            comptime assert reflect[Self.T].name() != reflect[Float64].name(), (
+                "Option[Float64] cannot use has_range: range validation is"
+                " integer-only.  Drop has_range, or use Int."
+            )
+
         comptime if Self.choices != "" and Self.default != "":
             comptime assert ("," + Self.choices + ",").find(
                 "," + Self.default + ","
@@ -314,14 +325,16 @@ struct Option[
             self.value = rebind[Self.T](result.get_map(field_name)).copy()
         elif type_name == reflect[Int].name():
             self.value = rebind[Self.T](result.get_int(field_name)).copy()
+        elif type_name == reflect[Float64].name():
+            self.value = rebind[Self.T](result.get_float(field_name)).copy()
         elif type_name == reflect[String].name():
             self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Option[T] type in read_from_result: "
                 + reflect[Self.T].name()
-                + ". Supported: String, Int, List[String], Dict[String,"
-                " String]."
+                + ". Supported: String, Int, Float64, List[String],"
+                " Dict[String, String]."
             )
 
 
@@ -336,6 +349,7 @@ struct Flag[
     long: StringLiteral = "",
     short: StringLiteral = "",
     help: StringLiteral = "",
+    alias_name: StringLiteral = "",
     # -- Argument type --
     negatable: Bool = False,
     # -- Parsing behaviour --
@@ -354,6 +368,7 @@ struct Flag[
         long: Long flag name. Empty = auto from field name.
         short: Short flag character.
         help: Help text shown in ``--help`` output.
+        alias_name: Comma-separated alias long names.
         negatable: If True, generate ``--flag`` / ``--no-flag`` pair.
         persistent: Inherited by subcommands.
         hidden: Hide from help output.
@@ -448,6 +463,9 @@ struct Flag[
         argument._long_name = long_name
         comptime if Self.short != "":
             argument._short_name = String(Self.short)
+        comptime if Self.alias_name != "":
+            for a in String(Self.alias_name).split(","):
+                argument._alias_names.append(String(a))
         comptime if Self.negatable:
             argument._is_negatable = True
         comptime if Self.persistent:
@@ -490,11 +508,21 @@ struct Positional[
     default: StringLiteral = "",
     required: Bool = False,
     choices: StringLiteral = "",
+    range_min: Int = 0,
+    range_max: Int = 0,
+    has_range: Bool = False,
+    clamp: Bool = False,
     # -- Parsing behaviour --
     allow_hyphen: Bool = False,
     # -- Display & help --
     value_name: StringLiteral = "",
+    hidden: Bool = False,
+    deprecated: StringLiteral = "",
     group: StringLiteral = "",
+    # -- Interactive prompting --
+    prompt: Bool = False,
+    prompt_text: StringLiteral = "",
+    password: Bool = False,
 ](ArgumentLike, Copyable, Defaultable, Movable):
     """A positional argument (matched by order, not by name).
 
@@ -509,9 +537,18 @@ struct Positional[
         default: Default value as a string literal.
         required: If True, the positional must be provided.
         choices: Comma-separated allowed values.
+        range_min: Minimum numeric value (requires ``has_range=True``).
+        range_max: Maximum numeric value (requires ``has_range=True``).
+        has_range: Enable range validation.
+        clamp: Clamp to range instead of raising an error.
         allow_hyphen: Allow hyphen-prefixed values.
         value_name: Display name in help.
+        hidden: Hide from help output.
+        deprecated: Deprecation warning message.
         group: Help group heading.
+        prompt: Interactively prompt if missing.
+        prompt_text: Custom prompt message.
+        password: Mask input when prompting.
 
     Examples:
 
@@ -577,6 +614,22 @@ struct Positional[
                 + "'"
             )
 
+        # 2. Range bounds must be ordered.
+        comptime if Self.has_range:
+            comptime assert (
+                Self.range_min <= Self.range_max
+            ), "Positional range_min must be <= range_max"
+
+        # 3. Range validation is integer-only: `_validate` parses the value
+        #    with `atol` and holds the bounds as `Int`.  A Float64 value
+        #    would be rejected at runtime as "not an integer", so refuse the
+        #    combination here where the message can point at the cause.
+        comptime if Self.has_range:
+            comptime assert reflect[Self.T].name() != reflect[Float64].name(), (
+                "Positional[Float64] cannot use has_range: range validation is"
+                " integer-only.  Drop has_range, or use Int."
+            )
+
         # == Translate fields of the wrapper struct into Argument properties ==
         var argument = Argument(field_name, help=String(Self.help)).positional()
         comptime if Self.remainder:
@@ -590,12 +643,30 @@ struct Positional[
         comptime if Self.choices != "":
             for c in String(Self.choices).split(","):
                 argument._choice_values.append(String(c))
+        comptime if Self.has_range:
+            argument._has_range = True
+            argument._range_min = Self.range_min
+            argument._range_max = Self.range_max
+        comptime if Self.clamp:
+            argument._is_clamp = True
         comptime if Self.allow_hyphen:
             argument._allow_hyphen_values = True
         comptime if Self.value_name != "":
             argument._value_name = String(Self.value_name)
+        comptime if Self.hidden:
+            argument._is_hidden = True
+        comptime if Self.deprecated != "":
+            argument._deprecated_msg = String(Self.deprecated)
         comptime if Self.group != "":
             argument._group = String(Self.group)
+        comptime if Self.prompt:
+            argument._prompt = True
+        comptime if Self.prompt_text != "":
+            argument._prompt = True
+            argument._prompt_text = String(Self.prompt_text)
+        comptime if Self.password:
+            argument._prompt = True
+            argument._hide_input = True
         command.add_argument(argument^)
 
     def read_from_result(
@@ -619,13 +690,15 @@ struct Positional[
             self.value = rebind[Self.T](result.get_list(field_name)).copy()
         elif type_name == reflect[Int].name():
             self.value = rebind[Self.T](result.get_int(field_name)).copy()
+        elif type_name == reflect[Float64].name():
+            self.value = rebind[Self.T](result.get_float(field_name)).copy()
         elif type_name == reflect[String].name():
             self.value = rebind[Self.T](result.get_string(field_name)).copy()
         else:
             comptime assert False, (
                 "Unsupported Positional[T] type in read_from_result: "
                 + reflect[Self.T].name()
-                + ". Supported: String, Int, List[String]."
+                + ". Supported: String, Int, Float64, List[String]."
             )
 
 
@@ -640,25 +713,39 @@ struct Count[
     long: StringLiteral = "",
     short: StringLiteral = "",
     help: StringLiteral = "",
+    alias_name: StringLiteral = "",
     # -- Argument type --
     max: Int = 0,
     # -- Parsing behaviour --
     persistent: Bool = False,
     # -- Display & help --
     hidden: Bool = False,
+    deprecated: StringLiteral = "",
     group: StringLiteral = "",
-](ArgumentLike, Copyable, Defaultable, Movable):
+](ArgumentLike, Copyable, Defaultable, Intable, Movable):
     """A count flag (each occurrence increments the value).
 
     Commonly used for verbosity: ``-v`` -> 1, ``-vv`` -> 2, ``-vvv`` -> 3.
-    Set ``max`` to cap the count (0 means no ceiling).
+
+    Provides ``__int__`` so you can write ``Int(args.verbose)`` instead of
+    ``args.verbose.value``.
+
+    ``max`` caps the count: 0 means no ceiling, and occurrences beyond the
+    ceiling are clamped to it with a warning.  It is described here rather
+    than in the Parameters block below because ``mojo doc`` (v1.0.0) does
+    not recognise a parameter named ``max`` — it reports "unknown parameter"
+    and then miscounts the indices of every parameter after it.  Renaming
+    the parameter would fix the tooling complaint at the cost of breaking
+    every ``Count[..., max=N]`` already written, so the name stays.
 
     Parameters:
         long: Long flag name. Empty = auto from field name.
         short: Short flag character.
         help: Help text shown in ``--help`` output.
+        alias_name: Comma-separated alias long names.
         persistent: Inherited by subcommands.
         hidden: Hide from help output.
+        deprecated: Deprecation warning message.
         group: Help group heading.
 
     Examples:
@@ -688,6 +775,17 @@ struct Count[
             val: The initial count value.
         """
         self.value = val
+
+    def __int__(self) -> Int:
+        """Returns the count, so ``Int(args.verbose)`` works directly.
+
+        Mirrors ``Flag.__bool__``: the wrapper should not force
+        ``args.verbose.value`` on every use.
+
+        Returns:
+            The number of times the flag was given.
+        """
+        return self.value
 
     def __init__(out self, *, copy: Self):
         """Copies from an existing instance.
@@ -739,6 +837,9 @@ struct Count[
         argument._long_name = long_name
         comptime if Self.short != "":
             argument._short_name = String(Self.short)
+        comptime if Self.alias_name != "":
+            for a in String(Self.alias_name).split(","):
+                argument._alias_names.append(String(a))
         comptime if Self.max > 0:
             argument._has_count_max = True
             argument._count_max = Self.max
@@ -746,6 +847,8 @@ struct Count[
             argument._is_persistent = True
         comptime if Self.hidden:
             argument._is_hidden = True
+        comptime if Self.deprecated != "":
+            argument._deprecated_msg = String(Self.deprecated)
         comptime if Self.group != "":
             argument._group = String(Self.group)
         command.add_argument(argument^)
