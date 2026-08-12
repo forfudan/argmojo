@@ -161,16 +161,18 @@ def main() raises:
 
 After calling `command.parse()` or `command.parse_arguments()`, you get a `ParseResult` with these typed accessors:
 
-| Method                      | Returns                | Description                                           |
-| --------------------------- | ---------------------- | ----------------------------------------------------- |
-| `result.get_flag("name")`   | `Bool`                 | Returns `True` if the flag was set, else `False`.     |
-| `result.get_string("name")` | `String`               | Returns the string value. Raises if not found.        |
-| `result.get_int("name")`    | `Int`                  | Parses the value as an integer. Raises on error.      |
-| `result.get_count("name")`  | `Int`                  | Returns the count (0 if never provided).              |
-| `result.get_list("name")`   | `List[String]`         | Returns collected values (empty list if none).        |
-| `result.get_map("name")`    | `Dict[String, String]` | Returns key-value pairs (empty dict if none).         |
-| `result.has("name")`        | `Bool`                 | Returns `True` if the argument was provided.          |
-| `result.print_summary()`    | `None`                 | Prints a human-readable summary of all parsed values. |
+| Method                        | Returns                | Description                                                   |
+| ----------------------------- | ---------------------- | ------------------------------------------------------------- |
+| `result.get_flag("name")`     | `Bool`                 | Returns `True` if the flag was set, else `False`.             |
+| `result.get_string("name")`   | `String`               | Returns the string value. Raises if not found.                |
+| `result.get_int("name")`      | `Int`                  | Parses the value as an integer. Raises on error.              |
+| `result.get_float("name")`    | `Float64`              | Parses the value as a floating-point number. Raises on error. |
+| `result.get_count("name")`    | `Int`                  | Returns the count (0 if never provided).                      |
+| `result.get_list("name")`     | `List[String]`         | Returns collected values (empty list if none).                |
+| `result.get_map("name")`      | `Dict[String, String]` | Returns key-value pairs (empty dict if none).                 |
+| `result.has("name")`          | `Bool`                 | Returns `True` if a value is available (including a default). |
+| `result.was_provided("name")` | `Bool`                 | Returns `True` only if the user really supplied it.           |
+| `result.print_summary()`      | `None`                 | Prints a human-readable summary of all parsed values.         |
 
 **`get_string()`** works for both named options and positional arguments — positional values are looked up by the name given in `Argument("name", ...)`.
 
@@ -196,7 +198,18 @@ var tags = result.get_list("tag")  # List[String]
 # Check presence
 if result.has("output"):
     print("Output was specified:", result.get_string("output"))
+
+# Tell a typed value apart from a default one
+if result.was_provided("format"):
+    print("The user chose:", result.get_string("format"))
 ```
+
+The two presence checks are not the same. `has()` tells you that a value is
+there to be read, and that includes a value that came from `.default()`.
+`was_provided()` is narrower: it is `True` only for a value the user typed on
+the command line, entered at an interactive prompt, or received through an
+`implies()` rule, and `False` for a default. Group constraints go through
+`was_provided()`, which is why a default never sets off a conflict on its own.
 
 ## Builder Method Overview
 
@@ -471,7 +484,28 @@ myapp "hello" --format csv   # format = "csv",   path = "."
 myapp "hello" ./src          # format = "table", path = "./src"
 ```
 
-Works for both named options and positional arguments.
+Works for every kind of argument, and the default always lands where that
+argument's own accessor reads it:
+
+| Argument kind   | Default is read back with    | Example               |
+| --------------- | ---------------------------- | --------------------- |
+| plain option    | `get_string()` / `get_int()` | `.default["table"]()` |
+| positional      | `get_string()`               | `.default["."]()`     |
+| `.flag()`       | `get_flag()`                 | `.default["true"]()`  |
+| `.count()`      | `get_count()`                | `.default["2"]()`     |
+| `.append()`     | `get_list()`                 | `.default["x"]()`     |
+| `.map_option()` | `get_map()`                  | `.default["A=1"]()`   |
+
+A default that does not fit its argument is rejected when you call
+`add_argument()`, rather than when your user runs the program. A `.flag()`
+default must be a boolean literal (`true`/`false`, `1`/`0`, `yes`/`no`,
+`on`/`off`); a `.count()` default must be an integer; a `.map_option()` default
+must be in `key=value` form; and if the argument has `.choice[]()`, the default
+must be one of those choices.
+
+Keep in mind that a default is not user input. `was_provided()` returns `False`
+for it, and it never satisfies a group constraint on its own — though it does
+satisfy `.required()` on the argument that carries it.
 
 ### Required Arguments
 
@@ -3140,6 +3174,42 @@ cat input.txt  # file = "input.txt"
 
 > **Note:** `.remainder()` automatically enables `.allow_hyphen_values()` — no need to set it separately on remainder positionals.
 
+#### Values that look like options <!-- omit from toc -->
+
+An option never takes a *registered* option as its value. If you write
+`--output --verbose` and `--verbose` is a real flag of your program, the
+parser reports a missing value rather than storing the string `"--verbose"`
+in `output`:
+
+```shell
+myapp --output --verbose
+# error: Option '--output' requires a value, but found the option '--verbose'
+```
+
+Only registered options and the `--` end-of-options marker are refused. A
+value that merely begins with a hyphen is still accepted, so negative numbers
+and unknown dash-prefixed literals keep working:
+
+```shell
+myapp --offset -5        # offset = "-5"
+myapp --pattern -foo     # pattern = "-foo"
+```
+
+`.allow_hyphen_values()` turns the check off for that argument, which is what
+you want for an option that forwards a flag to another tool:
+
+```mojo
+command.add_argument(
+    Argument("pass-through", help="Flag forwarded to the compiler")
+    .long["cflag"]()
+    .allow_hyphen_values()
+)
+```
+
+```shell
+myapp --cflag --verbose  # pass-through = "--verbose"
+```
+
 ### Partial Parsing (`parse_known_arguments()`)
 
 `parse_known_arguments()` works like `parse_arguments()` but **does not raise an error** for unrecognised options. Instead, unknown tokens are collected and can be retrieved from the result.
@@ -4011,6 +4081,18 @@ Four wrapper types encode argument metadata as compile-time parameters:
 | `Count`         | `-vvv` (repeated)            | `var debug: Count[short="d", help="Debug level", max=3]`          |
 
 Each wrapper accepts the same parameters as the corresponding builder methods (e.g. `choices`, `default`, `append`, `range_min`/`range_max`, `group`, `prompt`, `password`, etc.) as compile-time keyword parameters. See `src/argmojo/argument_wrappers.mojo` for the full parameter list.
+
+As for the value type `T`, `Option[T]` and `Positional[T]` accept `String`, `Int`, `Float64` and `List[String]`, and `Option[T]` additionally accepts `Dict[String, String]` when `map_option=True`. Anything else is rejected at compile time with a message listing what is allowed. There is no `Option[Bool]` — use `Flag` for that.
+
+To read a value back, use `.value`. `Flag` and `Count` also define `__bool__` and `__int__`, so they can be converted directly:
+
+```mojo
+if args.verbose:                      # Flag → Bool
+    print("level:", Int(args.debug))  # Count → Int
+print(args.ratio.value)               # everything else via .value
+```
+
+One restriction worth flagging: range validation is integer-only. `has_range` parses the value with `atol` and cannot express a fractional bound, so `has_range=True` together with `Float64` is refused at compile time instead of failing at run time with a confusing "expected an integer". Check fractional bounds yourself after parsing.
 
 ### The `Parsable` Trait
 

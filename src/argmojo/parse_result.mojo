@@ -1,5 +1,7 @@
 """Stores parsed argument values."""
 
+from std.collections import Set
+
 
 struct ParseResult(Copyable, Movable, Writable):
     """Stores the results of parsing command-line arguments.
@@ -34,6 +36,16 @@ struct ParseResult(Copyable, Movable, Writable):
     var _unknown_arguments: List[String]
     """Unrecognised arguments collected by ``parse_known_arguments()``.
     Empty when using the standard ``parse_arguments()`` method."""
+    var _provided: Set[String]
+    """Names of the arguments that the user actually supplied on the command
+    line (or answered at an interactive prompt).
+
+    This is what separates "the user asked for it" from "a default filled it
+    in".  ``has()`` cannot make that distinction, because defaults are written
+    into the very same storage as parsed values.  Group constraints
+    (mutually-exclusive, required-together, one-required, conditional) must
+    only look at what the user really typed, so they consult
+    ``was_provided()`` instead."""
 
     def __init__(out self):
         """Creates an empty ParseResult."""
@@ -47,6 +59,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self.subcommand = ""
         self._subcommand_results = List[ParseResult]()
         self._unknown_arguments = List[String]()
+        self._provided = Set[String]()
 
     def __init__(out self, *, copy: Self):
         """Creates a deep copy of a ParseResult.
@@ -68,6 +81,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self.subcommand = copy.subcommand
         self._subcommand_results = copy._subcommand_results.copy()
         self._unknown_arguments = copy._unknown_arguments.copy()
+        self._provided = copy._provided.copy()
 
     def __deinit__(deinit self):
         """Destroys the ParseResult, releasing all owned fields.
@@ -97,6 +111,7 @@ struct ParseResult(Copyable, Movable, Writable):
         self.subcommand = move.subcommand^
         self._subcommand_results = move._subcommand_results^
         self._unknown_arguments = move._unknown_arguments^
+        self._provided = move._provided^
 
     def get_flag(self, name: String) -> Bool:
         """Gets a boolean flag value. Returns False if not set.
@@ -152,6 +167,21 @@ struct ParseResult(Copyable, Movable, Writable):
         """
         var s = self.get_string(name)
         return Int(atol(s))
+
+    def get_float(self, name: String) raises -> Float64:
+        """Gets a floating-point argument value.
+
+        Args:
+            name: The argument name.
+
+        Returns:
+            The floating-point value of the argument.
+
+        Raises:
+            Error if the argument was not provided or is not a valid number.
+        """
+        var s = self.get_string(name)
+        return Float64(atof(s))
 
     def get_count(self, name: String) -> Int:
         """Gets the count for a counter-type argument. Returns 0 if not set.
@@ -236,6 +266,45 @@ struct ParseResult(Copyable, Movable, Writable):
             if self._positional_names[i] == name:
                 return i < len(self._positionals)
         return False
+
+    def was_provided(self, name: String) -> Bool:
+        """Checks whether the user actually supplied an argument.
+
+        Unlike ``has()``, this returns False for an argument whose value
+        only comes from ``.default()``.  It returns True when the argument
+        was given on the command line, answered at an interactive prompt,
+        or set through an ``implies()`` rule.
+
+        Args:
+            name: The argument name.
+
+        Returns:
+            True if the user supplied the argument, False if the value is a
+            default or the argument is absent.
+
+        Examples:
+
+        ```mojo
+        from argmojo import Command, Argument
+        var command = Command("myapp", "A sample application")
+        command.add_argument(
+            Argument("format", help="...").long["format"]().default["json"]()
+        )
+        var arguments: List[String] = ["myapp"]
+        var result = command.parse_arguments(arguments)
+        # result.has("format")          → True  (the default is in place)
+        # result.was_provided("format") → False (the user typed nothing)
+        ```
+        """
+        return name in self._provided
+
+    def _mark_provided(mut self, name: String):
+        """Records that *name* was supplied by the user.
+
+        Args:
+            name: The argument name.
+        """
+        self._provided.add(name)
 
     def has_subcommand_result(self) -> Bool:
         """Checks whether a subcommand result is present.

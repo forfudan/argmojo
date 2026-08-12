@@ -113,6 +113,42 @@ def main() raises:
     _ = Bad.to_command()
 ' "range_min must be <= range_max"
 
+# 7. Range min > max (Positional)
+check_compile_error "positional_range_inverted" '
+from argmojo import Parsable, Positional
+struct Bad(Parsable):
+    var level: Positional[Int, has_range=True, range_min=100, range_max=10]
+    @staticmethod
+    def description() -> String:
+        return String("bad")
+def main() raises:
+    _ = Bad.to_command()
+' "range_min must be <= range_max"
+
+# 8. Range validation is integer-only, so Float64 + has_range is refused.
+check_compile_error "option_float_range" '
+from argmojo import Parsable, Option
+struct Bad(Parsable):
+    var ratio: Option[Float64, has_range=True, range_min=0, range_max=10]
+    @staticmethod
+    def description() -> String:
+        return String("bad")
+def main() raises:
+    _ = Bad.to_command()
+' "range validation is integer-only"
+
+# 9. Same, for Positional.
+check_compile_error "positional_float_range" '
+from argmojo import Parsable, Positional
+struct Bad(Parsable):
+    var scale: Positional[Float64, has_range=True, range_min=0, range_max=10]
+    @staticmethod
+    def description() -> String:
+        return String("bad")
+def main() raises:
+    _ = Bad.to_command()
+' "range validation is integer-only"
+
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ]

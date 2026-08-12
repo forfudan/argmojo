@@ -4,36 +4,78 @@ This document tracks all notable changes to ArgMojo, including new features, API
 
 ## 20260811 (v0.8.0)
 
-ArgMojo v0.8.0 migrates the codebase to the first stable Mojo release, **v1.0.0**. It also fixes an FFI signature collision that could break the build of the users' projects, and removes several heap allocations from the terminal-handling paths.
+ArgMojo v0.8.0 moves to the first stable Mojo release, **v1.0.0**. It also fixes a dozen parser bugs, repairs an FFI signature clash that could break the build of a project using ArgMojo, cuts compile time by about a fifth, and fills several gaps in the declarative API.
 
 ArgMojo v0.8.0 targets Mojo v1.0.0.
 
+### ⭐️ New in v0.8.0
+
+1. Add `ParseResult.was_provided(name)` — True only when the user really supplied the argument, be it on the command line, at a prompt, or through an `implies()` rule. `has(name)` cannot tell you that, because a default is stored in the same place as a parsed value. Group constraints use it internally, and it is often what you want in your own code too:
+
+   ```mojo
+   if result.was_provided("format"):
+       print("the user asked for " + result.get_string("format"))
+   else:
+       print("falling back to the default format")
+   ```
+
+2. Add `ParseResult.get_float(name)` — reads a value as `Float64`, the way `get_int()` reads it as `Int`.
+3. `Option[Float64]` and `Positional[Float64]` now work end to end, defaults included. `has_range` stays integer-only, so combining it with `Float64` is rejected at compile time instead of failing later with a puzzling "expected an integer".
+4. `Count` can be unwrapped with `Int()`, as `Flag` can with `Bool()`. Write `Int(args.verbose)` instead of `args.verbose.value`.
+5. The four declarative wrappers now take a consistent set of parameters. `alias_name` was on `Option` only and `deprecated` on `Option` and `Flag` only; both are now available wherever they make sense. `Positional` gains `hidden`, `deprecated`, `prompt`, `prompt_text`, `password`, and the range parameters (`has_range`, `range_min`, `range_max`, `clamp`) that `Option` already had. Until now, needing any one of these on a positional meant dropping to the builder API for that one field.
+
 ### 🔧 Fixes in v0.8.0
 
-1. Fix a latent FFI signature collision in `_read_password_asterisk()`. The `read(2)` binding passed its buffer as `Int(ptr)`, which declares the symbol `read` as `(Int, Int, Int) -> Int`. The standard library declares the same symbol as `(Int, Pointer, Int) -> Int`, so any module that links both of them failed to lower to LLVM IR. The buffer is now passed as a real pointer (PR #59).
+1. Fix an FFI signature clash in `_read_password_asterisk()`. The `read(2)` binding passed its buffer as `Int(ptr)`, which declares `read` as `(Int, Int, Int) -> Int`, while the standard library declares the same symbol as `(Int, Pointer, Int) -> Int`. Any module linking both failed to lower to LLVM IR. The buffer is passed as a real pointer now (PR #59).
+2. Group constraints counted a default as user input. `mutually_exclusive()`, `required_together()`, `one_required()` and `required_if()` all asked `has()`, which is True for an argument that merely carries a `.default()` — so `--json` alone could conflict with a `--format` nobody had typed. All four consult `was_provided()` now.
+3. A required positional could be satisfied by a *later* positional's default. Filling the later slot pads the positional list up to that index, and the earlier, still-empty slot then looked provided: `src` (required) followed by `dst` (with a default) parsed happily with no arguments at all. A default on the required argument itself still satisfies it, as in clap.
+4. `app --=hello` used to set the first positional. The empty name left after splitting on `=` matched `_long_name == ""`, which is true for every positional and every short-only option. It is now reported as `Invalid option '--=hello': missing option name`.
+5. An argument carrying both `.prompt()` and `.default()` was never prompted, because defaults were applied first and prompting skips anything that already holds a value. Prompting runs first now, and the default is what an empty answer — or a non-interactive stdin — falls back to, which is what the "(default)" hint always promised.
+6. Defaults now reach the accessor that belongs to the argument. Every default used to be written to the string store, so `.flag().default["true"]()` was invisible to `get_flag()`, and `.append().default["x"]()` left `get_list()` empty while `get_string()` returned the value. Defaults go to `_flags`, `_counts`, `_lists`, `_maps` or `_values` according to the kind of the argument.
+7. Bad defaults are caught at registration instead of reaching the user. `add_argument()` now raises if a default is not one of the declared `.choice[…]()` values, if a `.flag()` default is not a boolean literal, if a `.count()` default is not an integer, or if a `.map_option()` default is not in `key=value` form; `default_if_no_value` is checked against the choices too. The declarative wrappers already checked the choices at compile time; the builder API checked nothing.
+8. An option no longer swallows another option as its value: `--output --verbose` used to store the literal string `"--verbose"`. Only *registered* options and the `--` marker are refused, so `--offset -5` and `--pattern -foo` still work, and `.allow_hyphen_values()` opts out entirely. The guard covers short options and `.number_of_values[N]()` as well.
+9. Persistent-argument conflicts were detected in only one registration order. The check lived in `add_subcommand()`, so calling `add_subcommand()` first and `add_argument(... .persistent())` afterwards slipped past it, and the flag then appeared twice in the child's help. `add_argument()` runs the mirror check now, and the injection at dispatch time skips an argument the child already owns.
+10. Non-ASCII passwords came back corrupted. `_read_password_asterisk()` rebuilt the typed string byte by byte through `chr()`, which treats each byte as a code point and re-encodes it, so `é` (`C3 A9`) arrived as `Ã©` (`C3 83 C2 A9`) and never matched. The bytes are decoded as UTF-8 in one step now, and the buffer is zeroed before it is freed.
+11. An `implies()` rule could fire from a default value — fix 2 again, by another route. The trigger was `has(trigger)`, so a `--mode` that merely defaults to `fast` still set `--parallel`; since an implied argument counts as user input, typing only `--quiet` then reported a conflict with a `--parallel` nobody had asked for. Implications fire on `was_provided(trigger)`.
+12. `parse_known_arguments()` applied defaults before implications, the reverse of `parse_arguments()`, so the two entry points could disagree about which arguments counted as supplied. Both run implications first now.
 
 ### 🔄 Mojo v1.0.0 migration (PR #59)
 
-- Bump the Mojo dependency from `==1.0.0b2` to `>=1.0.0, <1.1.0` in `pixi.toml`, so that ArgMojo builds against any Mojo v1.0.x release.
+- Bump the Mojo dependency from `==1.0.0b2` to `>=1.0.0, <1.1.0` in `pixi.toml`, so ArgMojo builds against any Mojo v1.0.x release.
 - Replace the removed `_constrained_field_conforms_to` helper with `comptime assert conforms_to(...)` plus `_field_conforms_to_error`, which is how the standard library now writes reflection-driven trait defaults.
 - Drop the `trait_downcast[…]()` calls in `Parsable`. A `comptime if conforms_to(...)` guard (or a `comptime assert`) is now enough for the compiler to resolve trait methods on a reflected field.
 - Replace `__struct_field_ref(i, x)` with the public `reflect[Self].field_ref[i](x)`.
-- Rename `ImplicitlyDestructible` to `Deinitable`, and drop `Movable` from the `Defaultable & Copyable & Movable` bounds, because the compiler now reports it as redundant.
+- Rename `ImplicitlyDestructible` to `Deinitable`, and drop `Movable` from the `Defaultable & Copyable & Movable` bounds, which the compiler now reports as redundant.
 - Rename the move constructor argument from `deinit take:` to `deinit move:` in `Argument`, `Command`, `ParseResult`, and the four argument wrappers.
 - Replace `UnsafePointer(to=f).init_pointee_move(v)` with `Pointer(to=f).unsafe_write(v)`.
-- Give `Command` and `ParseResult` an explicit, empty `__deinit__()`. Both structs hold a `List[Self]` field, and deducing `List[Command]: Deinitable` now requires `Command: Deinitable` — which is exactly what is being deduced. Declaring the destructor breaks this cycle, and the fields are still destroyed automatically.
-- Introduce temporary variables where a `String` is rebuilt from a slice of itself (e.g., `key = String(key[byte=:eq])`), because such statements now trip the exclusivity checker.
-- Dispatch the declarative wrappers on `reflect[T].name()` compared against the reflected names of the supported types, instead of against string literals. In Mojo v1.0.0, `Int` became an alias of `Scalar[DType.int]` and therefore reflects as `"SIMD[DType.int, 1]"`. Comparing a reflected name with another reflected name keeps working across such renames.
+- Give `Command` and `ParseResult` an explicit, empty `__deinit__()`. Both hold a `List[Self]` field, and deducing `List[Command]: Deinitable` now requires `Command: Deinitable` — exactly what is being deduced. Declaring the destructor breaks the cycle, and the fields are still destroyed automatically.
+- Introduce temporary variables where a `String` is rebuilt from a slice of itself (e.g. `key = String(key[byte=:eq])`), because such statements now trip the exclusivity checker.
+- Dispatch the declarative wrappers on `reflect[T].name()` compared against the reflected names of the supported types, instead of against string literals. In Mojo v1.0.0, `Int` became an alias of `Scalar[DType.int]` and so reflects as `"SIMD[DType.int, 1]"`; comparing one reflected name with another keeps working across such renames.
 - Update `tests/test_wrappers.mojo` to call the move constructor as `(move=a^)`.
 
 ### ⚡️ Performance in v0.8.0
 
-- Replace the fixed-size `List` scratch buffers with the inline `Array` type. This removes four heap allocations from the terminal-handling paths: the 8-byte `ioctl(TIOCGWINSZ)` buffer in `_help_line_width()`, the 96-byte termios buffers in `_disable_echo()` and `_read_password_asterisk()`, and the 1-byte read buffer of the password loop. `_disable_echo()` now returns `Optional[Array[UInt32, 24]]`, instead of signalling failure with an empty list (PR #59).
+- Compiling a program that uses ArgMojo is about 20% faster. Measured cold, with the compiler cache wiped, over the eight examples: 50.2 s down to 39.8 s in total, or 6.08 s down to 4.81 s per example. Nothing about the behaviour changes — help text, the three completion scripts and the error messages are byte-for-byte identical before and after. Four changes get there:
+  - `examples/build.sh` builds against the `argmojo.mojoc` it already produces (`-I .`) instead of recompiling `src/argmojo` into all eight binaries (`-I src`). This is the bulk of it: 50.2 s → 42.7 s on its own. Its timing summary now reports hundredths of a second and a total, rather than whole seconds from `date +%s`.
+  - Argument lookup returns an index instead of a copy. `_find_by_long()` and `_find_by_short()` deep-copied the whole `Argument` on *each* option token, only to read two or three fields; they are `_find_index_by_long()` / `_find_index_by_short()` now, and callers bind the result with `ref`. The per-loop copies in `_prompt_missing_arguments()`, `_validate()`, `_apply_defaults()` and the three completion generators became `ref` bindings too. This is the largest runtime saving in the release as well: dozens of heap allocations disappear from every parse.
+  - Long `+` chains became `String(...)` calls. Building a message as `"a" + x + "b" + y + ...` emits a separate inlined concatenation for every `+`; passing the same pieces to `String(...)` emits one call. 154 sites across `command.mojo`.
+  - `_looks_like_number()` and `_levenshtein()` compare bytes rather than one-character strings. `token[byte=j:j+1] >= "0"` writes out a full string comparison per character; a `UInt8` against a byte constant is one instruction. `_looks_like_number()` alone dropped from 17,850 lines of unoptimised IR to 4,431.
+
+  Together the source changes take the unoptimised IR of a one-argument program from 332,047 lines down to 264,929 (−20%).
+- Replace the fixed-size `List` scratch buffers with the inline `Array` type, removing four heap allocations from the terminal-handling paths: the 8-byte `ioctl(TIOCGWINSZ)` buffer in `_help_line_width()`, the 96-byte termios buffers in `_disable_echo()` and `_read_password_asterisk()`, and the 1-byte read buffer of the password loop. `_disable_echo()` returns `Optional[Array[UInt32, 24]]` now, instead of signalling failure with an empty list (PR #59).
 - Use a stack-allocated `Array[String, 2]` for the argument-name scratch buffer in `required_if()` (PR #59).
+
+### 📖 Documentation in v0.8.0
+
+- `docs/declarative_api_planning.md` gains a "Known Gaps" section: what went wrong in the wrappers, what has been fixed, and why the rest is still open.
+- The user manual documents `has()` versus `was_provided()`, which accessor reads back each kind of default, the registration-time rules for default values, how values that look like options are treated, the value types the declarative wrappers accept, and the `Bool()` / `Int()` unwrapping shortcuts.
+- `Argument.remainder()` now says what happens when the remainder is the first positional: collection starts at the very first token, so `--help` is swallowed as a remainder value and the command has no help flag. That is what a wrapper command such as `env` wants, but it is worth knowing before you hit it. Declare a positional ahead of the remainder, or call `help_on_no_arguments()`.
+- The `_allow_hyphen_values` field docstring claimed it accepts "the literal token `-`". It has always accepted any dash-prefixed token, and it now also switches off the check described in fix 8.
 
 ### ⚠️ Known issues in v0.8.0
 
-- Response-file expansion (`response_file_prefix()`) is **still disabled**. The Mojo compiler deadlock that blocked it in v0.4.0 also reproduces on Mojo v1.0.0: if we re-enable the call in `parse_arguments()`, the compilation of `tests/test_parse.mojo` hangs at 0% CPU under `-D ASSERT=all`. Interestingly, `tests/test_response_file.mojo` itself *does* compile and pass (17/17) with the call re-enabled. So the trigger depends on the surrounding set of instantiations, and not on the expansion code alone. The implementation is kept as module-level free functions, and `tests/test_response_file.mojo` remains excluded from the `test` and `t` tasks.
+- `mojo doc` (v1.0.0) does not recognise a struct parameter named `max`: it reports `unknown parameter 'max' in doc string`, then miscounts the index of every parameter declared after it. Two structs that differ only in that name are enough to show it — `max` warns, `maximum` does not — so the bug is in the tool. `Count`'s `max` is therefore described in the struct's prose docstring rather than its `Parameters:` block; renaming it would break every `Count[..., max=N]` already written. See §11 of `docs/declarative_api_planning.md`.
+- Response-file expansion (`response_file_prefix()`) is **still disabled**. The Mojo compiler deadlock that blocked it in v0.4.0 also reproduces on Mojo v1.0.0: re-enable the call in `parse_arguments()` and the compilation of `tests/test_parse.mojo` hangs at 0% CPU under `-D ASSERT=all`. Curiously, `tests/test_response_file.mojo` itself *does* compile and pass (17/17) with the call re-enabled, so the trigger depends on the surrounding set of instantiations rather than on the expansion code alone. The implementation is kept as module-level free functions, and `tests/test_response_file.mojo` remains excluded from the `test` and `t` tasks.
 
 ## 20260618 (v0.7.0)
 

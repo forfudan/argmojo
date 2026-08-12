@@ -1251,6 +1251,46 @@ def test_remainder_only() raises:
     assert_equal(rest[2], "file.txt")
 
 
+def test_remainder_first_slot_swallows_help() raises:
+    """A remainder in slot 0 captures --help instead of printing help.
+
+    This is deliberate — a wrapper command must forward its tail
+    untouched — and the test exists so the behaviour cannot change by
+    accident.  If help were printed instead, the process would exit(0)
+    and this test would never reach its assertions.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("rest", help="All arguments").remainder())
+
+    var args: List[String] = ["test", "--help", "--version", "-h"]
+    var result = command.parse_arguments(args)
+    var rest = result.get_list("rest")
+    assert_equal(len(rest), 3)
+    assert_equal(rest[0], "--help")
+    assert_equal(rest[1], "--version")
+    assert_equal(rest[2], "-h")
+
+
+def test_remainder_mode_starts_only_once_earlier_slots_fill() raises:
+    """A positional ahead of the remainder delays when swallowing begins.
+
+    Remainder mode turns on only after slot 0 is filled, so a --help
+    typed *before* any positional still reaches the help branch (not
+    asserted here, since that branch exits the process).
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("cmd", help="Command").positional())
+    command.add_argument(Argument("rest", help="Rest").remainder())
+
+    # --help lands in the first positional slot, before remainder mode
+    # starts, so it is *not* collected as a remainder value.
+    var args: List[String] = ["test", "run", "--help"]
+    var result = command.parse_arguments(args)
+    var rest = result.get_list("rest")
+    assert_equal(len(rest), 1)
+    assert_equal(rest[0], "--help")
+
+
 def test_remainder_with_options_before() raises:
     """Tests that options before the remainder positional slot are parsed normally.
     """
@@ -2491,6 +2531,219 @@ def test_delimiter_fullwidth_mixed() raises:
     assert_equal(tags[0], "a")
     assert_equal(tags[1], "b")
     assert_equal(tags[2], "c")
+
+
+# ── Defaults reach the accessor that belongs to the argument kind ────────────
+
+
+def test_flag_default_true_is_visible_to_get_flag() raises:
+    """A flag default lands in the flag store, not in the value store."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colour")
+        .long["color"]()
+        .flag()
+        .negatable()
+        .default["true"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_true(result.get_flag("color"), msg="default true must be visible")
+    assert_false(result.was_provided("color"), msg="the user typed nothing")
+
+
+def test_flag_default_true_can_be_negated() raises:
+    """``--no-color`` still wins over a default of true."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colour")
+        .long["color"]()
+        .flag()
+        .negatable()
+        .default["true"]()
+    )
+
+    var args: List[String] = ["test", "--no-color"]
+    var result = command.parse_arguments(args)
+    assert_false(result.get_flag("color"), msg="--no-color must win")
+    assert_true(result.was_provided("color"), msg="--no-color is user input")
+
+
+def test_flag_default_false_spellings() raises:
+    """The false-ish spellings are accepted and mean False."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("color", help="Colour").long["color"]().flag().default["off"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_false(result.get_flag("color"), msg="'off' means False")
+
+
+def test_count_default_is_visible_to_get_count() raises:
+    """A count default lands in the count store."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity")
+        .long["verbose"]()
+        .short["v"]()
+        .count()
+        .default["2"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_count("verbose"), 2)
+
+
+def test_count_default_overridden_by_input() raises:
+    """Typing the flag replaces the default instead of adding to it."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbosity")
+        .long["verbose"]()
+        .short["v"]()
+        .count()
+        .default["2"]()
+    )
+
+    var args: List[String] = ["test", "-vvv"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_count("verbose"), 3)
+
+
+def test_append_default_is_visible_to_get_list() raises:
+    """An append default lands in the list store."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("tag", help="Tag").long["tag"]().append().default["x"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    var tags = result.get_list("tag")
+    assert_equal(len(tags), 1)
+    assert_equal(tags[0], "x")
+
+
+def test_map_default_is_visible_to_get_map() raises:
+    """A map default lands in the map store."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("def", help="Define")
+        .long["define"]()
+        .map_option()
+        .default["A=1"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    var m = result.get_map("def")
+    assert_equal(len(m), 1)
+    assert_equal(m["A"], "1")
+
+
+# ── Registration-time checks on default values ───────────────────────────────
+
+
+def test_default_outside_choices_raises_at_registration() raises:
+    """A default that is not one of the choices is caught when registering."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(
+            Argument("format", help="Format")
+            .long["format"]()
+            .choice["json"]()
+            .choice["yaml"]()
+            .default["xml"]()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="default outside choices must raise")
+
+
+def test_default_inside_choices_is_accepted() raises:
+    """A default that is one of the choices registers and applies normally."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("format", help="Format")
+        .long["format"]()
+        .choice["json"]()
+        .choice["yaml"]()
+        .default["yaml"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("format"), "yaml")
+
+
+def test_default_if_no_value_outside_choices_raises() raises:
+    """default_if_no_value must honour the declared choices too."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(
+            Argument("compress", help="Compress")
+            .long["compress"]()
+            .choice["gzip"]()
+            .choice["xz"]()
+            .default_if_no_value["bzip2"]()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="default_if_no_value outside choices must raise")
+
+
+def test_non_boolean_flag_default_raises() raises:
+    """A flag default has to spell out a boolean."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(
+            Argument("color", help="Colour")
+            .long["color"]()
+            .flag()
+            .default["maybe"]()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="non-boolean flag default must raise")
+
+
+def test_non_integer_count_default_raises() raises:
+    """A count default has to be an integer."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(
+            Argument("verbose", help="Verbosity")
+            .long["verbose"]()
+            .count()
+            .default["many"]()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="non-integer count default must raise")
+
+
+def test_malformed_map_default_raises() raises:
+    """A map default has to be in key=value form."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(
+            Argument("def", help="Define")
+            .long["define"]()
+            .map_option()
+            .default["NOEQUALS"]()
+        )
+    except:
+        raised = True
+    assert_true(raised, msg="malformed map default must raise")
 
 
 def main() raises:

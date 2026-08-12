@@ -125,8 +125,11 @@ struct Argument(Copyable, Movable, Writable):
     """If True, this option requires ``--key=value`` syntax;
     ``--key value`` (space-separated) is not allowed."""
     var _allow_hyphen_values: Bool
-    """If True, the literal token ``-`` is accepted as a valid value for
-    this argument (conventionally meaning stdin/stdout)."""
+    """If True, any token starting with ``-`` is accepted as a value for
+    this argument — not only the bare ``-`` that conventionally means
+    stdin/stdout.  This also switches off the safety check that otherwise
+    refuses a value matching a registered option, so ``--output --verbose``
+    stores ``"--verbose"`` instead of raising."""
     var _is_persistent: Bool
     """If True, this argument is automatically inherited by every subcommand.
     Persistent flags/options are injected into child command parsers at
@@ -531,6 +534,15 @@ struct Argument(Copyable, Movable, Writable):
         remainder argument are **not** parsed as options; they are stored
         verbatim.
 
+        If the remainder is the **first** positional (no other positional
+        is declared before it), collection starts at the very first token,
+        so ``--help`` and ``--version`` are swallowed as remainder values
+        too and no help is printed.  That is the point of a wrapper command
+        such as ``env`` or ``nohup``, but it does mean the user has no way
+        to ask for help by flag.  Declare at least one positional ahead of
+        the remainder, or call ``help_on_no_arguments()`` so that the bare
+        command still prints help.
+
         Examples::
 
             # myapp build -- -Wall -O2 src/main.c
@@ -801,6 +813,15 @@ struct Argument(Copyable, Movable, Writable):
         any other dash-prefixed literal value.
 
         Can be used on positional arguments and value-taking options.
+
+        Without this, a dash-prefixed token is still accepted as a value
+        when it cannot be an option — a negative number such as ``-5``, or
+        an unregistered token such as ``-foo``.  What the default rejects
+        is a value that *is* a registered option (``--output --verbose``)
+        or the ``--`` separator, because that is nearly always a forgotten
+        value rather than an intended one.  Enabling this method turns that
+        rejection off, so use it only where dash-prefixed values are
+        genuinely expected.
 
         Examples::
 

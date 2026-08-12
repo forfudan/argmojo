@@ -1264,5 +1264,202 @@ def test_negative_expression_parse_known() raises:
     assert_equal(unknown[0], "--color")
 
 
+# ── Required positionals vs. defaults on later slots ─────────────────────────
+
+
+def test_missing_required_positional_with_later_default() raises:
+    """A required positional is still required when a later one has a default.
+
+    Filling the default pads the positional list up to that slot, which used
+    to make the earlier, empty slot look like it had been provided.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("src", help="Source").positional().required())
+    command.add_argument(
+        Argument("dst", help="Destination").positional().default["out.txt"]()
+    )
+
+    var args: List[String] = ["test"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="missing required positional must raise")
+
+
+def test_required_positional_with_later_default_accepts_input() raises:
+    """The same command parses fine once the required positional is given."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("src", help="Source").positional().required())
+    command.add_argument(
+        Argument("dst", help="Destination").positional().default["out.txt"]()
+    )
+
+    var args: List[String] = ["test", "in.txt"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("src"), "in.txt")
+    assert_equal(result.get_string("dst"), "out.txt")
+    assert_true(result.was_provided("src"), msg="src was typed")
+    assert_false(result.was_provided("dst"), msg="dst is a default")
+
+
+def test_required_positional_with_own_default_is_satisfied() raises:
+    """A default on the required positional itself still satisfies it."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("src", help="Source").positional().required().default["."]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("src"), ".")
+
+
+# ── Malformed long options ───────────────────────────────────────────────────
+
+
+def test_empty_long_option_name_rejected() raises:
+    """``--=value`` has no option name and must not bind to a positional."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("file", help="File").positional())
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+
+    var args: List[String] = ["test", "--=hello"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--=hello must be rejected")
+
+
+def test_empty_long_option_name_rejected_with_short_only_option() raises:
+    """Same guard, with a short-only option as the empty-long-name candidate."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("out", help="Out").short["o"]().takes_value())
+
+    var args: List[String] = ["test", "--=hello"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--=hello must not bind to a short-only option")
+
+
+# ── An option must not swallow another option as its value ───────────────────
+
+
+def test_long_option_rejects_known_option_as_value() raises:
+    """``--output --verbose`` is a missing value, not an output named
+    ``--verbose``."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("output", help="Out").long["output"]())
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+
+    var args: List[String] = ["test", "--output", "--verbose"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--output --verbose must raise")
+
+
+def test_short_option_rejects_known_option_as_value() raises:
+    """The same guard applies to short options."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("output", help="Out").long["output"]().short["o"]()
+    )
+    command.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+
+    var args: List[String] = ["test", "-o", "-v"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="-o -v must raise")
+
+
+def test_nargs_rejects_known_option_as_value() raises:
+    """A multi-value option stops at the next registered option."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("point", help="Point").long["point"]().number_of_values[2]()
+    )
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+
+    var args: List[String] = ["test", "--point", "1", "--verbose"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="--point 1 --verbose must raise")
+
+
+def test_option_rejects_double_dash_as_value() raises:
+    """The ``--`` end-of-options marker is never a value."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("output", help="Out").long["output"]())
+
+    var args: List[String] = ["test", "--output", "--", "file.txt"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="-- must not be consumed as a value")
+
+
+def test_option_still_accepts_negative_number_value() raises:
+    """Only *registered* options are refused, so ``-5`` still works."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("offset", help="Offset").long["offset"]())
+
+    var args: List[String] = ["test", "--offset", "-5"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("offset"), "-5")
+
+
+def test_option_still_accepts_unregistered_hyphen_value() raises:
+    """A hyphen-prefixed token that is not a known option is a valid value."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("pattern", help="Pattern").long["pattern"]())
+
+    var args: List[String] = ["test", "--pattern", "-foo"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("pattern"), "-foo")
+
+
+def test_allow_hyphen_values_opts_out_of_the_guard() raises:
+    """``allow_hyphen_values()`` keeps the old, permissive behaviour."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("cmd", help="Command").long["cmd"]().allow_hyphen_values()
+    )
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag()
+    )
+
+    var args: List[String] = ["test", "--cmd", "--verbose"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("cmd"), "--verbose")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

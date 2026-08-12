@@ -971,5 +971,140 @@ def test_confirmation_with_parent_args() raises:
 # ── Test runner ──────────────────────────────────────────────────────────────
 
 
+# ── Prompting runs before defaults are applied ───────────────────────────────
+
+
+def test_prompt_arg_with_default_is_not_marked_provided() raises:
+    """A default that fills a prompt argument is not counted as user input.
+
+    Prompting runs before ``_apply_defaults`` so that an argument carrying
+    both ``.prompt()`` and ``.default()`` is actually offered to the user;
+    the default is what an empty answer (or a non-interactive stdin) falls
+    back to.  Under the test runner stdin is not interactive, so the default
+    path is the one exercised here.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Log level")
+        .long["level"]()
+        .default["info"]()
+        .prompt()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("level"), "info")
+    assert_false(
+        result.was_provided("level"),
+        msg="a default is not user input, even on a prompt argument",
+    )
+
+
+def test_prompt_arg_value_from_cli_is_marked_provided() raises:
+    """A value given on the command line skips the prompt and counts as
+    provided."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Log level")
+        .long["level"]()
+        .default["info"]()
+        .prompt()
+    )
+
+    var args: List[String] = ["test", "--level", "debug"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("level"), "debug")
+    assert_true(result.was_provided("level"), msg="--level was typed")
+
+
+def test_prompt_default_does_not_satisfy_a_group() raises:
+    """A prompt argument left to its default cannot satisfy a one-required
+    group."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("level", help="Log level")
+        .long["level"]()
+        .default["info"]()
+        .prompt()
+    )
+    command.add_argument(Argument("quiet", help="Quiet").long["quiet"]().flag())
+    command.one_required(["level", "quiet"])
+
+    var args: List[String] = ["test"]
+    var raised = False
+    try:
+        _ = command.parse_arguments(args)
+    except:
+        raised = True
+    assert_true(raised, msg="neither member was supplied by the user")
+
+
+def test_confirmation_rejects_user_argument_named_yes() raises:
+    """A user argument named 'yes' cannot silently auto-confirm.
+
+    ``_confirm`` reads the flag by the hard-coded name "yes", so an
+    unrelated argument of that name would skip the prompt.  Every
+    registration order is blocked, so the situation is unreachable.
+    """
+    # Order 1: user argument first, then confirmation_option().
+    var first = Command("test", "Test app")
+    first.add_argument(Argument("yes", help="Answer").positional())
+    var raised_first = False
+    try:
+        first.confirmation_option()
+    except:
+        raised_first = True
+    assert_true(raised_first, msg="an existing 'yes' must block the option")
+
+    # Order 2: confirmation_option() first, then the user argument.
+    var second = Command("test", "Test app")
+    second.confirmation_option()
+    var raised_second = False
+    try:
+        second.add_argument(Argument("yes", help="Answer").positional())
+    except:
+        raised_second = True
+    assert_true(raised_second, msg="the option must block a later 'yes'")
+
+    # Order 3: name collision only — the long name differs.
+    var third = Command("test", "Test app")
+    third.add_argument(Argument("yes", help="Answer").long["confirm"]().flag())
+    var raised_third = False
+    try:
+        third.confirmation_option()
+    except:
+        raised_third = True
+    assert_true(raised_third, msg="the bare name collides even via --confirm")
+
+
+def test_confirmation_rejects_persistent_yes_from_parent() raises:
+    """A persistent --yes on the parent cannot shadow a child's own flag."""
+    for order in range(2):
+        var parent = Command("app", "Parent")
+        var child = Command("drop", "Drop it")
+        child.confirmation_option()
+        var raised = False
+        try:
+            if order == 0:
+                parent.add_subcommand(child.copy())
+                parent.add_argument(
+                    Argument("yes", help="Global yes")
+                    .long["yes"]()
+                    .flag()
+                    .persistent()
+                )
+            else:
+                parent.add_argument(
+                    Argument("yes", help="Global yes")
+                    .long["yes"]()
+                    .flag()
+                    .persistent()
+                )
+                parent.add_subcommand(child.copy())
+        except:
+            raised = True
+        assert_true(raised, msg="persistent --yes must conflict either way")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

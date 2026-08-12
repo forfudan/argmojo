@@ -81,7 +81,7 @@ ArgMojo currently supports:
 - **Default-if-no-value**: `--compress` uses a fallback; `--compress=bzip2` overrides
 - **Require equals syntax**: `--key=value` required, `--key value` rejected
 - **Remainder positional**: `.remainder()` consumes all remaining tokens
-- **Allow hyphen values**: `.allow_hyphen_values()` accepts `-` as a regular value (stdin convention)
+- **Allow hyphen values**: `.allow_hyphen_values()` accepts dash-prefixed tokens as values, including registered options (`--cflag --verbose`) and the stdin `-` convention
 - **Partial parsing**: `parse_known_arguments()` collects unrecognised options instead of erroring
 - **Compile-time validation**: builder parameters validated at `mojo build` time via `comptime assert`
 - **Registration-time validation**: group constraint typos caught when the program starts, not when the user runs it

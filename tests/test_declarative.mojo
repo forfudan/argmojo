@@ -308,5 +308,76 @@ def test_positional_allow_hyphen() raises:
 # =======================================================================
 
 
+# =======================================================================
+# Float64 values, wrapper parameter parity, and ergonomic unwrapping
+# =======================================================================
+
+
+struct Metrics(Parsable):
+    var ratio: Option[
+        Float64, long="ratio", short="r", help="A ratio", default="1.5"
+    ]
+    var verbose: Count[short="v", help="Verbosity", max=3, alias_name="loud"]
+    var quiet: Flag[short="q", help="Quiet", alias_name="silent"]
+    var scale: Positional[Float64, help="Scale factor", default="2.25"]
+    var legacy: Positional[
+        String,
+        help="Legacy slot",
+        default="x",
+        hidden=True,
+        deprecated="use --ratio instead",
+    ]
+
+    @staticmethod
+    def description() -> String:
+        return String("Metrics tool.")
+
+
+def test_float_option_and_positional() raises:
+    """Option[Float64] and Positional[Float64] round-trip through parsing."""
+    var args: List[String] = ["metrics", "--ratio", "0.25", "3.5"]
+    var parsed = Metrics.parse_arguments(args)
+    assert_equal(parsed.ratio.value, 0.25)
+    assert_equal(parsed.scale.value, 3.5)
+
+
+def test_float_defaults_are_applied() raises:
+    """A Float64 default reaches the field when nothing is supplied."""
+    var args: List[String] = ["metrics"]
+    var parsed = Metrics.parse_arguments(args)
+    assert_equal(parsed.ratio.value, 1.5)
+    assert_equal(parsed.scale.value, 2.25)
+
+
+def test_count_is_intable() raises:
+    """Count provides __int__, mirroring Flag.__bool__."""
+    var args: List[String] = ["metrics", "-vv"]
+    var parsed = Metrics.parse_arguments(args)
+    assert_equal(Int(parsed.verbose), 2)
+
+
+def test_count_and_flag_accept_aliases() raises:
+    """alias_name works on Count and Flag, not only on Option."""
+    var args: List[String] = ["metrics", "--loud", "--silent"]
+    var parsed = Metrics.parse_arguments(args)
+    assert_equal(Int(parsed.verbose), 1)
+    assert_true(parsed.quiet.value, msg="--silent is an alias of --quiet")
+
+
+def test_positional_hidden_and_deprecated() raises:
+    """Positional now honours hidden and deprecated, like Option does."""
+    var command = Metrics.to_command()
+    var help = command._generate_help(color=False)
+    assert_true(help.find("Legacy slot") < 0, msg="hidden positional")
+    for i in range(len(command.arguments)):
+        if command.arguments[i].name == "legacy":
+            assert_true(
+                command.arguments[i]._is_hidden, msg="hidden flag is set"
+            )
+            assert_equal(
+                command.arguments[i]._deprecated_msg, "use --ratio instead"
+            )
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

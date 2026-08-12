@@ -26,18 +26,18 @@ I want the declarative API to satisfy five goals:
 
 Available compile-time reflection primitives:
 
-| API                                 | Purpose                                                    |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `reflect[T]`                        | Reflection handle for struct T                             |
-| `reflect[T].field_count()`          | Number of fields in struct T                               |
-| `reflect[T].field_names()`          | Indexable list of field name strings                       |
-| `reflect[T].field_types()`          | Indexable list of field types                              |
-| `reflect[T].name()`                 | String name of type T                                      |
-| `reflect[T].field_ref[idx](x)`      | Reference to field by compile-time index                   |
-| `conforms_to(type, Trait)`          | Compile-time trait conformance check                       |
-| ~~`@fieldwise_init`~~               | ~~Auto-generate constructor from fields~~[^fieldwise_init] |
-| `comptime for idx in range(N)`      | Compile-time loop                                          |
-| `comptime if condition`             | Compile-time conditional                                   |
+| API                            | Purpose                                                    |
+| ------------------------------ | ---------------------------------------------------------- |
+| `reflect[T]`                   | Reflection handle for struct T                             |
+| `reflect[T].field_count()`     | Number of fields in struct T                               |
+| `reflect[T].field_names()`     | Indexable list of field name strings                       |
+| `reflect[T].field_types()`     | Indexable list of field types                              |
+| `reflect[T].name()`            | String name of type T                                      |
+| `reflect[T].field_ref[idx](x)` | Reference to field by compile-time index                   |
+| `conforms_to(type, Trait)`     | Compile-time trait conformance check                       |
+| ~~`@fieldwise_init`~~          | ~~Auto-generate constructor from fields~~[^fieldwise_init] |
+| `comptime for idx in range(N)` | Compile-time loop                                          |
+| `comptime if condition`        | Compile-time conditional                                   |
 
 A `comptime if conforms_to(...)` guard is enough for the compiler to resolve
 trait methods on a reflected field, so no explicit downcast is needed.
@@ -1383,9 +1383,10 @@ I think this is the right call — these features describe *relationships betwee
   - [ ] Positional ordering enforcement
   - [ ] Type-metadata mismatch detection
   - [x] Choices vs default consistency (`comptime assert` in `Option` and `Positional`)
-  - [x] Range min ≤ max (`comptime assert range_min <= range_max` in `Option`)
+  - [x] Range min ≤ max (`comptime assert range_min <= range_max` in `Option` and `Positional`)
+  - [x] `has_range` rejected on `Float64` (range validation is integer-only — see the open item under §11)
   - [x] Test: positive schema validation (test_schema_validation.mojo, 5 tests)
-  - [x] Test: negative schema validation (check_schema_errors.sh, 6 compile-error tests)
+  - [x] Test: negative schema validation (check_schema_errors.sh, 9 compile-error tests)
 - [ ] Add `depends_on`/`conflicts_with` parameters to `Option` and `Flag` (§6.4)
   - [ ] Compile-time validation of referenced field names
   - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `to_command()`
@@ -1394,7 +1395,7 @@ I think this is the right call — these features describe *relationships betwee
   - [ ] Explore compile-time completion script generation
 - [ ] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
 - [ ] Implement `validate(self) raises` method on `Parsable` (mirroring Swift's `validate()`) — post-parse cross-field validation without requiring the builder API
-- [ ] Add more built-in types for `Option` (e.g. `Float`) and ensure they work end-to-end with both declarative and builder patterns. This requires more methods in `ParseResult` (e.g. `get_float()`) and corresponding write-back logic in `from_parse_result()`.
+- [x] Add more built-in types for `Option` (e.g. `Float`) — `Float64` is supported on both `Option[T]` and `Positional[T]`, backed by `ParseResult.get_float()`. Remaining unsupported types are listed in §11.
 
 ### Phase 5: Polish
 
@@ -1403,5 +1404,87 @@ I think this is the right call — these features describe *relationships betwee
 - [x] Examples: simple pure-declarative (`search.mojo`), hybrid (`deploy.mojo`), full parse (`convert.mojo`)
 - [x] User manual additions
 - [x] README update with declarative examples
+
+## 11. Known Gaps (v0.8.0)
+
+Before the v0.8.0 release I went through the four wrapper types parameter by
+parameter and compared them against what the builder API already offers. The
+cheap, self-contained differences are fixed. The rest are below, each with the
+reason I left it, so that I do not have to reconstruct the same list next
+time.
+
+### Fixed in v0.8.0
+
+| Gap                                                                        | Resolution                                                     |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `Option[T]` / `Positional[T]` took only `String`, `Int`, `List`, and `Dict` | `Float64` added to both, backed by the new `get_float()`       |
+| `alias_name` existed only on `Option`                                      | Added to `Flag` and `Count`                                    |
+| `deprecated` existed only on `Option` and `Flag`                           | Added to `Count` and `Positional`                              |
+| `hidden` missing from `Positional`                                         | Added                                                          |
+| `prompt` / `prompt_text` / `password` existed only on `Option`             | Added to `Positional`                                          |
+| `has_range` / `range_min` / `range_max` / `clamp` missing from `Positional` | Added, with the `range_min <= range_max` check `Option` has     |
+| No way to unwrap a value except `.value` and `Flag.__bool__`               | `Count` conforms to `Intable`, so `Int(args.verbose)` works    |
+
+### Still open
+
+#### Range validation is integer-only
+
+`_validate` parses the value with `atol` and keeps the bounds as `Int`, so
+`has_range` cannot express `0.0 <= ratio <= 1.0`. I reject `has_range` together
+with `Float64` at compile time — the alternative was letting it through and
+failing at runtime with a confusing "expected an integer".
+
+Doing it properly means either widening `Argument._range_min` / `_range_max` to
+`Float64`, which changes how every existing range is rendered in help text and
+error messages (`[1, 65535]` becomes `[1.0, 65535.0]`), or keeping a second
+pair of bounds behind a `_range_is_float` flag. Neither is small, and integer
+ranges cover what ranges are actually used for: ports, levels, counts.
+
+#### `Count`'s `max` cannot go in the Parameters block
+
+`mojo doc` (v1.0.0) does not recognise a struct parameter named `max`. It
+reports `unknown parameter 'max' in doc string`, then miscounts the index of
+every parameter declared after it. I reduced it to two structs differing only
+in that name: `max` warns, `maximum` does not, so this is a tooling bug rather
+than an argmojo one. The parameter is described in the struct's prose docstring
+instead. Renaming it to `max_count` would keep `mojo doc` quiet at the cost of
+breaking every `Count[..., max=N]` already written, so the name stays until the
+tool is fixed.
+
+The related trap is that `--diagnose-missing-doc-strings` only flags a missing
+*docstring*, never a missing *parameter entry*. That is why `Count.max` sat
+undocumented without anything complaining about it. Checking parameter coverage
+needs a separate script that compares each struct's parameter list against its
+`Parameters:` block.
+
+#### Types the wrappers still refuse
+
+`Bool` (use `Flag`), `Float32`, the sized integers (`Int8` … `UInt64`), and
+`List[Int]` all fall through to the `comptime assert False` arm of
+`read_from_result`. Each one needs a matching `ParseResult` accessor first. My
+guess is that `Float32` and `List[Int]` will be the two that get requested.
+
+#### Constraints stay builder-only
+
+This is still a deliberate decision (§8), and the one I am least sure about.
+`mutually_exclusive`, `required_together`, `one_required`, `required_if`, and
+`implies` describe relationships *between* fields, which do not fit a per-field
+attribute; `depends_on` / `conflicts_with` (§6.4) would cover the two commonest
+cases. Now that `was_provided()` gives the group checks a precise notion of
+"the user supplied this", it is worth another look — but the escape hatch
+through `to_command()` works today.
+
+#### `run()` is never dispatched automatically
+
+`parse()` returns the struct and stops, so you still write
+`if result.subcommand == "build": ...` by hand. Walking the subcommand chain
+automatically needs compile-time variadic type tuples, which Mojo does not
+have. Tracked in §5.4.3 — a missing language feature, not an oversight.
+
+#### No `Parsable.validate()`
+
+Swift's argument parser calls a `validate()` hook after parsing; the equivalent
+here would let you write cross-field checks without dropping to the builder.
+It is listed in Phase 4 and I have not started it.
 
 [^fieldwise_init]: removed — compiler auto-synthesises move init from `Movable` conformance; the `Parsable` trait now provides a reflection-based default `__init__` via `mark_initialized` + `comptime for`.
