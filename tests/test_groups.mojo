@@ -1970,7 +1970,7 @@ def test_conditional_requirement_fires_on_real_input() raises:
 
 
 def test_was_provided_reports_user_input() raises:
-    """was_provided() separates typed values from defaults."""
+    """Tests that was_provided() separates typed values from defaults."""
     var command = Command("test", "Test app")
     command.add_argument(
         Argument("format", help="Format").long["format"]().default["json"]()
@@ -2059,6 +2059,96 @@ def test_typed_trigger_still_fires_implication() raises:
     var args: List[String] = ["test", "--mode", "slow"]
     var result = command.parse_arguments(args)
     assert_true(result.get_flag("parallel"), msg="a typed --mode still implies")
+
+
+def test_parse_known_default_trigger_does_not_fire_implication() raises:
+    """Test that parse_known_arguments() must not imply from a default either.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode").long["mode"]().default["fast"]()
+    )
+    command.add_argument(
+        Argument("parallel", help="Parallel").long["parallel"]().flag()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test", "--unknown"]
+    var result = command.parse_known_arguments(args)
+    assert_equal(
+        result.get_string("mode"), "fast", msg="the default still applies"
+    )
+    assert_false(
+        result.get_flag("parallel"),
+        msg="a default trigger must not imply --parallel",
+    )
+    assert_false(
+        result.was_provided("parallel"), msg="and must not mark it provided"
+    )
+
+
+def test_parse_known_implication_outranks_a_default_on_the_implied_arg() raises:
+    """Implications must run before defaults in parse_known_arguments().
+
+    An implication only fires while the implied argument is still unset, so
+    filling defaults first would let a `.default()` on --parallel swallow the
+    rule and leave the flag false even though the user typed the trigger.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("mode", help="Mode").long["mode"]())
+    command.add_argument(
+        Argument("parallel", help="Parallel")
+        .long["parallel"]()
+        .flag()
+        .default["false"]()
+    )
+    command.implies("mode", "parallel")
+
+    var args: List[String] = ["test", "--mode", "slow", "--unknown"]
+    var result = command.parse_known_arguments(args)
+    assert_true(
+        result.get_flag("parallel"),
+        msg="the implication must beat the default on --parallel",
+    )
+    assert_true(
+        result.was_provided("parallel"),
+        msg="an implied argument counts as user intent",
+    )
+
+
+def test_both_entry_points_agree_on_an_implied_default_argument() raises:
+    """Tests that parse_arguments() and parse_known_arguments() must not
+    disagree.
+
+    Same command line, same implication, same `.default()` on the implied
+    argument: both entry points have to answer identically, which is what
+    the shared implications-before-defaults order guarantees.
+    """
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("mode", help="Mode").long["mode"]())
+    command.add_argument(
+        Argument("parallel", help="Parallel")
+        .long["parallel"]()
+        .flag()
+        .default["false"]()
+    )
+    command.implies("mode", "parallel")
+
+    var full_args: List[String] = ["test", "--mode", "slow"]
+    var known_args: List[String] = ["test", "--mode", "slow"]
+    var full = command.parse_arguments(full_args)
+    var known = command.parse_known_arguments(known_args)
+
+    assert_equal(
+        full.get_flag("parallel"),
+        known.get_flag("parallel"),
+        msg="both entry points set the implied --parallel the same way",
+    )
+    assert_equal(
+        full.was_provided("parallel"),
+        known.was_provided("parallel"),
+        msg="both entry points mark it provided the same way",
+    )
 
 
 def main() raises:

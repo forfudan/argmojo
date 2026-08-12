@@ -122,6 +122,7 @@ jobs:
             && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
             && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
             && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_dispatch.mojo \
             && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
             && bash tests/check_schema_errors.sh; then
               echo "=== tests passed on attempt $attempt ==="

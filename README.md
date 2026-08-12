@@ -39,6 +39,8 @@ ArgMojo currently supports:
 - **Positional arguments**: matched by position
 - **Default values**: fallback when an argument is not provided
 - **Required arguments**: validation that mandatory arguments are present
+- **Typed result accessors**: `get_string()`, `get_int()`, `get_float()`, `get_flag()`, `get_count()`, `get_list()`, `get_map()` read a value back in its own type
+- **User-input detection**: `was_provided()` tells a value the user actually supplied (on the command line, at a prompt, or through `.implies()`) from one that came from a `.default()`
 - **Auto-generated help**: `--help` / `-h` / `-?` with dynamic column alignment, pixi-style ANSI colours, and customisable header/argument colours
 - **Help on no arguments**: optionally show help when invoked with no arguments
 - **Version display**: `--version` / `-V` (also auto-generated)

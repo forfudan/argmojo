@@ -2,7 +2,7 @@
 
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
-## 20260811 (v0.8.0)
+## 20260812 (v0.8.0)
 
 ArgMojo v0.8.0 moves to the first stable Mojo release, **v1.0.0**. It also fixes a dozen parser bugs, repairs an FFI signature clash that could break the build of a project using ArgMojo, cuts compile time by about a fifth, and fills several gaps in the declarative API.
 
@@ -70,6 +70,7 @@ ArgMojo v0.8.0 targets Mojo v1.0.0.
 - `docs/declarative_api_planning.md` gains a "Known Gaps" section: what went wrong in the wrappers, what has been fixed, and why the rest is still open.
 - The user manual documents `has()` versus `was_provided()`, which accessor reads back each kind of default, the registration-time rules for default values, how values that look like options are treated, the value types the declarative wrappers accept, and the `Bool()` / `Int()` unwrapping shortcuts.
 - `Argument.remainder()` now says what happens when the remainder is the first positional: collection starts at the very first token, so `--help` is swallowed as a remainder value and the command has no help flag. That is what a wrapper command such as `env` wants, but it is worth knowing before you hit it. Declare a positional ahead of the remainder, or call `help_on_no_arguments()`.
+- CI now runs `tests/test_dispatch.mojo` too. It was in the local `test` task but in none of the workflow jobs, so the auto-dispatch tests added in v0.6.0 had never run on a pull request.
 - The `_allow_hyphen_values` field docstring claimed it accepts "the literal token `-`". It has always accepted any dash-prefixed token, and it now also switches off the check described in fix 8.
 
 ### ⚠️ Known issues in v0.8.0

@@ -2746,5 +2746,80 @@ def test_malformed_map_default_raises() raises:
     assert_true(raised, msg="malformed map default must raise")
 
 
+# ── get_float ────────────────────────────────────────────────────────────────
+
+
+def test_get_float_reads_a_decimal_value() raises:
+    """Tests that get_float() parses a decimal value as Float64."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("ratio", help="Ratio").long["ratio"]())
+
+    var args: List[String] = ["test", "--ratio", "2.5"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_float("ratio"), 2.5, msg="2.5 round-trips")
+
+
+def test_get_float_reads_a_negative_value() raises:
+    """A negative decimal survives the hyphen check and parses."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("offset", help="Offset").long["offset"]())
+
+    var args: List[String] = ["test", "--offset", "-1.75"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_float("offset"), -1.75, msg="-1.75 round-trips")
+
+
+def test_get_float_reads_an_integer_literal() raises:
+    """A value written without a decimal point still reads as Float64."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("ratio", help="Ratio").long["ratio"]())
+
+    var args: List[String] = ["test", "--ratio", "3"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_float("ratio"), 3.0, msg="3 reads as 3.0")
+
+
+def test_get_float_reads_a_default() raises:
+    """A default value is readable through get_float()."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("ratio", help="Ratio").long["ratio"]().default["1.5"]()
+    )
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_float("ratio"), 1.5, msg="the default is readable")
+
+
+def test_get_float_raises_on_a_non_numeric_value() raises:
+    """A value that is not a number must raise rather than return garbage."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("ratio", help="Ratio").long["ratio"]())
+
+    var args: List[String] = ["test", "--ratio", "abc"]
+    var result = command.parse_arguments(args)
+    var raised = False
+    try:
+        _ = result.get_float("ratio")
+    except:
+        raised = True
+    assert_true(raised, msg="a non-numeric value must raise")
+
+
+def test_get_float_raises_on_a_missing_argument() raises:
+    """Reading an argument that was never provided must raise."""
+    var command = Command("test", "Test app")
+    command.add_argument(Argument("ratio", help="Ratio").long["ratio"]())
+
+    var args: List[String] = ["test"]
+    var result = command.parse_arguments(args)
+    var raised = False
+    try:
+        _ = result.get_float("ratio")
+    except:
+        raised = True
+    assert_true(raised, msg="a missing argument must raise")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
