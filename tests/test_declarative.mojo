@@ -317,6 +317,7 @@ struct Metrics(Parsable):
     var ratio: Option[
         Float64, long="ratio", short="r", help="A ratio", default="1.5"
     ]
+    var unit: Option[String, long="unit", alias="units,u", default="m"]
     var verbose: Count[short="v", help="Verbosity", max=3, alias="loud"]
     var quiet: Flag[short="q", help="Quiet", alias="silent"]
     var scale: Positional[Float64, help="Scale factor", default="2.25"]
@@ -388,6 +389,14 @@ def test_alias_and_alias_name_are_merged() raises:
     assert_true(LegacyAliases.parse_arguments(args).color.value)
     args = ["legacy", "--colr"]
     assert_true(LegacyAliases.parse_arguments(args).color.value)
+
+
+def test_option_accepts_alias() raises:
+    """The alias parameter works on Option, including several names."""
+    var args: List[String] = ["metrics", "--units", "km"]
+    assert_equal(Metrics.parse_arguments(args).unit.value, "km")
+    args = ["metrics", "--u", "cm"]
+    assert_equal(Metrics.parse_arguments(args).unit.value, "cm")
 
 
 def test_positional_hidden_and_deprecated() raises:
