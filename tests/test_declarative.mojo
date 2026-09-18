@@ -357,7 +357,7 @@ def test_count_is_intable() raises:
 
 
 def test_count_and_flag_accept_aliases() raises:
-    """alias_name works on Count and Flag, not only on Option."""
+    """The alias_name parameter works on Count and Flag, not only on Option."""
     var args: List[String] = ["metrics", "--loud", "--silent"]
     var parsed = Metrics.parse_arguments(args)
     assert_equal(Int(parsed.verbose), 1)

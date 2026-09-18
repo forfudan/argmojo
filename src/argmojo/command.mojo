@@ -49,7 +49,7 @@ from .utils import (
 # Placing `open()` inside a method of a struct that contains `List[Self]` causes
 # the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
 # Moving the I/O into a free function avoids the trigger.  Still reproducing on
-# Mojo v1.0.0: re-enabling the call from parse_arguments() hangs the compiler
+# Mojo v1.1.0: re-enabling the call from parse_arguments() hangs the compiler
 # on tests/test_parse.mojo even though tests/test_response_file.mojo builds.
 def _read_file_content(filepath: String) raises -> String:
     """Reads and returns the entire contents of *filepath*."""
@@ -2590,7 +2590,7 @@ struct Command(Copyable, Movable, Writable):
         # NOTE: Response file expansion remains disabled: calling it from this
         # method still deadlocks the Mojo compiler under `-D ASSERT=all`
         # (`Command` holds `List[Command]`, and the expansion reaches `open()`).
-        # Verified still reproducing on Mojo v1.0.0 — `tests/test_parse.mojo`
+        # Verified still reproducing on Mojo v1.1.0 — `tests/test_parse.mojo`
         # hangs at 0% CPU during compilation.  The module-level
         # _expand_response_files / _read_response_file functions are still
         # available and tested by tests/test_response_file.mojo.

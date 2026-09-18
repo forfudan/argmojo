@@ -6,21 +6,31 @@
 > **Initial Date**: 2026-03-24  
 >
 > 子曰工欲善其事必先利其器  
-> The mechanic, who wishes to do his work well, must first sharpen his tools -- Confucius
+> The mechanic, who wishes to do his work well, must first sharpen his tools --
+> Confucius
 
 ## 1. Design Goals
 
 I want the declarative API to satisfy five goals:
 
-1. **Optional** — If you prefer the builder API, nothing changes for you. The declarative types are a separate import (`from argmojo import Parsable, Option, Flag, ...`). Zero change to existing code.
+1. **Optional** — If you prefer the builder API, nothing changes for you. The
+   declarative types are a separate import
+   (`from argmojo import Parsable, Option, Flag, ...`). Zero change to existing
+   code.
 
-2. **Hybrid** — Builder and declarative can coexist in a single program. You define a struct for 80% of arguments, then reach for builder methods for the remaining 20% (groups, implications, advanced constraints).
+2. **Hybrid** — Builder and declarative can coexist in a single program. You
+   define a struct for 80% of arguments, then reach for builder methods for the
+   remaining 20% (groups, implications, advanced constraints).
 
-3. **Layered** — The declarative layer is a *consumer* of the builder layer. Internally it constructs `Command` + `Argument` objects and calls `Command.parse()`. I'm not building a new parsing engine.
+3. **Layered** — The declarative layer is a *consumer* of the builder layer.
+   Internally it constructs `Command` + `Argument` objects and calls
+   `Command.parse()`. I'm not building a new parsing engine.
 
-4. **Type-safe** — Parsed results come back as your own struct with typed fields, not `ParseResult.get_string("name")`.
+4. **Type-safe** — Parsed results come back as your own struct with typed
+   fields, not `ParseResult.get_string("name")`.
 
-5. **Five innovations** — I think there are five features I can offer beyond what Swift Argument Parser does (see [§6](#6-innovations)).
+5. **Five innovations** — I think there are five features I can offer beyond
+   what Swift Argument Parser does (see [§6](#6-innovations)).
 
 ## 2. Mojo Reflection Capabilities (v1.0.0)
 
@@ -42,9 +52,19 @@ Available compile-time reflection primitives:
 A `comptime if conforms_to(...)` guard is enough for the compiler to resolve
 trait methods on a reflected field, so no explicit downcast is needed.
 
-**Key limitation**: No proc macros, no custom decorators, no `#[derive(...)]`. So all declarative behavior has to be implemented via parametric functions that reflect over user-defined structs.
+**Key limitation**: No proc macros, no custom decorators, no `#[derive(...)]`.
+So all declarative behavior has to be implemented via parametric functions that
+reflect over user-defined structs.
 
-**Primary inspiration — Swift Argument Parser**: My main inspiration is Apple's [swift-argument-parser](https://github.com/apple/swift-argument-parser). Swift and Mojo share key language characteristics — static typing, struct-oriented design, and protocol/trait conformance — so it's the most relevant prior art. Swift uses **property wrappers** (`@Argument`, `@Option`, `@Flag`) as metadata carriers on struct fields. I adopted a similar approach using **parametric wrapper types** (`Positional[T, ...]`, `Option[T, ...]`, `Flag[...]`, `Count[...]`), which carry CLI metadata as compile-time keyword parameters. Here's how Swift looks:
+**Primary inspiration — Swift Argument Parser**: My main inspiration is Apple's
+[swift-argument-parser](https://github.com/apple/swift-argument-parser). Swift
+and Mojo share key language characteristics — static typing, struct-oriented
+design, and protocol/trait conformance — so it's the most relevant prior art.
+Swift uses **property wrappers** (`@Argument`, `@Option`, `@Flag`) as metadata
+carriers on struct fields. I adopted a similar approach using
+**parametric wrapper types** (`Positional[T, ...]`, `Option[T, ...]`,
+`Flag[...]`, `Count[...]`), which carry CLI metadata as compile-time keyword
+parameters. Here's how Swift looks:
 
 ```swift
 struct Greet: ParsableCommand {
@@ -64,7 +84,8 @@ struct Greet: ParsableCommand {
 Greet.main()
 ```
 
-What the compiler actually sees — Swift **desugars** the `@` property wrappers into hidden parametric structs:
+What the compiler actually sees — Swift **desugars** the `@` property wrappers
+into hidden parametric structs:
 
 ```swift
 struct Greet: ParsableCommand {
@@ -101,9 +122,14 @@ struct Greet: ParsableCommand {
 }
 ```
 
-So under the hood, Swift is wrapping each field in a parametric metadata-carrying struct (`Argument<String>`, `Option<Int>`, `Flag<Bool>`). The `@` sugar just hides the wrapper and generates a computed property so users write `args.name` instead of `args._name.wrappedValue`.
+So under the hood, Swift is wrapping each field in a parametric
+metadata-carrying struct (`Argument<String>`, `Option<Int>`, `Flag<Bool>`). The
+`@` sugar just hides the wrapper and generates a computed property so users
+write `args.name` instead of `args._name.wrappedValue`.
 
-This is inspiring, great! It can be translated into Mojo with explicit parametric structs — the only cost is the lack of `@` sugar, so users access the inner value via `.value` instead of a compiler-generated computed property.
+This is inspiring, great! It can be translated into Mojo with explicit
+parametric structs — the only cost is the lack of `@` sugar, so users access the
+inner value via `.value` instead of a compiler-generated computed property.
 
 Direct mapping to argmojo declarative API:
 
@@ -122,19 +148,49 @@ Direct mapping to argmojo declarative API:
 
 What I think argmojo can add beyond Swift:
 
-1. `to_command()` returns an owned `Command` for builder-level customisation followed by `parse_from_command(command^)` — Swift's `ParsableCommand` is a sealed box with no escape hatch to things like mutually exclusive groups, implications, or custom help formatting.
-2. `parse_full()` returns both typed struct + `ParseResult` — Swift requires all fields to live in the struct.
-3. Declarative is optional — Swift has no builder alternative; you *must* use the struct-based approach.
+1. `to_command()` returns an owned `Command` for builder-level customisation
+   followed by `parse_from_command(command^)` — Swift's `ParsableCommand` is a
+   sealed box with no escape hatch to things like mutually exclusive groups,
+   implications, or custom help formatting.
+2. `parse_full()` returns both typed struct + `ParseResult` — Swift requires all
+   fields to live in the struct.
+3. Declarative is optional — Swift has no builder alternative; you *must* use
+   the struct-based approach.
 
-**`validate()`**: I'm also thinking about an optional `def validate(self) raises` method on `Parsable` (mirroring Swift's `validate()`). It would complement `to_command()` for post-parse cross-field validation without requiring the builder API. *(Phase 4)*
+**`validate()`**: I'm also thinking about an optional
+`def validate(self) raises` method on `Parsable` (mirroring Swift's
+`validate()`). It would complement `to_command()` for post-parse cross-field
+validation without requiring the builder API. *(Phase 4)*
 
-**A note on naming** — I had to pick names for several structs and traits. Some were genuinely hard. The final names inevitably reflect my personal taste, but I tried to be consistent and self-explanatory. Here's what I chose and why:
+**A note on naming** — I had to pick names for several structs and traits. Some
+were genuinely hard. The final names inevitably reflect my personal taste, but I
+tried to be consistent and self-explanatory. Here's what I chose and why:
 
-1. **`Parsable`**: This is the trait that user structs conform to. It follows Swift's `ParsableCommand` naming and Mojo's `TypeName+able` pattern (`Int`→`Intable`, `String`→`Stringable`). `MyArgs.parse()` reads naturally: "my args, parse yourself." The user struct describes *what* to parse (the schema) and carries the *how* via trait default methods. There is no separate orchestrator — the struct is self-contained.
+1. **`Parsable`**: This is the trait that user structs conform to. It follows
+   Swift's `ParsableCommand` naming and Mojo's `TypeName+able` pattern
+   (`Int`→`Intable`, `String`→`Stringable`). `MyArgs.parse()` reads naturally:
+   "my args, parse yourself." The user struct describes *what* to parse (the
+   schema) and carries the *how* via trait default methods. There is no separate
+   orchestrator — the struct is self-contained.
 
-2. **`Positional`**: Swift calls it `@Argument`, but I already have an `Argument` struct in the builder layer that covers *all* argument types. Two different `Argument` types with different meanings would be confusing. `Positional` is unambiguous — it tells you exactly what kind of argument it is.
+2. **`Positional`**: Swift calls it `@Argument`, but I already have an
+   `Argument` struct in the builder layer that covers *all* argument types. Two
+   different `Argument` types with different meanings would be confusing.
+   `Positional` is unambiguous — it tells you exactly what kind of argument it
+   is.
 
-3. **No `Parser[T]` struct** — In an earlier draft I had a `Parser[T]` orchestrator struct. But I realised this extra wrapper serves no purpose: Mojo 0.26.2 supports `Self` reflection inside trait default methods, so the `Parsable` trait itself can host `parse()`, `to_command()`, `parse_full()`, etc. This eliminates one layer of indirection and produces an API that matches Rust's `MyArgs::parse()` and Swift's `Greet.main()` — the user struct is the parser. This is also directly analogous to Rust clap's `#[derive(Parser)]`, which generates `MyArgs::parse()` on the implementing struct — our `Parsable` trait's default methods achieve the same effect without proc macros. I verified this approach in `temp_test_plan_b_full.mojo` — all 7 patterns (parse, to_command, parse_from_command, parse_full, validate, parse_arguments, configure callback) compile and run correctly.
+3. **No `Parser[T]` struct** — In an earlier draft I had a `Parser[T]`
+   orchestrator struct. But I realised this extra wrapper serves no purpose:
+   Mojo 0.26.2 supports `Self` reflection inside trait default methods, so the
+   `Parsable` trait itself can host `parse()`, `to_command()`, `parse_full()`,
+   etc. This eliminates one layer of indirection and produces an API that
+   matches Rust's `MyArgs::parse()` and Swift's `Greet.main()` — the user struct
+   is the parser. This is also directly analogous to Rust clap's
+   `#[derive(Parser)]`, which generates `MyArgs::parse()` on the implementing
+   struct — our `Parsable` trait's default methods achieve the same effect
+   without proc macros. I verified this approach in `temp_test_plan_b_full.mojo`
+   — all 7 patterns (parse, to_command, parse_from_command, parse_full,
+   validate, parse_arguments, configure callback) compile and run correctly.
 
 ## 3. Architecture
 
@@ -208,7 +264,9 @@ What I think argmojo can add beyond Swift:
 
 ### 4.1 Wrapper Types
 
-These are lightweight parametric structs. They carry CLI metadata as compile-time parameters while wrapping an inner value at runtime. I'll walk through each one.
+These are lightweight parametric structs. They carry CLI metadata as
+compile-time parameters while wrapping an inner value at runtime. I'll walk
+through each one.
 
 ```mojo
 struct Option[
@@ -338,7 +396,9 @@ struct Count[
         self.value = val
 ```
 
-I use four distinct wrapper types (`Positional`, `Option`, `Flag`, `Count`) instead of one overloaded struct with `is_arg=True` / `is_flag=True`. Each type maps to exactly one **mental model** of how a CLI argument works:
+I use four distinct wrapper types (`Positional`, `Option`, `Flag`, `Count`)
+instead of one overloaded struct with `is_arg=True` / `is_flag=True`. Each type
+maps to exactly one **mental model** of how a CLI argument works:
 
 | Wrapper         | CLI syntax                   | Mental model                                | Example               |
 | --------------- | ---------------------------- | ------------------------------------------- | --------------------- |
@@ -349,13 +409,25 @@ I use four distinct wrapper types (`Positional`, `Option`, `Flag`, `Count`) inst
 
 This is intentional. Here's why I like it:
 
-- **Explicit intent**: `Flag[...]` is obviously a flag, `Positional[...]` is obviously positional — the type name *is* the documentation.
-- **Fewer confusing parameter combinations**: `Positional` doesn't have `long`/`short`, `Flag` doesn't have `append`/`delimiter` — impossible states are unrepresentable.
-- **Better compile-time validation**: You can't accidentally make a positional with `long`, or a flag with `nargs`.
+- **Explicit intent**: `Flag[...]` is obviously a flag, `Positional[...]` is
+  obviously positional — the type name *is* the documentation.
+- **Fewer confusing parameter combinations**: `Positional` doesn't have
+  `long`/`short`, `Flag` doesn't have `append`/`delimiter` — impossible states
+  are unrepresentable.
+- **Better compile-time validation**: You can't accidentally make a positional
+  with `long`, or a flag with `nargs`.
 
-**Why `Positional` instead of `Argument`?** Swift Argument Parser uses `@Argument` for positional arguments. I deliberately chose `Positional` instead, because my builder API already has an `Argument` struct (in `argument.mojo`) that covers *all* argument types. Two different `Argument` types — one meaning "everything" in the builder layer and another meaning "positional only" in the declarative layer — would be confusing. `Positional` is unambiguous: it tells you exactly what it does.
+**Why `Positional` instead of `Argument`?** Swift Argument Parser uses
+`@Argument` for positional arguments. I deliberately chose `Positional` instead,
+because my builder API already has an `Argument` struct (in `argument.mojo`)
+that covers *all* argument types. Two different `Argument` types — one meaning
+"everything" in the builder layer and another meaning "positional only" in the
+declarative layer — would be confusing. `Positional` is unambiguous: it tells
+you exactly what it does.
 
-You can also use **bare types** (like `String`, `Int`, `Bool`) for fields without metadata — they become options named after the field, following Swift's convention for fields without property wrappers.
+You can also use **bare types** (like `String`, `Int`, `Bool`) for fields
+without metadata — they become options named after the field, following Swift's
+convention for fields without property wrappers.
 
 In **hybrid** mode, imports are clean with no name collisions:
 
@@ -366,7 +438,11 @@ from argmojo import Parsable, Option, Flag, Positional
 
 ### 4.2 The `Parsable` Trait
 
-The `Parsable` trait is the **heart** of the declarative API. Unlike the old `Parser[T]` design, there is no separate orchestrator struct — the trait's default methods handle everything: building, parsing, validation, and hybrid bridging. This is possible because Mojo supports `reflect[Self].field_count()` inside trait default `@staticmethod` methods.
+The `Parsable` trait is the **heart** of the declarative API. Unlike the old
+`Parser[T]` design, there is no separate orchestrator struct — the trait's
+default methods handle everything: building, parsing, validation, and hybrid
+bridging. This is possible because Mojo supports `reflect[Self].field_count()`
+inside trait default `@staticmethod` methods.
 
 ```mojo
 trait Parsable(Defaultable, Deinitable, Movable):
@@ -498,7 +574,10 @@ struct MyArgs(Parsable):
         return "My awesome tool"
 ```
 
-Everything else (`parse()`, `to_command()`, `parse_from_command()`, `parse_full_from_command()`, `from_parse_result()`, `parse_full()`, `parse_arguments()`, `run()`, `subcommands()`, `version()`, `name()`) comes from trait defaults. `validate()` is planned for Phase 4.
+Everything else (`parse()`, `to_command()`, `parse_from_command()`,
+`parse_full_from_command()`, `from_parse_result()`, `parse_full()`,
+`parse_arguments()`, `run()`, `subcommands()`, `version()`, `name()`) comes from
+trait defaults. `validate()` is planned for Phase 4.
 
 The four parsing methods follow a 2×2 naming convention:
 
@@ -507,31 +586,44 @@ The four parsing methods follow a 2×2 naming convention:
 | returns `Self`  | `parse()`      | `parse_from_command(command^)`      |
 | returns `Tuple` | `parse_full()` | `parse_full_from_command(command^)` |
 
-- **`full`** means dual return — you get both the typed struct and the raw `ParseResult`.
-- **`from_command`** means parsing from a pre-configured `Command` (created via `to_command()` + builder customisation).
+- **`full`** means dual return — you get both the typed struct and the raw
+  `ParseResult`.
+- **`from_command`** means parsing from a pre-configured `Command` (created via
+  `to_command()` + builder customisation).
 
 ### 4.3 Implementation Notes
 
-All reflection logic lives directly inside the `Parsable` trait's default methods — there are **no standalone helper functions**:
+All reflection logic lives directly inside the `Parsable` trait's default
+methods — there are **no standalone helper functions**:
 
-- **`to_command()`** — creates a `Command`, iterates Self's fields via `comptime for` + `reflect[Self].field_types()`, picks each `ArgumentLike`-conforming field, and calls `field.add_to_command(name, command)`. Registers subcommands via `subcommands()` hook.
-- **`from_parse_result(result)`** — creates `Self()`, iterates fields, downcasts each `ArgumentLike`-conforming field, and calls `field.read_from_result(name, result)`. Called by `parse()`, `parse_arguments()`, `parse_from_command()`, `parse_full()`, `parse_full_from_command()`, and directly by users for subcommand dispatch.
+- **`to_command()`** — creates a `Command`, iterates Self's fields via
+  `comptime for` + `reflect[Self].field_types()`, picks each
+  `ArgumentLike`-conforming field, and calls
+  `field.add_to_command(name, command)`. Registers subcommands via
+  `subcommands()` hook.
+- **`from_parse_result(result)`** — creates `Self()`, iterates fields, downcasts
+  each `ArgumentLike`-conforming field, and calls
+  `field.read_from_result(name, result)`. Called by `parse()`,
+  `parse_arguments()`, `parse_from_command()`, `parse_full()`,
+  `parse_full_from_command()`, and directly by users for subcommand dispatch.
 
-This design keeps `parsable.mojo` self-contained: the trait IS the entire declarative API.
+This design keeps `parsable.mojo` self-contained: the trait IS the entire
+declarative API.
 
 ### 4.4 Field Initialization (Auto-Init)
 
-> **Update**: As of Phase 1 implementation, users **no longer need to write `__init__`**.
-> The `Parsable` trait provides a default `__init__` that uses
-> `__mlir_op.lit.ownership.mark_initialized` + `comptime for` +
-> `Pointer.unsafe_write(type_of(field)())` to auto-initialise
-> every field via reflection. The compiler auto-synthesises the move init
-> from `Movable` conformance. Users only need to declare fields and
-> provide `description()`.
+> **Update**: As of Phase 1 implementation, users
+> **no longer need to write `__init__`**. The `Parsable` trait provides a
+> default `__init__` that uses `__mlir_op.lit.ownership.mark_initialized` +
+> `comptime for` + `Pointer.unsafe_write(type_of(field)())` to auto-initialise
+> every field via reflection. The compiler auto-synthesises the move init from
+> `Movable` conformance. Users only need to declare fields and provide
+> `description()`.
 
 ### 4.5 Auto-Naming Convention
 
-When you don't provide an explicit `long`, I use the field name with underscores converted to hyphens:
+When you don't provide an explicit `long`, I use the field name with underscores
+converted to hyphens:
 
 | Field name    | Auto-generated long | Short  |
 | ------------- | ------------------- | ------ |
@@ -539,17 +631,20 @@ When you don't provide an explicit `long`, I use the field name with underscores
 | `verbose`     | `--verbose`         | (none) |
 | `output_file` | `--output-file`     | (none) |
 
-This matches how Swift and clap do it. Fields wrapped in `Positional[...]` don't get auto-generated long names.
+This matches how Swift and clap do it. Fields wrapped in `Positional[...]` don't
+get auto-generated long names.
 
 ### 4.6 Choice Parsing from StringLiteral
 
-Since Mojo parameters must be compile-time constants and I can't pass `List[StringLiteral]`, choices are encoded as a comma-separated string:
+Since Mojo parameters must be compile-time constants and I can't pass
+`List[StringLiteral]`, choices are encoded as a comma-separated string:
 
 ```mojo
 var format: Option[String, choices="json,yaml,csv", default="json"]
 ```
 
-Internally, `_register_option()` splits by `,` and calls `.choice["json"]().choice["yaml"]().choice["csv"]()` etc.
+Internally, `_register_option()` splits by `,` and calls
+`.choice["json"]().choice["yaml"]().choice["csv"]()` etc.
 
 Similarly, `alias_name` is comma-separated:
 
@@ -743,11 +838,16 @@ def main() raises:
 
 ### 5.4 Subcommands with Declarative
 
-> [See `examples/declarative/jomo.mojo` for an interesting example](../examples/declarative/jomo.mojo), where I use the hybrid API to build a Mojo CLI like tool.
+> [See `examples/declarative/jomo.mojo` for an interesting example](../examples/declarative/jomo.mojo),
+> where I use the hybrid API to build a Mojo CLI like tool.
 
-Every level in the command tree is a `Parsable` struct — root, mid-level, and leaf. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]`.
+Every level in the command tree is a `Parsable` struct — root, mid-level, and
+leaf. This mirrors Swift's `ParsableCommand` and Rust clap's
+`#[derive(Parser)]`.
 
-Subcommand registration uses the `subcommands()` hook — inspired by Swift's `CommandConfiguration(subcommands:)`. The hook is called automatically by `to_command()`, so the tree assembles itself recursively.
+Subcommand registration uses the `subcommands()` hook — inspired by Swift's
+`CommandConfiguration(subcommands:)`. The hook is called automatically by
+`to_command()`, so the tree assembles itself recursively.
 
 ```mojo
 from argmojo import Parsable, Option, Flag, Positional
@@ -817,11 +917,14 @@ def main() raises:
         Push.from_parse_result(sub).run()
 ```
 
-Compare this to the earlier design that required manual tree assembly in `main()`. The `subcommands()` hook keeps the tree structure in the struct definition, not scattered in `main()`.
+Compare this to the earlier design that required manual tree assembly in
+`main()`. The `subcommands()` hook keeps the tree structure in the struct
+definition, not scattered in `main()`.
 
 #### 5.4.1 With Builder Customization
 
-When you need root-level builder config (colors, tips, etc.), use `to_command()` + `parse_full_from_command()`:
+When you need root-level builder config (colors, tips, etc.), use
+`to_command()` + `parse_full_from_command()`:
 
 ```mojo
 def main() raises:
@@ -918,13 +1021,17 @@ def main() raises:
                 RemoveRemote.from_parse_result(nested).run()
 ```
 
-The entire tree (`mgit → clone | push | remote → add | remove`) is declared in the structs themselves. `main()` only handles dispatch.
+The entire tree (`mgit → clone | push | remote → add | remove`) is declared in
+the structs themselves. `main()` only handles dispatch.
 
 #### 5.4.3 Future: Auto-Dispatch (When Mojo Gets Variadic Type Tuples)
 
-Currently, subcommand dispatch requires manual `if/elif` chains with string matching. This is the main remaining gap vs Swift (which auto-dispatches via `run()`) and Rust (which uses exhaustive `match` on enums).
+Currently, subcommand dispatch requires manual `if/elif` chains with string
+matching. This is the main remaining gap vs Swift (which auto-dispatches via
+`run()`) and Rust (which uses exhaustive `match` on enums).
 
-When Mojo gains stable variadic type tuples and/or enum with associated data, auto-dispatch becomes possible:
+When Mojo gains stable variadic type tuples and/or enum with associated data,
+auto-dispatch becomes possible:
 
 ```mojo
 # Hypothetical future — compile-time type tuple + auto-dispatch
@@ -947,15 +1054,22 @@ def main() raises:
     MyGit.execute()   # one line — tree + parse + dispatch
 ```
 
-This would also enable compile-time duplicate name detection and exhaustive dispatch guarantees. Until then, the `subcommands()` hook + manual dispatch is the cleanest available approach.
+This would also enable compile-time duplicate name detection and exhaustive
+dispatch guarantees. Until then, the `subcommands()` hook + manual dispatch is
+the cleanest available approach.
 
 ## 6. Innovations
 
 ### 6.1 Innovation #1: `to_command()` + `parse_from_command()` — First-Class Declarative-Builder Bridge
 
-**What Swift Argument Parser lacks**: Swift's `ParsableCommand` is a sealed protocol — there's no escape hatch to add builder-level configuration. If you need mutually exclusive groups, implications, colored help, tips, or completions, you're on your own with `validate()` and custom help formatting.
+**What Swift Argument Parser lacks**: Swift's `ParsableCommand` is a sealed
+protocol — there's no escape hatch to add builder-level configuration. If you
+need mutually exclusive groups, implications, colored help, tips, or
+completions, you're on your own with `validate()` and custom help formatting.
 
-**What I'm adding**: `to_command()` returns an **owned** `Command` object (not a reference), so you can do arbitrary builder modifications before parsing with `parse_from_command()`:
+**What I'm adding**: `to_command()` returns an **owned** `Command` object (not a
+reference), so you can do arbitrary builder modifications before parsing with
+`parse_from_command()`:
 
 ```mojo
 var command = MyArgs.to_command()
@@ -977,16 +1091,23 @@ Pure declarative     Declarative + to_command()    Pure builder
 Simple tools    →    Medium complexity tools   →    Maximum control
 ```
 
-I don't know of any other Mojo CLI library that offers this continuum. You never have to completely rewrite from one style to another when requirements grow.
+I don't know of any other Mojo CLI library that offers this continuum. You never
+have to completely rewrite from one style to another when requirements grow.
 
-**Type safety note**: If you use `to_command()` to add **constraints** (groups, implications, colours), full type safety is preserved — `parse_from_command()` still returns `T`. But if you add **new arguments** (`add_argument(...)`), those fields are only available via `ParseResult` from `parse_full()`. This is an intentional trade-off:
+**Type safety note**: If you use `to_command()` to add **constraints** (groups,
+implications, colours), full type safety is preserved — `parse_from_command()`
+still returns `T`. But if you add **new arguments** (`add_argument(...)`), those
+fields are only available via `ParseResult` from `parse_full()`. This is an
+intentional trade-off:
 
 ```txt
 to_command() + constraints only    →  parse_from_command()  →  T (fully typed ✓)
 to_command() + new arguments       →  parse_full()   →  Tuple[T, ParseResult] (partially typed ⚠️)
 ```
 
-**`configure()` as a free function pattern**: I've verified in Mojo 0.26.2 that non-capturing callbacks work. Since there's no `Parser[T]` wrapper to chain on, the configure pattern uses a free function or inline modification:
+**`configure()` as a free function pattern**: I've verified in Mojo 0.26.2 that
+non-capturing callbacks work. Since there's no `Parser[T]` wrapper to chain on,
+the configure pattern uses a free function or inline modification:
 
 ```mojo
 # Option A: just modify the Command directly (preferred)
@@ -1005,11 +1126,13 @@ configure_deploy(command)
 var args = Deploy.parse_from_command(command^)
 ```
 
-`to_command()` + `parse_from_command()` is the primary bridge for multi-step customization.
+`to_command()` + `parse_from_command()` is the primary bridge for multi-step
+customization.
 
 ### 6.2 Innovation #2: `parse_full()` — Dual-Return Parsing
 
-**The problem**: When mixing declarative and builder fields, how do I give you typed access to declarative fields AND untyped access to builder-added fields?
+**The problem**: When mixing declarative and builder fields, how do I give you
+typed access to declarative fields AND untyped access to builder-added fields?
 
 **Swift's answer**: You can't. All fields must be declared in the struct.
 
@@ -1022,8 +1145,10 @@ var args = Deploy.parse_from_command(command^)
 def parse_full() raises -> Tuple[Self, ParseResult]:
 ```
 
-- The first element is your struct `T` with all declarative-registered fields populated & typed.
-- The second element is the full `ParseResult` containing everything (declarative fields + builder-added fields).
+- The first element is your struct `T` with all declarative-registered fields
+  populated & typed.
+- The second element is the full `ParseResult` containing everything
+  (declarative fields + builder-added fields).
 
 This means:
 
@@ -1043,19 +1168,29 @@ raw.get_int("threads")
 raw.get_list("tags")
 ```
 
-As far as I know, this is a **new pattern** not seen in any CLI library in any language. Even Rust's clap can't do this — once you use its derive macro, all fields must be in the struct. There's no mechanism for "some fields are struct, some are ParseResult."
+As far as I know, this is a **new pattern** not seen in any CLI library in any
+language. Even Rust's clap can't do this — once you use its derive macro, all
+fields must be in the struct. There's no mechanism for "some fields are struct,
+some are ParseResult."
 
 The dual-return enables a practical workflow:
 
 1. Start with pure declarative
-2. Need one advanced option? Add it via `to_command()` + `parse_full_from_command(command: Command)`
+2. Need one advanced option? Add it via `to_command()` +
+   `parse_full_from_command(command: Command)`
 3. No need to convert the struct field (or add a new nested type)
 
 ### 6.3 Innovation #3: Compile-Time Schema Validation
 
-**The problem**: In every runtime CLI library, schema errors (duplicate short flags, invalid short flag length, positional-after-optional ordering) only surface when you run the program — or worse, when a user triggers the specific code path.
+**The problem**: In every runtime CLI library, schema errors (duplicate short
+flags, invalid short flag length, positional-after-optional ordering) only
+surface when you run the program — or worse, when a user triggers the specific
+code path.
 
-**What I'm adding**: Since all wrapper metadata lives in compile-time parameters (`StringLiteral`, `Bool`, `Int`), the declarative layer can validate the **entire schema at compile time** using `comptime assert`. Your program won't even compile if the schema is invalid.
+**What I'm adding**: Since all wrapper metadata lives in compile-time parameters
+(`StringLiteral`, `Bool`, `Int`), the declarative layer can validate the
+**entire schema at compile time** using `comptime assert`. Your program won't
+even compile if the schema is invalid.
 
 Concrete checks in `to_command()`:
 
@@ -1083,13 +1218,20 @@ fn _validate_schema[T: Parsable]():
     ...
 ```
 
-**Why this matters**: Neither Swift Argument Parser nor Rust clap can do this. Swift's property wrappers are validated at runtime. Rust's proc macros catch *some* errors but not all (e.g. duplicate short flags pass the proc macro and fail at runtime). Mojo's parametric type system uniquely enables full schema validation at compile time.
+**Why this matters**: Neither Swift Argument Parser nor Rust clap can do this.
+Swift's property wrappers are validated at runtime. Rust's proc macros catch
+*some* errors but not all (e.g. duplicate short flags pass the proc macro and
+fail at runtime). Mojo's parametric type system uniquely enables full schema
+validation at compile time.
 
-**Zero-cost guarantee**: All checks use `comptime assert` — they're erased from the binary. No performance cost, no code bloat.
+**Zero-cost guarantee**: All checks use `comptime assert` — they're erased from
+the binary. No performance cost, no code bloat.
 
 ### 6.4 Innovation #4: Declarative `depends_on` / `conflicts_with`
 
-**The problem**: Cross-field constraints like "username requires password" or "json conflicts with yaml" currently require the imperative `to_command()` escape hatch:
+**The problem**: Cross-field constraints like "username requires password" or
+"json conflicts with yaml" currently require the imperative `to_command()`
+escape hatch:
 
 ```mojo
 var command = MyArgs.to_command()
@@ -1098,9 +1240,11 @@ command.mutually_exclusive(["json", "yaml"])
 var args = MyArgs.parse_from_command(command^)
 ```
 
-This works, but it breaks the "everything in the struct" philosophy and requires string-keyed names (typo-prone).
+This works, but it breaks the "everything in the struct" philosophy and requires
+string-keyed names (typo-prone).
 
-**What I'm adding**: `depends_on` and `conflicts_with` as StringLiteral parameters on wrapper types:
+**What I'm adding**: `depends_on` and `conflicts_with` as StringLiteral
+parameters on wrapper types:
 
 ```mojo
 @value
@@ -1120,7 +1264,10 @@ struct MyArgs(Parsable):
 | `depends_on="password"`      | `command.required_if("password", "username")`                |
 | `conflicts_with="json,yaml"` | `command.mutually_exclusive(["this_field", "json", "yaml"])` |
 
-**Compile-time name validation**: Since `depends_on` and `conflicts_with` are `StringLiteral` parameters, and all field names are known at compile time via `reflect[T].field_names()`, I can verify at compile time that every referenced name actually exists in the struct:
+**Compile-time name validation**: Since `depends_on` and `conflicts_with` are
+`StringLiteral` parameters, and all field names are known at compile time via
+`reflect[T].field_names()`, I can verify at compile time that every referenced
+name actually exists in the struct:
 
 ```mojo
 # In to_command(), at comptime:
@@ -1128,13 +1275,19 @@ struct MyArgs(Parsable):
 # If not → comptime assert failure with a clear error message
 ```
 
-This catches typos like `depends_on="passwrod"` at compile time — something no other CLI library can do.
+This catches typos like `depends_on="passwrod"` at compile time — something no
+other CLI library can do.
 
-**Symmetry note**: `depends_on` is symmetric by convention (if A depends on B, B depends on A). A single `depends_on="password"` on `username` generates `required_together(["username", "password"])`. If both sides declare it, deduplication in `to_command()` prevents double-registration.
+**Symmetry note**: `depends_on` is symmetric by convention (if A depends on B, B
+depends on A). A single `depends_on="password"` on `username` generates
+`required_together(["username", "password"])`. If both sides declare it,
+deduplication in `to_command()` prevents double-registration.
 
 ### 6.5 Innovation #5: Compile-Time Derived Completions from `choices`
 
-**The problem**: Shell completions for argument values usually require explicit registration — you declare choices in one place and completions in another, duplicating information. In the builder API:
+**The problem**: Shell completions for argument values usually require explicit
+registration — you declare choices in one place and completions in another,
+duplicating information. In the builder API:
 
 ```mojo
 var arg = Argument("format", help="Output format")
@@ -1144,7 +1297,9 @@ var arg = Argument("format", help="Output format")
 # Choices are registered, but completions only work if generate_completion is called
 ```
 
-**What I'm adding**: Since `choices` is a compile-time `StringLiteral` parameter, the declarative layer can **automatically derive** shell completions from choices — no explicit completion registration needed:
+**What I'm adding**: Since `choices` is a compile-time `StringLiteral`
+parameter, the declarative layer can **automatically derive** shell completions
+from choices — no explicit completion registration needed:
 
 ```mojo
 @value
@@ -1154,9 +1309,16 @@ struct MyArgs(Parsable):
     # ^ completions for --format automatically include "json", "yaml", "csv"
 ```
 
-**How it works**: During `to_command()`, when a field has a non-empty `choices` parameter, the generated completion script automatically includes those values as completions for that argument's value. The builder's `generate_completion["fish"]()` / `generate_completion["zsh"]()` / `generate_completion["bash"]()` already reads `_choice_values` — the declarative layer simply ensures they're populated.
+**How it works**: During `to_command()`, when a field has a non-empty `choices`
+parameter, the generated completion script automatically includes those values
+as completions for that argument's value. The builder's
+`generate_completion["fish"]()` / `generate_completion["zsh"]()` /
+`generate_completion["bash"]()` already reads `_choice_values` — the declarative
+layer simply ensures they're populated.
 
-**Compile-time generation**: Since all choices are `StringLiteral` values known at compile time, the entire completion script could be generated as a compile-time constant:
+**Compile-time generation**: Since all choices are `StringLiteral` values known
+at compile time, the entire completion script could be generated as a
+compile-time constant:
 
 ```mojo
 # Hypothetical: completion script as a compile-time StringLiteral
@@ -1164,7 +1326,10 @@ alias fish_completion = Parsable.completion_script["fish", MyArgs]()
 # This is a StringLiteral — zero runtime cost to produce
 ```
 
-**Practical value**: For tools with many `choices`-based arguments (e.g. `--format`, `--color`, `--log-level`), this eliminates the boilerplate of manually wiring completions. The struct declaration is the single source of truth for both validation and completions.
+**Practical value**: For tools with many `choices`-based arguments (e.g.
+`--format`, `--color`, `--log-level`), this eliminates the boilerplate of
+manually wiring completions. The struct declaration is the single source of
+truth for both validation and completions.
 
 ## 7. Internal Implementation Details
 
@@ -1206,7 +1371,8 @@ Here's how each wrapper parameter maps to builder calls under the hood:
 
 ### 7.2 Write-Back Type Dispatch
 
-When populating your struct from `ParseResult`, I dispatch based on the field type:
+When populating your struct from `ParseResult`, I dispatch based on the field
+type:
 
 | Field type                                      | ParseResult accessor | Write-back                   |
 | ----------------------------------------------- | -------------------- | ---------------------------- |
@@ -1223,18 +1389,27 @@ When populating your struct from `ParseResult`, I dispatch based on the field ty
 | bare `Int`                                      | `get_int(name)`      | `field = Int`                |
 | bare `Bool`                                     | `get_flag(name)`     | `field = Bool`               |
 
-Missing/optional values: if `result.has(name)` returns `False` and the field isn't required, the default value stays.
+Missing/optional values: if `result.has(name)` returns `False` and the field
+isn't required, the default value stays.
 
 ### 7.3 Subcommand Design — Parsable Everywhere
 
-Instead of a separate compositor type, subcommands use the same `Parsable` trait at every level. This mirrors Swift's `ParsableCommand` and Rust clap's `#[derive(Parser)]` — one concept, not two.
+Instead of a separate compositor type, subcommands use the same `Parsable` trait
+at every level. This mirrors Swift's `ParsableCommand` and Rust clap's
+`#[derive(Parser)]` — one concept, not two.
 
 **Design principles**:
 
-1. **Every level is Parsable**: root, mid-level, and leaf commands are all `Parsable` structs. Flags at any level live as natural struct fields.
-2. **`subcommands()` hook**: Each parent declares its children via `subcommands(mut command)`, called automatically by `to_command()`. Trees assemble recursively — no manual wiring in `main()`.
-3. **`run()` method**: Each leaf carries its execution logic, inspired by Swift's `ParsableCommand.run()`. This is purely execution — it does NOT parse (unlike mojopt's `run()`).
-4. **`from_parse_result()` for dispatch**: Write-back from an already-parsed `ParseResult`, enabling typed subcommand access without re-parsing.
+1. **Every level is Parsable**: root, mid-level, and leaf commands are all
+   `Parsable` structs. Flags at any level live as natural struct fields.
+2. **`subcommands()` hook**: Each parent declares its children via
+   `subcommands(mut command)`, called automatically by `to_command()`. Trees
+   assemble recursively — no manual wiring in `main()`.
+3. **`run()` method**: Each leaf carries its execution logic, inspired by
+   Swift's `ParsableCommand.run()`. This is purely execution — it does NOT parse
+   (unlike mojopt's `run()`).
+4. **`from_parse_result()` for dispatch**: Write-back from an already-parsed
+   `ParseResult`, enabling typed subcommand access without re-parsing.
 
 **Key methods for subcommand workflows**:
 
@@ -1288,11 +1463,15 @@ var (git_args, result) = MyGit.parse_full_from_command(command^)
 | Dispatch                     | Manual `if/elif` strings      | Manual `if/elif` strings       | Auto-dispatch via `execute()`  |
 | Compile-time subcommand list | No                            | Yes                            | Yes                            |
 
-**Remaining gap: string-based dispatch.** The `if result.subcommand == "clone"` pattern is the main area where Swift and Rust are stronger. Swift auto-dispatches via protocol, Rust uses exhaustive `match` on enums. See §5.4.3 for the future Mojo solution with variadic type tuples.
+**Remaining gap: string-based dispatch.** The `if result.subcommand == "clone"`
+pattern is the main area where Swift and Rust are stronger. Swift
+auto-dispatches via protocol, Rust uses exhaustive `match` on enums. See §5.4.3
+for the future Mojo solution with variadic type tuples.
 
 ## 8. What Stays in Builder-Only Territory
 
-Some features are inherently imperative and don't fit neatly into struct declarations. I'm keeping these builder-only (accessible via `to_command()`):
+Some features are inherently imperative and don't fit neatly into struct
+declarations. I'm keeping these builder-only (accessible via `to_command()`):
 
 | Feature                        | Reason                                                             |
 | ------------------------------ | ------------------------------------------------------------------ |
@@ -1311,7 +1490,10 @@ Some features are inherently imperative and don't fit neatly into struct declara
 | `allow_negative_expressions()` | Parser behavior flag (superset of allow_negative_numbers)          |
 | `add_parent()`                 | Cross-command inheritance                                          |
 
-I think this is the right call — these features describe *relationships between* arguments or *command-level* behavior, not individual argument metadata. Trying to force them into struct field attributes would create a confusing, non-composable API.
+I think this is the right call — these features describe *relationships between*
+arguments or *command-level* behavior, not individual argument metadata. Trying
+to force them into struct field attributes would create a confusing,
+non-composable API.
 
 ## 9. Comparison with Swift Argument Parser
 
@@ -1344,64 +1526,104 @@ I think this is the right call — these features describe *relationships betwee
 
 ### Phase 1: Core Wrapper Types + Trait Default Methods (DONE)
 
-- [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in `argument_wrappers.mojo`
-- [x] Implement `ArgumentLike` trait with `add_to_command()` and `read_from_result()` methods
-- [x] Implement `Parsable` trait with default methods (`description`, `version`, `name`, `subcommands`, `run`)
-- [x] ~~Implement convenience functions as free functions: `to_command`, `parse`, `parse_args`, `parse_full`, `parse_from_command`, `parse_full_from_command`, `from_parse_result`~~ — removed; these duplicated the Parsable trait static methods. All public access is now via `T.to_command()`, `T.parse()`, `T.parse_arguments()`, etc.
-- [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ — merged into trait method `to_command()` and `from_parse_result()`. No standalone helper functions remain.
+- [x] Implement `Positional`, `Option`, `Flag`, `Count` wrapper structs — in
+      `argument_wrappers.mojo`
+- [x] Implement `ArgumentLike` trait with `add_to_command()` and
+      `read_from_result()` methods
+- [x] Implement `Parsable` trait with default methods (`description`, `version`,
+      `name`, `subcommands`, `run`)
+- [x] ~~Implement convenience functions as free functions: `to_command`,
+      `parse`, `parse_args`, `parse_full`, `parse_from_command`,
+      `parse_full_from_command`, `from_parse_result`~~ — removed; these
+      duplicated the Parsable trait static methods. All public access is now via
+      `T.to_command()`, `T.parse()`, `T.parse_arguments()`, etc.
+- [x] ~~Implement `_reflect_and_register[T]()` and `_from_result[T]()`~~ —
+      merged into trait method `to_command()` and `from_parse_result()`. No
+      standalone helper functions remain.
 - [x] Auto-naming convention (underscore → hyphen)
-- [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`, `test_auto_naming`
-- [x] `jomo.mojo` demo — Mojo CLI lookalike using declarative root struct + builder subcommands
+- [x] 4 passing tests: `test_to_command`, `test_parse_args`, `test_from_result`,
+      `test_auto_naming`
+- [x] `jomo.mojo` demo — Mojo CLI lookalike using declarative root struct +
+      builder subcommands
 
 ### Phase 2: Hybrid Features
 
-- [x] Test `to_command()` + builder modifications + `from_parse_result()` end-to-end
+- [x] Test `to_command()` + builder modifications + `from_parse_result()`
+      end-to-end
 - [x] Test dual-return pattern (typed struct + raw ParseResult from same parse)
 - [x] Test: `mutually_exclusive()` via `to_command()`
-- [x] Test: extra builder args accessible via ParseResult + `from_parse_result()`
-- [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`, `from_parse_result[T]()`~~ — converted to trait static method tests (`T.to_command()`, `T.parse_arguments()`, `T.from_parse_result()`)
+- [x] Test: extra builder args accessible via ParseResult +
+      `from_parse_result()`
+- [x] ~~Test free functions: `to_command[T]()`, `parse_args[T]()`,
+      `from_parse_result[T]()`~~ — converted to trait static method tests
+      (`T.to_command()`, `T.parse_arguments()`, `T.from_parse_result()`)
 - [x] Document the `configure()` free function pattern (via test helper + test)
-- Note: `parse_from_command()`, `parse_full()`, `parse_full_from_command()` call `command.parse()` (reads `sys.argv()`), so they cannot be unit-tested with synthetic args. Their logic is identical to `to_command()` + `parse_arguments()` + `from_parse_result()` which **is** tested.
+- Note: `parse_from_command()`, `parse_full()`, `parse_full_from_command()` call
+  `command.parse()` (reads `sys.argv()`), so they cannot be unit-tested with
+  synthetic args. Their logic is identical to `to_command()` +
+  `parse_arguments()` + `from_parse_result()` which **is** tested.
 
 ### Phase 3: Subcommands
 
-- [x] Implement `subcommands()` hook on `Parsable` trait (returns `List[Command]`) + auto-call in `to_command()`
+- [x] Implement `subcommands()` hook on `Parsable` trait (returns
+      `List[Command]`) + auto-call in `to_command()`
 - [x] Implement `run(self)` on `Parsable` trait (default no-op)
 - [x] Implement `parse_full_from_command()` as trait static method
 - [x] Implement `from_parse_result()` as trait static method (public write-back)
-- [x] Test: flat subcommands with `subcommands()` hook (6 tests in `test_subcommands_declarative.mojo`)
-- [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive `subcommands()` (6 tests)
-- [x] Test: root-level customization via `to_command()` + dual return + `from_parse_result()` (4 tests)
-- [x] Test: `run()` dispatch pattern — root no-op, leaf field access, full dispatch, nested dispatch (5 tests)
+- [x] Test: flat subcommands with `subcommands()` hook (6 tests in
+      `test_subcommands_declarative.mojo`)
+- [x] Test: nested subcommands (2+ levels) with mid-level flags and recursive
+      `subcommands()` (6 tests)
+- [x] Test: root-level customization via `to_command()` + dual return +
+      `from_parse_result()` (4 tests)
+- [x] Test: `run()` dispatch pattern — root no-op, leaf field access, full
+      dispatch, nested dispatch (5 tests)
 - [x] Test: `parse_arguments` trait static method with subcommands (2 tests)
 
 ### Phase 4: Further enhancements
 
 - [ ] Implement `_validate_schema[T]()` compile-time checks (§6.3)
-  - [ ] Duplicate short flag detection (blocked: Mojo's parametric `StringLiteral` prevents accessing wrapper type parameters through trait-erased types; runtime detection already works via the builder layer)
-  - [x] Invalid short flag length (`comptime assert len(short) == 1` in `Option`, `Flag`, `Count`)
+  - [ ] Duplicate short flag detection (blocked: Mojo's parametric
+        `StringLiteral` prevents accessing wrapper type parameters through
+        trait-erased types; runtime detection already works via the builder
+        layer)
+  - [x] Invalid short flag length (`comptime assert len(short) == 1` in
+        `Option`, `Flag`, `Count`)
   - [ ] Positional ordering enforcement
   - [ ] Type-metadata mismatch detection
-  - [x] Choices vs default consistency (`comptime assert` in `Option` and `Positional`)
-  - [x] Range min ≤ max (`comptime assert range_min <= range_max` in `Option` and `Positional`)
-  - [x] `has_range` rejected on `Float64` (range validation is integer-only — see the open item under §11)
+  - [x] Choices vs default consistency (`comptime assert` in `Option` and
+        `Positional`)
+  - [x] Range min ≤ max (`comptime assert range_min <= range_max` in `Option`
+        and `Positional`)
+  - [x] `has_range` rejected on `Float64` (range validation is integer-only —
+        see the open item under §11)
   - [x] Test: positive schema validation (test_schema_validation.mojo, 5 tests)
-  - [x] Test: negative schema validation (check_schema_errors.sh, 9 compile-error tests)
+  - [x] Test: negative schema validation (check_schema_errors.sh, 9
+        compile-error tests)
 - [ ] Add `depends_on`/`conflicts_with` parameters to `Option` and `Flag` (§6.4)
   - [ ] Compile-time validation of referenced field names
-  - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in `to_command()`
+  - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in
+        `to_command()`
 - [ ] Auto-derive completions from `choices` parameters (§6.5)
   - [ ] Ensure choices flow to `generate_completion` output
   - [ ] Explore compile-time completion script generation
-- [ ] Some command-level features can be exposed via declarative parameters (e.g. `help_on_no_arguments=True`), but others (e.g. `confirmation_option()`) require builder-level access. Document best practices for when to use `to_command()` for command-level behavior.
-- [ ] Implement `validate(self) raises` method on `Parsable` (mirroring Swift's `validate()`) — post-parse cross-field validation without requiring the builder API
-- [x] Add more built-in types for `Option` (e.g. `Float`) — `Float64` is supported on both `Option[T]` and `Positional[T]`, backed by `ParseResult.get_float()`. Remaining unsupported types are listed in §11.
+- [ ] Some command-level features can be exposed via declarative parameters
+      (e.g. `help_on_no_arguments=True`), but others (e.g.
+      `confirmation_option()`) require builder-level access. Document best
+      practices for when to use `to_command()` for command-level behavior.
+- [ ] Implement `validate(self) raises` method on `Parsable` (mirroring Swift's
+      `validate()`) — post-parse cross-field validation without requiring the
+      builder API
+- [x] Add more built-in types for `Option` (e.g. `Float`) — `Float64` is
+      supported on both `Option[T]` and `Positional[T]`, backed by
+      `ParseResult.get_float()`. Remaining unsupported types are listed in §11.
 
 ### Phase 5: Polish
 
 - [ ] Comprehensive test suite (parallel to existing builder tests)
 - [x] Examples: `jomo.mojo` (Mojo CLI lookalike, hybrid declarative + builder)
-- [x] Examples: simple pure-declarative (`search.mojo`), hybrid (`deploy.mojo`), full parse (`convert.mojo`)
+- [x] Examples: simple pure-declarative (`search.mojo`), hybrid (`deploy.mojo`),
+      full parse (`convert.mojo`)
 - [x] User manual additions
 - [x] README update with declarative examples
 
@@ -1440,16 +1662,36 @@ error messages (`[1, 65535]` becomes `[1.0, 65535.0]`), or keeping a second
 pair of bounds behind a `_range_is_float` flag. Neither is small, and integer
 ranges cover what ranges are actually used for: ports, levels, counts.
 
-#### `Count`'s `max` cannot go in the Parameters block
+#### `Count`'s `max` could not go in the Parameters block (fixed in Mojo v1.1.0)
 
-`mojo doc` (v1.0.0) does not recognise a struct parameter named `max`. It
-reports `unknown parameter 'max' in doc string`, then miscounts the index of
-every parameter declared after it. I reduced it to two structs differing only
-in that name: `max` warns, `maximum` does not, so this is a tooling bug rather
-than an argmojo one. The parameter is described in the struct's prose docstring
-instead. Renaming it to `max_count` would keep `mojo doc` quiet at the cost of
-breaking every `Count[..., max=N]` already written, so the name stays until the
-tool is fixed.
+> Update: Mojo v1.1.0 fixed this. `mojo doc` now resolves `max` against the
+> struct's own parameters and instead warns when it is *missing* from the
+> `Parameters:` block, so `Count.max` is documented there like every other
+> parameter. The notes below describe the v1.0.0 behaviour.
+
+`mojo doc` (v1.0.0) resolves a name in a `Parameters:` block against the
+builtin prelude before it looks at the struct's own parameters, so a parameter
+whose name collides with a builtin is reported as `unknown parameter 'max' in
+doc string`. It then drops that entry from its internal list, and every
+parameter declared after it is checked against a shifted index: with
+`[max, other, third]`, `other` is "defined at index 0, but specified in doc
+string at index 1".
+
+Nothing is special about `max`, and this has nothing to do with reserved words
+(`max` is an ordinary function in `builtin.math`, and the parameter compiles
+and works fine) or with the MAX engine. I probed the tool with a spread of
+names: `min`, `abs`, `len`, `pow`, `sort`, `swap`, `print`, `Int`, `List` and
+`Optional` all warn; `maximum`, `maxx`, `sqrt` and `argv` do not. The split is
+exactly the prelude — `sqrt` lives in `math` and `argv` in `sys`, so nothing
+shadows them.
+
+Only the warnings are wrong. The emitted JSON carries the parameter and its
+description, so the published docs are correct; what the bug actually costs is
+a clean `mojo doc` run, which is what the `doc` task gates on. The parameter is
+therefore described in the struct's prose docstring instead. Renaming it to
+`max_count` would keep `mojo doc` quiet at the cost of breaking every
+`Count[..., max=N]` already written, so the name stays until the tool is
+fixed.
 
 The related trap is that `--diagnose-missing-doc-strings` only flags a missing
 *docstring*, never a missing *parameter entry*. That is why `Count.max` sat
@@ -1487,4 +1729,7 @@ Swift's argument parser calls a `validate()` hook after parsing; the equivalent
 here would let you write cross-field checks without dropping to the builder.
 It is listed in Phase 4 and I have not started it.
 
-[^fieldwise_init]: removed — compiler auto-synthesises move init from `Movable` conformance; the `Parsable` trait now provides a reflection-based default `__init__` via `mark_initialized` + `comptime for`.
+[^fieldwise_init]: removed — compiler auto-synthesises move init from `Movable`
+    conformance; the `Parsable` trait now provides a
+    reflection-based default `__init__` via `mark_initialized` +
+    `comptime for`.
