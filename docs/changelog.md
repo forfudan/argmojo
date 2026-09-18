@@ -17,6 +17,22 @@ warnings.
 3. Response file expansion stays disabled: re-enabling it still hangs the
    compiler on `tests/test_parse.mojo` under `-D ASSERT=all` on Mojo v1.1.0.
 
+### ⭐️ New
+
+1. Rename `.alias_name[]()` to `.alias[]()`, and the `alias_name=` parameter of
+   `Option`, `Flag` and `Count` to `alias=`. The old names were a workaround for
+   `alias` being a Mojo keyword, which Mojo v1.1.0 removed:
+
+   ```mojo
+   Argument("colour", help="Colour theme").long["colour"]().alias["color"]()
+   var verbose: Count[short="v", alias="loud"]
+   ```
+
+   Both old spellings still work for now. `.alias_name[]()` is marked
+   `@deprecated` and warns at compile time. `alias_name=` cannot warn (Mojo has
+   no way to deprecate one struct parameter), so its names are simply merged
+   with those given in `alias=`. Both will be removed in a later release.
+
 ## 20260812 (v0.8.0)
 
 ArgMojo v0.8.0 moves to the first stable Mojo release, **v1.0.0**. It also fixes

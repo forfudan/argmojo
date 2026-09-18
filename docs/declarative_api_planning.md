@@ -276,7 +276,7 @@ struct Option[
     long: StringLiteral = "",       # --option name (empty = auto from field name)
     short: StringLiteral = "",      # -o single char
     help: StringLiteral = "",       # help text
-    alias_name: StringLiteral = "", # comma-separated alias long names
+    alias: StringLiteral = "",      # comma-separated alias long names
     # ── Argument type ──
     negatable: Bool = False,        # --x / --no-x (only if T is Bool)
     # ── Value defaults & validation ──
@@ -646,13 +646,15 @@ var format: Option[String, choices="json,yaml,csv", default="json"]
 Internally, `_register_option()` splits by `,` and calls
 `.choice["json"]().choice["yaml"]().choice["csv"]()` etc.
 
-Similarly, `alias_name` is comma-separated:
+Similarly, `alias` is comma-separated:
 
 ```mojo
-var output: Option[String, long="output", alias_name="out,dest"]
+var output: Option[String, long="output", alias="out,dest"]
 ```
 
-This generates `.alias_name["out"]().alias_name["dest"]()`.
+This generates `.alias["out"]().alias["dest"]()`. (Before Mojo v1.1.0 freed the
+`alias` keyword, the parameter was called `alias_name`; that spelling is
+deprecated but still accepted.)
 
 ## 5. Usage Examples
 
@@ -1359,7 +1361,7 @@ Here's how each wrapper parameter maps to builder calls under the hood:
 | `prompt_text="msg"`                         | `.prompt["msg"]()`                               |
 | `password=True`                             | `.password()`                                    |
 | `require_equals=True`                       | `.require_equals()`                              |
-| `alias_name="out,dest"`                     | `.alias_name["out"]().alias_name["dest"]()`      |
+| `alias="out,dest"`                          | `.alias["out"]().alias["dest"]()`                |
 | `negatable=True`                            | `.negatable()`                                   |
 | `allow_hyphen=True`                         | `.allow_hyphen_values()`                         |
 | `group="Advanced"`                          | `.group["Advanced"]()`                           |

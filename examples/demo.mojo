@@ -233,7 +233,7 @@ def main() raises:
     app.add_argument(
         Argument("color-theme", help="Color theme name")
         .long["color-theme"]()
-        .alias_name["colour"]()
+        .alias["colour"]()
         .default["auto"]()
     )
 

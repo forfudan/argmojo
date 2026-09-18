@@ -317,8 +317,8 @@ struct Metrics(Parsable):
     var ratio: Option[
         Float64, long="ratio", short="r", help="A ratio", default="1.5"
     ]
-    var verbose: Count[short="v", help="Verbosity", max=3, alias_name="loud"]
-    var quiet: Flag[short="q", help="Quiet", alias_name="silent"]
+    var verbose: Count[short="v", help="Verbosity", max=3, alias="loud"]
+    var quiet: Flag[short="q", help="Quiet", alias="silent"]
     var scale: Positional[Float64, help="Scale factor", default="2.25"]
     var legacy: Positional[
         String,
@@ -357,11 +357,37 @@ def test_count_is_intable() raises:
 
 
 def test_count_and_flag_accept_aliases() raises:
-    """The alias_name parameter works on Count and Flag, not only on Option."""
+    """The alias parameter works on Count and Flag, not only on Option."""
     var args: List[String] = ["metrics", "--loud", "--silent"]
     var parsed = Metrics.parse_arguments(args)
     assert_equal(Int(parsed.verbose), 1)
     assert_true(parsed.quiet.value, msg="--silent is an alias of --quiet")
+
+
+struct LegacyAliases(Parsable):
+    var output: Option[String, long="output", alias_name="out", default="-"]
+    var color: Flag[long="colour", alias="color", alias_name="colr"]
+    var verbose: Count[short="v", alias_name="loud,talky"]
+
+    @staticmethod
+    def description() -> String:
+        return String("Legacy alias spelling.")
+
+
+def test_deprecated_alias_name_parameter_still_works() raises:
+    """The deprecated alias_name parameter still registers aliases."""
+    var args: List[String] = ["legacy", "--out", "a.txt", "--loud", "--talky"]
+    var parsed = LegacyAliases.parse_arguments(args)
+    assert_equal(parsed.output.value, "a.txt")
+    assert_equal(Int(parsed.verbose), 2)
+
+
+def test_alias_and_alias_name_are_merged() raises:
+    """Names from alias and the deprecated alias_name are both accepted."""
+    var args: List[String] = ["legacy", "--color"]
+    assert_true(LegacyAliases.parse_arguments(args).color.value)
+    args = ["legacy", "--colr"]
+    assert_true(LegacyAliases.parse_arguments(args).color.value)
 
 
 def test_positional_hidden_and_deprecated() raises:

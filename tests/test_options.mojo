@@ -957,9 +957,7 @@ def test_alias_basic() raises:
     """Tests that an alias resolves to the primary argument."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("colour", help="Colour mode")
-        .long["colour"]()
-        .alias_name["color"]()
+        Argument("colour", help="Colour mode").long["colour"]().alias["color"]()
     )
 
     var args: List[String] = ["test", "--color", "red"]
@@ -971,9 +969,7 @@ def test_alias_primary_still_works() raises:
     """Tests that using the primary long name still works alongside aliases."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("colour", help="Colour mode")
-        .long["colour"]()
-        .alias_name["color"]()
+        Argument("colour", help="Colour mode").long["colour"]().alias["color"]()
     )
 
     var args: List[String] = ["test", "--colour", "blue"]
@@ -987,8 +983,8 @@ def test_alias_multiple() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .alias_name["out"]()
-        .alias_name["fmt"]()
+        .alias["out"]()
+        .alias["fmt"]()
     )
 
     var args: List[String] = ["test", "--fmt", "json"]
@@ -1004,9 +1000,7 @@ def test_alias_prefix_match() raises:
     """Tests that prefix matching works with aliases."""
     var command = Command("test", "Test app")
     command.add_argument(
-        Argument("colour", help="Colour mode")
-        .long["colour"]()
-        .alias_name["color"]()
+        Argument("colour", help="Colour mode").long["colour"]().alias["color"]()
     )
 
     var args: List[String] = ["test", "--colo", "green"]
@@ -1021,7 +1015,7 @@ def test_alias_with_flag() raises:
         Argument("verbose", help="Verbose output")
         .long["verbose"]()
         .flag()
-        .alias_name["debug"]()
+        .alias["debug"]()
     )
 
     var args: List[String] = ["test", "--debug"]
@@ -1086,7 +1080,7 @@ def test_deprecated_with_alias() raises:
     command.add_argument(
         Argument("output", help="Output format")
         .long["output"]()
-        .alias_name["out"]()
+        .alias["out"]()
         .deprecated["Use --format instead"]()
     )
 
@@ -1147,7 +1141,7 @@ def test_help_alias_shown() raises:
         Argument("colour", help="Enable colour output")
         .long["colour"]()
         .flag()
-        .alias_name["color"]()
+        .alias["color"]()
     )
 
     var help = command._generate_help(color=False)
