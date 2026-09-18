@@ -2682,7 +2682,7 @@ def test_default_inside_choices_is_accepted() raises:
 
 
 def test_default_if_no_value_outside_choices_raises() raises:
-    """default_if_no_value must honour the declared choices too."""
+    """The default_if_no_value setting must honour the declared choices too."""
     var command = Command("test", "Test app")
     var raised = False
     try:

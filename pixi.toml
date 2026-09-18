@@ -13,7 +13,7 @@ readme = "README.md"
 version = "0.8.0"
 
 [dependencies]
-mojo = ">=1.0.0, <1.1.0"
+mojo = ">=1.1.0, <1.2.0"
 
 [tasks]
 # format the code
@@ -45,7 +45,7 @@ test = """ set -e
     && bash tests/check_schema_errors.sh"""
 # NOTE: test_response_file.mojo is excluded — response file expansion
 # is disabled to work around a Mojo compiler deadlock with -D ASSERT=all.
-# Still reproducing on Mojo v1.0.0 (tests/test_parse.mojo hangs at 0% CPU
+# Still reproducing on Mojo v1.1.0 (tests/test_parse.mojo hangs at 0% CPU
 # during compilation when the expansion call is re-enabled).
 
 # run tests (parallel, fail if any test fails)

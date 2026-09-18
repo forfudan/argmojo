@@ -730,19 +730,13 @@ struct Count[
     Provides ``__int__`` so you can write ``Int(args.verbose)`` instead of
     ``args.verbose.value``.
 
-    ``max`` caps the count: 0 means no ceiling, and occurrences beyond the
-    ceiling are clamped to it with a warning.  It is described here rather
-    than in the Parameters block below because ``mojo doc`` (v1.0.0) does
-    not recognise a parameter named ``max`` — it reports "unknown parameter"
-    and then miscounts the indices of every parameter after it.  Renaming
-    the parameter would fix the tooling complaint at the cost of breaking
-    every ``Count[..., max=N]`` already written, so the name stays.
-
     Parameters:
         long: Long flag name. Empty = auto from field name.
         short: Short flag character.
         help: Help text shown in ``--help`` output.
         alias_name: Comma-separated alias long names.
+        max: Ceiling for the count. 0 = no ceiling; occurrences beyond the
+            ceiling are clamped to it with a warning.
         persistent: Inherited by subcommands.
         hidden: Hide from help output.
         deprecated: Deprecation warning message.
