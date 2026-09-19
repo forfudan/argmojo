@@ -1,0 +1,1160 @@
+# ArgMojo — Overall Planning
+
+> A feature-rich command-line argument parser library for Mojo, with both
+> builder and struct-based declarative APIs. Inspired by Python's `argparse`,
+> Rust's `clap`, Go's `cobra`, and Swift's `swift-argument-parser`.
+
+## 1. Why ArgMojo?
+
+I created this project to support my experiments with a CLI-based Chinese
+character search engine in Mojo, as well as a CLI-based calculator for
+[Decimo](https://github.com/forfudan/decimo).
+
+At the moment, Mojo does not have a mature command-line argument parsing
+library. This is a fundamental component for any CLI tool, and building it from
+scratch will benefit my projects and future projects.
+
+## 2. Cross-Language Research Summary
+
+This section summarises the key design patterns and features from well-known arg
+parsers across multiple languages. The goal is to extract
+**universally useful ideas** that are feasible in Mojo 0.26.2, and to exclude
+features that depend on language-specific capabilities (macros, decorators,
+reflection, closures-as-first-class) that Mojo does not yet provide.
+
+### 2.1 Libraries Surveyed
+
+| Library                   | Language     | Style                        | Key Insight for ArgMojo                                                                                                                                                                                                  |
+| ------------------------- | ------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **argparse** (stdlib)     | Python       | Builder (add_argument)       | Comprehensive feature set; nargs, choices, type conversion, subcommands, argument groups, mutually exclusive groups, metavar, suggest_on_error, BooleanOptionalAction                                                    |
+| **Click**                 | Python       | Decorator-based              | Composable commands, lazy-loaded subcommands, context passing — decorator approach not applicable                                                                                                                        |
+| **cobra** + pflag         | Go           | Struct-based builder         | Subcommands with persistent/local flags, flag groups (mutually exclusive, required together, one required), command aliases, Levenshtein-distance suggestions, positional arg validators (ExactArgs, MinimumNArgs, etc.) |
+| **clap**                  | Rust         | Builder + Derive             | Builder API is the reference model; Derive API uses macros (not available in Mojo)                                                                                                                                       |
+| **swift-argument-parser** | Swift        | Protocol + Property Wrappers | Struct-based derive via `@Argument`/`@Option`/`@Flag` property wrappers + `ParsableCommand` protocol; closest model to Mojo's parametric wrapper types                                                                   |
+| **docopt**                | Python/multi | Usage-string-driven          | Generates parser from help text — elegant but too implicit for a typed language                                                                                                                                          |
+
+### 2.2 Universal Features Worth Adopting
+
+These features appear across multiple libraries and depend only on string
+operations and basic data structures.
+
+| Feature                            | argparse | Click | cobra | clap | swift | Other                        | Planned phase |
+| ---------------------------------- | -------- | ----- | ----- | ---- | ----- | ---------------------------- | ------------- |
+| Long/short options with values     | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Positional arguments               | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Boolean flags                      | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Default values                     | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Required argument validation       | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| `--` stop marker                   | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto `--help` / `-h` / `-?`        | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto `--version` / `-V`            | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Short flag merging (`-abc`)        | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Display name for value             | ✓        | —     | —     | ✓    | ✓     |                              | **Done**      |
+| Positional arg count validation    | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Choices / enum validation          | ✓        | ✓     | —     | ✓    | ✓     |                              | **Done**      |
+| Mutually exclusive flags           | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Flags required together            | —        | —     | ✓     | —    | —     |                              | **Done**      |
+| `--no-X` negation flags            | ✓ (3.9)  | —     | —     | ✓    | ✓     |                              | **Done**      |
+| Long option prefix matching        | ✓        | —     | —     | —    | —     |                              | **Done**      |
+| Append / collect action            | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| One-required group                 | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Value delimiter (`--tag a,b,c`)    | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Colored help (customisable)        | —        | ✓     | —     | ✓    | —     | pixi                         | **Done**      |
+| Colored warning and error messages | -        | ✓     | -     | ✓    | —     |                              | **Done**      |
+| Number of values per option        | ✓        | ✓     | —     | ✓    | —     |                              | **Done**      |
+| Conditional requirement            | —        | —     | ✓     | ✓    | —     |                              | **Done**      |
+| Numeric range validation           | —        | —     | —     | —    | —     |                              | **Done**      |
+| Key-value map (`-Dkey=val`)        | —        | —     | —     | —    | —     | Java `-D`, Docker `-e`       | **Done**      |
+| Aliases for long names             | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Deprecated arguments               | ✓ (3.13) | —     | ✓     | —    | —     |                              | **Done**      |
+| Negative number / stdin `−`        | ✓        | —     | ✓     | ✓    | ✓     | `allow_hyphen_values()`      | **Done**      |
+| Subcommands                        | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Auto-added `help` subcommand       | —        | —     | ✓     | ✓    | ✓     | git, cargo, kubectl          | **Done**      |
+| Persistent (global) flags          | —        | —     | ✓     | ✓    | ✓     | git `--no-pager` etc.        | **Done**      |
+| Suggest on typo (Levenshtein)      | ✓ (3.14) | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Subcommand aliases                 | —        | —     | ✓     | ✓    | ✓     | cobra, clap                  | **Done**      |
+| Count with ceiling                 | -        | —     | —     | -    | —     |                              | **Done**      |
+| Cap and floor (clamp) for ranges   | -        | ✓     | —     | —    | —     | Click `IntRange(clamp=True)` | **Done**      |
+| Hidden subcommands                 | —        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| `NO_COLOR` env variable            | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| Response file (`@args.txt`)        | ✓        | —     | —     | —    | —     | javac, MSBuild               | **Done**      |
+| Argument parents (shared args)     | ✓        | —     | —     | —    | ✓     |                              | **Done**      |
+| Interactive prompting              | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| Password / masked input            | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| Confirmation (`--yes` / `-y`)      | —        | ✓     | —     | —    | —     |                              | **Done**      |
+| REMAINDER number_of_values         | ✓        | —     | —     | —    | ✓     |                              | **Done**      |
+| Partial parsing (known args)       | ✓        | —     | —     | ✓    | —     |                              | **Done**      |
+| Require equals syntax              | —        | —     | —     | ✓    | —     |                              | **Done**      |
+| Default-if-no-value                | ✓        | —     | —     | ✓    | —     |                              | **Done**      |
+| Mutual implication (`implies`)     | —        | —     | —     | —    | —     | ArgMojo unique feature       | **Done**      |
+| Shell completion script generation | —        | ✓     | ✓     | ✓    | ✓     | bash / zsh / fish            | **Done**      |
+| Argument groups in help            | ✓        | —     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Value-name wrapping control        | —        | —     | —     | ✓    | —     | clap, cargo, pixi, git       | **Done**      |
+| CJK-aware help formatting          | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| CJK full-to-half-width correction  | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| CJK punctuation detection          | —        | —     | —     | —    | —     | I need it personally         | **Done**      |
+| Typed retrieval (`get_int()` etc.) | ✓        | ✓     | ✓     | ✓    | ✓     |                              | **Done**      |
+| Comptime `StringLiteral` params    | —        | —     | —     | ✓    | ✓     | clap derive macros           | **Done**      |
+| Registration-time name validation  | —        | —     | —     | ✓    | ✓     | clap panic on unknown ID     | **Done**      |
+| Struct-based schema (reflection)   | —        | —     | —     | —    | ✓     | swift-argument-parser        | **Done**      |
+| Auto-dispatch (run functions)      | —        | —     | ✓     | —    | ✓     | Cobra / swift                | **Done**      |
+| Pre/Post run hooks                 | —        | —     | ✓     | —    | —     | Cobra                        | Phase 7a      |
+| Derive (macro/decorator-based)     | —        | —     | —     | ✓    | —     | clap `#[derive(Parser)]`     | Phase 7b      |
+| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | ✓     | Requires reflection          | Phase 7b      |
+| Subcommand variant dispatch        | —        | —     | —     | ✓    | ✓     | Requires sum types           | Phase 7b      |
+
+## 3. Technical Foundations
+
+### 3.1 `sys.argv()` ✓ Available
+
+Mojo provides `sys.argv()` to access command-line arguments:
+
+```mojo
+from std.sys import argv
+
+def main():
+    var args = argv()
+    for i in range(len(args)):
+        print("arg[", i, "] =", args[i])
+```
+
+This gives us the raw list of argument strings, and the remaining task is to
+implement the parsing logic.
+
+### 3.2 Mojo's string operations ✓ Sufficient
+
+| Operation      | Mojo Support           | Usage               |
+| -------------- | ---------------------- | ------------------- |
+| Prefix check   | `str.startswith("--")` | Detect option type  |
+| String compare | `str == "value"`       | Match names         |
+| Substring      | Slicing / `find`       | Split `key=value`   |
+| Split          | `str.split("=")`       | Parse equals syntax |
+| Concatenation  | `str + str`            | Build help text     |
+
+### 3.3 FFI Signature Convention (Cross-Package Alignment)
+
+When two Mojo packages call the same C function via `external_call` with
+different type signatures, LLVM emits conflicting function declarations, causing
+link-time or runtime errors. To prevent this, argmojo uses a canonical
+**`Int`-only convention** for all FFI calls: every integer, pointer, and size
+argument is passed as `Int` (similar to Mojo's native `i64` on a 64-bit system).
+
+Canonical signatures used by argmojo (in `utils.mojo`):
+
+| C function  | argmojo signature                                              |
+| ----------- | -------------------------------------------------------------- |
+| `ioctl`     | `external_call["ioctl", Int, Int, Int, Int](fd, req, ptr)`     |
+| `tcgetattr` | `external_call["tcgetattr", Int, Int, Int](fd, ptr)`           |
+| `tcsetattr` | `external_call["tcsetattr", Int, Int, Int, Int](fd, act, ptr)` |
+| `read`      | `external_call["read", Int, Int, Int, Int](fd, buf, count)`    |
+
+Any third-party Mojo package (e.g. decimo/limo) that matches these exact
+signatures avoids LLVM conflicts when linked alongside argmojo.
+
+**Future:** If argmojo ever adds direct FFI calls to `isatty` or `write`
+(currently handled via Mojo stdlib's `print()`/`stderr`), the same `Int`-only
+convention should apply:
+
+```txt
+external_call["isatty", Int, Int](fd)
+external_call["write", Int, Int, Int, Int](fd, buf, count)
+```
+
+### 3.4 Mojo's data structures ✓ Sufficient
+
+| Structure                     | Purpose                               |
+| ----------------------------- | ------------------------------------- |
+| `List[String]`                | Store argument list, positional names |
+| `Dict[String, Bool]`          | Flag values                           |
+| `Dict[String, String]`        | Named values                          |
+| `struct` with builder pattern | Argument, Command, ParseResult types  |
+
+## 4. Current Implementation Status
+
+### 4.1 Repository Structure
+
+```txt
+src/argmojo/
+├── __init__.mojo                   # Package exports (Argument, Command, ParseResult)
+├── argument.mojo                   # Argument struct — argument definition with builder pattern
+├── command.mojo                    # Command struct — command definition & parsing
+├── parse_result.mojo               # ParseResult struct — parsed values
+└── utils.mojo                      # Internal utilities — ANSI colours, display helpers
+tests/
+├── test_parse.mojo                 # Core parsing + negative number passthrough tests
+├── test_options.mojo               # default_if_no_value, require_equals, range, clamp, map, aliases, deprecated, remainder, parse_known, collection tests
+├── test_groups.mojo                # Mutually exclusive, required-together, one-required, conditional, implies, argument groups in help, value_name wrapping tests
+├── test_help.mojo                  # Help formatting, ANSI colours, CJK alignment, NO_COLOR, custom usage, fullwidth correction tests
+├── test_subcommands.mojo           # Subcommand dispatch, persistent/global flags, argument parents tests
+├── test_completion.mojo            # Shell completion (bash/zsh/fish) + Levenshtein typo suggestion tests
+├── test_interactive.mojo           # Interactive prompting, password/masked input, confirmation tests
+└── test_response_file.mojo         # Response file (@args.txt) expansion tests (⚠ disabled due to compiler bug)
+examples/
+├── demo.mojo                       # comprehensive showcase of all ArgMojo features
+├── mgrep.mojo                      # grep-like CLI example (no subcommands)
+├── mgit.mojo                       # git-like CLI example (with subcommands)
+└── yu.mojo                         # Chinese-language CLI example (CJK-aware help)
+```
+
+### 4.2 What's Already Done ✓
+
+| Feature                                                                                               | Status | Tests |
+| ----------------------------------------------------------------------------------------------------- | ------ | ----- |
+| `Argument` struct with builder pattern                                                                | ✓      | —     |
+| `Command` struct with `add_argument()`                                                                | ✓      | —     |
+| `ParseResult` with `get_flag()`, `get_string()`, `get_int()`, `has()`                                 | ✓      | ✓     |
+| Long flags `--verbose`                                                                                | ✓      | ✓     |
+| Short flags `-v`                                                                                      | ✓      | ✓     |
+| Key-value `--key value`, `--key=value`, `-k value`                                                    | ✓      | ✓     |
+| Positional arguments                                                                                  | ✓      | ✓     |
+| Default values for positional and named args                                                          | ✓      | ✓     |
+| Required argument validation                                                                          | ✓      | —     |
+| `--` stop marker                                                                                      | ✓      | ✓     |
+| Auto `--help` / `-h` with generated help text                                                         | ✓      | —     |
+| Auto `--version` / `-V`                                                                               | ✓      | —     |
+| Demo binary (`mojo build`)                                                                            | ✓      | —     |
+| Short flag merging (`-abc` → `-a -b -c`)                                                              | ✓      | ✓     |
+| Short option with attached value (`-ofile.txt`)                                                       | ✓      | ✓     |
+| Choices validation (`.choice[]()`)                                                                    | ✓      | ✓     |
+| Value Name (`.value_name["FILE"]()`)                                                                  | ✓      | ✓     |
+| Hidden arguments (`.hidden()`)                                                                        | ✓      | ✓     |
+| Count action (`-vvv` → 3) with ceiling (`.max(N)`)                                                    | ✓      | ✓     |
+| Positional arg count validation                                                                       | ✓      | ✓     |
+| Clean exit for `--help` / `--version`                                                                 | ✓      | —     |
+| Mutually exclusive groups                                                                             | ✓      | ✓     |
+| Required-together groups                                                                              | ✓      | ✓     |
+| Negatable flags (`.negatable()` → `--no-X`)                                                           | ✓      | ✓     |
+| Long option prefix matching (`--verb` → `--verbose`)                                                  | ✓      | ✓     |
+| Append / collect action (`--tag x --tag y` → list)                                                    | ✓      | ✓     |
+| One-required groups (`command.one_required(["json", "yaml"])`)                                        | ✓      | ✓     |
+| Value delimiter (`.delimiter[","]()` → split into list)                                               | ✓      | ✓     |
+| Number of values (`.number_of_values[N]()` → consume N values per occurrence)                         | ✓      | ✓     |
+| Conditional requirements (`command.required_if("output", "save")`)                                    | ✓      | ✓     |
+| Numeric range validation (`.range[1, 65535]()`)                                                       | ✓      | ✓     |
+| Key-value map option (`.map_option()` → `Dict[String, String]`)                                       | ✓      | ✓     |
+| Aliases (`.alias["color"]()` for `--colour` / `--color`)                                              | ✓      | ✓     |
+| Deprecated arguments (`.deprecated["msg"]()` → stderr warning)                                        | ✓      | ✓     |
+| Negative number passthrough (`-9`, `-3.14`, `-1.5e10` as positionals)                                 | ✓      | ✓     |
+| Subcommand data model (`add_subcommand()`, dispatch, `help` sub)                                      | ✓      | ✓     |
+| Colored warning and error messages (`_warn()`, `_error()`, all errors printed in colour to stderr)    | ✓      | ✓     |
+| Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                          | ✓      | ✓     |
+| Default-if-no-value (`.default_if_no_value["gzip"]()` → optional value with fallback)                 | ✓      | ✓     |
+| Require equals syntax (`.require_equals()` → `--key=value` only)                                      | ✓      | ✓     |
+| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)                  | ✓ ⚠    | ✓     |
+| Typo suggestions (Levenshtein "did you mean ...?" for long options and subcommands)                   | ✓      | ✓     |
+| Flag counter ceiling (`.count().max[3]()` → cap with warning)                                         | ✓      | ✓     |
+| Shell completion script generation (`generate_completion["bash"]()` or `generate_completion("bash")`) | ✓      | ✓     |
+| Subcommand aliases (`command_aliases(["co"])`)                                                        | ✓      | ✓     |
+| Hidden subcommands (`sub.hidden()` → excluded from help, completions, errors)                         | ✓      | ✓     |
+| `NO_COLOR` env variable (suppress ANSI output when set)                                               | ✓      | ✓     |
+| Mutual implication (`command.implies("debug", "verbose")` with chained + cycle detection)             | ✓      | ✓     |
+| Remainder positional (`.remainder()` → consume all remaining tokens)                                  | ✓      | ✓     |
+| Partial parsing (`parse_known_arguments()` → collect unknown options)                                 | ✓      | ✓     |
+| Allow hyphen values (`.allow_hyphen_values()` → accept `-x` as positional value)                      | ✓      | ✓     |
+| Value name rename (`.metavar()` → `.value_name()`)                                                    | ✓      | ✓     |
+| CJK-aware help formatting (`_display_width` for column alignment)                                     | ✓      | ✓     |
+| Full-width → half-width auto-correction (fullwidth ASCII + `U+3000` space)                            | ✓      | ✓     |
+| CJK punctuation auto-correction (em-dash `U+2014` → hyphen-minus)                                     | ✓      | ✓     |
+| Compile-time `StringLiteral` builder params (`.long[]`, `.short[]`, `.choice[]`, colours, etc.)       | ✓      | —     |
+| Registration-time validation for group constraints (`mutually_exclusive`, `required_together`, etc.)  | ✓      | ✓     |
+| Interactive prompting (`.prompt()`, `.prompt["..."]()` → prompt for missing args)                     | ✓      | ✓     |
+| Argument parents (`add_parent(parent)` → share args across commands)                                  | ✓      | ✓     |
+| Confirmation option (`confirmation_option()` → `--yes`/`-y` to skip confirmation)                     | ✓      | ✓     |
+| Usage line customisation (`command.usage("...")` → override auto-generated usage line)                | ✓      | ✓     |
+| Password / masked input (`.password()` → hide typed characters during prompt via POSIX termios)       | ✓      | ✓     |
+
+> ⚠ Response file support is currently disabled due to a Mojo compiler deadlock
+> under `-D ASSERT=all` (still reproducing on Mojo v1.1.0). The implementation
+> is preserved and will be re-enabled when the compiler bug is fixed.
+
+### 4.3 API Design (Current)
+
+```mojo
+from argmojo import Command, Argument
+
+def main() raises:
+    var command = Command("demo", "A CJK-aware text search tool which supports pinyin and Yuhao IME")
+
+    # Positional arguments
+    command.add_argument(Argument("pattern", help="Search pattern").required().positional())
+    command.add_argument(Argument("path", help="Search path").positional().default["."]())
+
+    # Optional arguments
+    command.add_argument(Argument("ling", help="Use Yuhao Lingming encoding").long["ling"]().short["l"]().flag())
+    command.add_argument(Argument("ignore-case", help="Case insensitive search").long["ignore-case"]().short["i"]().flag())
+    command.add_argument(Argument("max-depth", help="Maximum directory depth").long["max-depth"]().short["d"]().takes_value())
+
+    var result = command.parse()
+
+    var pattern = result.get_string("pattern")
+    var use_ling = result.get_flag("ling")
+    var max_depth = result.get_int("max-depth")
+```
+
+### 4.4 Command-line syntax supported
+
+```bash
+# Long options
+--flag              # Boolean flag
+--key value         # Key-value (space separated)
+--key=value         # Key-value (equals separated)
+--key=value         # Require-equals syntax (when .require_equals())
+--key               # Default-if-no-value (when .default_if_no_value())
+--no-flag           # Negation (when .negatable())
+--verb              # Prefix match → --verbose (if unambiguous)
+
+# Short options
+-f                  # Boolean flag
+-k value            # Key-value
+-abc                # Merged short flags → -a -b -c
+-ofile.txt          # Attached short value → -o file.txt
+-abofile.txt        # Mixed: -a -b -o file.txt
+-vvv                # Count flag → verbose = 3
+
+# Positional arguments
+pattern             # By order of add_argument() calls
+
+# Special
+--                  # Stop parsing options; rest becomes positional
+--help / -h / -?    # Show auto-generated help
+--version / -V      # Show version
+@args.txt           # Response file expansion (when enabled)
+cmd rest...         # Remainder positional (consume all remaining tokens)
+
+# Subcommands
+app search pattern  # Dispatch to subcommand
+app help search     # Show subcommand help
+app --verbose search  # Persistent flags before subcommand
+```
+
+### 4.5 Validation & Help Behavior Matrix
+
+Positional arguments and named options are validated **independently** — a
+command can fail on either or both. The two matrices below show each dimension's
+behavior separately; the combined scenario table shows practical cross-product
+outcomes.
+
+#### Per-Dimension Behavior
+
+##### Positional arguments
+
+| Command config ↓ \ User input → | Enough positionals provided | Not enough positionals provided |
+| ------------------------------- | --------------------------- | ------------------------------- |
+| **Has required positional(s)**  | ✓ Proceed                   | ✗ Error + usage                 |
+| **No required positional(s)**   | ✓ Proceed                   | N/A — always "enough"           |
+
+##### Named options
+
+| Command config ↓ \ User input → | Enough options provided | Not enough options provided |
+| ------------------------------- | ----------------------- | --------------------------- |
+| **Has required option(s)**      | ✓ Proceed               | ✗ Error + usage             |
+| **No required option(s)**       | ✓ Proceed               | N/A — always "enough"       |
+
+#### Cross-Dimension Matrix (4 × 4)
+
+When rows and columns refer to **different** dimensions (e.g., "has required
+positionals" × "enough options"), the outcome depends on the *other* dimension —
+marked ? below.
+
+|                                | Enough pos. args     | Not enough pos. args | Enough options       | Not enough options   |
+| ------------------------------ | -------------------- | -------------------- | -------------------- | -------------------- |
+| **Has required positional(s)** | ✓ Proceed            | ✗ Error + usage      | ? depends on pos.    | ? depends on pos.    |
+| **No required positional(s)**  | ✓ Proceed            | *(N/A)*              | ? always ok for pos. | ? always ok for pos. |
+| **Has required option(s)**     | ? depends on opt.    | ? depends on opt.    | ✓ Proceed            | ✗ Error + usage      |
+| **No required option(s)**      | ? always ok for opt. | ? always ok for opt. | ✓ Proceed            | *(N/A)*              |
+
+#### Combined Scenario Table
+
+The practical view — both dimensions checked together at parse time:
+
+| Command Profile               | Nothing provided | Pos. ✗ Opt. ✓          | Pos. ✓ Opt. ✗          | All ✓      |
+| ----------------------------- | ---------------- | ---------------------- | ---------------------- | ---------- |
+| Required pos. + required opt. | ✗ Error + usage  | ✗ Error (missing pos.) | ✗ Error (missing opt.) | ✓ Proceed  |
+| Required pos. only            | ✗ Error + usage  | ✗ Error (missing pos.) | ✓ Proceed              | ✓ Proceed  |
+| Required opt. only            | ✗ Error + usage  | ✓ Proceed              | ✗ Error (missing opt.) | ✓ Proceed  |
+| No requirements               | ✓ Proceed        | ✓ Proceed              | ✓ Proceed              | ✓ Proceed  |
+| Has subcommands (group)       | ✓ Proceed *      | —                      | —                      | ✓ Dispatch |
+
+\* Group commands with subcommands typically do nothing useful with no input —
+`help_on_no_arguments()` is recommended.
+
+#### Effect of `help_on_no_arguments()`
+
+| Scenario                          | Default (off)                                                  | With `help_on_no_arguments()` |
+| --------------------------------- | -------------------------------------------------------------- | ----------------------------- |
+| Zero args (only program name)     | Validation runs → error if requirements exist; proceed if none | **Show full help** (exit 0)   |
+| Some args provided (insufficient) | ✗ Error + usage                                                | ✗ Error + usage *(same)*      |
+| All requirements satisfied        | ✓ Proceed                                                      | ✓ Proceed *(same)*            |
+
+> **Key:** `help_on_no_arguments()` only overrides the **zero-argument** case.
+> Once any argument is provided, normal validation takes over regardless.
+
+#### Industry Consensus (clap / cobra / argparse / click / docker / git / kubectl)
+
+1. **Error, not help.** When the user provides a partial or incorrect
+   invocation, the standard is a *short error message* naming the missing
+   argument + a compact *usage line*. Full help is reserved for `--help` or bare
+   group commands. This is the dominant pattern across clap, argparse, click,
+   commander.js, cargo.
+
+2. **No special-casing "zero args" by default.** The vast majority of frameworks
+   do NOT treat "provided nothing" differently from "provided some but not all."
+   clap's `arg_required_else_help(true)` is the only first-class opt-in —
+   ArgMojo's `help_on_no_arguments()` mirrors this.
+
+3. **Two-tier pattern for subcommands.** Every tool examined follows the same
+   convention:
+   - **Group/parent command** with no subcommand given → **show full help**
+     (list available subcommands)
+   - **Leaf subcommand** with missing required args →
+     **show error + usage line** (not full help)
+   - Rationale: at the group level, the user needs guidance on *what* to do; at
+     the leaf level, they know *what* they want but forgot *how*.
+
+4. **Error batching.** Split across tools — clap and argparse report *all*
+   missing arguments at once; click and commander report the *first* one.
+   ArgMojo currently reports the first missing argument (validation order:
+   required args → positional count → exclusive groups → together groups →
+   one-required → conditional → range).
+
+5. **Exit codes.** POSIX-influenced tools (argparse, clap, click) use exit code
+   **2** for argument parse errors. Go-based tools (cobra, docker, kubectl) use
+   exit code **1**. ArgMojo currently raises an `Error` (caller decides exit
+   code).
+
+6. **Error output format consensus** (clap / argparse / click / cargo):
+
+   ```bash
+   error: <command>: <what's wrong>
+
+   usage: <command> <required> [optional] [OPTIONS]
+   For more information, try '<command> --help'.
+   ```
+
+   NOT full help with all flags listed (only cobra does that by default, and it
+   provides `SilenceUsage` to opt out).
+
+## 5. Development Roadmap
+
+### Phase 1: Skeleton
+
+- [x] Establish module structure
+- [x] Implement `Argument` struct and builder methods
+- [x] Implement basic `Command` struct
+- [x] Implement a small demo CLI tool to test the library
+
+### Phase 2: Parsing Enhancements ✓
+
+- [x] **Short flag merging** — `-abc` expands to `-a -b -c` (argparse, cobra,
+      clap all support this)
+- [x] **Short option with attached value** — `-ofile.txt` means `-o file.txt`
+      (argparse, clap)
+- [x] **Choices validation** — restrict values to a set:
+      `.choice["debug"]().choice["info"]().choice["warn"]().choice["error"]()`
+- [x] **Value Name** — display name for values in help: `.value_name["FILE"]()`
+      → `--output FILE`
+- [x] **Positional arg count validation** — fail if too many positional args
+- [x] **Hidden arguments** — `.hidden()` to exclude from help output (cobra,
+      clap)
+- [x] **`count` action** — `-vvv` → `get_count("verbose") == 3` (argparse `-v`
+      counting)
+- [x] **Clean exit for --help/--version** — use `sys.exit(0)` instead of
+      `raise Error`
+
+### Phase 3: Relationships & Validation (for v0.2)
+
+- [x] **Mutually exclusive flags** —
+      `command.mutually_exclusive(["json", "yaml", "toml"])`
+- [x] **Flags required together** —
+      `command.required_together(["username", "password"])`
+- [x] **`--no-X` negation** — `--color` / `--no-color` paired flags (argparse
+      BooleanOptionalAction)
+- [x] **Long option prefix matching** — `--verb` auto-resolves to `--verbose`
+      when unambiguous (argparse `allow_abbrev`)
+- [x] **Append / collect action** — `--tag x --tag y` → `["x", "y"]` collects
+      repeated options into a list (argparse `append`, cobra `StringArrayVar`,
+      clap `Append`)
+- [x] **One-required group** — `command.one_required(["json", "yaml"])` requires
+      at least one from the group (cobra `MarkFlagsOneRequired`, clap
+      `ArgGroup::required`)
+- [x] **Value delimiter** — `--tag a,b,c` splits by delimiter into
+      `["a", "b", "c"]` (cobra `StringSliceVar`, clap `value_delimiter`)
+- [x] **`-?` help alias** — `-?` accepted as an alias for `-h` / `--help`
+      (common in Windows CLI tools, Java, MySQL, curl)
+- [x] **Help on no args** — `command.help_on_no_arguments()` shows help when
+      invoked with no arguments (like git/docker/cargo)
+- [x] **Dynamic help padding** — help column alignment is computed from the
+      longest option line instead of a fixed width
+- [x] **colored help output** — ANSI colors (bold+underline headers,
+      fine-grained colour roles for
+      program/short-option/long-option/value/positional/command names), with
+      `color=False` opt-out and customisable colors via `header_color["NAME"]()`
+      / `argument_color["NAME"]()` / individual setters like `program_color`,
+      `short_option_color`, etc. (compile-time validated)
+- [x] **number of values (multi-value)** — `--point 1 2 3` consumes N values for
+      one option (argparse `nargs`, clap `num_args`)
+- [x] **Conditional requirement** — `--output` required only when `--save` is
+      present (cobra `MarkFlagRequiredWith`, clap `required_if_eq`)
+- [x] **Numeric range validation** — `.range[1, 65535]()` validates `--port`
+      value is within range (no major library has this built-in)
+- [x] **Key-value map option** — `--define key=value --define k2=v2` →
+      `Dict[String, String]` (Java `-D`, Docker `-e KEY=VAL`)
+- [x] **Aliases** for long names — `.alias["color"]()` for `--colour` /
+      `--color`
+- [x] **Deprecated arguments** — `.deprecated["Use --format instead"]()` prints
+      warning to stderr (argparse 3.13)
+
+### Phase 4: Subcommands (for v0.2)
+
+Subcommands (`app <subcommand> [args]`) are the first feature that turns ArgMojo
+from a single-parser into a parser tree. The core insight is that
+**a subcommand is just another `Command` instance** — it already has
+`parse_arguments()`, `_generate_help()`, and all validation logic. No new
+parser, tokenizer, or separate module files are needed.
+
+#### Architecture: composition inside `Command`
+
+- **No file split.** Core logic stays in `command.mojo`. Mojo has no partial
+  structs, so splitting would force free functions + parameter threading for
+  little gain. ANSI colour constants and small utility functions live in
+  `utils.mojo` (internal-only, all symbols `_`-prefixed).
+- **No tokenizer.** Mojo standard library provides `sys.argv()` which already
+  gives us a pre-split list of argument strings. We can work with this directly
+  in `parse_arguments()` without a separate tokenization step.
+- **Composition-based.** `Command` gains a child command list. When
+  `parse_arguments()` hits a non-option token matching a registered subcommand,
+  it delegates the remaining argv slice to the child's own `parse_arguments()`.
+  100% logic reuse, zero duplication.
+
+#### Pre-requisite refactor (Step 0)
+
+Before adding subcommand routing, clean up `parse_arguments()` so root and child
+can each call the same validation/defaults path:
+
+- [x] Extract `_apply_defaults(mut result)` — move the ~20-line defaults block
+      into a private method
+- [x] Extract `_validate(result)` — move the ~130-line validation block
+      (required, exclusive, together, one-required, conditional, range) into a
+      private method
+- [x] Verify all existing tests still pass after this refactor (143 original +
+      17 new Step 0 tests = 160 total, all passing)
+
+#### Step 1 — Data model & API surface
+
+- [x] Add `subcommands: List[Command]` field on `Command` (Matryoshka doll :D)
+- [x] Add `add_subcommand(mut self, sub: Command)` builder method
+- [x] Add `subcommand: String` field on `ParseResult` (name of selected
+      subcommand, empty if none)
+- [x] Add `subcommand_result: List[ParseResult]` or similar on `ParseResult` to
+      hold child results
+
+Target API:
+
+```mojo
+var app = Command("app", "My CLI tool", version="0.3.0")
+app.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
+
+var search = Command("search", "Search for patterns")
+search.add_argument(Argument("pattern", help="Search pattern").required().positional())
+search.add_argument(Argument("max-depth", help="Max depth").long["max-depth"]().short["d"]().takes_value())
+
+var init = Command("init", "Initialize a new project")
+init.add_argument(Argument("name", help="Project name").required().positional())
+
+app.add_subcommand(search)
+app.add_subcommand(init)
+
+var result = app.parse()
+if result.subcommand == "search":
+    var sub = result.subcommand_result
+    var pattern = sub.get_string("pattern")
+```
+
+#### Step 2 — Parse routing (I need to be very careful)
+
+- [x] In `parse_arguments()`, when the current token is not an option and
+      subcommands are registered, check if it matches a subcommand name
+- [x] On match: record `result.subcommand = name`, build child argv (remaining
+      tokens), call `child.parse_arguments(child_argv)`, store child result
+- [x] On no match and subcommands exist: treat as positional (existing behavior)
+- [x] `--` before subcommand boundary: all subsequent tokens are positional for
+      root, no subcommand dispatch
+- [x] Handle `app help <sub>` as equivalent to `app <sub> --help` via
+      auto-registered `help` subcommand (strategy B); `_is_help_subcommand`
+      flag; `.disable_help_subcommand()` opt-out API
+
+#### Step 3 — Global (persistent) flags
+
+- [x] Add `.persistent()` builder method on `Argument` (sets
+      `is_persistent: Bool`)
+- [x] Before child parse, inject copies of parent's persistent args into the
+      child's arg list (or make child parser aware of them)
+- [x] Root-level persistent flag values are parsed before dispatch and merged
+      into child result
+- [x] Conflict policy: reject duplicate long/short names between parent
+      persistent args and child local args at registration time
+      (`add_subcommand` raises)
+- [x] Bidirectional sync: bubble-up (flag after subcommand → root result) +
+      push-down (flag before subcommand → child result)
+
+#### Step 4 — Help & UX
+
+- [x] Root `_generate_help()` appends a "Commands:" section listing subcommand
+      names + descriptions (aligned like options)
+- [x] `app <sub> --help` delegates to `sub._generate_help()` directly
+- [x] `app help <sub>` routing via auto-registered real subcommand:
+      `add_subcommand()` auto-inserts a `help` Command with
+      `_is_help_subcommand = True`; dispatch path detects the flag and routes to
+      sibling help
+- [x] `.disable_help_subcommand()` opt-out API on `Command`
+- [x] Child help includes inherited persistent flags under a "Global Options:"
+      heading
+- [x] Usage line shows full command path: `app search [OPTIONS] PATTERN`
+
+#### Step 5 — Error handling
+
+- [x] Unknown subcommand:
+      `"Unknown command '<name>'. Available commands: search, init"`
+- [x] Errors inside child parse: prefix with command path for clarity (e.g.
+      `"app search: Option '--foo' requires a value"`)
+- [x] Exit codes consistent with current behavior (exit 2 for parse errors)
+- [x] `allow_positional_with_subcommands()` — guard preventing accidental mixing
+      of positional args and subcommands on the same Command (following
+      cobra/clap convention); requires explicit opt-in
+
+#### Step 6 — Tests
+
+- [x] Create `tests/test_subcommands.mojo` (Step 0 + Step 1)
+- [x] Step 1: `Command.subcommands` empty initially
+- [x] Step 1: `add_subcommand()` populates list and preserves child args
+- [x] Step 1: Multiple subcommands ordered correctly
+- [x] Step 1: `ParseResult.subcommand` defaults to `""`
+- [x] Step 1: `has_subcommand_result()` / `get_subcommand_result()` lifecycle
+- [x] Step 1: `ParseResult.__copyinit__` preserves subcommand data
+- [x] Step 1: `parse_arguments()` unchanged when no subcommands registered
+- [x] Step 2: Basic dispatch: `app search pattern` → subcommand="search",
+      positionals=["pattern"]
+- [x] Step 2: Root flag: `app --verbose search pattern` → root flag
+      verbose=true, child positional
+- [x] Step 2: Child flag: `app search --max-depth 3 pattern` → child value
+      max-depth=3
+- [x] Step 2: `--` stops subcommand dispatch: `app -- search` → positional
+      "search" on root
+- [x] Step 2: Unknown token with subcommands registered → positional on root
+- [x] Step 2: Child validation errors propagate
+- [x] Step 2: Root still validates own required args after dispatch
+- [x] Step 2b: `help` subcommand auto-added on first `add_subcommand()` call
+- [x] Step 2b: Only added once even with multiple `add_subcommand()` calls
+- [x] Step 2b: `help` appears after user subcommands in the list
+- [x] Step 2b: `_is_help_subcommand` flag set on auto-entry, not on user subs
+- [x] Step 2b: `disable_help_subcommand()` before `add_subcommand()` prevents
+      insertion
+- [x] Step 2b: `disable_help_subcommand()` after `add_subcommand()` removes it
+- [x] Step 2b: Normal dispatch unaffected by the presence of auto-added help sub
+- [x] Step 2b: With help disabled, token `"help"` becomes a root positional
+- [x] Step 3: Persistent flag on root works without subcommand
+- [x] Step 3: Persistent flag before subcommand → in root result; pushed down to
+      child result
+- [x] Step 3: Persistent flag after subcommand → in child result; bubbled up to
+      root result
+- [x] Step 3: Short-form persistent flag works in both positions
+- [x] Step 3: Persistent value-taking option (not just flag) syncs both ways
+- [x] Step 3: Absent persistent flag defaults to False in both root and child
+- [x] Step 3: Non-persistent root flag after subcommand causes unknown-option
+      error
+- [x] Step 3: Conflict detection — long_name clash raises at `add_subcommand()`
+      time
+- [x] Step 3: Conflict detection — short_name clash raises at `add_subcommand()`
+      time
+- [x] Step 3: No conflict raised for non-persistent args with the same name
+- [x] Step 5: Adding positional after subcommand without opt-in raises error
+- [x] Step 5: Adding subcommand after positional without opt-in raises error
+- [x] Step 5: `allow_positional_with_subcommands()` opt-in enables both
+      directions
+- [x] Step 5: Non-positional args (flags/options) unaffected by guard
+
+#### Step 7 — Documentation & examples
+
+- [x] Add `examples/mgrep.mojo` — grep-like CLI demonstrating all single-command
+      features
+- [x] Add `examples/mgit.mojo` — git-like CLI demonstrating subcommands, nested
+      subcommands, persistent flags, and all group constraints
+- [x] Update user manual with subcommand usage patterns
+- [x] Document persistent flag behavior and conflict rules
+
+### Phase 5: Polish (v0.3 shipped; remaining features for v0.4+)
+
+Some features shipped in v0.3.0, others completed in the unreleased update
+branch. Remaining items may be deferred to v0.4+.
+
+Note that this phase is long-term polish and enhancement. If I find any other
+important or interesting features during development, I may add them here as
+well.
+
+On the contrary, Phase 6 and Phase 7 are more about specific topics (e.g., CJK,
+declarative API, auto dispatch...) that require some dedicated design and
+implementation work. There might be standalone planning documents for these
+topics.
+
+#### Pre-requisite refactor
+
+Before adding Phase 5 features, further decompose `parse_arguments()` for
+readability and maintainability:
+
+- [x] Extract `_parse_long_option()` — long option parsing (`--key`,
+      `--key=value`, `--no-X` negation, prefix matching,
+      count/flag/number_of_values/value)
+- [x] Extract `_parse_short_single()` — single-character short option parsing
+      (`-k`, `-k value`)
+- [x] Extract `_parse_short_merged()` — merged short flags and attached values
+      (`-abc`, `-ofile.txt`)
+- [x] Extract `_dispatch_subcommand()` — subcommand matching, child argv
+      construction, persistent arg injection, bidirectional sync
+- [x] Verify all 241 tests still pass after this refactor
+- [x] Extract `_help_usage_line()` — description + usage line with positionals /
+      COMMAND / OPTIONS
+- [x] Extract `_help_positionals_section()` — "Arguments:" section with dynamic
+      padding
+- [x] Extract `_help_options_section()` — "Options:" and "Global Options:"
+      sections (local + persistent, built-in --help/--version)
+- [x] Extract `_help_commands_section()` — "Commands:" section listing
+      subcommands
+- [x] Extract `_help_tips_section()` — "Tips:" section with `--` hint and
+      user-defined tips
+- [x] Verify all 241 tests still pass after help refactor
+- [x] Extract `utils.mojo` — move ANSI colour constants (`_RESET`, `_BOLD_UL`,
+      `_RED`…`_ORANGE`, default colour aliases) and utility functions
+      (`_looks_like_number`, `_is_ascii_digit`, `_resolve_color`) into a
+      dedicated internal module; `command.mojo` imports them
+- [x] Verify all tests still pass after utils extraction
+
+#### Features
+
+- [x] **Typo suggestions** — "Unknown option '--vrb', did you mean '--verbose'?"
+      (Levenshtein distance; cobra, argparse 3.14)
+- [x] **Flag counter with ceiling** — `.count().max[3]()` caps `-vvvvv` at 3
+      with a warning (no major library has this)
+- [x] **Range clamping** — `.range[min, max]().clamp()` adjusts out-of-range
+      values to the nearest boundary with a warning instead of erroring (Click
+      has `IntRange(clamp=True)`)
+- [x] **Colored error output** — ANSI styled error messages (help output already
+      colored)
+- [x] **Shell completion script generation** — `generate_completion["bash"]()`
+      (compile-time validated) or `generate_completion("bash")` (runtime,
+      case-insensitive) returns a complete completion script; static approach
+      (no runtime hook), covers options/flags/choices/subcommands (clap
+      `generate`, cobra `completion`, click `shell_complete`)
+- [x] **Argument groups in help** — `.group["name"]()` groups related options
+      under headings; independent per-section padding; persistent args stay in
+      "Global Options:" (argparse `add_argument_group`) (PR #17)
+- [x] **Usage line customisation** — two approaches: (1) manual override via
+      `.usage("...")` for git-style hand-written usage strings (e.g.
+      `[-v | --version] [-h | --help] [-C <path>] ...`); (2) auto-expanded mode
+      that enumerates every flag inline like argparse (good for small CLIs,
+      noisy for large ones). Current default `[OPTIONS]` / `<COMMAND>` is the
+      cobra/clap/click convention and is the right default.
+- [x] **Partial parsing** — `parse_known_arguments()` collects unrecognised
+      options instead of erroring; access via `result.get_unknown_arguments()`
+      (argparse `parse_known_args`) (PR #13)
+- [x] **Require equals syntax** — `.require_equals()` forces `--key=value`,
+      disallows `--key value` (clap `require_equals`) (PR #12)
+- [x] **Default-if-no-value** — `.default_if_no_value["val"]()`: `--opt` uses
+      fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR
+      #12)
+- [x] **Response file** — `mytool @args.txt` expands file contents as arguments
+      (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Currently
+      disabled — Mojo compiler deadlock under `-D ASSERT=all`, still on Mojo
+      v1.1.0*
+- [x] **Argument parents** — `add_parent(parent)` copies all arguments and group
+      constraints from a parent Command, sharing definitions across multiple
+      commands (argparse `parents`) (PR #25)
+- [x] **Interactive prompting** — prompt user for missing required args instead
+      of erroring (Click `prompt=True`) (PR #23)
+- [x] **Password / masked input** — hide typed characters for sensitive values
+      (Click `hide_input=True`)
+- [x] **Confirmation option** — `confirmation_option()` or
+      `confirmation_option["prompt"]()` auto-registers `--yes`/`-y` flag;
+      prompts user for confirmation after parsing; aborts on decline or
+      non-interactive stdin (Click `confirmation_option`) (PR #26)
+- [x] **Auto-dispatch** — `set_run_function(handler)` registers a
+      `def (ParseResult) raises` function pointer on a `Command`; `execute()`
+      parses and walks the subcommand chain to invoke the matching handler;
+      `_execute_with_arguments(args)` provides the same dispatch for testing.
+      **Lifecycle hooks** (PersistentPreRun/PreRun/PostRun/PersistentPostRun)
+      are not yet implemented — they depend on auto-dispatch and will be added
+      in a future release.
+- [x] **Remainder positional** — `.remainder()` consumes ALL remaining tokens
+      (including `-` prefixed); at most one per command, must be last positional
+      (argparse `nargs=REMAINDER`, clap `trailing_var_arg`) (PR #13)
+- [x] **Allow hyphen values** — `.allow_hyphen_values()` on positional accepts
+      dash-prefixed tokens as values without `--`; remainder enables this
+      automatically (clap `allow_hyphen_values`) (PR #13)
+- [ ] **Regex validation** — `.pattern(r"^\d{4}-\d{2}-\d{2}$")` validates value
+      format (no major library has this)
+- [x] **Mutual implication** — `command.implies("debug", "verbose")` — after
+      parsing, if the trigger flag is set, automatically set the implied flag;
+      support chained implication (`debug → verbose → log`); detect circular
+      cycles at registration time (no major library has this built-in)
+- [ ] **Stdin value** — `.stdin_value()` on `Argument` — when parsed value is
+      `"-"`, read from stdin; Unix convention
+      (`cat file.txt | mytool --input -`) (cobra supports; depends on Mojo stdin
+      API)
+- [x] **Subcommand aliases** — `sub.command_aliases(["co"])` registers shorthand
+      names; typo suggestions and completions search aliases too (cobra
+      `Command.Aliases`, clap `Command::alias`)
+- [x] **Hidden subcommands** — `sub.hidden()` — exclude from the "Commands:"
+      section in help, completions, and error messages; dispatchable by exact
+      name or alias (clap `Command::hide`, cobra `Hidden`) (PR #9)
+- [x] **`NO_COLOR` env variable** — honour the
+      [no-color.org](https://no-color.org/) standard: if env `NO_COLOR` is set
+      (any value, including empty), suppress all ANSI colour output; lower
+      priority than explicit `.color(False)` API call (PR #9)
+- [x] **Value-name wrapping control** —
+      `.value_name[wrapped: Bool = True]("NAME")` displays custom value names in
+      `<NAME>` by default (matching clap/cargo/pixi/git convention); pass
+      `False` for bare display (PR #17)
+- [ ] **Extend `implies()`** - support value-taking options with a default
+      value, e.g., `command.implies("debug", "output", "debug.log")` — when
+      `--debug` is set, auto-set `--output` to `"debug.log"`. Currently
+      `implies()` only supports flag/count targets (same as cobra in Go).
+      Revisit when there is a concrete use case.
+- [x] **80-character help formatting** — wrap help descriptions at 80 columns
+      with proper indentation (no major library does this by default; users
+      typically pipe through `less` or rely on terminal wrapping)
+- [ ] **Comptime string concatenation** — 將 String 的拼接 comptime
+      化，避免在運行時進行多次拼接（例如錯誤消息、幫助文本等），提升性能。
+- [x] **Even more beautiful and colourful help output** — six fine-grained
+      colour roles (`program_color`, `short_option_color`, `long_option_color`,
+      `value_color`, `positional_color`, `command_color`) matching `argparse`'s
+      differentiation; lowercase section headings (`usage:`, `options:`,
+      `commands:`); dynamic terminal-width detection via `ioctl(TIOCGWINSZ)`;
+      pixi-style multi-line error diagnostics with coloured `error:` / `tip:`
+      labels and coloured usage line. `argument_color` remains as a convenience
+      setter for all six roles at once.
+
+#### Explicitly Out of Scope in This Phase
+
+These will **NOT** be implemented in this phase, but will be considered in
+future.
+
+- Derive/decorator-based API (no macros in Mojo)
+- Usage-string-driven parsing (docopt style)
+- Config file parsing (users can pre-process argv)
+- Environment variable fallback
+- Template-based help formatting
+
+### Phase 6: CJK Features (hopefully for v0.4 because I need it personally)
+
+ArgMojo's differentiating features — no other CLI library addresses CJK-specific
+pain points.
+
+這部分主要是為了讓 ArgMojo 在 CJK
+環境下的使用體驗更好，解決一些常見的問題，比如幫助信息對齊、全角字符自動轉半角、CJK
+標點檢測等。畢竟我總是忘了切換輸入法，打出中文的全角標點，然後被 CLI 報錯。
+
+#### 6.1 CJK-aware help formatting ✓
+
+**Problem:** All Western CLI libraries (argparse, cobra, clap) assume 1 char = 1
+column. CJK characters occupy 2 terminal columns (full-width), causing
+misaligned `--help` output when descriptions mix CJK and ASCII:
+
+```bash
+  --format <FMT>   Output format              ← aligned
+  --ling           使用宇浩靈明編碼           ← CJK chars each take 2 columns, misaligned
+```
+
+##### Implementation (CJK alignment)
+
+- [x] Implement `_display_width(s: String) -> Int` in `utils.mojo`, traversing
+      each code point:
+  - CJK Unified Ideographs, CJK Ext-A/B/C/D/E/F/G/H/I/J, fullwidth forms → width
+    2
+  - Other visible characters → width 1 (zero-width joiners and combining marks
+    are rare in CLI help text and are not special-cased)
+- [x] Replace `len()` with `_display_width()` in all help formatting padding
+      calculations (`_help_positionals_section`, `_help_options_section`,
+      `_help_commands_section`)
+- [x] Add tests with mixed CJK/ASCII help text verifying column alignment
+
+**References:** POSIX `wcwidth(3)`, Python `unicodedata.east_asian_width()`,
+Rust `unicode-width` crate.
+
+##### CJK-aware word wrapping (TODO)
+
+The current `_wrap_text_at` and `_wrap_description` helpers only split on ASCII
+spaces. This means:
+
+- CJK text without spaces (e.g. continuous Chinese/Japanese) will never be
+  broken and may exceed the 80-column width.
+- Unicode whitespace characters (e.g. `U+3000` ideographic space, `U+2003` em
+  space) are not recognized as split points.
+
+Improvements needed:
+
+- [ ] Split on all Unicode whitespace (not just ASCII space)
+- [ ] Add fallback to break long CJK tokens by codepoint/display-width when a
+      single token exceeds the target width
+
+#### 6.2 Full-width → half-width auto-correction ✓
+
+**Problem:** CJK users frequently forget to switch input methods, typing
+full-width ASCII:
+
+- `－－ｖｅｒｂｏｓｅ` instead of `--verbose`
+- `＝` instead of `=`
+
+##### Implementation (fullwidth correction)
+
+- [x] Implement `_fullwidth_to_halfwidth(token: String) -> String` in
+      `utils.mojo`:
+  - Full-width ASCII range: `U+FF01`–`U+FF5E` → subtract `0xFEE0` to get
+    half-width
+  - Full-width space `U+3000` → half-width space `U+0020`.
+    `--name\u3000yuhao\u3000--verbose` is originally scanned by `sys.argv` as a
+    single token with embedded full-width spaces, so we need to handle this case
+    too by replacing the original list of arguments with the corrected split.
+    There are also other spaces in the Unicode standard, we can also support
+    them by adding a method like `whitespace_characters(chars: List[String])`
+    that allows users to specify additional code points to treat as whitespace
+    (e.g. `U+2003 EM SPACE`).
+- [x] In `parse_arguments()`, scan each token before parsing; if full-width
+      characters are detected in option tokens (`--` or `-` prefixed),
+      auto-correct and print a coloured warning:
+
+  ```bash
+  warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
+  ```
+
+- [x] Only correct option names (tokens starting with `-`), **not** positional
+      values (user may intentionally input full-width content)
+- [x] Add `.disable_fullwidth_correction()` opt-out API on `Command`
+- [x] Add tests for full-width flag, full-width `=` in `--key＝value`, and
+      opt-out
+- [x] Let users know that this feature is by default on and can be disabled if
+      they prefer strict parsing.
+
+Note that the following punctuation characters are already handled by the
+full-width correction step, since they fall within the `U+FF01`–`U+FF5E` range:
+
+- `U+FF0D` FULLWIDTH HYPHEN-MINUS (－) → `U+002D` HYPHEN-MINUS (-)
+- `U+FF1A` FULLWIDTH COLON (：) → `U+003A` COLON (:)
+- `U+FF0C` FULLWIDTH COMMA (，) → `U+002C` COMMA (,)
+
+#### 6.3 CJK punctuation detection
+
+**Problem:** Users accidentally type Chinese punctuation:
+
+- `——verbose` (em-dash `U+2014` × 2) instead of `--verbose`
+- `--key：value` (full-width colon `U+FF1A`) instead of `--key=value`
+
+##### Implementation (CJK punctuation)
+
+- [x] Integrate with typo suggestion system — when a token fails to match any
+      known option, check for common CJK punctuation patterns before running
+      Levenshtein:
+  - `——` (`U+2014 U+2014`, 破折號) → `--` (note that `U+FF0D` full-width
+    hyphen-minus is already handled by the full-width correction step)
+- [ ] Add a mapping table of remaining common CJK punctuation to their ASCII
+      equivalents (e.g. `：` → `:`, `，` → `,`) and check for these patterns as
+      well.
+- [x] Produce specific error messages:
+
+  ```bash
+  error: unknown option '——verbose'. Did you mean '--verbose'? (detected Chinese em-dash ——)
+  ```
+
+- [x] Add `.disable_punctuation_correction()` opt-out API on `Command`.
+- [x] Add tests for each punctuation substitution.
+- [x] Let users know that this feature is by default on and can be disabled if
+      they prefer strict parsing.
+- [x] Add pre-parse CJK punctuation correction pass (converts em-dash to
+      hyphen-minus before parsing, same as full-width correction).
+- [x] Add error-recovery path in `_find_by_long()` (backup for when pre-parse is
+      disabled).
+- [x] Rewrite `_display_width()`, `_has_fullwidth_chars()`,
+      `_fullwidth_to_halfwidth()` using `codepoints()` API.
+- [x] Remove `_extra_whitespace_chars` field and `whitespace_characters()` API
+      (unnecessary complexity).
+
+### Phase 7: Nice-to-Have (Experimental)
+
+The features below are **not part of the core builder API**. They are split into
+sub-phases based on feasibility.
+
+#### Phase 7a: Feasible Now (Mojo 0.26.2)
+
+These features use capabilities already available in Mojo 0.26.2 and can be
+experimented with immediately.
+
+| Feature                        | Inspiration                 | Status   | Planning doc                                               |
+| ------------------------------ | --------------------------- | -------- | ---------------------------------------------------------- |
+| Declarative / struct-based API | swift-argument-parser       | **Done** | [declarative_api_planning.md](declarative_api_planning.md) |
+| Auto-dispatch (run functions)  | cobra `Run` / swift `run()` | **Done** | Implemented in command.mojo                                |
+| Pre/Post lifecycle hooks       | cobra `PreRun` / `PostRun`  | Planned  | Depends on auto-dispatch (now available)                   |
+
+**Declarative API summary** (see
+[full design doc](declarative_api_planning.md)):
+
+- **Layered on builder** — `parser.mojo` is a consumer of `Command` +
+  `Argument`; no new parsing engine.
+- **Swift-inspired** — Parametric wrapper types (`Option[T, ...]`, `Flag[...]`,
+  `Positional[T, ...]`, `Count[...]`) mirror Swift's property wrappers
+  (`@Option`, `@Flag`, `@Argument`). `Parsable` trait mirrors `ParsableCommand`.
+- **Two innovations beyond Swift**: (1) `to_command()` exposes the underlying
+  `Command` for builder-level tweaks (groups, implications, coloured help); (2)
+  `parse_full()` returns both typed struct + `ParseResult` for hybrid workflows.
+- **Optional** — Users who prefer the builder API are completely unaffected.
+  Zero change to existing code.
+
+**Auto-dispatch** — Implemented via `set_run_function()` + `execute()`.
+Registers a non-capturing function pointer (`def (ParseResult) raises`) on each
+`Command`. `execute()` parses `sys.argv()`, walks the subcommand chain, and
+invokes the leaf handler. `_execute_with_arguments(args)` provides the same
+dispatch for testing with explicit argument lists. Works with aliases, nested
+subcommands, and persistent flags. Closures cannot be stored as struct fields in
+Mojo 0.26.2 (only non-capturing function pointers via the `def (...) raises`
+type), so handlers must be free functions.
+
+**Pre/Post lifecycle hooks** — Now unblocked by auto-dispatch. Straightforward
+extension: add `_pre_run_function` / `_post_run_function` fields with the same
+function pointer type. Execution order: PersistentPreRun → PreRun → Run →
+PostRun → PersistentPostRun. Will be implemented in a future release.
+
+#### Phase 7b: Blocked on Mojo Language Features
+
+These features require Mojo capabilities that do not exist yet. They will remain
+blocked until upstream Mojo adds them.
+
+| Feature                        | Inspiration                          | Blocked on                |
+| ------------------------------ | ------------------------------------ | ------------------------- |
+| Derive (macro/decorator-based) | clap `#[derive(Parser)]`             | Mojo proc macros          |
+| Enum → type mapping            | clap / swift `ExpressibleByArgument` | Reflection on enums       |
+| Subcommand variant dispatch    | clap / swift `CommandGroup`          | Sum types / tagged unions |
+
+## 6. Parsing Algorithm
+
+```txt
+Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
+
+1. Initialize ParseResult and register positional names
+2. If `help_on_no_arguments` is enabled and only argv[0] exists:
+    print help and exit
+3. Loop from argv[1] with cursor i:
+    ├─ If args[i] == "--":
+    │     Enter positional-only mode
+    ├─ If positional-only mode is on:
+    │     Append token to positional list
+    ├─ If args[i] == "--help" or "-h" or "-?":
+    │     Print help and exit
+    ├─ If args[i] == "--version" or "-V":
+    │     Print version and exit
+    ├─ If args[i].startswith("--"):
+    │     → _parse_long_option(raw_args, i, result) → new i
+    │       (--key=value, --no-key negation, prefix match, count/flag/number_of_values/value)
+    ├─ If args[i].startswith("-") and len > 1:
+    │     ├─ IF _looks_like_number(token) AND (allow_negative_numbers OR no digit short opts):
+    │     │     Treat as positional argument (negative number passthrough)
+    │     ├─ IF allow_negative_expressions AND first char after '-' is not a registered short:
+    │     │     Treat as positional argument (negative expression passthrough)
+    │     └─ ELSE:
+    │           ├─ Single char → _parse_short_single(key, raw_args, i, result) → new i
+    │           └─ Multi char  → _parse_short_merged(key, raw_args, i, result) → new i
+    ├─ If subcommands registered:
+    │     → _dispatch_subcommand(arg, raw_args, i, result) → new i or -1
+    │       (match → build child argv, inject persistent, recurse, sync; no match → -1)
+    └─ Otherwise:
+            Treat as positional argument
+4. Apply defaults for missing arguments (named + positional slots)
+5. Validate:
+    ├─ Required arguments
+    ├─ Positional count (too many positionals)
+    ├─ Mutually exclusive groups
+    ├─ Required-together groups
+    ├─ One-required groups
+    ├─ Conditional requirements
+    ├─ Count ceilings (clamp + warn)
+    └─ Numeric range constraints (error or clamp + warn)
+6. Return ParseResult
+```
+
+### 6.1 Subcommand parsing flow
+
+```txt
+Input: ["app", "--verbose", "search", "pattern", "--max-depth", "3"]
+
+1. Root parse_arguments() begins normal cursor walk from argv[1]
+2. "--verbose" → starts with "--" → parsed as root-level long option (flag)
+3. "search" → no "-" prefix → check registered subcommands:
+    ├─ match found → record subcommand = "search"
+    ├─ no match + subcommands registered → error (or treat as positional)
+    └─ no subcommands registered → treat as positional (existing behavior)
+4. Build child argv: ["app search", "pattern", "--max-depth", "3"]
+   (argv[0] = command path for child help/error messages)
+5. Inject persistent args from root into child's arg list
+6. Call child.parse_arguments(child_argv) → child runs its own full parse loop
+   (same code path: long/short/merged/positional/defaults/validation)
+7. Store child ParseResult in root result:
+    ├─ result.subcommand = "search"
+    └─ result.subcommand_result = child_result
+8. Root runs _apply_defaults() and _validate() for root-level args only
+   (child already validated itself in step 6)
+9. Return root ParseResult to application code
+```
+
+## 7. Naming Conventions
+
+ArgMojo follows a consistent naming philosophy. When in doubt, apply these
+priorities **in order**:
+
+1. **Internal consistency** — every name within ArgMojo should follow the same
+   pattern. If we use `Argument`, then methods that refer to arguments should
+   also spell out the word.
+2. **Mojo / Python style consistency** — prefer `snake_case` for functions and
+   methods, `PascalCase` for types. Follow Mojo stdlib conventions where they
+   exist.
+3. **Cross-language familiarity** — when a concept is well-known across CLI
+   libraries (cobra, clap, Click, argparse), keep the name recognisable, but do
+   **not** import abbreviations that conflict with priority 1.
+
+### Decisions made
+
+| Abbreviation (rejected)   | Full form (adopted)      | Rationale                                                              |
+| ------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `Arg`                     | `Argument`               | Internal struct name; aligns with `add_argument()`                     |
+| `parse_args()`            | `parse_arguments()`      | Consistent with `Argument` naming; `parse_args` was an argparse legacy |
+| `help_on_no_args()`       | `help_on_no_arguments()` | Same reason                                                            |
+| `_aliases`                | `_command_aliases`       | Disambiguates from `Argument.aliases()` (option-level aliases)         |
+| `nargs()` / `nargs_count` | `number_of_values`       | Full descriptive name                                                  |
+
+## 8. Notes on Mojo versions
+
+Here are some important Mojo-specific patterns used throughout this project.
+Mojo is rapidly evolving, so these may need to be updated in the future. As of
+ArgMojo v0.9.0, the codebase targets **Mojo v1.1.0**. (v0.8.0 targeted Mojo
+v1.0.0, the first stable release.)
+
+These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji)
+too.
+
+| Pattern                             | What & Why                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `"""Tests..."""`                    | Docstring convention                                                       |
+| `@fieldwise_init`                   | Replaces `@value`                                                          |
+| `var self`                          | Used for builder methods instead of `owned self`                           |
+| `String()`                          | Explicit conversion; `str()` is not available                              |
+| `[a, b, c]` for `List`              | List literal syntax instead of variadic constructor                        |
+| `.copy()`                           | Explicit copy for non-ImplicitlyCopyable types                             |
+| `Movable` conformance               | Required for structs stored in containers                                  |
+| `Deinitable`                        | Renamed from `ImplicitlyDestructible` in Mojo v1.0.0                       |
+| `__init__(out self, *, deinit move: Self)` | Move constructor; the argument was called `take` before Mojo v1.0.0 |
+| `reflect[T]`                        | Unified reflection API: `field_count()`, `field_names()`, `field_types()`, `field_ref[i]()`, `name()` |
+| `comptime assert conforms_to(...)`  | Replaces `constrained[]` and the internal `_constrained_field_conforms_to`  |
+| `Pointer(to=x).unsafe_write(v)`     | Replaces `UnsafePointer(to=x).init_pointee_move(v)`                        |
+| `Array[T, N]`                       | Fixed-size, stack-allocated buffer; preferred over `List` for FFI scratch space |
+| Explicit `__deinit__()`             | Needed to break the deduction cycle of recursive structs, e.g., a `Command` holding `List[Command]` |
+
+## 9. Pending Renames
+
+| Current Name      | Target Name  | Condition                                                                                                                                                                                        |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.alias_name[]()` | `.alias[]()` | ✓ Done. Mojo v1.1.0 removed the `alias` keyword. `.alias[]()` and the wrappers' `alias=` parameter are added; `.alias_name[]()` and `alias_name=` are deprecated and will be removed in v0.10.0. |
