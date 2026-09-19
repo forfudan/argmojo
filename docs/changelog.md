@@ -3,37 +3,70 @@
 This document tracks all notable changes to ArgMojo, including new features, API
 changes, bug fixes, and documentation updates.
 
-## Unreleased
+## 20260919 (v0.9.0)
 
-ArgMojo now targets Mojo **v1.1.0** (`mojo = ">=1.1.0, <1.2.0"`). The library
-needed no source changes for the new compiler; the update only clears the new
-warnings.
+ArgMojo v0.9.0 brings ArgMojo to Mojo **v1.1.0**. The library needed no source
+changes for the new compiler. The release also takes the first chance the new
+compiler gives: `alias` is no longer a Mojo keyword, so `.alias_name[]()` becomes
+`.alias[]()`. The old spelling still works in this release.
 
-1. Document `Count`'s `max` parameter in its `Parameters:` block. Mojo v1.1.0's
-   `mojo doc` no longer mistakes `max` for the builtin, and now warns when the
-   entry is missing, so the prose workaround is gone.
-2. Two test docstrings now start with a capital letter, which the v1.1.0
-   compiler checks.
-3. Response file expansion stays disabled: re-enabling it still hangs the
-   compiler on `tests/test_parse.mojo` under `-D ASSERT=all` on Mojo v1.1.0.
+ArgMojo v0.9.0 targets Mojo v1.1.0 (`mojo = ">=1.1.0, <1.2.0"`). If you are
+still on Mojo v1.0.0, stay on ArgMojo v0.8.0.
 
-### ⭐️ New
+### ⭐️ New in v0.9.0
 
 1. Rename `.alias_name[]()` to `.alias[]()`, and the `alias_name=` parameter of
-   `Option`, `Flag` and `Count` to `alias=`. The old names were a workaround for
-   `alias` being a Mojo keyword, which Mojo v1.1.0 removed:
+   `Option`, `Flag` and `Count` to `alias=` (PR #62). The old names were a
+   workaround for `alias` being a Mojo keyword, which Mojo v1.1.0 removed:
 
    ```mojo
    Argument("colour", help="Colour theme").long["colour"]().alias["color"]()
    var verbose: Count[short="v", alias="loud"]
    ```
 
-   Both old spellings still work for now. `.alias_name[]()` is marked
-   `@deprecated` and warns at compile time. `alias_name=` cannot warn (Mojo has
-   no way to deprecate one struct parameter), so its names are simply merged
-   with those given in `alias=`. Both will be removed in **v0.10.0**; to
-   migrate, replace `.alias_name[` with `.alias[` and `alias_name=` with
-   `alias=`.
+### ⚠️ Deprecations in v0.9.0
+
+1. `.alias_name[]()` and the `alias_name=` wrapper parameter are deprecated and
+   will be removed in **v0.10.0**. To migrate, replace `.alias_name[` with
+   `.alias[` and `alias_name=` with `alias=`.
+
+   `.alias_name[]()` is marked `@deprecated`, so the compiler points at every
+   call. `alias_name=` cannot warn, because Mojo has no way to deprecate a
+   single struct parameter; until v0.10.0 its names are merged with those
+   given in `alias=`, so a struct that uses both keeps all its aliases.
+
+### 🔄 Mojo v1.1.0 migration (PR #61)
+
+1. Update the Mojo dependency to `>=1.1.0, <1.2.0`.
+2. Document `Count`'s `max` parameter in its `Parameters:` block. In v1.0.0,
+   `mojo doc` mistook `max` for the builtin function and reported it as an
+   unknown parameter, so it was described in prose instead. Mojo v1.1.0 fixes
+   that and now warns when the entry is missing.
+3. Two test docstrings now start with a capital letter, which the v1.1.0
+   compiler checks.
+
+### 🧪 Tests in v0.9.0
+
+1. `tests/check_schema_errors.sh` gains a second group of checks for
+   deprecated APIs: each snippet must compile, run, print the expected output
+   and emit its deprecation warning. It covers `.alias_name[]()`. These live in
+   the script rather than the test files so that the regular test build stays
+   free of warnings.
+2. New declarative tests cover `alias=` on `Option`, `Flag` and `Count`, the
+   deprecated `alias_name=`, and the two used together.
+
+### 📖 Documentation in v0.9.0
+
+1. The README gains a Mojo compatibility table listing the Mojo version each
+   ArgMojo release targets.
+2. The user manual, README and planning documents use `.alias[]()` and
+   `alias=` throughout, and note the deprecation.
+
+### ⚠️ Known issues in v0.9.0
+
+1. Response file expansion (`myapp @args.txt`) remains disabled. Re-enabling
+   it still makes the compiler hang on `tests/test_parse.mojo` under
+   `-D ASSERT=all` with Mojo v1.1.0.
 
 ## 20260812 (v0.8.0)
 

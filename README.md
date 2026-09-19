@@ -41,7 +41,8 @@ a `Parsable` struct, call `MyArgs.parse()`, get typed results). You can mix both
 freely — put most of your arguments in a struct and drop down to builder methods
 whenever you need finer control.
 
-The main branch targets Mojo v1.1.0. ArgMojo v0.8.0 targets Mojo v1.0.0.
+ArgMojo v0.9.0 targets Mojo v1.1.0. If you are still on Mojo v1.0.0, use
+ArgMojo v0.8.0 (see [Mojo compatibility](#mojo-compatibility)).
 
 ArgMojo currently supports:
 
@@ -177,6 +178,26 @@ Then, you can install ArgMojo using any of these methods:
     ```
 
     Then run `pixi install` to download and install the package.
+
+### Mojo compatibility
+
+Each ArgMojo release is built and tested against one Mojo version. Pick the
+release that matches your compiler:
+
+| ArgMojo | Mojo      |
+| ------- | --------- |
+| v0.9.0  | v1.1.0    |
+| v0.8.0  | v1.0.0    |
+| v0.7.0  | v1.0.0b2  |
+| v0.6.0  | v1.0.0b1  |
+| v0.5.0  | v0.26.2   |
+| v0.4.0  | v0.26.2   |
+| v0.3.0  | v0.26.1   |
+| v0.2.0  | v0.26.1   |
+| v0.1.0  | v0.26.1   |
+
+For example, to stay on Mojo v1.0.0, pin the dependency with
+`argmojo = "==0.8.0"`.
 
 ### Using mojoc
 

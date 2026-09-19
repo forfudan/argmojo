@@ -1130,8 +1130,8 @@ priorities **in order**:
 
 Here are some important Mojo-specific patterns used throughout this project.
 Mojo is rapidly evolving, so these may need to be updated in the future. As of
-ArgMojo v0.8.0, the codebase targets **Mojo v1.0.0**, the first stable release;
-the main branch now targets **Mojo v1.1.0**.
+ArgMojo v0.9.0, the codebase targets **Mojo v1.1.0**. (v0.8.0 targeted Mojo
+v1.0.0, the first stable release.)
 
 These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji)
 too.
