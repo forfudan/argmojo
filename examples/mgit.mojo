@@ -712,7 +712,7 @@ def generate_log_subcommand() raises -> Command:
     command.add_argument(
         Argument("format", help="Pretty-print format")
         .long["format"]()
-        .alias_name["pretty"]()
+        .alias["pretty"]()
         .choice["oneline"]()
         .choice["short"]()
         .choice["medium"]()
@@ -821,7 +821,7 @@ def generate_diff_subcommand() raises -> Command:
     command.add_argument(
         Argument("staged", help="Show staged changes")
         .long["staged"]()
-        .alias_name["cached"]()
+        .alias["cached"]()
         .flag()
     )
     command.add_argument(

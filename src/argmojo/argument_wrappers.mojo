@@ -81,7 +81,8 @@ struct Option[
     long: StringLiteral = "",
     short: StringLiteral = "",
     help: StringLiteral = "",
-    alias_name: StringLiteral = "",
+    alias: StringLiteral = "",
+    alias_name: StringLiteral = "",  # Deprecated: use `alias`; removed in v0.10.0.
     # -- Value defaults & validation --
     default: StringLiteral = "",
     required: Bool = False,
@@ -121,7 +122,9 @@ struct Option[
             Empty = auto from field name.
         short: Short option character (e.g. ``"o"`` for ``-o``).
         help: Help text shown in ``--help`` output.
-        alias_name: Comma-separated alias long names.
+        alias: Comma-separated alias long names.
+        alias_name: Deprecated spelling of ``alias``, removed in v0.10.0;
+            its names are added to those given in ``alias``.
         default: Default value as a string literal.
         required: If True, the option must be provided.
         choices: Comma-separated allowed values.
@@ -249,6 +252,9 @@ struct Option[
         argument._long_name = long_name
         comptime if Self.short != "":
             argument._short_name = String(Self.short)
+        comptime if Self.alias != "":
+            for a in String(Self.alias).split(","):
+                argument._alias_names.append(String(a))
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
                 argument._alias_names.append(String(a))
@@ -349,7 +355,8 @@ struct Flag[
     long: StringLiteral = "",
     short: StringLiteral = "",
     help: StringLiteral = "",
-    alias_name: StringLiteral = "",
+    alias: StringLiteral = "",
+    alias_name: StringLiteral = "",  # Deprecated: use `alias`; removed in v0.10.0.
     # -- Argument type --
     negatable: Bool = False,
     # -- Parsing behaviour --
@@ -368,7 +375,9 @@ struct Flag[
         long: Long flag name. Empty = auto from field name.
         short: Short flag character.
         help: Help text shown in ``--help`` output.
-        alias_name: Comma-separated alias long names.
+        alias: Comma-separated alias long names.
+        alias_name: Deprecated spelling of ``alias``, removed in v0.10.0;
+            its names are added to those given in ``alias``.
         negatable: If True, generate ``--flag`` / ``--no-flag`` pair.
         persistent: Inherited by subcommands.
         hidden: Hide from help output.
@@ -463,6 +472,9 @@ struct Flag[
         argument._long_name = long_name
         comptime if Self.short != "":
             argument._short_name = String(Self.short)
+        comptime if Self.alias != "":
+            for a in String(Self.alias).split(","):
+                argument._alias_names.append(String(a))
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
                 argument._alias_names.append(String(a))
@@ -713,7 +725,8 @@ struct Count[
     long: StringLiteral = "",
     short: StringLiteral = "",
     help: StringLiteral = "",
-    alias_name: StringLiteral = "",
+    alias: StringLiteral = "",
+    alias_name: StringLiteral = "",  # Deprecated: use `alias`; removed in v0.10.0.
     # -- Argument type --
     max: Int = 0,
     # -- Parsing behaviour --
@@ -734,7 +747,9 @@ struct Count[
         long: Long flag name. Empty = auto from field name.
         short: Short flag character.
         help: Help text shown in ``--help`` output.
-        alias_name: Comma-separated alias long names.
+        alias: Comma-separated alias long names.
+        alias_name: Deprecated spelling of ``alias``, removed in v0.10.0;
+            its names are added to those given in ``alias``.
         max: Ceiling for the count. 0 = no ceiling; occurrences beyond the
             ceiling are clamped to it with a warning.
         persistent: Inherited by subcommands.
@@ -831,6 +846,9 @@ struct Count[
         argument._long_name = long_name
         comptime if Self.short != "":
             argument._short_name = String(Self.short)
+        comptime if Self.alias != "":
+            for a in String(Self.alias).split(","):
+                argument._alias_names.append(String(a))
         comptime if Self.alias_name != "":
             for a in String(Self.alias_name).split(","):
                 argument._alias_names.append(String(a))

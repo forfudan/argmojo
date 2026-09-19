@@ -3,6 +3,8 @@
 #
 # Each test writes a small .mojo file that should FAIL to compile.
 # If it compiles, the test fails (the schema check is missing).
+# A second group checks that deprecated APIs still compile and run, and that
+# they emit their deprecation warning.
 #
 # Usage:  bash tests/check_schema_errors.sh
 
@@ -35,6 +37,37 @@ check_compile_error() {
             echo "      got:      $(head -5 "$TMPDIR/${name}.err")"
             FAIL=$((FAIL + 1))
         fi
+    fi
+}
+
+# Compiles and runs code that must SUCCEED while emitting a compiler warning.
+# Used for deprecated APIs, which cannot be called from the regular test files
+# without breaking their warning-free build.
+check_compile_warning() {
+    local name="$1"
+    local code="$2"
+    local expect_warning="$3"
+    local expect_output="$4"
+
+    local file="$TMPDIR/${name}.mojo"
+    printf '%s\n' "$code" > "$file"
+
+    if ! pixi run mojo run -I src "$file" >"$TMPDIR/${name}.out" 2>"$TMPDIR/${name}.err"; then
+        echo "FAIL  $name — expected successful compilation and run:"
+        echo "      got:      $(head -5 "$TMPDIR/${name}.err")"
+        FAIL=$((FAIL + 1))
+    elif ! grep -qF "$expect_warning" "$TMPDIR/${name}.err"; then
+        echo "FAIL  $name — expected warning not found:"
+        echo "      expected: $expect_warning"
+        FAIL=$((FAIL + 1))
+    elif ! grep -qxF "$expect_output" "$TMPDIR/${name}.out"; then
+        echo "FAIL  $name — unexpected program output:"
+        echo "      expected: $expect_output"
+        echo "      got:      $(head -5 "$TMPDIR/${name}.out")"
+        FAIL=$((FAIL + 1))
+    else
+        echo "PASS  $name"
+        PASS=$((PASS + 1))
     fi
 }
 
@@ -148,6 +181,24 @@ struct Bad(Parsable):
 def main() raises:
     _ = Bad.to_command()
 ' "range validation is integer-only"
+
+echo
+echo "=== Deprecated APIs: still work, but warn ==="
+echo
+
+# 10. .alias_name[]() forwards to .alias[]() and warns at compile time.
+check_compile_warning "builder_alias_name_deprecated" '
+from argmojo import Argument, Command
+def main() raises:
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("colour", help="Colour mode")
+        .long["colour"]()
+        .alias_name["color"]()
+    )
+    var result = command.parse_arguments(["test", "--color", "red"])
+    print("colour=" + result.get_string("colour"))
+' '`.alias_name[]()` is renamed to `.alias[]()`' "colour=red"
 
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="

@@ -42,7 +42,7 @@ struct Argument(Copyable, Movable, Writable):
     # Key-value map  (--def k=v --def k2=v2)  →  result.get_map("def")
     _ = Argument("def", help="...").long["define"]().short["D"]().map_option()
     # Aliases  (--colour and --color both work)
-    _ = Argument("colour", help="...").long["colour"]().alias_name["color"]()
+    _ = Argument("colour", help="...").long["colour"]().alias["color"]()
     # Deprecated argument  (still works but prints a warning to stderr)
     _ = Argument("old", help="...").long["old-flag"]().deprecated["Use --new-flag instead"]()
     # Default-if-no-value  (--compress → "gzip", --compress=bzip2 → "bzip2")
@@ -388,14 +388,14 @@ struct Argument(Copyable, Movable, Writable):
         self._short_name = name
         return self^
 
-    def alias_name[name: StringLiteral](var self) -> Self:
+    def alias[name: StringLiteral](var self) -> Self:
         """Sets an alternative long name for this argument.
 
         Any alias resolves to this argument during parsing.  For
-        example, ``.long["colour"]().alias_name["color"]()`` makes both
+        example, ``.long["colour"]().alias["color"]()`` makes both
         ``--colour`` and ``--color`` accepted.  Chain multiple calls
         for several aliases:
-        ``.alias_name["out"]().alias_name["fmt"]()``.
+        ``.alias["out"]().alias["fmt"]()``.
 
         Parameters:
             name: The alternative long option name (without ``--``).
@@ -418,6 +418,25 @@ struct Argument(Copyable, Movable, Writable):
         )
         self._alias_names.append(name)
         return self^
+
+    @deprecated(
+        "`.alias_name[]()` is renamed to `.alias[]()`; the old name will be"
+        " removed in ArgMojo v0.10.0"
+    )
+    def alias_name[name: StringLiteral](var self) -> Self:
+        """Deprecated alias of ``.alias[]()``; will be removed in v0.10.0.
+
+        Kept for one release (v0.9.x) so existing code keeps compiling.  The
+        method was named ``alias_name`` only because ``alias`` was a
+        Mojo keyword, which Mojo v1.1.0 removed.
+
+        Parameters:
+            name: The alternative long option name (without ``--``).
+
+        Returns:
+            Self with the alias registered.
+        """
+        return self^.alias[name]()
 
     # ── Argument type ──
 

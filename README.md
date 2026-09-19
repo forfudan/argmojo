@@ -92,7 +92,7 @@ ArgMojo currently supports:
   with `.range[1, 10]()`; optional clamping with `.clamp()`
 - **Conditional requirements**: `--output` required when `--save` is present
 - **Aliases**: alternative long names (e.g., `--colour` and `--color`) with
-  `.alias_name["color"]()`
+  `.alias["color"]()`
 - **Deprecated arguments**: emit a warning but continue parsing
 - **Custom tips**: add tip lines below the help message
 - **Mutual implication**: `--debug` automatically sets `--verbose` with

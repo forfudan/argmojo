@@ -270,7 +270,7 @@ Argument("name", help="...")
 ║   .group["Network"]()                         section heading in help
 ║                                               (named options only; ignored for positionals)
 ║   .hidden()                                   hide from --help          (any)
-║   .alias_name["alt"]().alias_name["other"]()  alternative --names       (named only)
+║   .alias["alt"]().alias["other"]()            alternative --names       (named only)
 ║   .deprecated["msg"]()                        deprecation warning       (any)
 ║   .persistent()                               inherit to subcommands    (named only)
 ║   .default_if_no_value["val"]()               default-if-no-value       (value only)
@@ -364,7 +364,7 @@ The table below shows which builder methods can be used with each argument mode.
 | `.value_name["FILE"]()` [^vname]       |      ✓      |     —     |     —      |        ✓        |
 | `.group["name"]()`                     |      ✓      |     ✓     |     ✓      |        —        |
 | `.hidden()`                            |      ✓      |     ✓     |     ✓      |        ✓        |
-| `.alias_name["alt"]()`                 |      ✓      |     ✓     |     ✓      |        —        |
+| `.alias["alt"]()`                      |      ✓      |     ✓     |     ✓      |        —        |
 | `.deprecated["msg"]()`                 |      ✓      |     ✓     |     ✓      |        ✓        |
 | `.persistent()`                        |      ✓      |     ✓     |     ✓      |        —        |
 | `.default_if_no_value["val"]()`        |      ✓      |     —     |     —      |        —        |
@@ -550,15 +550,22 @@ required.
 
 ### Aliases
 
-Register alternative long names for an argument with `.alias_name[]()`. The
-alias is validated at compile time (same rules as `.long[]()`: not empty, no `-`
-prefix, no `=`). Chain multiple calls for several aliases.
+Register alternative long names for an argument with `.alias[]()`. The alias is
+validated at compile time (same rules as `.long[]()`: not empty, no `-` prefix,
+no `=`). Chain multiple calls for several aliases.
+
+> `.alias[]()` was called `.alias_name[]()` until Mojo v1.1.0 freed the `alias`
+> keyword. The old name still works but is deprecated and emits a compiler
+> warning. Likewise, the `alias_name=` parameter of `Option`, `Flag` and `Count`
+> is deprecated in favour of `alias=`; it still works, without a warning, and
+> its names are merged with those given in `alias=`. Both old spellings will be
+> removed in ArgMojo v0.10.0.
 
 ```mojo
 command.add_argument(
     Argument("colour", help="Colour theme")
         .long["colour"]()
-        .alias_name["color"]()
+        .alias["color"]()
 )
 ```
 
@@ -579,7 +586,7 @@ Multiple aliases are supported by chaining:
 command.add_argument(
     Argument("output", help="Output format")
         .long["output"]()
-        .alias_name["out"]().alias_name["fmt"]()
+        .alias["out"]().alias["fmt"]()
 )
 ```
 
@@ -4721,7 +4728,7 @@ library has no built-in equivalent.
 | `.range[min,max]()`             | `type` + manual check             | `type=IntRange(…)`                               | `.value_parser(RangedI64…)`          | — [^xref-4]                       |
 | `.clamp()`                      | —                                 | `clamp=True` (on `IntRange`)                     | —                                    | —                                 |
 | `.map_option()`                 | —                                 | —                                                | —                                    | —                                 |
-| `.alias_name["alt"]()`          | — (use multiple names)            | —                                                | `.visible_alias("alt")`              | —                                 |
+| `.alias["alt"]()`               | — (use multiple names)            | —                                                | `.visible_alias("alt")`              | —                                 |
 | `.deprecated["msg"]()`          | `deprecated` (3.13+)              | `deprecated=True`                                | `.hide(true)` + manual               | `ShorthandDeprecated()` [^xref-1] |
 | `.persistent()`                 | — [^xref-7]                       | —                                                | `.global(true)`                      | `PersistentFlags()`               |
 | `.default_if_no_value["val"]()` | `const="val"` + `nargs="?"`       | — [^xref-8]                                      | `.default_missing_value("val")`      | `NoOptDefVal` field               |
