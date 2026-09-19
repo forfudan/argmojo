@@ -7,11 +7,8 @@ changes, bug fixes, and documentation updates.
 
 ArgMojo v0.9.0 brings ArgMojo to Mojo **v1.1.0**. The library needed no source
 changes for the new compiler. The release also takes the first chance the new
-compiler gives: `alias` is no longer a Mojo keyword, so `.alias_name[]()` becomes
-`.alias[]()`. The old spelling still works in this release.
-
-ArgMojo v0.9.0 targets Mojo v1.1.0 (`mojo = ">=1.1.0, <1.2.0"`). If you are
-still on Mojo v1.0.0, stay on ArgMojo v0.8.0.
+compiler gives: `alias` is no longer a Mojo keyword, so `.alias_name[]()`
+becomes `.alias[]()`. The old spelling still works in this release.
 
 ### ⭐️ New in v0.9.0
 
