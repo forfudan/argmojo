@@ -419,12 +419,14 @@ struct Argument(Copyable, Movable, Writable):
         self._alias_names.append(name)
         return self^
 
-    @deprecated("`.alias_name[]()` is renamed to `.alias[]()`")
+    @deprecated(
+        "`.alias_name[]()` is renamed to `.alias[]()`; the old name will be"
+        " removed in ArgMojo v0.10.0"
+    )
     def alias_name[name: StringLiteral](var self) -> Self:
-        """Deprecated alias of ``.alias[]()``; will be removed in a later
-        release.
+        """Deprecated alias of ``.alias[]()``; will be removed in v0.10.0.
 
-        Kept for one release so existing code keeps compiling.  The
+        Kept for one release (v0.9.x) so existing code keeps compiling.  The
         method was named ``alias_name`` only because ``alias`` was a
         Mojo keyword, which Mojo v1.1.0 removed.
 

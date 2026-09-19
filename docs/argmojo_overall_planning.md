@@ -1155,6 +1155,6 @@ too.
 
 ## 9. Pending Renames
 
-| Current Name      | Target Name  | Condition                                                                                                                                                                                                 |
-| ----------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.alias_name[]()` | `.alias[]()` | ✓ Done. Mojo v1.1.0 removed the `alias` keyword. `.alias[]()` and the wrappers' `alias=` parameter are added; `.alias_name[]()` and `alias_name=` are deprecated and will be removed in a later release. |
+| Current Name      | Target Name  | Condition                                                                                                                                                                                        |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.alias_name[]()` | `.alias[]()` | ✓ Done. Mojo v1.1.0 removed the `alias` keyword. `.alias[]()` and the wrappers' `alias=` parameter are added; `.alias_name[]()` and `alias_name=` are deprecated and will be removed in v0.10.0. |

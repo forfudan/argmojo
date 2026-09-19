@@ -31,7 +31,9 @@ warnings.
    Both old spellings still work for now. `.alias_name[]()` is marked
    `@deprecated` and warns at compile time. `alias_name=` cannot warn (Mojo has
    no way to deprecate one struct parameter), so its names are simply merged
-   with those given in `alias=`. Both will be removed in a later release.
+   with those given in `alias=`. Both will be removed in **v0.10.0**; to
+   migrate, replace `.alias_name[` with `.alias[` and `alias_name=` with
+   `alias=`.
 
 ## 20260812 (v0.8.0)
 

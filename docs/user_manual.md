@@ -558,7 +558,8 @@ no `=`). Chain multiple calls for several aliases.
 > keyword. The old name still works but is deprecated and emits a compiler
 > warning. Likewise, the `alias_name=` parameter of `Option`, `Flag` and `Count`
 > is deprecated in favour of `alias=`; it still works, without a warning, and
-> its names are merged with those given in `alias=`.
+> its names are merged with those given in `alias=`. Both old spellings will be
+> removed in ArgMojo v0.10.0.
 
 ```mojo
 command.add_argument(
