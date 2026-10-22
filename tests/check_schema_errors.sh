@@ -3,8 +3,9 @@
 #
 # Each test writes a small .mojo file that should FAIL to compile.
 # If it compiles, the test fails (the schema check is missing).
-# A second group checks that deprecated APIs still compile and run, and that
-# they emit their deprecation warning.
+# check_compile_warning() is kept for deprecated APIs: such a check compiles
+# and runs the code and expects its deprecation warning.  There are none at
+# present.
 #
 # Usage:  bash tests/check_schema_errors.sh
 
@@ -181,24 +182,6 @@ struct Bad(Parsable):
 def main() raises:
     _ = Bad.to_command()
 ' "range validation is integer-only"
-
-echo
-echo "=== Deprecated APIs: still work, but warn ==="
-echo
-
-# 10. .alias_name[]() forwards to .alias[]() and warns at compile time.
-check_compile_warning "builder_alias_name_deprecated" '
-from argmojo import Argument, Command
-def main() raises:
-    var command = Command("test", "Test app")
-    command.add_argument(
-        Argument("colour", help="Colour mode")
-        .long["colour"]()
-        .alias_name["color"]()
-    )
-    var result = command.parse_arguments(["test", "--color", "red"])
-    print("colour=" + result.get_string("colour"))
-' '`.alias_name[]()` is renamed to `.alias[]()`' "colour=red"
 
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="
