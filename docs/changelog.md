@@ -5,10 +5,10 @@ changes, bug fixes, and documentation updates.
 
 ## 20261022 (v0.10.0)
 
-ArgMojo v0.10.0 update the codebase to Mojo **v1.2.0**. The new compiler also 
-fixes the deadlock that kept response files disabled since v0.4.0, 
-so `@args.txt` expansion now works. The deprecated `alias_name` spellings 
-are removed.
+ArgMojo v0.10.0 update the codebase to Mojo **v1.2.0**. The new compiler also
+fixes the deadlock that kept response files disabled since v0.4.0, so
+`@args.txt` expansion now works. The deprecated `alias_name` spellings are
+removed.
 
 ### ⭐️ New in v0.10.0
 
