@@ -5,10 +5,10 @@ changes, bug fixes, and documentation updates.
 
 ## 20261022 (v0.10.0)
 
-ArgMojo v0.10.0 brings ArgMojo to Mojo **v1.2.0**. The new compiler also fixes
-the deadlock that kept response files disabled since v0.4.0, so `@args.txt`
-expansion now works. As announced in v0.9.0, the deprecated `alias_name`
-spellings are removed.
+ArgMojo v0.10.0 update the codebase to Mojo **v1.2.0**. The new compiler also 
+fixes the deadlock that kept response files disabled since v0.4.0, 
+so `@args.txt` expansion now works. The deprecated `alias_name` spellings 
+are removed.
 
 ### ⭐️ New in v0.10.0
 
@@ -43,21 +43,6 @@ spellings are removed.
    prompt declared libc `read` through `external_call`, and Mojo v1.2.0's
    standard library declares `read` with a different signature. The prompt now
    reads through `RawFileDescriptor.read_bytes()` (PR #64).
-
-### 🧪 Tests in v0.10.0
-
-1. `tests/test_response_file.mojo` (17 tests) runs again in `pixi run test`,
-   `pixi run t` and CI.
-2. The tests for the removed `alias_name` spellings are dropped, along with the
-   deprecated-API check in `tests/check_schema_errors.sh`.
-
-### 📖 Documentation in v0.10.0
-
-1. The user manual's Response Files section is restored, and the "currently
-   disabled" notes are removed from the README, the user manual, the planning
-   documents and the docstrings of `response_file_prefix()` and
-   `response_file_max_depth[]()`.
-2. The README's Mojo compatibility table lists v0.10.0 → Mojo v1.2.0.
 
 ## 20260919 (v0.9.0)
 
