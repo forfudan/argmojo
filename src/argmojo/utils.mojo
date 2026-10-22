@@ -1,6 +1,7 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
-from std.ffi import external_call
+from std.ffi import c_int, external_call
+from std.io import RawFileDescriptor
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
 comptime _RESET = "\x1b[0m"
@@ -859,6 +860,25 @@ comptime _ISIG_MACOS: UInt32 = 0x00000080
 comptime _ISIG_LINUX: UInt32 = 0x00000001
 
 
+def _read_stdin_byte(mut one: Array[UInt8, 1]) -> Int:
+    """Reads one byte from stdin into *one*.
+
+    Goes through the standard library's ``RawFileDescriptor`` rather than
+    declaring ``read`` with ``external_call``: since Mojo v1.2 the standard
+    library declares ``read`` itself, and a second declaration with a
+    different signature makes any program that also uses std's file I/O
+    fail to lower.
+
+    Returns:
+        The number of bytes read: 1 on success, 0 on EOF, -1 on error.
+    """
+    try:
+        var fd = RawFileDescriptor(c_int(0))
+        return fd.read_bytes(Span(one))
+    except:
+        return -1
+
+
 def _read_password_asterisk(msg: String) raises -> String:
     """Reads a password interactively, echoing ``*`` for each keystroke.
 
@@ -937,12 +957,7 @@ def _read_password_asterisk(msg: String) raises -> String:
     var cancel_reason = String()
 
     while True:
-        # NOTE: the buffer is passed as a real pointer (not `Int(ptr)`).
-        # The standard library declares `read` as
-        # `(Int, Pointer, Int) -> Int`; passing the pointer as an integer
-        # declares a conflicting signature for the same symbol, which makes
-        # the module fail to lower whenever std's file I/O is linked in too.
-        var n = external_call["read", Int](0, one.unsafe_ptr(), 1)
+        var n = _read_stdin_byte(one)
         if n <= 0:
             cancelled = True
             cancel_reason = "password input read error"
@@ -969,7 +984,7 @@ def _read_password_asterisk(msg: String) raises -> String:
             # 2-3 bytes (e.g. ESC [ A), but we read up to 8 to be safe.
             var discard_count = 0
             while discard_count < 8:
-                var n2 = external_call["read", Int](0, one.unsafe_ptr(), 1)
+                var n2 = _read_stdin_byte(one)
                 if n2 <= 0:
                     break
                 # Stop after the terminating letter of a CSI sequence.
