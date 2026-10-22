@@ -65,6 +65,7 @@ jobs:
             echo "=== test attempt $attempt ==="
             if mojo run -I src -D ASSERT=all tests/test_parse.mojo \
             && mojo run -I src -D ASSERT=all tests/test_options.mojo \
+            && mojo run -I src -D ASSERT=all tests/test_response_file.mojo \
             && mojo run -I src -D ASSERT=all tests/test_groups.mojo; then
               echo "=== tests passed on attempt $attempt ==="
               break
