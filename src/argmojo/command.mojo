@@ -1636,12 +1636,6 @@ struct Command(Copyable, Movable, Writable):
     def response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 
-        Warning: **Temporarily disabled** — the underlying expansion
-        logic is compiled out to work around a Mojo compiler deadlock
-        triggered by `-D ASSERT=all`.  Calling this method still
-        stores the prefix, but `parse_arguments()` will **not**
-        expand response-file tokens until the compiler bug is fixed.
-
         When enabled, any token that starts with the given `prefix`
         is treated as a response-file reference.  The remainder of
         the token is the file path; each non-empty, non-comment line
@@ -1674,9 +1668,6 @@ struct Command(Copyable, Movable, Writable):
 
     def response_file_max_depth[depth: Int](mut self) where depth > 0:
         """Sets the maximum nesting depth for response-file expansion.
-
-        Warning: **Temporarily disabled** — see
-        `response_file_prefix()` docstring for details.
 
         Parameters:
             depth: Maximum recursion depth (default 10).

@@ -3,6 +3,62 @@
 This document tracks all notable changes to ArgMojo, including new features, API
 changes, bug fixes, and documentation updates.
 
+## 20261022 (v0.10.0)
+
+ArgMojo v0.10.0 brings ArgMojo to Mojo **v1.2.0**. The new compiler also fixes
+the deadlock that kept response files disabled since v0.4.0, so `@args.txt`
+expansion now works. As announced in v0.9.0, the deprecated `alias_name`
+spellings are removed.
+
+### ⭐️ New in v0.10.0
+
+1. Response files are enabled (PR #64). After `command.response_file_prefix()`,
+   `myapp @args.txt` reads arguments from `args.txt`, one per line, with `#`
+   comments, `@@` escaping and nested response files up to
+   `response_file_max_depth[N]()` (default 10). See the
+   [user manual](user_manual.md#response-files).
+
+### 🦋 Changed in v0.10.0
+
+1. Remove `.alias_name[]()` and the `alias_name=` parameter of `Option`, `Flag`
+   and `Count`, deprecated in v0.9.0 (PR #64). To migrate, replace
+   `.alias_name[` with `.alias[` and `alias_name=` with `alias=`.
+
+### 🔄 Mojo v1.2.0 migration (PR #64)
+
+1. Update the Mojo dependency to `>=1.2.0, <1.3.0`.
+2. `Parsable` no longer defines its own default `__init__`. Mojo v1.2.0 gives
+   `Defaultable` a default `__init__` that default-constructs each field via
+   reflection, which clashed with `Parsable`'s own reflection-based one: every
+   `Parsable` struct failed with "conflicting default implementations in
+   'Parsable' and 'Defaultable'". `Parsable` now uses the inherited one, and
+   conforming structs still need no `__init__`. A field whose type is not
+   `Defaultable` is reported by the compiler.
+
+### 🔧 Fixes in v0.10.0
+
+1. A program that used ArgMojo together with the standard library's file I/O
+   (for example `open(path).read()`) failed to compile on Mojo v1.2.0 with
+   "existing function with conflicting signature". The `*`-echo password
+   prompt declared libc `read` through `external_call`, and Mojo v1.2.0's
+   standard library declares `read` with a different signature. The prompt now
+   reads through `RawFileDescriptor.read_bytes()` (PR #64).
+
+### 🧪 Tests in v0.10.0
+
+1. `tests/test_response_file.mojo` (17 tests) runs again in `pixi run test`,
+   `pixi run t` and CI.
+2. The tests for the removed `alias_name` spellings are dropped, along with the
+   deprecated-API check in `tests/check_schema_errors.sh`.
+
+### 📖 Documentation in v0.10.0
+
+1. The user manual's Response Files section is restored, and the "currently
+   disabled" notes are removed from the README, the user manual, the planning
+   documents and the docstrings of `response_file_prefix()` and
+   `response_file_max_depth[]()`.
+2. The README's Mojo compatibility table lists v0.10.0 → Mojo v1.2.0.
+
 ## 20260919 (v0.9.0)
 
 ArgMojo v0.9.0 brings ArgMojo to Mojo **v1.1.0**. The library needed no source

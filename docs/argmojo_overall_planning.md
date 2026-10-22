@@ -188,7 +188,7 @@ tests/
 ├── test_subcommands.mojo           # Subcommand dispatch, persistent/global flags, argument parents tests
 ├── test_completion.mojo            # Shell completion (bash/zsh/fish) + Levenshtein typo suggestion tests
 ├── test_interactive.mojo           # Interactive prompting, password/masked input, confirmation tests
-└── test_response_file.mojo         # Response file (@args.txt) expansion tests (⚠ disabled due to compiler bug)
+└── test_response_file.mojo         # Response file (@args.txt) expansion tests
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
@@ -240,7 +240,7 @@ examples/
 | Range clamping (`.range[1, 100]().clamp()` → adjust + warn instead of error)                          | ✓      | ✓     |
 | Default-if-no-value (`.default_if_no_value["gzip"]()` → optional value with fallback)                 | ✓      | ✓     |
 | Require equals syntax (`.require_equals()` → `--key=value` only)                                      | ✓      | ✓     |
-| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)                  | ✓ ⚠    | ✓     |
+| Response file (`command.response_file_prefix()` → `@args.txt` expands file contents)                  | ✓      | ✓     |
 | Typo suggestions (Levenshtein "did you mean ...?" for long options and subcommands)                   | ✓      | ✓     |
 | Flag counter ceiling (`.count().max[3]()` → cap with warning)                                         | ✓      | ✓     |
 | Shell completion script generation (`generate_completion["bash"]()` or `generate_completion("bash")`) | ✓      | ✓     |
@@ -262,10 +262,6 @@ examples/
 | Confirmation option (`confirmation_option()` → `--yes`/`-y` to skip confirmation)                     | ✓      | ✓     |
 | Usage line customisation (`command.usage("...")` → override auto-generated usage line)                | ✓      | ✓     |
 | Password / masked input (`.password()` → hide typed characters during prompt via POSIX termios)       | ✓      | ✓     |
-
-> ⚠ Response file support is currently disabled due to a Mojo compiler deadlock
-> under `-D ASSERT=all` (still reproducing on Mojo v1.1.0). The implementation
-> is preserved and will be re-enabled when the compiler bug is fixed.
 
 ### 4.3 API Design (Current)
 
@@ -318,7 +314,7 @@ pattern             # By order of add_argument() calls
 --                  # Stop parsing options; rest becomes positional
 --help / -h / -?    # Show auto-generated help
 --version / -V      # Show version
-@args.txt           # Response file expansion (when enabled)
+@args.txt           # Response file expansion (after response_file_prefix())
 cmd rest...         # Remainder positional (consume all remaining tokens)
 
 # Subcommands
@@ -762,9 +758,9 @@ readability and maintainability:
       fallback; `--opt=val` uses val; absent uses default (argparse `const`) (PR
       #12)
 - [x] **Response file** — `mytool @args.txt` expands file contents as arguments
-      (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12) ⚠ *Currently
-      disabled — Mojo compiler deadlock under `-D ASSERT=all`, still on Mojo
-      v1.1.0*
+      (argparse `fromfile_prefix_chars`, javac, MSBuild) (PR #12). Shipped
+      disabled in v0.4.0 because of a Mojo compiler deadlock under
+      `-D ASSERT=all`; enabled in v0.10.0 on Mojo v1.2.0
 - [x] **Argument parents** — `add_parent(parent)` copies all arguments and group
       constraints from a parent Command, sharing definitions across multiple
       commands (argparse `parents`) (PR #25)
@@ -1130,8 +1126,8 @@ priorities **in order**:
 
 Here are some important Mojo-specific patterns used throughout this project.
 Mojo is rapidly evolving, so these may need to be updated in the future. As of
-ArgMojo v0.9.0, the codebase targets **Mojo v1.1.0**. (v0.8.0 targeted Mojo
-v1.0.0, the first stable release.)
+ArgMojo v0.10.0, the codebase targets **Mojo v1.2.0**. (v0.9.0 targeted Mojo
+v1.1.0, and v0.8.0 targeted Mojo v1.0.0, the first stable release.)
 
 These are all worthy being checked in [Mojo Miji](https://mojo-lang.com/miji)
 too.
@@ -1148,8 +1144,10 @@ too.
 | `Deinitable`                        | Renamed from `ImplicitlyDestructible` in Mojo v1.0.0                       |
 | `__init__(out self, *, deinit move: Self)` | Move constructor; the argument was called `take` before Mojo v1.0.0 |
 | `reflect[T]`                        | Unified reflection API: `field_count()`, `field_names()`, `field_types()`, `field_ref[i]()`, `name()` |
-| `comptime assert conforms_to(...)`  | Replaces `constrained[]` and the internal `_constrained_field_conforms_to`  |
-| `Pointer(to=x).unsafe_write(v)`     | Replaces `UnsafePointer(to=x).init_pointee_move(v)`                        |
+| `comptime assert`                   | Replaces `constrained[]`                                                   |
+| `comptime if conforms_to(T, Trait)` | Compile-time trait check, used to pick out wrapper-typed fields             |
+| `Defaultable` default `__init__`    | Since Mojo v1.2.0 it default-constructs each field via reflection, so `Parsable` no longer defines its own |
+| `RawFileDescriptor.read_bytes()`    | Used instead of `external_call["read", ...]`: Mojo v1.2.0's stdlib declares libc `read` itself, and a second declaration with another signature fails to lower |
 | `Array[T, N]`                       | Fixed-size, stack-allocated buffer; preferred over `List` for FFI scratch space |
 | Explicit `__deinit__()`             | Needed to break the deduction cycle of recursive structs, e.g., a `Command` holding `List[Command]` |
 
@@ -1157,4 +1155,4 @@ too.
 
 | Current Name      | Target Name  | Condition                                                                                                                                                                                        |
 | ----------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.alias_name[]()` | `.alias[]()` | ✓ Done. Mojo v1.1.0 removed the `alias` keyword. `.alias[]()` and the wrappers' `alias=` parameter are added; `.alias_name[]()` and `alias_name=` are deprecated and will be removed in v0.10.0. |
+| `.alias_name[]()` | `.alias[]()` | ✓ Done. Mojo v1.1.0 removed the `alias` keyword. `.alias[]()` and the wrappers' `alias=` parameter were added in v0.9.0, and the deprecated `.alias_name[]()` and `alias_name=` were removed in v0.10.0. |

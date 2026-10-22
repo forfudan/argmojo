@@ -15,7 +15,7 @@ as a real-world example of ArgMojo usage.
  -->
 
 [![Version](https://img.shields.io/github/v/tag/forfudan/argmojo?label=version&color=blue)](https://github.com/forfudan/argmojo/releases)
-[![Mojo](https://img.shields.io/badge/mojo-1.1.0-orange)](https://docs.modular.com/mojo/manual/)
+[![Mojo](https://img.shields.io/badge/mojo-1.2.0-orange)](https://docs.modular.com/mojo/manual/)
 [![pixi](https://img.shields.io/badge/pixi%20add-argmojo-brightgreen)](https://prefix.dev/channels/modular-community/packages/argmojo)
 [![User manual](https://img.shields.io/badge/user-manual-purple)](https://github.com/forfudan/argmojo/wiki)
 
@@ -41,8 +41,8 @@ a `Parsable` struct, call `MyArgs.parse()`, get typed results). You can mix both
 freely — put most of your arguments in a struct and drop down to builder methods
 whenever you need finer control.
 
-ArgMojo v0.9.0 targets Mojo v1.1.0. If you are still on Mojo v1.0.0, use
-ArgMojo v0.8.0 (see [Mojo compatibility](#mojo-compatibility)).
+ArgMojo v0.10.0 targets Mojo v1.2.0. If you are still on Mojo v1.1.0, use
+ArgMojo v0.9.0 (see [Mojo compatibility](#mojo-compatibility)).
 
 ArgMojo currently supports:
 
@@ -113,8 +113,8 @@ ArgMojo currently supports:
 - **Argument parents**: `add_parent()` to share argument definitions across
   commands
 - **Custom usage line**: `usage()` to override the auto-generated usage string
-- **Response files**: `@args.txt` expansion (currently disabled due to a Mojo
-  compiler bug, see the [changelog](docs/changelog.md))
+- **Response files**: `response_file_prefix()` to expand `@args.txt` into the
+  arguments stored in that file
 - **CJK-aware help alignment**: CJK characters treated as 2-column-wide
 - **CJK full-width auto-correction**: fullwidth `－－ｖｅｒｂｏｓｅ` →
   `--verbose` with a warning
@@ -186,6 +186,7 @@ release that matches your compiler:
 
 | ArgMojo | Mojo      |
 | ------- | --------- |
+| v0.10.0 | v1.2.0    |
 | v0.9.0  | v1.1.0    |
 | v0.8.0  | v1.0.0    |
 | v0.7.0  | v1.0.0b2  |
@@ -196,8 +197,8 @@ release that matches your compiler:
 | v0.2.0  | v0.26.1   |
 | v0.1.0  | v0.26.1   |
 
-For example, to stay on Mojo v1.0.0, pin the dependency with
-`argmojo = "==0.8.0"`.
+For example, to stay on Mojo v1.1.0, pin the dependency with
+`argmojo = "==0.9.0"`.
 
 ### Using mojoc
 
