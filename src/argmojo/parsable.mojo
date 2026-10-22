@@ -1,7 +1,5 @@
 """Declares the Parsable trait and its reflection-based default methods."""
 
-from std.builtin.constrained import _field_conforms_to_error
-
 from .argument_wrappers import ArgumentLike
 from .command import Command
 from .parse_result import ParseResult
@@ -15,8 +13,9 @@ trait Parsable(Defaultable, Deinitable, Movable):
     compile-time reflection over wrapper-typed fields (Option, Flag,
     Positional, Count).
 
-    The default ``__init__`` is provided automatically via reflection,
-    and the compiler synthesises the move ``__init__`` from ``Movable``
+    The default ``__init__`` comes from ``Defaultable``, which since
+    Mojo 1.2 default-constructs each field via reflection, and the
+    compiler synthesises the move ``__init__`` from ``Movable``
     conformance, so conforming structs do **not** need to define them.
     Users only need to provide ``description()`` (required) and
     optionally override ``version()``, ``name()``, and ``subcommands()``.
@@ -37,41 +36,6 @@ trait Parsable(Defaultable, Deinitable, Movable):
             return "My awesome tool."
     ```
     """
-
-    def __init__(out self):
-        """Default-initialises all fields via reflection.
-
-        Uses ``__mlir_op.lit.ownership.mark_initialized`` to bypass the
-        compiler's definite-assignment check, then placement-news each
-        field with ``Pointer.unsafe_write(type_of(field)())``.
-        Otherwise, the user would have to write a custom ``__init__`` that
-        manually default-constructs each field.
-        """
-        # [Mojo Miji]
-        # When Mojo compiles this struct, it calculates the full memory layout
-        # before compiling the __init__. This means that at this point, the
-        # struct's fields are reserved in the memory layout but not yet
-        # initialized. We can safely tell the compiler to treat them as
-        # initialized so that we can reflect over the fields and initialize them
-        # in a loop using unsafe pointer operations.
-        __mlir_op.`lit.ownership.mark_initialized`(__get_mvalue_as_litref(self))
-        comptime reflected = reflect[Self]
-        comptime field_count = reflected.field_count()
-        comptime field_types = reflected.field_types()
-        comptime for i in range(field_count):
-            comptime FieldType = field_types[i]
-            comptime assert conforms_to(
-                FieldType, Defaultable & Movable
-            ), _field_conforms_to_error[
-                Parent=Self,
-                FieldIndex=i,
-                ParentConformsTo="Defaultable & Movable",
-            ]()
-            ref field = reflected.field_ref[i](self)
-            # [Mojo Miji]
-            # type_of(field)() calls the default constructor for the field's
-            # type, which is an instance of one of the argument wrapper structs.
-            Pointer(to=field).unsafe_write(type_of(field)())
 
     @staticmethod
     def description() -> String:
