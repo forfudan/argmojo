@@ -1,12 +1,4 @@
-"""Tests for argmojo — response file (@args.txt) expansion.
-
-NOTE: These tests are currently EXCLUDED from `pixi run test` because the
-response-file expansion call in parse_arguments() is temporarily disabled
-to work around a Mojo compiler deadlock with -D ASSERT=all.  The
-module-level _expand_response_files / _read_response_file functions are
-still present in command.mojo and the tests here remain intact for when
-the compiler bug is fixed.
-"""
+"""Tests for argmojo — response file (@args.txt) expansion."""
 
 from std.testing import assert_true, assert_false, assert_equal, TestSuite
 from std.os import remove

@@ -10,10 +10,10 @@ license = "Apache-2.0"
 name = "argmojo"
 platforms = ["osx-arm64", "linux-64"]
 readme = "README.md"
-version = "0.9.0"
+version = "0.10.0"
 
 [dependencies]
-mojo = ">=1.1.0, <1.2.0"
+mojo = ">=1.2.0, <1.3.0"
 
 [tasks]
 # format the code
@@ -31,6 +31,7 @@ test = """ set -e
     && pixi run package \
     && mojo run -I src -D ASSERT=all tests/test_parse.mojo \
     && mojo run -I src -D ASSERT=all tests/test_options.mojo \
+    && mojo run -I src -D ASSERT=all tests/test_response_file.mojo \
     && mojo run -I src -D ASSERT=all tests/test_groups.mojo \
     && mojo run -I src -D ASSERT=all tests/test_help.mojo \
     && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
@@ -43,10 +44,6 @@ test = """ set -e
     && mojo run -I src -D ASSERT=all tests/test_dispatch.mojo \
     && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
     && bash tests/check_schema_errors.sh"""
-# NOTE: test_response_file.mojo is excluded — response file expansion
-# is disabled to work around a Mojo compiler deadlock with -D ASSERT=all.
-# Still reproducing on Mojo v1.1.0 (tests/test_parse.mojo hangs at 0% CPU
-# during compilation when the expansion call is re-enabled).
 
 # run tests (parallel, fail if any test fails)
 t = """set -e
@@ -56,6 +53,7 @@ t = """set -e
   pids=(); \
   mojo run -I src -D ASSERT=all tests/test_parse.mojo &                   pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_options.mojo &                 pids+=($!); \
+  mojo run -I src -D ASSERT=all tests/test_response_file.mojo &           pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_groups.mojo &                  pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_help.mojo &                    pids+=($!); \
   mojo run -I src -D ASSERT=all tests/test_subcommands.mojo &             pids+=($!); \

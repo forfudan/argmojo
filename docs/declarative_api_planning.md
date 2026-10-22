@@ -613,12 +613,18 @@ declarative API.
 ### 4.4 Field Initialization (Auto-Init)
 
 > **Update**: As of Phase 1 implementation, users
-> **no longer need to write `__init__`**. The `Parsable` trait provides a
-> default `__init__` that uses `__mlir_op.lit.ownership.mark_initialized` +
-> `comptime for` + `Pointer.unsafe_write(type_of(field)())` to auto-initialise
-> every field via reflection. The compiler auto-synthesises the move init from
-> `Movable` conformance. Users only need to declare fields and provide
+> **no longer need to write `__init__`**. The compiler auto-synthesises the move
+> init from `Movable` conformance. Users only need to declare fields and provide
 > `description()`.
+>
+> **Update (v0.10.0)**: Up to v0.9.0 the `Parsable` trait provided its own
+> default `__init__`, which used `__mlir_op.lit.ownership.mark_initialized` +
+> `comptime for` + `Pointer.unsafe_write(type_of(field)())` to auto-initialise
+> every field via reflection. Mojo v1.2.0 gave `Defaultable` a default
+> `__init__` that does the same, and the two defaults conflicted, so
+> `Parsable` now relies on the one inherited from `Defaultable`. A field whose
+> type is not `Defaultable` is reported by the compiler: "Could not derive
+> Defaultable for X - member field `f: T` does not implement Defaultable".
 
 ### 4.5 Auto-Naming Convention
 
@@ -653,8 +659,8 @@ var output: Option[String, long="output", alias="out,dest"]
 ```
 
 This generates `.alias["out"]().alias["dest"]()`. (Before Mojo v1.1.0 freed the
-`alias` keyword, the parameter was called `alias_name`; that spelling is
-deprecated but still accepted.)
+`alias` keyword, the parameter was called `alias_name`; that spelling was
+deprecated in v0.9.0 and removed in v0.10.0.)
 
 ## 5. Usage Examples
 
@@ -1732,6 +1738,5 @@ here would let you write cross-field checks without dropping to the builder.
 It is listed in Phase 4 and I have not started it.
 
 [^fieldwise_init]: removed — compiler auto-synthesises move init from `Movable`
-    conformance; the `Parsable` trait now provides a
-    reflection-based default `__init__` via `mark_initialized` +
-    `comptime for`.
+    conformance, and the default `__init__` comes from `Defaultable`, which
+    default-constructs each field via reflection (Mojo v1.2.0+).

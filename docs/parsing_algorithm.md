@@ -18,7 +18,7 @@ run and (b) how they treat unrecognised options.
 ```text
 parse_arguments(raw_tokens)
 └── 1. Initialise ParseResult; copy raw_tokens.
-    2. (Optional) Expand response files (currently disabled — see comment).
+    2. (Optional) Expand response files, if response_file_prefix() was set.
     3. PARSING PHASE → _run_parse_loop(tokens, result, collect_unknown=False)
        ├── CJK auto-correction (fullwidth → ASCII).
        ├── Register positional argument names in declaration order.

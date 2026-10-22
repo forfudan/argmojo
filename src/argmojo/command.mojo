@@ -48,9 +48,9 @@ from .utils import (
 # ---------- module-level file reader (workaround for Mojo compiler issue) ----
 # Placing `open()` inside a method of a struct that contains `List[Self]` causes
 # the compiler to deadlock when built with `-D ASSERT=warn` or `-D ASSERT=all`.
-# Moving the I/O into a free function avoids the trigger.  Still reproducing on
-# Mojo v1.1.0: re-enabling the call from parse_arguments() hangs the compiler
-# on tests/test_parse.mojo even though tests/test_response_file.mojo builds.
+# Moving the I/O into a free function avoids the trigger.  Up to Mojo v1.1.0
+# the call from parse_arguments() still hung the compiler, so response files
+# were disabled; the deadlock no longer reproduces on Mojo v1.2.0.
 def _read_file_content(filepath: String) raises -> String:
     """Reads and returns the entire contents of *filepath*."""
     with open(filepath, "r") as f:
@@ -1636,12 +1636,6 @@ struct Command(Copyable, Movable, Writable):
     def response_file_prefix(mut self, prefix: String = "@"):
         """Enables response-file expansion for this command.
 
-        Warning: **Temporarily disabled** — the underlying expansion
-        logic is compiled out to work around a Mojo compiler deadlock
-        triggered by `-D ASSERT=all`.  Calling this method still
-        stores the prefix, but `parse_arguments()` will **not**
-        expand response-file tokens until the compiler bug is fixed.
-
         When enabled, any token that starts with the given `prefix`
         is treated as a response-file reference.  The remainder of
         the token is the file path; each non-empty, non-comment line
@@ -1674,9 +1668,6 @@ struct Command(Copyable, Movable, Writable):
 
     def response_file_max_depth[depth: Int](mut self) where depth > 0:
         """Sets the maximum nesting depth for response-file expansion.
-
-        Warning: **Temporarily disabled** — see
-        `response_file_prefix()` docstring for details.
 
         Parameters:
             depth: Maximum recursion depth (default 10).
@@ -2587,20 +2578,13 @@ struct Command(Copyable, Movable, Writable):
 
         # Expand response files if enabled.
         var tokens_to_parse = raw_tokens.copy()
-        # NOTE: Response file expansion remains disabled: calling it from this
-        # method still deadlocks the Mojo compiler under `-D ASSERT=all`
-        # (`Command` holds `List[Command]`, and the expansion reaches `open()`).
-        # Verified still reproducing on Mojo v1.1.0 — `tests/test_parse.mojo`
-        # hangs at 0% CPU during compilation.  The module-level
-        # _expand_response_files / _read_response_file functions are still
-        # available and tested by tests/test_response_file.mojo.
-        # if self._response_file_prefix.byte_length() > 0:
-        #     tokens_to_parse = _expand_response_files(
-        #         raw_tokens,
-        #         self._response_file_prefix,
-        #         self._response_file_max_depth,
-        #         self.name,
-        #     )
+        if self._response_file_prefix.byte_length() > 0:
+            tokens_to_parse = _expand_response_files(
+                raw_tokens,
+                self._response_file_prefix,
+                self._response_file_max_depth,
+                self.name,
+            )
 
         # === PARSING PHASE === #
         # Delegate the lexing/dispatch loop to the shared implementation.

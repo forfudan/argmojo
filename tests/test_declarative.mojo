@@ -365,32 +365,6 @@ def test_count_and_flag_accept_aliases() raises:
     assert_true(parsed.quiet.value, msg="--silent is an alias of --quiet")
 
 
-struct LegacyAliases(Parsable):
-    var output: Option[String, long="output", alias_name="out", default="-"]
-    var color: Flag[long="colour", alias="color", alias_name="colr"]
-    var verbose: Count[short="v", alias_name="loud,talky"]
-
-    @staticmethod
-    def description() -> String:
-        return String("Legacy alias spelling.")
-
-
-def test_deprecated_alias_name_parameter_still_works() raises:
-    """The deprecated alias_name parameter still registers aliases."""
-    var args: List[String] = ["legacy", "--out", "a.txt", "--loud", "--talky"]
-    var parsed = LegacyAliases.parse_arguments(args)
-    assert_equal(parsed.output.value, "a.txt")
-    assert_equal(Int(parsed.verbose), 2)
-
-
-def test_alias_and_alias_name_are_merged() raises:
-    """Names from alias and the deprecated alias_name are both accepted."""
-    var args: List[String] = ["legacy", "--color"]
-    assert_true(LegacyAliases.parse_arguments(args).color.value)
-    args = ["legacy", "--colr"]
-    assert_true(LegacyAliases.parse_arguments(args).color.value)
-
-
 def test_option_accepts_alias() raises:
     """The alias parameter works on Option, including several names."""
     var args: List[String] = ["metrics", "--units", "km"]

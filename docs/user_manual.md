@@ -81,6 +81,12 @@ from argmojo import Argument, Command
   - [Remainder Positional (`.remainder()`)](#remainder-positional-remainder)
   - [Allow Hyphen Values (`.allow_hyphen_values()`)](#allow-hyphen-values-allow_hyphen_values)
   - [Partial Parsing (`parse_known_arguments()`)](#partial-parsing-parse_known_arguments)
+- [Response Files](#response-files)
+  - [Enabling Response Files](#enabling-response-files)
+  - [File Format](#file-format)
+  - [Escaping the Prefix](#escaping-the-prefix)
+  - [Recursive Response Files](#recursive-response-files)
+  - [Custom Prefix](#custom-prefix)
 - [Interactive Prompting](#interactive-prompting)
   - [Setup Example](#setup-example)
   - [Enabling Prompting](#enabling-prompting)
@@ -130,8 +136,6 @@ from argmojo import Argument, Command
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
   - [Command-Level Methods](#command-level-methods)
   - [Notes (Cross-Library Method Name Reference)](#notes-cross-library-method-name-reference)
-
-<!-- Response Files (currently disabled — Mojo compiler deadlock with -D ASSERT=all, still on Mojo v1.1.0) -->
 
 ## Getting Started
 
@@ -316,8 +320,8 @@ Argument("name", help="...")
 ║   │   command.completions_name("name")          custom trigger name
 ║   │   command.completions_as_subcommand()       expose as subcommand instead
 ║   ├── Response files
-║   │   command.response_file_prefix("@")         enable @args.txt expansion (*)
-║   │   command.response_file_max_depth[10]()     max recursive nesting depth (*)
+║   │   command.response_file_prefix("@")         enable @args.txt expansion
+║   │   command.response_file_max_depth[10]()     max recursive nesting depth
 ║   ├── CJK / i18n
 ║   │   command.disable_fullwidth_correction()    disable fullwidth→halfwidth auto-fix
 ║   │   command.disable_punctuation_correction()  disable CJK punctuation correction
@@ -332,9 +336,6 @@ Argument("name", help="...")
 ```
 
 > [!NOTE]
-> (*) Response files are currently disabled due to a Mojo compiler bug.
-> [^respfile]
->
 > **Reading guide:** Indentation shows "goes after" — e.g. `.clamp()` is
 > indented under `.range[min,max]()` because it requires range.  The three main
 > paths (value / flag / count) under *Named option* are **mutually
@@ -555,11 +556,10 @@ validated at compile time (same rules as `.long[]()`: not empty, no `-` prefix,
 no `=`). Chain multiple calls for several aliases.
 
 > `.alias[]()` was called `.alias_name[]()` until Mojo v1.1.0 freed the `alias`
-> keyword. The old name still works but is deprecated and emits a compiler
-> warning. Likewise, the `alias_name=` parameter of `Option`, `Flag` and `Count`
-> is deprecated in favour of `alias=`; it still works, without a warning, and
-> its names are merged with those given in `alias=`. Both old spellings will be
-> removed in ArgMojo v0.10.0.
+> keyword, and the `alias=` parameter of `Option`, `Flag` and `Count` was called
+> `alias_name=`. The old spellings were deprecated in ArgMojo v0.9.0 and removed
+> in v0.10.0; replace `.alias_name[` with `.alias[` and `alias_name=` with
+> `alias=`.
 
 ```mojo
 command.add_argument(
@@ -3557,15 +3557,15 @@ the "Unknown option" error is suppressed.
 > parser cannot tell whether the unknown option takes a value. Use `=` syntax
 > when forwarding unknown options reliably.
 
-<!-- Response Files section currently disabled — Mojo compiler deadlock with -D ASSERT=all (still on Mojo v1.1.0).
-     The implementation is preserved as module-level functions and will be re-enabled
-     when the Mojo compiler bug is fixed.
-
 ## Response Files
 
-A **response file** (also called an **args file**) lets users store arguments in a text file and reference it on the command line with a prefix character (default `@`). This is useful when the argument list is very long or when the same set of arguments is reused frequently.
+A **response file** (also called an **args file**) lets users store arguments
+in a text file and reference it on the command line with a prefix character
+(default `@`). This is useful when the argument list is very long or when the
+same set of arguments is reused frequently.
 
-> Libraries with similar support: **argparse** (`fromfile_prefix_chars`), **javac** (`@argfile`), **MSBuild** (`@file`), **gcc** (`@file`).
+> Libraries with similar support: **argparse** (`fromfile_prefix_chars`),
+> **javac** (`@argfile`), **MSBuild** (`@file`), **gcc** (`@file`).
 
 ### Enabling Response Files
 
@@ -3576,11 +3576,14 @@ var command = Command("mytool", "My CLI tool")
 command.response_file_prefix()  # default '@'
 ```
 
-Now `mytool @args.txt` reads arguments from `args.txt`, with each line becoming a separate argument.
+Now `mytool @args.txt` reads arguments from `args.txt`, with each line
+becoming a separate argument.
 
 ### File Format
 
-Each non-empty line in the response file becomes one argument. Lines starting with `#` are comments and are ignored. Leading and trailing whitespace per line is stripped.
+Each non-empty line in the response file becomes one argument. Lines starting
+with `#` are comments and are ignored. Leading and trailing whitespace per line
+is stripped.
 
 ```text
 # args.txt — common flags for the build
@@ -3606,7 +3609,8 @@ mytool --debug @args.txt --extra-flag
 
 ### Escaping the Prefix
 
-To pass a literal token that starts with `@` (e.g., an email address), double the prefix:
+To pass a literal token that starts with `@` (e.g., an email address), double
+the prefix:
 
 ```shell
 mytool @@user@example.com
@@ -3639,13 +3643,15 @@ mytool @build-args.txt
 # expands to: mytool --verbose --output=build/release
 ```
 
-Recursion depth is limited to 10 by default. Adjust with `response_file_max_depth[depth]()`:
+Recursion depth is limited to 10 by default. Adjust with
+`response_file_max_depth[depth]()`:
 
 ```mojo
 command.response_file_max_depth[5]()
 ```
 
-A self-referencing or circular response file triggers an error once the depth limit is reached.
+A self-referencing or circular response file triggers an error once the depth
+limit is reached.
 
 ### Custom Prefix
 
@@ -3655,8 +3661,6 @@ Use a different prefix character if `@` conflicts with your argument values:
 command.response_file_prefix("+")
 # Now: mytool +args.txt
 ```
-
-end of Response Files section -->
 
 ## Interactive Prompting
 
@@ -4825,10 +4829,6 @@ See the footnotes at the bottom of this document.
 [^vname]: Accepts compile-time parameter:
     `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in
     `<NAME>`, `False` displays bare `NAME`.
-[^respfile]: Response files are currently disabled due to a Mojo compiler bug (a
-    compilation deadlock under `-D ASSERT=all`). It still reproduces on
-    Mojo v1.1.0. The implementation is kept in the source code and will
-    be re-enabled once the compiler bug is fixed.
 [^pw]: Also available as `.password[True]()` to echo `*` per keystroke (sudo-rs
     style), or `.password[False]()` (same as plain `.password()`).
 [^xref-1]: Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command,
