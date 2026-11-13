@@ -1,6 +1,8 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
 from std.ffi import c_int, external_call
+from std.os import getenv
+from std.sys import CompilationTarget
 from std.io import RawFileDescriptor
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
@@ -57,35 +59,64 @@ comptime _TIOCGWINSZ_LINUX: Int = 0x5413
 def _help_line_width() -> Int:
     """Returns the help line width used by the formatter.
 
-    Queries the terminal via ``ioctl(TIOCGWINSZ)`` on stdout (fd 1).
-    If the terminal width can be determined and is positive, the
-    column count is clamped to ``[40, 120]`` and the function returns
-    ``clamped_columns - 2`` (so detected widths produce values in
-    ``[38, 118]``). If the terminal width cannot be determined, the
-    function falls back to the fixed value ``80``.
+    The terminal width comes from the ``COLUMNS`` environment variable when it
+    holds a positive integer, otherwise from ``ioctl(TIOCGWINSZ)`` on stdout
+    (fd 1).  A width that can be determined is clamped to ``[40, 120]`` and
+    the function returns ``clamped_columns - 2`` (so detected widths produce
+    values in ``[38, 118]``).  Otherwise it falls back to the fixed value
+    ``80``.
     """
+    var cols = _columns_from_env()
+    if cols <= 0:
+        cols = _terminal_columns()
+    if cols > 0:
+        var clamped = cols if cols >= 40 else 40
+        if clamped > 120:
+            clamped = 120
+        return clamped - 2
+
+    return 80  # ultimate fallback
+
+
+def _columns_from_env() -> Int:
+    """Returns ``$COLUMNS`` as an integer, or 0 if unset or not a number."""
+    var text = getenv("COLUMNS", "")
+    if text.byte_length() == 0:
+        return 0
+    try:
+        return atol(text)
+    except:
+        return 0
+
+
+def _terminal_columns() -> Int:
+    """Returns the column count of the terminal on stdout, or 0 if unknown."""
     # struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; }
     # = 8 bytes total.  We only need ws_col (bytes 2-3).
     var buf = Array[UInt8, 8](fill=0)
-    var ptr = buf.unsafe_ptr()
-    # Try macOS ioctl number first, then Linux.
-    var rc = external_call["ioctl", Int, Int, Int, Int](
-        1, _TIOCGWINSZ_MACOS, Int(ptr)
-    )
-    if rc != 0:
+    var ptr = Int(buf.unsafe_ptr())
+    var rc: Int
+    comptime if CompilationTarget.is_apple_silicon():
+        # `ioctl` is variadic, and Apple's arm64 ABI passes variadic arguments
+        # on the stack, where `external_call` (which only makes plain calls)
+        # never puts the third argument.  The ninth integer argument is the
+        # first one passed on the stack, so the pointer is repeated there.
+        rc = external_call[
+            "ioctl", Int, Int, Int, Int, Int, Int, Int, Int, Int, Int
+        ](1, _TIOCGWINSZ_MACOS, ptr, 0, 0, 0, 0, 0, ptr)
+    elif CompilationTarget.is_macos():
         rc = external_call["ioctl", Int, Int, Int, Int](
-            1, _TIOCGWINSZ_LINUX, Int(ptr)
+            1, _TIOCGWINSZ_MACOS, ptr
         )
-    if rc == 0:
-        # ws_col is at offset 2 (little-endian unsigned short).
-        var cols = Int(buf[2]) | (Int(buf[3]) << 8)
-        if cols > 0:
-            var clamped = cols if cols >= 40 else 40
-            if clamped > 120:
-                clamped = 120
-            return clamped - 2
-
-    return 80  # ultimate fallback
+    else:
+        rc = external_call["ioctl", Int, Int, Int, Int](
+            1, _TIOCGWINSZ_LINUX, ptr
+        )
+    # `ioctl` returns a C int; only its low 32 bits are defined.
+    if Int32(rc) != 0:
+        return 0
+    # ws_col is at offset 2 (little-endian unsigned short).
+    return Int(buf[2]) | (Int(buf[3]) << 8)
 
 
 # ── Utility functions ────────────────────────────────────────────────────────
