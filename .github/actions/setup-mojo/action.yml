@@ -8,11 +8,6 @@ runs:
       with:
         cache: true
         activate-environment: true
-    - name: Build package (with retry)
+    - name: Build package
       shell: bash
-      run: |
-        for attempt in 1 2 3; do
-          if pixi run package; then break; fi
-          if [ "$attempt" -eq 3 ]; then exit 1; fi
-          sleep 5
-        done
+      run: .github/scripts/run.sh pixi run package
