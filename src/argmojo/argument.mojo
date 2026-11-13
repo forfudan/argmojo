@@ -1,7 +1,5 @@
 """Defines a single command-line argument."""
 
-from std.sys import exit, stderr
-
 
 struct Argument(Copyable, Movable, Writable):
     """A command-line argument with its metadata and constraints.
@@ -485,7 +483,8 @@ struct Argument(Copyable, Movable, Writable):
         given value regardless of how many times the flag appears.
         For example, ``.count().max[3]()`` caps ``-vvvvv`` at 3.
 
-        Must be used after ``.count()``.
+        Only valid together with ``.count()``; ``Command.add_argument()``
+        raises if the argument is not a count.
 
         Parameters:
             ceiling: The maximum count value (must be ≥ 1).
@@ -493,15 +492,6 @@ struct Argument(Copyable, Movable, Writable):
         Returns:
             Self with the count ceiling set.
         """
-        if not self._is_count:
-            print(
-                (
-                    "Argument.max(): can only be used after .count(); call"
-                    " .count() before .max()."
-                ),
-                file=stderr,
-            )
-            exit(1)
         self._count_max = ceiling
         self._has_count_max = True
         return self^

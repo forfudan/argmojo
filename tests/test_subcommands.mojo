@@ -2152,5 +2152,36 @@ def test_persistent_argument_injected_once_into_child() raises:
     assert_equal(child.get_string("target"), "mylib")
 
 
+def test_persistent_default_before_subcommand_pushed_to_child() raises:
+    """A persistent option with a default, given before the subcommand, reaches
+    the child result instead of the child's default."""
+    var app = Command("app", "App")
+    app.add_argument(
+        Argument("level", help="Level")
+        .long["level"]()
+        .default["info"]()
+        .persistent()
+    )
+    app.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .count()
+        .persistent()
+    )
+    var run = Command("run", "Run")
+    app.add_subcommand(run^)
+
+    var result = app.parse_arguments(["app", "--level", "debug", "-vv", "run"])
+    assert_equal(result.get_string("level"), "debug")
+    ref child = result.get_subcommand_result()
+    assert_equal(child.get_string("level"), "debug")
+    assert_equal(child.get_count("verbose"), 2)
+    assert_true(child.was_provided("level"))
+
+    var defaulted = app.parse_arguments(["app", "run"])
+    assert_equal(defaulted.get_subcommand_result().get_string("level"), "info")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

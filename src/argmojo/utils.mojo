@@ -447,6 +447,31 @@ def _is_digit_byte(b: UInt8) -> Bool:
     return b >= _BYTE_ZERO and b <= _BYTE_NINE
 
 
+def _char_byte_len(s: String, start: Int) -> Int:
+    """Returns the byte length of the UTF-8 character at byte *start* of *s*.
+
+    Slicing a ``String`` at a byte that is not a character boundary aborts the
+    program, so code that walks a token character by character (short-option
+    clusters, for example) must step by this length rather than by one byte.
+
+    Args:
+        s: The string to inspect.
+        start: Byte index of the character's first byte.
+
+    Returns:
+        1 to 4, never past the end of *s*.
+    """
+    var lead = s.as_bytes()[start]
+    var n = 1
+    if lead >= 0xF0:
+        n = 4
+    elif lead >= 0xE0:
+        n = 3
+    elif lead >= 0xC0:
+        n = 2
+    return min(n, s.byte_length() - start)
+
+
 def _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
