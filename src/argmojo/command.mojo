@@ -28,11 +28,10 @@ from .utils import (
     _HELP_GAP,
     _HELP_TRAIL,
     _correct_cjk_punctuation,
-    _disable_echo,
     _display_width,
     _format_two_column_line,
-    _read_password_asterisk,
-    _restore_echo,
+    _read_password,
+    _stdin_is_open,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _is_bool_literal,
@@ -3489,6 +3488,8 @@ struct Command(Copyable, Movable, Writable):
             return
         var prompt = self._confirmation_prompt + " [y/N]: "
         var value: String
+        if not _stdin_is_open():
+            self._error("Aborted (no interactive input available)")
         try:
             value = input(prompt)
         except:
@@ -3534,6 +3535,9 @@ struct Command(Copyable, Movable, Writable):
                 break
         if not has_prompt_arguments:
             return
+        # A closed stdin is treated like end of input (see `_stdin_is_open`).
+        if not _stdin_is_open():
+            return
 
         for j in range(len(self.arguments)):
             ref a = self.arguments[j]
@@ -3573,29 +3577,15 @@ struct Command(Copyable, Movable, Writable):
             # ── Read input ───────────────────────────────────────────
             var value: String
             if a._hide_input:
-                if a._show_asterisk:
-                    # Asterisk mode: echo '*' for each keystroke.
-                    try:
-                        value = _read_password_asterisk(msg)
-                    except e:
-                        return
-                else:
-                    # Password mode: disable echo, read, re-enable echo,
-                    # then print a newline (since the user's Enter is not
-                    # echoed either on some terminals).
-                    var saved = _disable_echo()
-                    var echo_disabled = Bool(saved)
-                    try:
-                        value = input(msg)
-                    except e:
-                        _ = _restore_echo(saved^)
-                        return
-                    _ = _restore_echo(saved^)
-                    # Print a newline so the cursor moves to the next line
-                    # (the user's Enter was not echoed) — only if echo was
-                    # actually disabled.
-                    if echo_disabled:
-                        print()
+                # Hidden input, optionally echoing '*' per keystroke.
+                try:
+                    value = _read_password(msg, a._show_asterisk)
+                except e:
+                    # Ctrl-C means the user wants out: stop the whole parse.
+                    # EOF or a read error just ends prompting, as below.
+                    if String(e) == "password input cancelled":
+                        self._error("Aborted (password input cancelled)")
+                    return
             else:
                 try:
                     value = input(msg)
