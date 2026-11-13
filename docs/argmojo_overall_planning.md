@@ -18,7 +18,7 @@ scratch will benefit my projects and future projects.
 
 This section summarises the key design patterns and features from well-known arg
 parsers across multiple languages. The goal is to extract
-**universally useful ideas** that are feasible in Mojo 0.26.2, and to exclude
+**universally useful ideas** that are feasible in Mojo, and to exclude
 features that depend on language-specific capabilities (macros, decorators,
 reflection, closures-as-first-class) that Mojo does not yet provide.
 
@@ -100,7 +100,7 @@ operations and basic data structures.
 | Auto-dispatch (run functions)      | —        | —     | ✓     | —    | ✓     | Cobra / swift                | **Done**      |
 | Pre/Post run hooks                 | —        | —     | ✓     | —    | —     | Cobra                        | Phase 7a      |
 | Derive (macro/decorator-based)     | —        | —     | —     | ✓    | —     | clap `#[derive(Parser)]`     | Phase 7b      |
-| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | ✓     | Requires reflection          | Phase 7b      |
+| Enum → type mapping (real enums)   | —        | —     | —     | ✓    | ✓     | Feasible via a trait         | Planned       |
 | Subcommand variant dispatch        | —        | —     | —     | ✓    | ✓     | Requires sum types           | Phase 7b      |
 
 ## 3. Technical Foundations
@@ -144,12 +144,23 @@ Canonical signatures used by argmojo (in `utils.mojo`):
 | C function  | argmojo signature                                              |
 | ----------- | -------------------------------------------------------------- |
 | `ioctl`     | `external_call["ioctl", Int, Int, Int, Int](fd, req, ptr)`     |
+| `fcntl`     | `external_call["fcntl", Int, Int, Int](fd, cmd)`               |
 | `tcgetattr` | `external_call["tcgetattr", Int, Int, Int](fd, ptr)`           |
 | `tcsetattr` | `external_call["tcsetattr", Int, Int, Int, Int](fd, act, ptr)` |
-| `read`      | `external_call["read", Int, Int, Int, Int](fd, buf, count)`    |
 
 Any third-party Mojo package (e.g. decimo/limo) that matches these exact
 signatures avoids LLVM conflicts when linked alongside argmojo.
+
+`ioctl` and `fcntl` are variadic in C, and `external_call` can only make plain
+calls. That is harmless where variadic arguments travel like ordinary ones
+(x86-64, Linux arm64), but Apple arm64 passes them on the stack. On that target
+`ioctl` is called with nine arguments, so the pointer is repeated in the first
+stack slot (`_terminal_columns` in `utils.mojo`). `fcntl(fd, F_GETFD)` passes no
+variadic argument, so it needs no such care.
+
+Since Mojo v1.2.0 the standard library declares `read` itself, so argmojo no
+longer calls it through `external_call`: the password prompt reads through
+`RawFileDescriptor.read_bytes()` instead.
 
 **Future:** If argmojo ever adds direct FFI calls to `isatty` or `write`
 (currently handled via Mojo stdlib's `print()`/`stderr`), the same `Int`-only
@@ -175,11 +186,14 @@ external_call["write", Int, Int, Int, Int](fd, buf, count)
 
 ```txt
 src/argmojo/
-├── __init__.mojo                   # Package exports (Argument, Command, ParseResult)
+├── __init__.mojo                   # Package exports
+├── prelude.mojo                    # `from argmojo.prelude import *` convenience imports
 ├── argument.mojo                   # Argument struct — argument definition with builder pattern
+├── argument_wrappers.mojo          # Declarative wrappers: Option, Flag, Positional, Count
 ├── command.mojo                    # Command struct — command definition & parsing
+├── parsable.mojo                   # Parsable trait — reflection-driven declarative API
 ├── parse_result.mojo               # ParseResult struct — parsed values
-└── utils.mojo                      # Internal utilities — ANSI colours, display helpers
+└── utils.mojo                      # Internal utilities — ANSI colours, display helpers, terminal FFI
 tests/
 ├── test_parse.mojo                 # Core parsing + negative number passthrough tests
 ├── test_options.mojo               # default_if_no_value, require_equals, range, clamp, map, aliases, deprecated, remainder, parse_known, collection tests
@@ -188,12 +202,21 @@ tests/
 ├── test_subcommands.mojo           # Subcommand dispatch, persistent/global flags, argument parents tests
 ├── test_completion.mojo            # Shell completion (bash/zsh/fish) + Levenshtein typo suggestion tests
 ├── test_interactive.mojo           # Interactive prompting, password/masked input, confirmation tests
-└── test_response_file.mojo         # Response file (@args.txt) expansion tests
+├── test_response_file.mojo         # Response file (@args.txt) expansion tests
+├── test_declarative.mojo           # Declarative API: Parsable structs, wrappers, auto-naming
+├── test_hybrid.mojo                # Declarative struct + extra builder arguments
+├── test_subcommands_declarative.mojo  # Declarative subcommands
+├── test_wrappers.mojo              # Wrapper defaults, copy and move
+├── test_dispatch.mojo              # run-function dispatch for commands and subcommands
+├── test_schema_validation.mojo     # Registration-time schema checks that must pass
+├── check_schema_errors.sh          # Invalid schemas that must fail to compile
+└── check_tty.sh                    # Terminal width, password input and closed stdin under a pty
 examples/
 ├── demo.mojo                       # comprehensive showcase of all ArgMojo features
 ├── mgrep.mojo                      # grep-like CLI example (no subcommands)
 ├── mgit.mojo                       # git-like CLI example (with subcommands)
-└── yu.mojo                         # Chinese-language CLI example (CJK-aware help)
+├── yu.mojo                         # Chinese-language CLI example (CJK-aware help)
+└── declarative/                    # Declarative API examples: search, deploy, convert, jomo
 ```
 
 ### 4.2 What's Already Done ✓
@@ -415,8 +438,9 @@ The practical view — both dimensions checked together at parse time:
 
 5. **Exit codes.** POSIX-influenced tools (argparse, clap, click) use exit code
    **2** for argument parse errors. Go-based tools (cobra, docker, kubectl) use
-   exit code **1**. ArgMojo currently raises an `Error` (caller decides exit
-   code).
+   exit code **1**. ArgMojo's `parse()` prints the error and exits with code
+   **2**; `parse_arguments()` raises an `Error` and leaves the exit code to the
+   caller. Both exit with code 0 after printing help, version or completions.
 
 6. **Error output format consensus** (clap / argparse / click / cargo):
 
@@ -641,7 +665,8 @@ if result.subcommand == "search":
 - [x] Step 2: Root still validates own required args after dispatch
 - [x] Step 2b: `help` subcommand auto-added on first `add_subcommand()` call
 - [x] Step 2b: Only added once even with multiple `add_subcommand()` calls
-- [x] Step 2b: `help` appears after user subcommands in the list
+- [x] Step 2b: `help` is inserted before the first user subcommand, so it
+      comes first in the list
 - [x] Step 2b: `_is_help_subcommand` flag set on auto-entry, not on user subs
 - [x] Step 2b: `disable_help_subcommand()` before `add_subcommand()` prevents
       insertion
@@ -921,8 +946,10 @@ full-width ASCII:
   warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
   ```
 
-- [x] Only correct option names (tokens starting with `-`), **not** positional
-      values (user may intentionally input full-width content)
+- [ ] Only correct option names (tokens starting with `-`), **not** positional
+      values (user may intentionally input full-width content). Not yet: every
+      token is corrected, so a value containing `U+3000` is split into several
+      tokens, also after `--`.
 - [x] Add `.disable_fullwidth_correction()` opt-out API on `Command`
 - [x] Add tests for full-width flag, full-width `=` in `--key＝value`, and
       opt-out
@@ -977,9 +1004,9 @@ full-width correction step, since they fall within the `U+FF01`–`U+FF5E` range
 The features below are **not part of the core builder API**. They are split into
 sub-phases based on feasibility.
 
-#### Phase 7a: Feasible Now (Mojo 0.26.2)
+#### Phase 7a: Feasible Now
 
-These features use capabilities already available in Mojo 0.26.2 and can be
+These features use capabilities already available in Mojo and can be
 experimented with immediately.
 
 | Feature                        | Inspiration                 | Status   | Planning doc                                               |
@@ -1007,9 +1034,9 @@ Registers a non-capturing function pointer (`def (ParseResult) raises`) on each
 `Command`. `execute()` parses `sys.argv()`, walks the subcommand chain, and
 invokes the leaf handler. `_execute_with_arguments(args)` provides the same
 dispatch for testing with explicit argument lists. Works with aliases, nested
-subcommands, and persistent flags. Closures cannot be stored as struct fields in
-Mojo 0.26.2 (only non-capturing function pointers via the `def (...) raises`
-type), so handlers must be free functions.
+subcommands, and persistent flags. When this was implemented (Mojo 0.26.2),
+closures could not be stored as struct fields (only non-capturing function
+pointers via the `def (...) raises` type), so handlers are free functions.
 
 **Pre/Post lifecycle hooks** — Now unblocked by auto-dispatch. Straightforward
 extension: add `_pre_run_function` / `_post_run_function` fields with the same
@@ -1024,14 +1051,30 @@ blocked until upstream Mojo adds them.
 | Feature                        | Inspiration                          | Blocked on                |
 | ------------------------------ | ------------------------------------ | ------------------------- |
 | Derive (macro/decorator-based) | clap `#[derive(Parser)]`             | Mojo proc macros          |
-| Enum → type mapping            | clap / swift `ExpressibleByArgument` | Reflection on enums       |
 | Subcommand variant dispatch    | clap / swift `CommandGroup`          | Sum types / tagged unions |
 
+Two items that used to be listed here are feasible now:
+
+- **Custom value types** (clap / swift `ExpressibleByArgument`) do not need
+  reflection on enums. A trait with `from_argument(String) raises -> Self` and
+  `choices() -> List[String]`, read through an `ArgumentLike` wrapper, works in
+  a prototype. The one limit: a trait cannot declare a compile-time
+  `StringLiteral`, so choices are supplied at run time.
+- **Declarative `run()` dispatch** works with a generic run function registered
+  through `set_run_function()` (see §5.4.3 of
+  [declarative_api_planning.md](declarative_api_planning.md)). Only dispatch on
+  a sum type with exhaustiveness checks remains blocked.
+
 ## 6. Parsing Algorithm
+
+An overview; [parsing_algorithm.md](parsing_algorithm.md) describes every
+branch, its match order and the errors it can raise.
 
 ```txt
 Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
 
+0. Expand response files (if `response_file_prefix()` is set), then apply
+   full-width and CJK punctuation correction
 1. Initialize ParseResult and register positional names
 2. If `help_on_no_arguments` is enabled and only argv[0] exists:
     print help and exit
@@ -1060,7 +1103,9 @@ Input: ["demo", "yuhao", "./src", "--ling", "-i", "--max-depth", "3"]
     │       (match → build child argv, inject persistent, recurse, sync; no match → -1)
     └─ Otherwise:
             Treat as positional argument
-4. Apply defaults for missing arguments (named + positional slots)
+4. Post-parse, in this order: implications → prompt for missing arguments →
+   implications again (prompted values can trigger them) → defaults for
+   missing arguments (named + positional slots) → confirmation prompt
 5. Validate:
     ├─ Required arguments
     ├─ Positional count (too many positionals)

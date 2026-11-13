@@ -504,6 +504,16 @@ myapp -v           # verbose = True
 myapp              # verbose = False (default)
 ```
 
+The long form also accepts an explicit boolean after `=` (`true`/`false`,
+`yes`/`no`, `on`/`off`, `1`/`0`, any case). Any other value is an error, and so
+is `=` after a short flag:
+
+```shell
+myapp --verbose=false   # verbose = False, still counts as provided
+myapp --verbose=maybe   # error: Option '--verbose' is a flag; it takes no value or a boolean ...
+myapp -v=1              # error: Option '-v' does not take a value; '=' is not allowed here
+```
+
 #### Retrieving: (Flags) <!-- omit from toc -->
 
 ```mojo
@@ -696,7 +706,8 @@ if level >= 2:
 ```
 
 Count flags are a special kind of boolean flag — calling `.count()`
-automatically sets `.flag()` as well, so they don't expect a value.
+automatically sets `.flag()` as well, so they don't expect a value. A count is
+set by repeating the option: `--verbose=3` is an error.
 
 Merged short flags work seamlessly: `-vvv` is three occurrences of `-v`.
 
@@ -706,6 +717,8 @@ You can cap a count flag at a maximum value with `.max[n]()`. The ceiling value
 `n` is a compile-time parameter (must be ≥ 1); invalid values are caught at
 build time. Any occurrences beyond the ceiling are clamped to the maximum and a
 warning is printed to stderr informing the user of the adjustment.
+`.max[n]()` only applies to a count: `add_argument()` raises if the argument is
+not one. It may come before or after `.count()` in the chain.
 
 ```mojo
 command.add_argument(
@@ -2297,15 +2310,22 @@ Aliases are also included in shell-completion scripts and typo suggestions.
 
 When the root command has subcommands registered
 **and `allow_positional_with_subcommands()` has not been called**, an
-unrecognised token triggers an error listing available commands:
+unrecognised token triggers an error with the usage line, and a tip when a
+subcommand with a similar name exists:
 
 ```shell
 app foobar
-# error: app: Unknown command 'foobar'. Available commands: search, init
+# error: unrecognized subcommand 'foobar'
+# usage: app <COMMAND> [OPTIONS]
+
+app serch
+# error: unrecognized subcommand 'serch'
+#   tip: a similar subcommand exists: 'search'
+# usage: app <COMMAND> [OPTIONS]
 ```
 
-The error message excludes the auto-registered `help` subcommand and hidden
-subcommands from the list.
+The tip never suggests the auto-registered `help` subcommand or a hidden
+subcommand.
 
 If the command has opted in via `allow_positional_with_subcommands()`, unknown
 tokens are treated as positionals rather than triggering this error.
@@ -2317,8 +2337,7 @@ surfaces:
 
 - `--help` output (the `Commands:` section and usage line)
 - Shell completion scripts (bash, zsh, fish)
-- "Available commands" error messages
-- Typo suggestions
+- Typo suggestions in error messages
 
 The subcommand remains dispatchable by its exact name or alias. This is useful
 for internal, experimental, or deprecated commands.
@@ -2824,6 +2843,11 @@ options:
 Help text columns are **dynamically aligned**: the padding between the option
 names and the description text adjusts automatically based on the longest option
 line, so everything stays neatly aligned regardless of option length.
+
+Long descriptions wrap to fit the terminal. The width comes from the `COLUMNS`
+environment variable when it is set to a number, otherwise from the terminal
+itself; it is clamped to 40–120 columns, and 80 is used when neither is
+available (for example when output is piped).
 
 ---
 
@@ -3891,7 +3915,8 @@ Enable verbose output [y/n]:        ← flag prompt
 When stdin is not a terminal (piped input, CI environments, `< /dev/null`), the
 `input()` call raises on EOF. ArgMojo catches this gracefully and stops
 prompting — any values collected so far are preserved, defaults are then applied
-normally, and validation proceeds as usual.
+normally, and validation proceeds as usual. A closed stdin (`./login <&-`) is
+handled the same way.
 
 ```shell
 echo "" | ./login --user alice --token secret
@@ -4061,11 +4086,14 @@ The `.password()` builder method:
 
 1. **Implies `.prompt()`** — if prompting is not already enabled, `.password()`
    enables it automatically.
-2. **Disables terminal echo** — on POSIX systems (macOS, Linux), terminal echo
-   is suppressed via `tcsetattr(3)` while the user types, then re-enabled
-   afterwards.
-3. **Falls back gracefully** — if stdin is not a terminal (piped input, CI,
-   `/dev/null`), echo control silently returns `False` and prompting stops via
+2. **Disables terminal echo** — on POSIX systems (macOS, Linux), echo and
+   signal keys are switched off via `tcsetattr(3)` while the user types, then
+   restored afterwards. Backspace removes the last character.
+3. **Ctrl-C aborts** — pressing Ctrl-C at the prompt restores the terminal and
+   stops parsing with `Aborted (password input cancelled)`; `parse()` exits
+   with code 2.
+4. **Falls back gracefully** — if stdin is not a terminal (piped input, CI,
+   `/dev/null`), the value is read as a normal line, and prompting stops via
    the normal EOF-handling path. Defaults are applied as usual.
 
 ### Custom Prompt Text
@@ -4101,9 +4129,10 @@ registration-time error.
 
 ### Non-Interactive Use
 
-When stdin is not a terminal, the echo-control calls return `False` (harmless),
-and `input()` raises on EOF. ArgMojo catches the exception and stops prompting
-gracefully — exactly the same behaviour as regular `.prompt()` arguments.
+When stdin is not a terminal, echo control is skipped and the value is read as
+a normal line. At end of input, or when stdin is closed, ArgMojo stops
+prompting gracefully — exactly the same behaviour as regular `.prompt()`
+arguments.
 
 To bypass the prompt entirely, provide the value on the command line:
 
@@ -4185,8 +4214,8 @@ var result = app.parse()
 
 ### Non-Interactive Use (Confirmation Option)
 
-When stdin is not available (piped input, CI environments, `/dev/null`), the
-confirmation prompt cannot be displayed. In this case, the command
+When stdin is not available (piped input, CI environments, `/dev/null`, or a
+closed stdin), the confirmation prompt cannot be displayed. In this case, the command
 **aborts with an error** unless `--yes` is passed. This ensures that destructive
 commands never run silently without explicit opt-in:
 
