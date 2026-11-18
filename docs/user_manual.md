@@ -1,3 +1,11 @@
+<!--
+The `mdbook:` comments in this file split it into the pages of the online
+book (argmojo.mojo-lang.com, built by the argmojo-docs repository). A page
+runs from its `page` comment to the next one; `skip` leaves a part out of the
+book. GitHub does not show these comments. A new section that should be a page
+of its own needs a `page` comment above its heading.
+-->
+<!-- mdbook: page file="introduction.md" title="Introduction" -->
 # ArgMojo — User Manual <!-- omit from toc -->
 
 > Comprehensive guide to every feature of the ArgMojo command-line argument
@@ -10,6 +18,7 @@ your mojo file:
 from argmojo import Argument, Command
 ```
 
+<!-- mdbook: skip -->
 - [Getting Started](#getting-started)
   - [Creating a Command](#creating-a-command)
   - [Reading Parsed Results](#reading-parsed-results)
@@ -136,6 +145,7 @@ from argmojo import Argument, Command
   - [Argument-Level Builder Methods](#argument-level-builder-methods)
   - [Command-Level Methods](#command-level-methods)
   - [Notes (Cross-Library Method Name Reference)](#notes-cross-library-method-name-reference)
+<!-- mdbook: end skip -->
 
 ## Getting Started
 
@@ -223,6 +233,7 @@ the command line, entered at an interactive prompt, or received through an
 `implies()` rule, and `False` for a default. Group constraints go through
 `was_provided()`, which is why a default never sets off a conflict on its own.
 
+<!-- mdbook: page file="builder-overview.md" -->
 ## Builder Method Overview
 
 Before we dive into the details of fine-tuning argument and command behaviour,
@@ -384,6 +395,18 @@ The table below shows which builder methods can be used with each argument mode.
 | `command.confirmation_option()` [^cmd] |      —      |     —     |     —      |        —        |
 | `command.usage()` [^cmd]               |      —      |     —     |     —      |        —        |
 
+<!-- Footnote definitions of the compatibility table -->
+
+[^range]: Requires `.range[min,max]()` first.
+[^append]: Implies `.append()` automatically.
+[^cmd]: Command-level method — called on `Command`, not chained on `Argument`.
+[^vname]: Accepts compile-time parameter:
+    `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in
+    `<NAME>`, `False` displays bare `NAME`.
+[^pw]: Also available as `.password[True]()` to echo `*` per keystroke (sudo-rs
+    style), or `.password[False]()` (same as plain `.password()`).
+
+<!-- mdbook: page file="defining-arguments.md" -->
 ## Defining Arguments
 
 ### Positional Arguments
@@ -590,6 +613,7 @@ command.add_argument(
 )
 ```
 
+<!-- mdbook: page file="short-options.md" -->
 ## Short Option Details
 
 ### Short Flag Merging
@@ -639,6 +663,7 @@ myapp -o file.txt         # output = "file.txt"  (same result)
 This is the same behaviour as GCC's `-O2`, tar's `-xzf archive.tar.gz`, and
 similar UNIX traditions.
 
+<!-- mdbook: page file="flag-variants.md" -->
 ## Flag Variants
 
 ### Count Flags
@@ -785,6 +810,7 @@ The negatable approach is simpler and uses only one entry in `ParseResult`.
 > **Note:** Only flags (`.flag()`) can be made negatable. Calling `.negatable()`
 > on a non-flag argument has no effect on parsing.
 
+<!-- mdbook: page file="multiple-values.md" -->
 ## Collecting Multiple Values
 
 ### Append / Collect Action
@@ -1179,6 +1205,7 @@ options:
   -D, --define <key=value>...    Define a variable
 ```
 
+<!-- mdbook: page file="value-validation.md" -->
 ## Value Validation
 
 ### Choices Validation
@@ -1344,6 +1371,7 @@ myapp --port 200
 # Error: Value 200 for '--port' is out of range [1, 100]
 ```
 
+<!-- mdbook: page file="group-constraints.md" -->
 ## Group Constraints
 
 ### Mutually Exclusive Groups
@@ -1765,6 +1793,7 @@ command.mutually_exclusive(excl^)
 > user to provide the target argument — parsing fails if they don't.
 > `implies()` *automatically sets* the target — no user action needed.
 
+<!-- mdbook: page file="subcommands.md" -->
 ## Subcommands
 
 Subcommands (`app <subcommand> [args]`) let you group related functionality
@@ -2486,6 +2515,7 @@ If your `main()` constructs more than ~5 subcommands, factor each one into a
 `generate_<name>_subcommand()` function that returns `Command`. This keeps every
 function body small and gives the Mojo lifetime checker an easy job.
 
+<!-- mdbook: page file="help-and-display.md" -->
 ## Help & Display
 
 ### Value Name
@@ -3114,6 +3144,7 @@ regular characters and do **not** cause tokens to be split.
 This feature is enabled by default and works with both `parse_arguments()` and
 `parse_known_arguments()`.
 
+<!-- mdbook: page file="parsing-behaviour.md" -->
 ## Parsing Behaviour
 
 ### Negative Number Passthrough
@@ -3557,6 +3588,7 @@ the "Unknown option" error is suppressed.
 > parser cannot tell whether the unknown option takes a value. Use `=` syntax
 > when forwarding unknown options reliably.
 
+<!-- mdbook: page file="response-files.md" -->
 ## Response Files
 
 A **response file** (also called an **args file**) lets users store arguments
@@ -3662,6 +3694,7 @@ command.response_file_prefix("+")
 # Now: mytool +args.txt
 ```
 
+<!-- mdbook: page file="interactive-prompting.md" -->
 ## Interactive Prompting
 
 ArgMojo supports **interactive prompting** for missing arguments. When an
@@ -3874,6 +3907,7 @@ To avoid prompting entirely, always provide all arguments on the command line:
 ./login --user alice --token secret --region eu
 ```
 
+<!-- mdbook: page file="argument-parents.md" -->
 ## Argument Parents and Inheritance
 
 When multiple commands share the same set of arguments (e.g., `--verbose`,
@@ -3985,6 +4019,7 @@ var result = app.parse()
 - If you need different constraints for different children, apply them after
   `add_parent()` on each child individually.
 
+<!-- mdbook: page file="password-input.md" -->
 ## Password / Masked Input
 
 For passwords, API tokens, and other sensitive values, you want to
@@ -4076,6 +4111,7 @@ To bypass the prompt entirely, provide the value on the command line:
 ./login --username alice --password s3cret
 ```
 
+<!-- mdbook: page file="confirmation-option.md" -->
 ## Confirmation Option
 
 Some commands are destructive or irreversible — dropping databases, deleting
@@ -4162,6 +4198,7 @@ $ ./drop mydb --yes    # works in CI
 Dropping database: mydb
 ```
 
+<!-- mdbook: page file="usage-line.md" -->
 ## Usage Line Customisation
 
 By default, ArgMojo generates usage lines like
@@ -4206,6 +4243,7 @@ options:
 When no custom usage is set, the auto-generated line is used as before — no
 change in default behaviour.
 
+<!-- mdbook: page file="shell-completion.md" -->
 ## Shell Completion
 
 ArgMojo can generate **shell completion scripts** for Bash, Zsh, and Fish. These
@@ -4384,6 +4422,7 @@ The generated scripts cover the full command tree:
 > completed; users type `--no-` manually. This matches the behaviour of other
 > CLI frameworks.
 
+<!-- mdbook: page file="developer-validation.md" -->
 ## Developer Validation
 
 ArgMojo provides **two layers of validation** to catch developer mistakes as
@@ -4478,6 +4517,7 @@ executes the binary).
 > one step. The CI workflow runs `pixi run package`, `pixi run test`, and
 > `pixi run debug`, so pull requests automatically catch both classes of errors.
 
+<!-- mdbook: page file="declarative-api.md" -->
 ## Declarative API (Struct-Based)
 
 > **Status**: Available since v0.5.0. The declarative API is **optional** — if
@@ -4697,6 +4737,8 @@ The four parsing methods follow a 2×2 naming convention:
 - **`from_command`** means parsing from a pre-configured `Command` (created via
   `to_command()` + builder customisation).
 
+<!-- mdbook: part title="Appendix" -->
+<!-- mdbook: page file="method-name-reference.md" -->
 ## Cross-Library Method Name Reference
 
 The table below maps every ArgMojo builder method / command-level method to its
@@ -4821,16 +4863,8 @@ library has no built-in equivalent.
 
 See the footnotes at the bottom of this document.
 
-<!-- Footnote definitions (all collected at file bottom for maintainability) -->
+<!-- Footnote definitions of the table above (the compatibility table has its own, next to it) -->
 
-[^range]: Requires `.range[min,max]()` first.
-[^append]: Implies `.append()` automatically.
-[^cmd]: Command-level method — called on `Command`, not chained on `Argument`.
-[^vname]: Accepts compile-time parameter:
-    `.value_name[wrapped: Bool = True]("NAME")` — `True` wraps in
-    `<NAME>`, `False` displays bare `NAME`.
-[^pw]: Also available as `.password[True]()` to echo `*` per keystroke (sudo-rs
-    style), or `.password[False]()` (same as plain `.password()`).
 [^xref-1]: Cobra / pflag uses imperative `cmd.MarkFlag…()` calls on the command,
     not builder-chaining on the flag definition.
 [^xref-2]: clap positional args are defined by `.index(1)`, `.index(2)`, etc.,
