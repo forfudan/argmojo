@@ -2183,5 +2183,29 @@ def test_persistent_default_before_subcommand_pushed_to_child() raises:
     assert_equal(defaulted.get_subcommand_result().get_string("level"), "info")
 
 
+def test_help_subcommand_target_uses_full_path() raises:
+    """Tests that `app help search` shows the same help as `app search -h`.
+
+    The help subcommand prints the help of the subcommand copy that dispatch
+    builds: named "app search" and holding the persistent options.
+    """
+    var app = Command("app", "My app")
+    app.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .flag()
+        .persistent()
+    )
+    var search = Command("search", "Search")
+    search.add_argument(Argument("pattern", help="Pattern").positional())
+    app.add_subcommand(search^)
+    var idx = app._find_subcommand("search")
+    var help = app._subcommand_for_dispatch(idx, "search")._generate_help(
+        color=False
+    )
+    assert_true("usage: app search" in help, msg=help)
+    assert_true("--verbose" in help, msg=help)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

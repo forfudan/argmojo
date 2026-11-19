@@ -3249,6 +3249,58 @@ struct Command(Copyable, Movable, Writable):
         i += 1
         return i
 
+    def _subcommand_for_dispatch(self, sub_idx: Int, canon: String) -> Command:
+        """Returns a copy of a subcommand, ready to parse or show its help.
+
+        The copy is named by its full path ("app sub"), so its help and errors
+        say "app sub", and it holds the parent's persistent arguments, so they
+        are recognised wherever the user places them on the line.
+
+        Args:
+            sub_idx: The index of the subcommand in ``self.subcommands``.
+            canon: The subcommand's canonical name.
+
+        Returns:
+            The prepared copy.
+        """
+        var child_copy = self.subcommands[sub_idx].copy()
+        child_copy.name = String(self.name, " ", canon)
+        # The tokens were already expanded here; expanding them again in
+        # the child would read `@@x` (now `@x`) as a file reference.
+        if (
+            self._response_file_prefix.byte_length() > 0
+            and child_copy._response_file_prefix == self._response_file_prefix
+        ):
+            child_copy._response_file_prefix = String("")
+        for _pi in range(len(self.arguments)):
+            if not self.arguments[_pi]._is_persistent:
+                continue
+            # Skip injection when the child declares the same argument
+            # itself: appending here bypasses `add_argument`, so a
+            # duplicate would survive as far as help output and prefix
+            # matching.  Registration-time checks in `add_argument` and
+            # `add_subcommand` normally prevent this; paths that copy
+            # commands around (e.g. `add_parent`) can still reach it.
+            var already_owned = False
+            for _ci in range(len(child_copy.arguments)):
+                ref ca = child_copy.arguments[_ci]
+                if (
+                    ca.name == self.arguments[_pi].name
+                    or (
+                        ca._long_name
+                        and ca._long_name == self.arguments[_pi]._long_name
+                    )
+                    or (
+                        ca._short_name
+                        and ca._short_name == self.arguments[_pi]._short_name
+                    )
+                ):
+                    already_owned = True
+                    break
+            if not already_owned:
+                child_copy.arguments.append(self.arguments[_pi].copy())
+        return child_copy^
+
     def _dispatch_subcommand(
         self,
         token: String,
@@ -3292,52 +3344,15 @@ struct Command(Copyable, Movable, Writable):
                         target_idx >= 0
                         and not self.subcommands[target_idx]._is_help_subcommand
                     ):
-                        print(self.subcommands[target_idx]._generate_help())
+                        var target = self._subcommand_for_dispatch(
+                            target_idx, self.subcommands[target_idx].name
+                        )
+                        print(target._generate_help())
                         exit(0)
                 # No target, unknown, or self-referential → root help.
                 print(self._generate_help())
                 exit(0)
-            # Build a child copy with persistent arguments injected so they
-            # are recognised wherever the user places them on the line.
-            var child_copy = self.subcommands[sub_idx].copy()
-            # Set full command path so child help/errors show "app sub".
-            child_copy.name = String(self.name, " ", canon)
-            # The tokens were already expanded here; expanding them again in
-            # the child would read `@@x` (now `@x`) as a file reference.
-            if (
-                self._response_file_prefix.byte_length() > 0
-                and child_copy._response_file_prefix
-                == self._response_file_prefix
-            ):
-                child_copy._response_file_prefix = String("")
-            for _pi in range(len(self.arguments)):
-                if not self.arguments[_pi]._is_persistent:
-                    continue
-                # Skip injection when the child declares the same argument
-                # itself: appending here bypasses `add_argument`, so a
-                # duplicate would survive as far as help output and prefix
-                # matching.  Registration-time checks in `add_argument` and
-                # `add_subcommand` normally prevent this; paths that copy
-                # commands around (e.g. `add_parent`) can still reach it.
-                var already_owned = False
-                for _ci in range(len(child_copy.arguments)):
-                    ref ca = child_copy.arguments[_ci]
-                    if (
-                        ca.name == self.arguments[_pi].name
-                        or (
-                            ca._long_name
-                            and ca._long_name == self.arguments[_pi]._long_name
-                        )
-                        or (
-                            ca._short_name
-                            and ca._short_name
-                            == self.arguments[_pi]._short_name
-                        )
-                    ):
-                        already_owned = True
-                        break
-                if not already_owned:
-                    child_copy.arguments.append(self.arguments[_pi].copy())
+            var child_copy = self._subcommand_for_dispatch(sub_idx, canon)
             var child_result = child_copy.parse_arguments(child_argv)
             # Bubble up persistent values from child to root result so
             # that root_result.get_flag("x") always works regardless of
@@ -3768,7 +3783,8 @@ struct Command(Copyable, Movable, Writable):
 
         Checks (in order):
         1. Required arguments are present.
-        2. Positional argument count is not exceeded.
+        2. Positional argument count is not exceeded, and positional
+           choices and deprecation warnings are applied.
         3. Mutually exclusive groups have at most one member set.
         4. Required-together groups are all-or-nothing.
         5. One-required groups have at least one member set.
@@ -3819,6 +3835,29 @@ struct Command(Copyable, Movable, Writable):
                     String(len(result._positionals)),
                 )
             )
+
+        # Positionals are only collected while parsing, so their choices and
+        # deprecation are checked here; options check both as they are read.
+        # A value that comes from a default is not checked.
+        for pi in range(len(result._positional_names)):
+            if pi >= len(result._positionals):
+                break
+            var pname = result._positional_names[pi]
+            if not result.was_provided(pname):
+                continue
+            for j in range(len(self.arguments)):
+                ref a = self.arguments[j]
+                if a.name != pname or not a._is_positional:
+                    continue
+                if not a._is_remainder:
+                    self._validate_choices(a, result._positionals[pi])
+                if a._deprecated_msg:
+                    self._warn(
+                        String(
+                            "'", pname, "' is deprecated: ", a._deprecated_msg
+                        )
+                    )
+                break
 
         # Validate mutually exclusive groups.
         for g in range(len(self._exclusive_groups)):
@@ -4815,7 +4854,14 @@ struct Command(Copyable, Movable, Writable):
                 )
                 pos_plains.append(plain)
                 pos_colors.append(colored)
-                pos_helps.append(self.arguments[i].help_text)
+                var help = self.arguments[i].help_text
+                if self.arguments[i]._deprecated_msg:
+                    if help:
+                        help += " "
+                    help += String(
+                        "[deprecated: ", self.arguments[i]._deprecated_msg, "]"
+                    )
+                pos_helps.append(help)
 
         var s = String(header_color, "arguments:", reset_code, "\n")
         var pos_indices = List[Int]()

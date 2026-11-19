@@ -17,6 +17,9 @@ This release is about stability: ordinary input no longer crashes the program, i
 4. Help was always wrapped at 80 columns on Apple silicon: the `ioctl` call that reads the terminal width is variadic, and Apple's arm64 ABI passes its pointer argument on the stack. The `COLUMNS` environment variable is now honoured first.
 5. With stdin closed (`prog <&-`), prompts and the confirmation prompt crashed. Prompting now stops as at end of input, and confirmation aborts with its usual error.
 6. A plain `.password()` prompt only turned echo off, so Ctrl-C killed the program and left the terminal without echo. Both password modes now switch off signals while reading, and Ctrl-C aborts the parse with `Aborted (password input cancelled)`. Backspace removes a whole UTF-8 character.
+7. `.choice[]()` on a positional argument was never checked, so any value was accepted. It now gives the same error as on an option.
+8. `.deprecated[]()` on a positional argument had no effect. It now prints the warning when the positional is given and adds the note to the help.
+9. `app help search` showed the subcommand's help as `usage: search ...`, without the parent's name or its persistent options. It now shows the same help as `app search --help`.
 
 ### 🦋 Changed
 
