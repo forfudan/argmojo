@@ -96,18 +96,18 @@ def _terminal_columns() -> Int:
     var buf = Array[UInt8, 8](fill=0)
     var ptr = Int(buf.unsafe_ptr())
     var rc: Int
-    comptime if CompilationTarget.is_apple_silicon():
+    comptime if CompilationTarget.is_macos():
         # `ioctl` is variadic, and Apple's arm64 ABI passes variadic arguments
         # on the stack, where `external_call` (which only makes plain calls)
         # never puts the third argument.  The ninth integer argument is the
         # first one passed on the stack, so the pointer is repeated there.
+        # On Intel Macs the pointer is read from the third register, which
+        # this call sets as well, so the extra arguments are harmless.  The
+        # check is not `is_apple_silicon()`: that tests the CPU model, and it
+        # is false for a generic arm64 model, as on a virtual machine.
         rc = external_call[
             "ioctl", Int, Int, Int, Int, Int, Int, Int, Int, Int, Int
         ](1, _TIOCGWINSZ_MACOS, ptr, 0, 0, 0, 0, 0, ptr)
-    elif CompilationTarget.is_macos():
-        rc = external_call["ioctl", Int, Int, Int, Int](
-            1, _TIOCGWINSZ_MACOS, ptr
-        )
     else:
         rc = external_call["ioctl", Int, Int, Int, Int](
             1, _TIOCGWINSZ_LINUX, ptr
