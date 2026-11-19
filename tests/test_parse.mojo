@@ -1627,5 +1627,39 @@ def test_max_before_count_is_accepted() raises:
     assert_equal(result.get_count("verbose"), 2)
 
 
+def _positional_choice_command() raises -> Command:
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("mode", help="Mode")
+        .positional()
+        .choice["fast"]()
+        .choice["safe"]()
+    )
+    return command^
+
+
+def test_positional_choices_valid() raises:
+    """Tests that a positional accepts a value from its choices."""
+    var command = _positional_choice_command()
+    var args: List[String] = ["test", "safe"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("mode"), "safe")
+
+
+def test_positional_choices_invalid() raises:
+    """Tests that a positional rejects a value outside its choices."""
+    var command = _positional_choice_command()
+    var args: List[String] = ["test", "slow"]
+    var caught = False
+    try:
+        _ = command.parse_arguments(args)
+    except e:
+        caught = True
+        var msg = String(e)
+        assert_true("Invalid value 'slow'" in msg, msg=msg)
+        assert_true("'mode'" in msg, msg=msg)
+    assert_true(caught, msg="Should reject a positional outside its choices")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

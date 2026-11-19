@@ -1674,5 +1674,17 @@ def test_fullwidth_punctuation_disabled() raises:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def test_deprecated_positional_in_help() raises:
+    """Tests that a deprecated positional is marked in the help."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("legacy", help="Old input")
+        .positional()
+        .deprecated["use --input"]()
+    )
+    var help = command._generate_help(color=False)
+    assert_true("Old input [deprecated: use --input]" in help, msg=help)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
