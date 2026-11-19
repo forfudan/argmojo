@@ -20,6 +20,7 @@ parse_arguments(raw_tokens)
 └── 1. Initialise ParseResult; copy raw_tokens.
     2. (Optional) Expand response files, if response_file_prefix() was set.
     3. PARSING PHASE → _run_parse_loop(tokens, result, collect_unknown=False)
+       ├── An empty token list is treated as [program name].
        ├── CJK auto-correction (fullwidth → ASCII).
        ├── Register positional argument names in declaration order.
        ├── help_on_no_arguments fast-path: print help and exit if argv has only
@@ -41,10 +42,10 @@ parse_arguments(raw_tokens)
            ├── Subcommand dispatch.
            └── Otherwise: bare positional argument.
     4. POST-PARSE PHASE
-       ├── _apply_defaults
        ├── _apply_implications
        ├── _prompt_missing_arguments
        ├── _apply_implications  (re-applied; prompts may have triggered new ones)
+       ├── _apply_defaults
        ├── _confirm
        └── _validate
     5. Return ParseResult.
@@ -52,7 +53,7 @@ parse_arguments(raw_tokens)
 parse_known_arguments(raw_tokens)
 └── Same as above except:
     • _run_parse_loop(..., collect_unknown=True)
-    • POST-PARSE PHASE: _apply_defaults → _apply_implications → _validate
+    • POST-PARSE PHASE: _apply_implications → _apply_defaults → _validate
       (no prompt, no confirm; callers typically forward unknowns to a
       downstream tool and should not be interrupted by interactive prompts).
 ```
@@ -123,8 +124,10 @@ _run_parse_loop(tokens, result, collect_unknown)
     │           │   ├── Option '<name>' requires N values
     │           │   ├── Option '<name>' takes N values; '=' syntax is not supported
     │           │   ├── Option '<name>' requires '=' syntax (use --opt=VALUE)
+    │           │   ├── Option '<name>' is a flag; it takes no value or a boolean ...
+    │           │   │     (`--flag=VALUE` accepts true/false, yes/no, on/off, 1/0)
+    │           │   ├── Option '<name>' is a counter and does not take a value ...
     │           │   ├── Invalid value '<v>' for argument '<name>' (choose from ...)
-    │           │   ├── Value <n> for '<name>' is out of range [a, b]
     │           │   └── Invalid key=value format '<v>' for '<name>'
     │           └── warns to stderr:
     │               ├── '<name>' is deprecated
@@ -143,8 +146,11 @@ _run_parse_loop(tokens, result, collect_unknown)
     │       └── else:
     │           └── i = _parse_short_merged(tokens, i, result)          # -abc / -ofile.txt
     │           ↳ raises / warns: same family as 2.1.8, plus
-    │             ├── Unknown option '-<c>'
-    │             └── Option '-<c>' requires a value
+    │             ├── Unknown option '-<c>'   (a non-ASCII <c> is never a
+    │             │     registered short name, so it lands here)
+    │             ├── Option '-<c>' requires a value
+    │             └── Option '-<c>' does not take a value; '=' is not allowed
+    │                   here   (`-v=1` on a flag or count)
     │
     ├── 2.1.10  completions subcommand-form  (token == _completions_name)
     │   └── same as 2.1.6 but with "<name>" instead of "--<name>"
@@ -177,11 +183,13 @@ _run_parse_loop(tokens, result, collect_unknown)
 
 ```text
 post_parse(result)
-├── _apply_defaults(result)                  # both entry points
 ├── _apply_implications(result)              # both entry points
+│   └── a flag switched off (--no-x, --x=false) does not fire its implications
 ├── _prompt_missing_arguments(result)        # parse_arguments only
-│   └── may raise on I/O errors
+│   ├── stops (keeping answers so far) on EOF or a closed stdin
+│   └── raises "Aborted (password input cancelled)" on Ctrl-C at a password
 ├── _apply_implications(result)              # parse_arguments only (re-run)
+├── _apply_defaults(result)                  # both entry points
 ├── _confirm(result)                         # parse_arguments only
 │   └── may raise on user denial / I/O
 └── _validate(result)                        # both entry points

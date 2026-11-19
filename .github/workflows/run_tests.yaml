@@ -14,8 +14,13 @@ defaults:
   run:
     shell: bash
 
+# Every Mojo command runs through .github/scripts/run.sh: it applies a
+# per-command timeout and retries only when the command is killed by a
+# signal (a compiler crash or the timeout), never when a test fails.
+# Tests import the argmojo.mojoc that setup-mojo builds (`-I .`).
+
 jobs:
-  # ── Job 1: Format + Package ────────────────────────────────────────────
+  # ── Job 1: Format + Docs + Package ─────────────────────────────────────
   # If this job fails, the later test jobs will be skipped,
   # so we can save time by checking formatting and packaging first.
   build:
@@ -34,21 +39,10 @@ jobs:
             echo "::error::Code is not formatted. Run 'pixi run format' locally."
             exit 1
           fi
-      - name: Build package (with retry)
-        run: |
-          for attempt in 1 2 3; do
-            echo "=== package attempt $attempt ==="
-            if pixi run package; then
-              echo "=== package succeeded on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== package failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== package crashed, retrying in 5s... ==="
-            sleep 5
-          done
+      - name: Docstring check
+        run: .github/scripts/run.sh pixi run doc
+      - name: Build package
+        run: .github/scripts/run.sh pixi run package
 
   # ── Job 2: Core parsing tests ──────────────────────────────────────────
   test-core:
@@ -59,24 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-mojo
-      - name: Run core tests (with retry)
+      - name: Run core tests
         run: |
-          for attempt in 1 2 3; do
-            echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_parse.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_options.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_response_file.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_groups.mojo; then
-              echo "=== tests passed on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== tests failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== test run crashed, retrying in 5s... ==="
-            sleep 5
-          done
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_parse.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_options.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_response_file.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_groups.mojo
 
   # ── Job 3: Feature tests ───────────────────────────────────────────────
   test-features:
@@ -87,24 +69,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-mojo
-      - name: Run feature tests (with retry)
+      - name: Run feature tests
         run: |
-          for attempt in 1 2 3; do
-            echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_help.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
-            && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo; then
-              echo "=== tests passed on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== tests failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== test run crashed, retrying in 5s... ==="
-            sleep 5
-          done
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_help.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_completion.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_interactive.mojo < /dev/null
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_wrappers.mojo
+      - name: Run terminal (pty) checks
+        run: .github/scripts/run.sh bash tests/check_tty.sh
 
   # ── Job 4: Declarative API tests ───────────────────────────────────────
   test-declarative:
@@ -115,27 +87,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-mojo
-      - name: Run declarative tests (with retry)
+      - name: Run declarative tests
         run: |
-          for attempt in 1 2 3; do
-            echo "=== test attempt $attempt ==="
-            if mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_dispatch.mojo \
-            && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
-            && bash tests/check_schema_errors.sh; then
-              echo "=== tests passed on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== tests failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== test run crashed, retrying in 5s... ==="
-            sleep 5
-          done
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_declarative.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_hybrid.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_subcommands.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_subcommands_declarative.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_dispatch.mojo
+          .github/scripts/run.sh mojo run -I . -D ASSERT=all tests/test_schema_validation.mojo
+          .github/scripts/run.sh bash tests/check_schema_errors.sh
 
   # ── Job 5: Example binaries ────────────────────────────────────────────
   test-examples:
@@ -146,18 +106,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-mojo
-      - name: Build example binaries (with retry)
-        run: |
-          for attempt in 1 2 3; do
-            echo "=== build attempt $attempt ==="
-            if pixi run build; then
-              echo "=== build passed on attempt $attempt ==="
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "=== build failed after 3 attempts ==="
-              exit 1
-            fi
-            echo "=== build run crashed, retrying in 5s... ==="
-            sleep 5
-          done
+      - name: Build example binaries
+        run: .github/scripts/run.sh pixi run build
+
+  # ── Job 6: Linux ───────────────────────────────────────────────────────
+  # The other jobs run on macOS. Linux has its own termios layout and
+  # ioctl numbers, so the whole suite runs here too, pty checks included.
+  test-linux:
+    name: "Test: Linux"
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.5
+        with:
+          cache: true
+          activate-environment: true
+      - name: Run all tests
+        env:
+          RUN_TIMEOUT: "2100"
+        run: .github/scripts/run.sh pixi run test

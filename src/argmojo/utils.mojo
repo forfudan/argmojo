@@ -1,6 +1,8 @@
 """ANSI colour constants and small utility functions used by ArgMojo."""
 
 from std.ffi import c_int, external_call
+from std.os import getenv
+from std.sys import CompilationTarget
 from std.io import RawFileDescriptor
 
 # ── ANSI colour codes ────────────────────────────────────────────────────────
@@ -57,35 +59,64 @@ comptime _TIOCGWINSZ_LINUX: Int = 0x5413
 def _help_line_width() -> Int:
     """Returns the help line width used by the formatter.
 
-    Queries the terminal via ``ioctl(TIOCGWINSZ)`` on stdout (fd 1).
-    If the terminal width can be determined and is positive, the
-    column count is clamped to ``[40, 120]`` and the function returns
-    ``clamped_columns - 2`` (so detected widths produce values in
-    ``[38, 118]``). If the terminal width cannot be determined, the
-    function falls back to the fixed value ``80``.
+    The terminal width comes from the ``COLUMNS`` environment variable when it
+    holds a positive integer, otherwise from ``ioctl(TIOCGWINSZ)`` on stdout
+    (fd 1).  A width that can be determined is clamped to ``[40, 120]`` and
+    the function returns ``clamped_columns - 2`` (so detected widths produce
+    values in ``[38, 118]``).  Otherwise it falls back to the fixed value
+    ``80``.
     """
+    var cols = _columns_from_env()
+    if cols <= 0:
+        cols = _terminal_columns()
+    if cols > 0:
+        var clamped = cols if cols >= 40 else 40
+        if clamped > 120:
+            clamped = 120
+        return clamped - 2
+
+    return 80  # ultimate fallback
+
+
+def _columns_from_env() -> Int:
+    """Returns ``$COLUMNS`` as an integer, or 0 if unset or not a number."""
+    var text = getenv("COLUMNS", "")
+    if text.byte_length() == 0:
+        return 0
+    try:
+        return atol(text)
+    except:
+        return 0
+
+
+def _terminal_columns() -> Int:
+    """Returns the column count of the terminal on stdout, or 0 if unknown."""
     # struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; }
     # = 8 bytes total.  We only need ws_col (bytes 2-3).
     var buf = Array[UInt8, 8](fill=0)
-    var ptr = buf.unsafe_ptr()
-    # Try macOS ioctl number first, then Linux.
-    var rc = external_call["ioctl", Int, Int, Int, Int](
-        1, _TIOCGWINSZ_MACOS, Int(ptr)
-    )
-    if rc != 0:
+    var ptr = Int(buf.unsafe_ptr())
+    var rc: Int
+    comptime if CompilationTarget.is_macos():
+        # `ioctl` is variadic, and Apple's arm64 ABI passes variadic arguments
+        # on the stack, where `external_call` (which only makes plain calls)
+        # never puts the third argument.  The ninth integer argument is the
+        # first one passed on the stack, so the pointer is repeated there.
+        # On Intel Macs the pointer is read from the third register, which
+        # this call sets as well, so the extra arguments are harmless.  The
+        # check is not `is_apple_silicon()`: that tests the CPU model, and it
+        # is false for a generic arm64 model, as on a virtual machine.
+        rc = external_call[
+            "ioctl", Int, Int, Int, Int, Int, Int, Int, Int, Int, Int
+        ](1, _TIOCGWINSZ_MACOS, ptr, 0, 0, 0, 0, 0, ptr)
+    else:
         rc = external_call["ioctl", Int, Int, Int, Int](
-            1, _TIOCGWINSZ_LINUX, Int(ptr)
+            1, _TIOCGWINSZ_LINUX, ptr
         )
-    if rc == 0:
-        # ws_col is at offset 2 (little-endian unsigned short).
-        var cols = Int(buf[2]) | (Int(buf[3]) << 8)
-        if cols > 0:
-            var clamped = cols if cols >= 40 else 40
-            if clamped > 120:
-                clamped = 120
-            return clamped - 2
-
-    return 80  # ultimate fallback
+    # `ioctl` returns a C int; only its low 32 bits are defined.
+    if Int32(rc) != 0:
+        return 0
+    # ws_col is at offset 2 (little-endian unsigned short).
+    return Int(buf[2]) | (Int(buf[3]) << 8)
 
 
 # ── Utility functions ────────────────────────────────────────────────────────
@@ -447,6 +478,31 @@ def _is_digit_byte(b: UInt8) -> Bool:
     return b >= _BYTE_ZERO and b <= _BYTE_NINE
 
 
+def _char_byte_len(s: String, start: Int) -> Int:
+    """Returns the byte length of the UTF-8 character at byte *start* of *s*.
+
+    Slicing a ``String`` at a byte that is not a character boundary aborts the
+    program, so code that walks a token character by character (short-option
+    clusters, for example) must step by this length rather than by one byte.
+
+    Args:
+        s: The string to inspect.
+        start: Byte index of the character's first byte.
+
+    Returns:
+        1 to 4, never past the end of *s*.
+    """
+    var lead = s.as_bytes()[start]
+    var n = 1
+    if lead >= 0xF0:
+        n = 4
+    elif lead >= 0xE0:
+        n = 3
+    elif lead >= 0xC0:
+        n = 2
+    return min(n, s.byte_length() - start)
+
+
 def _looks_like_number(token: String) -> Bool:
     """Returns True if *token* is a negative-number literal.
 
@@ -761,10 +817,9 @@ def _correct_cjk_punctuation(token: String) -> String:
 # index by finding which word has the ECHO bit set.
 #
 # ECHO is 0x8, TCSANOW is 0.  If tcgetattr(3) fails (e.g. stdin is not a
-# terminal), _disable_echo() returns an empty List[UInt32] and no echo
-# changes are applied.  _restore_echo() returns False if it cannot restore
-# the saved settings.  Callers should treat these cases as "echo control
-# unavailable" and fall back to normal (visible) input.
+# terminal), _read_password() applies no changes and falls back to normal
+# (visible) input.  _restore_echo() returns False if it cannot restore the
+# saved settings.
 
 comptime _TERMIOS_BUF_LEN = 24  # 24 × UInt32 = 96 bytes ≥ sizeof(struct termios)
 # The buffer is a fixed-size `Array`, so it lives inline on the stack and
@@ -795,42 +850,10 @@ def _lflag_offset(buf: Array[UInt32, _TERMIOS_BUF_LEN]) -> Int:
     return -1
 
 
-def _disable_echo() -> Optional[_TermiosBuf]:
-    """Disables terminal echo on stdin.
-
-    Uses POSIX ``tcgetattr`` / ``tcsetattr`` to clear the ``ECHO``
-    bit in ``c_lflag``.  Returns the original termios settings (so
-    ``_restore_echo`` can restore them exactly), or ``None`` if
-    stdin is not a terminal or the termios layout cannot be determined
-    safely.
-    """
-    var buf = _TermiosBuf(fill=0)
-    var ptr = buf.unsafe_ptr()
-    var rc = external_call["tcgetattr", Int, Int, Int](0, Int(ptr))
-    if rc != 0:
-        return None
-    # Save the original termios settings before modifying.
-    var saved = buf.copy()
-    var offset = _lflag_offset(buf)
-    if offset < 0:
-        # Cannot safely locate c_lflag — do not modify termios.
-        return None
-    buf[offset] = buf[offset] & ~_ECHO
-    ptr = buf.unsafe_ptr()
-    rc = external_call["tcsetattr", Int, Int, Int, Int](0, _TCSANOW, Int(ptr))
-    # Keep buf alive until tcsetattr has finished reading from it.
-    # Without this, the compiler may destroy buf (invalidating the
-    # pointer) before tcsetattr copies the data into kernel space.
-    _ = buf^
-    if rc != 0:
-        return None
-    return saved^
-
-
 def _restore_echo(var saved: Optional[_TermiosBuf]) -> Bool:
     """Restores terminal echo on stdin.
 
-    Restores the original termios settings saved by ``_disable_echo``.
+    Restores the original termios settings saved by ``_read_password``.
     Returns ``True`` on success.
     """
     if not saved:
@@ -840,7 +863,9 @@ def _restore_echo(var saved: Optional[_TermiosBuf]) -> Bool:
     var rc = external_call["tcsetattr", Int, Int, Int, Int](
         0, _TCSANOW, Int(ptr)
     )
-    # Keep buf alive — see _disable_echo comment.
+    # Keep buf alive until tcsetattr has finished reading from it.
+    # Without this, the compiler may destroy buf (invalidating the
+    # pointer) before tcsetattr copies the data into kernel space.
     _ = buf^
     return rc == 0
 
@@ -858,6 +883,18 @@ comptime _ICANON_LINUX: UInt32 = 0x00000002
 # Linux: ISIG = 0x001 (bit 0 of c_lflag)
 comptime _ISIG_MACOS: UInt32 = 0x00000080
 comptime _ISIG_LINUX: UInt32 = 0x00000001
+
+
+def _stdin_is_open() -> Bool:
+    """Returns True if file descriptor 0 is open.
+
+    The standard library's ``input()`` crashes instead of raising when stdin
+    has been closed (``prog <&-``), so prompts check this first and treat a
+    closed stdin like end of input.
+    """
+    comptime _F_GETFD = 1  # same value on macOS and Linux
+    var rc = external_call["fcntl", Int, Int, Int](0, _F_GETFD)
+    return Int32(rc) != -1
 
 
 def _read_stdin_byte(mut one: Array[UInt8, 1]) -> Int:
@@ -879,15 +916,16 @@ def _read_stdin_byte(mut one: Array[UInt8, 1]) -> Int:
         return -1
 
 
-def _read_password_asterisk(msg: String) raises -> String:
-    """Reads a password interactively, echoing ``*`` for each keystroke.
+def _read_password(msg: String, show_asterisk: Bool) raises -> String:
+    """Reads a password interactively without echoing it.
 
     Disables ECHO, ICANON, and ISIG in terminal settings so that each
     byte is delivered immediately and without echo, and interrupt
     signals (such as Ctrl-C) are read as raw bytes rather than
-    generating signals.  For every printable byte, a ``*`` is written
-    to stderr.  Backspace erases the last ``*``.  Enter (LF/CR)
-    finishes input.
+    generating signals, which would end the program with echo still
+    off.  With *show_asterisk*, a ``*`` is written to stderr for every
+    printable byte.  Backspace erases the last character.  Enter
+    (LF/CR) finishes input.
 
     Prompt and feedback are written to stderr (unbuffered), following
     the convention used by ``sudo``, ``ssh``, and similar tools.
@@ -903,16 +941,21 @@ def _read_password_asterisk(msg: String) raises -> String:
     - ``"password input read error"`` for a read(2) failure
 
     Multi-byte UTF-8 passphrases are read correctly: the bytes are
-    collected as typed and decoded once at the end.  Only the *echo* is
-    per-byte — a two-byte character prints two ``*`` and needs two
-    backspaces to erase.  The plain ``.password()`` mode (using
-    ``input()``) echoes nothing at all and has no such quirk, so prefer
-    it when Unicode passphrases are common.
+    collected as typed and decoded once at the end, and Backspace removes
+    a whole character.  Only the *echo* is per-byte: a two-byte character
+    prints two ``*``.
 
     The collected bytes are overwritten with zeros before this function
     returns, so the plaintext does not linger in the freed buffer.  The
     returned ``String`` is of course still plaintext and is the caller's
     responsibility.
+
+    Args:
+        msg: The prompt to print.
+        show_asterisk: Echo ``*`` for each byte typed.
+
+    Returns:
+        The password as typed.
     """
     from std.sys import stderr
 
@@ -960,16 +1003,31 @@ def _read_password_asterisk(msg: String) raises -> String:
         var n = _read_stdin_byte(one)
         if n <= 0:
             cancelled = True
-            cancel_reason = "password input read error"
-            break  # EOF or error
+            if n == 0:
+                cancel_reason = "password input EOF"
+            else:
+                cancel_reason = "password input read error"
+            break
         var ch = one[0]
         if ch == 10 or ch == 13:  # Enter (LF / CR)
             break
         elif ch == 127 or ch == 8:  # Backspace / Delete
+            # Remove one whole UTF-8 character: its continuation bytes
+            # (0b10xxxxxx), then its lead byte.
+            var removed = 0
+            while (
+                len(password) > 0
+                and (password[len(password) - 1] & 0xC0) == 0x80
+            ):
+                _ = password.pop()
+                removed += 1
             if len(password) > 0:
                 _ = password.pop()
-                # Erase one asterisk: cursor back, overwrite space, cursor back.
-                print("\x08 \x08", end="", file=stderr)
+                removed += 1
+            if show_asterisk:
+                # Erase one asterisk per byte: back, overwrite space, back.
+                for _ in range(removed):
+                    print("\x08 \x08", end="", file=stderr)
         elif ch == 3:  # Ctrl-C — cancel
             cancelled = True
             cancel_reason = "password input cancelled"
@@ -995,7 +1053,8 @@ def _read_password_asterisk(msg: String) raises -> String:
             continue
         elif ch >= 32:  # Printable byte
             password.append(ch)
-            print("*", end="", file=stderr)
+            if show_asterisk:
+                print("*", end="", file=stderr)
 
     # ── Always restore terminal before returning or raising ──────
     print(file=stderr)

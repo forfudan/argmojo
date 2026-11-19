@@ -32,7 +32,7 @@ I want the declarative API to satisfy five goals:
 5. **Five innovations** — I think there are five features I can offer beyond
    what Swift Argument Parser does (see [§6](#6-innovations)).
 
-## 2. Mojo Reflection Capabilities (v1.0.0)
+## 2. Mojo Reflection Capabilities (v1.0.0 and later)
 
 Available compile-time reflection primitives:
 
@@ -226,13 +226,13 @@ tried to be consistent and self-explanatory. Here's what I chose and why:
 │  Parsable.parse_full() → (Self, ParseResult)  (dual return)                  │
 │  Parsable.parse_arguments()  → Self      (parse from explicit arg list)      │
 │  Parsable.validate()    → None      (post-parse cross-field validation)      │  ← Phase 4, not yet implemented
-│  (wrapper types are auto-initialised by Parsable — no manual __init__)       │
+│  (fields are default-initialised by Defaultable — no manual __init__)        │
 │                                                                              │
 │  argument_wrappers.mojo — wrapper types:                                     │
 │  Positional[T, ...], Option[T, ...], Flag[...], Count[...]                   │
 │                                                                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  argument.mojo + command.mojo + parse_result.mojo  (UNCHANGED)               │
+│  argument.mojo + command.mojo + parse_result.mojo  (builder layer)           │
 │                                                                              │
 │  Argument(...).long["x"]().short["y"]().flag()                               │
 │  Command("app").add_argument(...).parse() → ParseResult                      │
@@ -247,7 +247,7 @@ tried to be consistent and self-explanatory. Here's what I chose and why:
 | `src/argmojo/parsable.mojo`          | **Expanded** — trait default methods + internal fns |
 | `src/argmojo/argument_wrappers.mojo` | **Already exists** — wrapper types                  |
 | `src/argmojo/__init__.mojo`          | Add `from .parsable import ...` (conditional)       |
-| Everything else                      | **Zero changes**                                    |
+| Everything else                      | Small additions (e.g. `get_float`, `was_provided`)  |
 
 ### Comparison between Builder and Declarative APIs
 
@@ -425,9 +425,11 @@ that covers *all* argument types. Two different `Argument` types — one meaning
 declarative layer — would be confusing. `Positional` is unambiguous: it tells
 you exactly what it does.
 
-You can also use **bare types** (like `String`, `Int`, `Bool`) for fields
-without metadata — they become options named after the field, following Swift's
-convention for fields without property wrappers.
+Every argument field must use one of these wrapper types. Swift turns a field
+without a property wrapper into an option; ArgMojo does not (yet): `to_command()`
+skips a field of any other type, such as a bare `String`, so it is not an
+argument at all. Fields named `name`, `version`, `description` or `run` clash
+with the `Parsable` methods of the same name and do not compile.
 
 In **hybrid** mode, imports are clean with no name collisions:
 
@@ -510,7 +512,7 @@ trait Parsable(Defaultable, Deinitable, Movable):
         return Tuple[Self, ParseResult](typed^, result^)
 
     @staticmethod
-    def parse_full_from_command(owned command: Command) raises -> Tuple[Self, ParseResult]:
+    def parse_full_from_command(var command: Command) raises -> Tuple[Self, ParseResult]:
         """Parse from a pre-configured Command and return BOTH typed Self
         AND raw ParseResult. Essential for subcommand dispatch:
         the typed Self gives root-level flags, ParseResult gives
@@ -540,11 +542,11 @@ trait Parsable(Defaultable, Deinitable, Movable):
     # ── Subcommand tree assembly ──
 
     @staticmethod
-    def subcommands(mut command: Command) raises:
-        """Register subcommands on command. Override in parent commands.
+    def subcommands() raises -> List[Command]:
+        """Return child commands. Override in parent commands.
         Called automatically by to_command(). Default: no subcommands.
         Inspired by Swift's CommandConfiguration(subcommands:)."""
-        pass
+        return List[Command]()
 
     # ── Execution ──
 
@@ -906,9 +908,8 @@ struct MyGit(Parsable):
         return "A mini git tool."
 
     @staticmethod
-    def subcommands(mut command: Command) raises:
-        command.add_subcommand(Clone.to_command())
-        command.add_subcommand(Push.to_command())
+    def subcommands() raises -> List[Command]:
+        return [Clone.to_command(), Push.to_command()]
 
 def main() raises:
     # One call builds the entire tree (to_command calls subcommands() automatically)
@@ -990,9 +991,8 @@ struct Remote(Parsable):
     def description() -> String: return "Manage remotes."
 
     @staticmethod
-    def subcommands(mut command: Command) raises:
-        command.add_subcommand(AddRemote.to_command())
-        command.add_subcommand(RemoveRemote.to_command())
+    def subcommands() raises -> List[Command]:
+        return [AddRemote.to_command(), RemoveRemote.to_command()]
 
 # Root — references Remote which references AddRemote/RemoveRemote
 struct MyGit(Parsable):
@@ -1005,10 +1005,9 @@ struct MyGit(Parsable):
     def description() -> String: return "A mini git tool."
 
     @staticmethod
-    def subcommands(mut command: Command) raises:
-        command.add_subcommand(Clone.to_command())
-        command.add_subcommand(Push.to_command())
-        command.add_subcommand(Remote.to_command())  # nested tree assembled recursively
+    def subcommands() raises -> List[Command]:
+        # Remote's own subcommands() assembles the nested tree recursively.
+        return [Clone.to_command(), Push.to_command(), Remote.to_command()]
 
 def main() raises:
     var (git_args, result) = MyGit.parse_full()
@@ -1032,39 +1031,45 @@ def main() raises:
 The entire tree (`mgit → clone | push | remote → add | remove`) is declared in
 the structs themselves. `main()` only handles dispatch.
 
-#### 5.4.3 Future: Auto-Dispatch (When Mojo Gets Variadic Type Tuples)
+#### 5.4.3 Auto-Dispatch (Feasible Now, Not Yet Built In)
 
 Currently, subcommand dispatch requires manual `if/elif` chains with string
 matching. This is the main remaining gap vs Swift (which auto-dispatches via
 `run()`) and Rust (which uses exhaustive `match` on enums).
 
-When Mojo gains stable variadic type tuples and/or enum with associated data,
-auto-dispatch becomes possible:
+Earlier versions of this document said auto-dispatch had to wait for variadic
+type tuples. It does not: a generic function instantiated for each struct is an
+ordinary non-capturing function pointer, so it can be registered with
+`set_run_function()`, and `execute()` already walks the subcommand chain to the
+leaf handler. A prototype dispatched `app build mylib -r` and
+`app test --filter fast` to each struct's `run()`:
 
 ```mojo
-# Hypothetical future — compile-time type tuple + auto-dispatch
+def _run_parsable[T: Parsable](result: ParseResult) raises:
+    T.from_parse_result(result).run()
+
+def to_command_with_run[T: Parsable]() raises -> Command:
+    var command = T.to_command()
+    command.set_run_function(_run_parsable[T])
+    return command^
+
 struct MyGit(Parsable):
     var verbose: Flag[short="v", persistent=True]
-    alias Subcommands = (Clone, Push, Remote)    # compile-time type tuple
 
     @staticmethod
-    def execute() raises:
-        """Parse + dispatch in one call. Auto-generated from Subcommands."""
-        var (self_args, result) = Self.parse_full()
-        @parameter
-        for i in range(len(Self.Subcommands)):
-            alias T = Self.Subcommands[i]
-            if result.subcommand == T.name():
-                T.from_parse_result(result.get_subcommand_result()).run()
-                return
+    def subcommands() raises -> List[Command]:
+        return [to_command_with_run[Clone](), to_command_with_run[Push]()]
 
 def main() raises:
-    MyGit.execute()   # one line — tree + parse + dispatch
+    to_command_with_run[MyGit]().execute()   # tree + parse + dispatch
 ```
 
-This would also enable compile-time duplicate name detection and exhaustive
-dispatch guarantees. Until then, the `subcommands()` hook + manual dispatch is
-the cleanest available approach.
+The same works from a trait default method with `_run_parsable[Self]`, so it
+can become part of `Parsable` (for example a `T.execute()` that registers the
+handler in `to_command()`). Group commands need care: today a command with no
+handler prints its help, and that should stay the default for a parent whose
+`run()` is not overridden. Compile-time duplicate name detection and
+exhaustive dispatch guarantees still need language support.
 
 ## 6. Innovations
 
@@ -1375,7 +1380,7 @@ Here's how each wrapper parameter maps to builder calls under the hood:
 | **Positional[...]**                         | `.positional()`                                  |
 | **Positional[..., remainder=True]**         | `.remainder()`                                   |
 | **Count[..., max=5]**                       | `.count().max[5]()`                              |
-| **bare String/Int/Bool**                    | auto-detected: Bool→`.flag()`, else named option |
+| bare String/Int/Bool (not implemented)      | skipped: not an argument (§4.1)                  |
 
 ### 7.2 Write-Back Type Dispatch
 
@@ -1393,9 +1398,6 @@ type:
 | `Positional[String, ...]`                       | `get_string(name)`   | `field.value = String`       |
 | `Positional[Int, ...]`                          | `get_int(name)`      | `field.value = Int`          |
 | `Positional[List[String], ..., remainder=True]` | `get_list(name)`     | `field.value = List[String]` |
-| bare `String`                                   | `get_string(name)`   | `field = String`             |
-| bare `Int`                                      | `get_int(name)`      | `field = Int`                |
-| bare `Bool`                                     | `get_flag(name)`     | `field = Bool`               |
 
 Missing/optional values: if `result.has(name)` returns `False` and the field
 isn't required, the default value stays.
@@ -1411,7 +1413,7 @@ at every level. This mirrors Swift's `ParsableCommand` and Rust clap's
 1. **Every level is Parsable**: root, mid-level, and leaf commands are all
    `Parsable` structs. Flags at any level live as natural struct fields.
 2. **`subcommands()` hook**: Each parent declares its children via
-   `subcommands(mut command)`, called automatically by `to_command()`. Trees
+   `subcommands() -> List[Command]`, called automatically by `to_command()`. Trees
    assemble recursively — no manual wiring in `main()`.
 3. **`run()` method**: Each leaf carries its execution logic, inspired by
    Swift's `ParsableCommand.run()`. This is purely execution — it does NOT parse
@@ -1424,9 +1426,9 @@ at every level. This mirrors Swift's `ParsableCommand` and Rust clap's
 ```mojo
 # On the trait — automatically called by to_command()
 @staticmethod
-def subcommands(mut command: Command) raises:
-    """Override to register child commands. Default: no subcommands."""
-    pass
+def subcommands() raises -> List[Command]:
+    """Override to return child commands. Default: no subcommands."""
+    return List[Command]()
 
 # Execution — override in leaf commands
 def run(self) raises:
@@ -1435,7 +1437,7 @@ def run(self) raises:
 
 # Parse + split for dispatch
 @staticmethod
-def parse_full_from_command(owned command: Command) raises -> Tuple[Self, ParseResult]:
+def parse_full_from_command(var command: Command) raises -> Tuple[Self, ParseResult]:
     """Parse command and return both typed Self (root flags)
     and raw ParseResult (for subcommand dispatch)."""
 
@@ -1473,8 +1475,8 @@ var (git_args, result) = MyGit.parse_full_from_command(command^)
 
 **Remaining gap: string-based dispatch.** The `if result.subcommand == "clone"`
 pattern is the main area where Swift and Rust are stronger. Swift
-auto-dispatches via protocol, Rust uses exhaustive `match` on enums. See §5.4.3
-for the future Mojo solution with variadic type tuples.
+auto-dispatches via protocol, Rust uses exhaustive `match` on enums. §5.4.3
+shows how ArgMojo can auto-dispatch today with generic run functions.
 
 ## 8. What Stays in Builder-Only Territory
 
@@ -1522,11 +1524,11 @@ non-composable API.
 | Password / masked input         | ✗ not supported                      | ✓ `password=True` in wrapper                     |
 | Shell completions               | ✓ built-in                           | ✓ inherited from builder                         |
 | Compile-time schema validation  | ✗ validated at runtime               | ✓ `comptime assert` catches errors (§6.3)        |
-| Declarative field constraints   | ✗ not in struct schema               | ✓ `depends_on`/`conflicts_with` (§6.4)           |
-| Auto-derived completions        | ✗ manual registration                | ✓ from `choices` at compile time (§6.5)          |
-| Subcommand tree assembly        | `CommandConfiguration(subcommands:)` | `subcommands(mut command)` hook on `Parsable`    |
+| Declarative field constraints   | ✗ not in struct schema               | `depends_on`/`conflicts_with` planned (§6.4)     |
+| Auto-derived completions        | ✗ manual registration                | ✓ from `choices`, at run time (§6.5)             |
+| Subcommand tree assembly        | `CommandConfiguration(subcommands:)` | `subcommands()` hook on `Parsable`               |
 | Subcommand execution            | `mutating func run()`                | `def run(self) raises` on `Parsable`             |
-| Subcommand dispatch             | Automatic via protocol               | Manual `if/elif` (auto-dispatch planned, §5.4.3) |
+| Subcommand dispatch             | Automatic via protocol               | Manual `if/elif` (auto-dispatch feasible, §5.4.3) |
 | CJK-aware help                  | ✗ not supported                      | ✓ inherited from builder                         |
 | Auto-naming (underscore→hyphen) | ✓ camelCase→kebab-case               | ✓ snake_case→kebab-case                          |
 
@@ -1612,8 +1614,9 @@ non-composable API.
   - [ ] Compile-time validation of referenced field names
   - [ ] Translation to builder `required_together()`/`mutually_exclusive()` in
         `to_command()`
-- [ ] Auto-derive completions from `choices` parameters (§6.5)
-  - [ ] Ensure choices flow to `generate_completion` output
+- [x] Auto-derive completions from `choices` parameters (§6.5)
+  - [x] Ensure choices flow to `generate_completion` output (wrappers fill the
+        argument's choices, which the generators read; no test yet)
   - [ ] Explore compile-time completion script generation
 - [ ] Some command-level features can be exposed via declarative parameters
       (e.g. `help_on_no_arguments=True`), but others (e.g.
@@ -1635,7 +1638,7 @@ non-composable API.
 - [x] User manual additions
 - [x] README update with declarative examples
 
-## 11. Known Gaps (v0.8.0)
+## 11. Known Gaps
 
 Before the v0.8.0 release I went through the four wrapper types parameter by
 parameter and compared them against what the builder API already offers. The
@@ -1727,9 +1730,9 @@ through `to_command()` works today.
 #### `run()` is never dispatched automatically
 
 `parse()` returns the struct and stops, so you still write
-`if result.subcommand == "build": ...` by hand. Walking the subcommand chain
-automatically needs compile-time variadic type tuples, which Mojo does not
-have. Tracked in §5.4.3 — a missing language feature, not an oversight.
+`if result.subcommand == "build": ...` by hand. This was thought to need
+compile-time variadic type tuples, but a generic run function registered with
+`set_run_function()` works today (§5.4.3); it is not built in yet.
 
 #### No `Parsable.validate()`
 

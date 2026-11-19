@@ -10,6 +10,7 @@ from .utils import (
     _RESET,
     _BOLD_UL,
     _BOLD_YELLOW,
+    _char_byte_len,
     _UNDERLINE,
     _DEFAULT_HEADER_COLOR,
     _DEFAULT_ARGUMENT_COLOR,
@@ -27,11 +28,10 @@ from .utils import (
     _HELP_GAP,
     _HELP_TRAIL,
     _correct_cjk_punctuation,
-    _disable_echo,
     _display_width,
     _format_two_column_line,
-    _read_password_asterisk,
-    _restore_echo,
+    _read_password,
+    _stdin_is_open,
     _fullwidth_to_halfwidth,
     _has_fullwidth_chars,
     _is_bool_literal,
@@ -82,14 +82,11 @@ def _expand_response_files(
             continue
 
         # Check for escape: doubled prefix → literal.
-        if (
-            token.byte_length() > plen * 2 - 1
-            and String(token[byte = : plen * 2]) == prefix + prefix
-        ):
+        if token.startswith(prefix + prefix):
             expanded.append(String(token[byte=plen:]))
             continue
 
-        if token.byte_length() > plen and String(token[byte=:plen]) == prefix:
+        if token.byte_length() > plen and token.startswith(prefix):
             var filepath = String(token[byte=plen:])
             _read_response_file(
                 filepath, expanded, 0, prefix, max_depth, command_name
@@ -138,15 +135,12 @@ def _read_response_file(
             continue
 
         # Escape: doubled prefix → literal.
-        if (
-            line.byte_length() > plen * 2 - 1
-            and String(line[byte = : plen * 2]) == prefix + prefix
-        ):
+        if line.startswith(prefix + prefix):
             out_arguments.append(String(line[byte=plen:]))
             continue
 
         # Recursive response file.
-        if line.byte_length() > plen and String(line[byte=:plen]) == prefix:
+        if line.byte_length() > plen and line.startswith(prefix):
             var nested_path = String(line[byte=plen:])
             _read_response_file(
                 nested_path,
@@ -668,6 +662,15 @@ struct Command(Copyable, Movable, Writable):
                         "': .password() cannot be used on a flag or count"
                         " argument — it only applies to value-taking arguments"
                     ),
+                )
+            )
+        # Guard: a count ceiling only makes sense on a count argument.
+        if argument._has_count_max and not argument._is_count:
+            raise Error(
+                String(
+                    "Argument '",
+                    argument.name,
+                    "': .max[]() can only be used together with .count()",
                 )
             )
         # Guard: the default value has to make sense for the argument kind.
@@ -2699,6 +2702,10 @@ struct Command(Copyable, Movable, Writable):
         constraint checks) is **not** performed here — callers run
         whatever post-parse phases they need.
         """
+        # An empty list has no argv[0]; parse it as the bare program name.
+        if len(tokens_to_parse) == 0:
+            tokens_to_parse.append(self.name)
+
         # ── CJK auto-correction (fullwidth + punctuation) ───────────
         self._preprocess_cjk_arguments(tokens_to_parse)
 
@@ -2955,7 +2962,7 @@ struct Command(Copyable, Movable, Writable):
 
         # Check for --no-X negation pattern (with prefix matching).
         var is_negation = False
-        if key.startswith("no-") and not has_eq:
+        if key.startswith("no-") and key.byte_length() > 3 and not has_eq:
             var base_key = String(key[byte=3:])
             # Exact match first.
             for idx in range(len(self.arguments)):
@@ -3010,6 +3017,33 @@ struct Command(Copyable, Movable, Writable):
             Self._increment_count(matched.name, result)
         elif matched._is_flag and not has_eq:
             result._flags[matched.name] = True
+            result._mark_provided(matched.name)
+        elif matched._is_count:
+            # `--verbose=3` would otherwise be stored as a string that
+            # `get_count` never reads; a count is set by repetition.
+            self._error(
+                String(
+                    "Option '--",
+                    key,
+                    "' is a counter and does not take a value; repeat it",
+                    " instead",
+                )
+            )
+        elif matched._is_flag:
+            # `--flag=VALUE`: accept an explicit boolean, reject anything
+            # else rather than storing it as a string.
+            if not _is_bool_literal(value):
+                self._error(
+                    String(
+                        "Option '--",
+                        key,
+                        "' is a flag; it takes no value or a boolean",
+                        " (true/false, yes/no, on/off, 1/0), got '",
+                        value,
+                        "'",
+                    )
+                )
+            result._flags[matched.name] = _parse_bool_literal(value)
             result._mark_provided(matched.name)
         elif matched._number_of_values > 0:
             # nargs: consume exactly N values.
@@ -3130,7 +3164,7 @@ struct Command(Copyable, Movable, Writable):
             The index of the next token to process.
         """
         var i = start
-        var first_char = String(key[byte=0:1])
+        var first_char = String(key[byte = 0 : _char_byte_len(key, 0)])
         var first_match_idx = self._find_index_by_short(first_char)
         ref first_match = self.arguments[first_match_idx]
 
@@ -3139,13 +3173,22 @@ struct Command(Copyable, Movable, Writable):
             # flags, except the last char which may take a value.
             var j: Int = 0
             while j < key.byte_length():
-                var ch = String(key[byte = j : j + 1])
+                var ch_len = _char_byte_len(key, j)
+                var ch = String(key[byte = j : j + ch_len])
                 var m_idx = self._find_index_by_short(ch)
                 ref m = self.arguments[m_idx]
                 # Emit deprecation warning if applicable.
                 if m._deprecated_msg:
                     self._warn(
                         String("'-", ch, "' is deprecated: ", m._deprecated_msg)
+                    )
+                if (m._is_count or m._is_flag) and key.find("=", j) == j + 1:
+                    self._error(
+                        String(
+                            "Option '-",
+                            ch,
+                            "' does not take a value; '=' is not allowed here",
+                        )
                     )
                 if m._is_count:
                     Self._increment_count(m.name, result)
@@ -3259,6 +3302,14 @@ struct Command(Copyable, Movable, Writable):
             var child_copy = self.subcommands[sub_idx].copy()
             # Set full command path so child help/errors show "app sub".
             child_copy.name = String(self.name, " ", canon)
+            # The tokens were already expanded here; expanding them again in
+            # the child would read `@@x` (now `@x`) as a file reference.
+            if (
+                self._response_file_prefix.byte_length() > 0
+                and child_copy._response_file_prefix
+                == self._response_file_prefix
+            ):
+                child_copy._response_file_prefix = String("")
             for _pi in range(len(self.arguments)):
                 if not self.arguments[_pi]._is_persistent:
                     continue
@@ -3299,6 +3350,11 @@ struct Command(Copyable, Movable, Writable):
                 if not self.arguments[_pi]._is_persistent:
                     continue
                 var _pn = self.arguments[_pi].name
+                # A value the user gave before the subcommand token must win
+                # over the default the child filled in for the same argument.
+                var root_given = result.was_provided(
+                    _pn
+                ) and not child_result.was_provided(_pn)
                 # Bubble up: child parsed flag after subcommand token.
                 if _pn in child_result._flags and _pn not in result._flags:
                     result._flags[_pn] = child_result._flags[_pn]
@@ -3307,11 +3363,17 @@ struct Command(Copyable, Movable, Writable):
                 if _pn in child_result._counts and _pn not in result._counts:
                     result._counts[_pn] = child_result._counts[_pn]
                 # Push down: root parsed flag before subcommand token.
-                if _pn in result._flags and _pn not in child_result._flags:
+                if _pn in result._flags and (
+                    root_given or _pn not in child_result._flags
+                ):
                     child_result._flags[_pn] = result._flags[_pn]
-                if _pn in result._values and _pn not in child_result._values:
+                if _pn in result._values and (
+                    root_given or _pn not in child_result._values
+                ):
                     child_result._values[_pn] = result._values[_pn]
-                if _pn in result._counts and _pn not in child_result._counts:
+                if _pn in result._counts and (
+                    root_given or _pn not in child_result._counts
+                ):
                     child_result._counts[_pn] = result._counts[_pn]
                 # Keep provenance in sync in both directions, so that group
                 # constraints on either side see the same picture.
@@ -3426,6 +3488,8 @@ struct Command(Copyable, Movable, Writable):
             return
         var prompt = self._confirmation_prompt + " [y/N]: "
         var value: String
+        if not _stdin_is_open():
+            self._error("Aborted (no interactive input available)")
         try:
             value = input(prompt)
         except:
@@ -3471,6 +3535,9 @@ struct Command(Copyable, Movable, Writable):
                 break
         if not has_prompt_arguments:
             return
+        # A closed stdin is treated like end of input (see `_stdin_is_open`).
+        if not _stdin_is_open():
+            return
 
         for j in range(len(self.arguments)):
             ref a = self.arguments[j]
@@ -3510,29 +3577,15 @@ struct Command(Copyable, Movable, Writable):
             # ── Read input ───────────────────────────────────────────
             var value: String
             if a._hide_input:
-                if a._show_asterisk:
-                    # Asterisk mode: echo '*' for each keystroke.
-                    try:
-                        value = _read_password_asterisk(msg)
-                    except e:
-                        return
-                else:
-                    # Password mode: disable echo, read, re-enable echo,
-                    # then print a newline (since the user's Enter is not
-                    # echoed either on some terminals).
-                    var saved = _disable_echo()
-                    var echo_disabled = Bool(saved)
-                    try:
-                        value = input(msg)
-                    except e:
-                        _ = _restore_echo(saved^)
-                        return
-                    _ = _restore_echo(saved^)
-                    # Print a newline so the cursor moves to the next line
-                    # (the user's Enter was not echoed) — only if echo was
-                    # actually disabled.
-                    if echo_disabled:
-                        print()
+                # Hidden input, optionally echoing '*' per keystroke.
+                try:
+                    value = _read_password(msg, a._show_asterisk)
+                except e:
+                    # Ctrl-C means the user wants out: stop the whole parse.
+                    # EOF or a read error just ends prompting, as below.
+                    if String(e) == "password input cancelled":
+                        self._error("Aborted (password input cancelled)")
+                    return
             else:
                 try:
                     value = input(msg)
@@ -3693,8 +3746,14 @@ struct Command(Copyable, Movable, Writable):
                 # `was_provided`, not `has`: a value that only came from
                 # `.default()` is not the user asking for the trigger, and
                 # firing on it would mark the implied argument as supplied
-                # and break every group constraint that reads it.
-                if result.was_provided(trigger) and not result.has(implied):
+                # and break every group constraint that reads it.  A flag the
+                # user switched off (`--no-x`, `--x=false`) does not fire.
+                var switched_off = not result._flags.get(trigger, True)
+                if (
+                    result.was_provided(trigger)
+                    and not switched_off
+                    and not result.has(implied)
+                ):
                     if kind == "count":
                         result._counts[implied] = 1
                     else:
@@ -4056,7 +4115,7 @@ struct Command(Copyable, Movable, Writable):
                         return True
             return False
         elif token.startswith("-") and token.byte_length() > 1:
-            var ch = String(token[byte=1:2])
+            var ch = String(token[byte = 1 : 1 + _char_byte_len(token, 1)])
             for idx in range(len(self.arguments)):
                 if self.arguments[idx]._short_name == ch:
                     return True

@@ -2,6 +2,41 @@
 
 This document tracks all notable changes to ArgMojo, including new features, API changes, bug fixes, and documentation updates.
 
+## Unreleased
+
+This release is about stability: ordinary input no longer crashes the program, interactive prompts behave on a closed stdin and on Ctrl-C, terminal-width detection works on Apple silicon, and several parse results are corrected.
+
+### 🔧 Fixes
+
+1. Input that used to abort the program now gives a clean error or parses correctly:
+   - a non-ASCII character in a short option (`-é`, `-v日`) is reported as an unknown option;
+   - with response files enabled, any non-ASCII argument (`日本.txt`) was sliced mid-character;
+   - `parse_arguments([])` and `parse_known_arguments([])` parse an empty list as the bare program name.
+2. A persistent option with a default, given before the subcommand (`app --level debug run`), now reaches the subcommand's result instead of its default.
+3. With response files enabled on both a parent and its subcommand, the arguments were expanded twice, so `@@name` was read as a file reference.
+4. Help was always wrapped at 80 columns on Apple silicon: the `ioctl` call that reads the terminal width is variadic, and Apple's arm64 ABI passes its pointer argument on the stack. The `COLUMNS` environment variable is now honoured first.
+5. With stdin closed (`prog <&-`), prompts and the confirmation prompt crashed. Prompting now stops as at end of input, and confirmation aborts with its usual error.
+6. A plain `.password()` prompt only turned echo off, so Ctrl-C killed the program and left the terminal without echo. Both password modes now switch off signals while reading, and Ctrl-C aborts the parse with `Aborted (password input cancelled)`. Backspace removes a whole UTF-8 character.
+
+### 🦋 Changed
+
+1. `--flag=VALUE` accepts a boolean (`true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`) and rejects anything else; it used to be stored as a string that `get_flag()` never read. `--count=N` and `-v=1` are errors.
+2. A flag switched off with `--no-x` or `--x=false` no longer fires `implies(x, y)`.
+3. `--no-` with nothing after it is an unknown option; it used to negate the only negatable flag.
+4. `.max[N]()` without `.count()` makes `add_argument()` raise instead of calling `exit(1)`, and `.max[N]()` may now come before `.count()` in the chain.
+
+### 🧪 Tests and CI
+
+1. Regression tests for every fix above. `tests/check_tty.sh` drives a probe program through a pseudo-terminal to cover terminal width, password input and closed stdin, which the regular tests cannot reach.
+2. CI runs every Mojo command with a timeout and retries only when the command is killed by a signal; a failing test is no longer retried. A new Ubuntu job runs the whole suite, and the build job runs the docstring check.
+3. Tests import the package built by `pixi run package` instead of recompiling `src/` for every file.
+
+### 📖 Documentation
+
+1. The user manual is published as a book at [argmojo.mojo-lang.com](https://argmojo.mojo-lang.com/), built from `docs/user_manual.md` by [argmojo-docs](https://github.com/forfudan/argmojo-docs). It replaces the copy in the GitHub wiki.
+2. The user manual describes the new flag and count behaviour, the help width, and the password and closed-stdin handling, and shows the real unknown-subcommand error.
+3. The planning documents are brought up to date: file tree, FFI conventions, exit codes, parsing order, and the subcommand signature. Declarative `run()` dispatch and custom value types are no longer listed as blocked by Mojo, since both work today.
+
 ## 20261022 (v0.10.0)
 
 ArgMojo v0.10.0 update the codebase to Mojo **v1.2.0**. The new compiler also fixes the deadlock that kept response files disabled since v0.4.0, so `@args.txt` expansion now works. The deprecated `alias_name` spellings are removed.

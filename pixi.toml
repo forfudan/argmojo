@@ -26,24 +26,28 @@ package = "mojo precompile src/argmojo -o argmojo.mojoc"
 doc = """mojo doc --diagnose-missing-doc-strings src/argmojo > /dev/null"""
 
 # run tests
+# Tests import the argmojo.mojoc that `package` just built (`-I .`) instead
+# of recompiling src/ for every file; `-D ASSERT=all` still reaches the
+# library this way.
 test = """ set -e
     pixi run format \
     && pixi run package \
-    && mojo run -I src -D ASSERT=all tests/test_parse.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_options.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_response_file.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_groups.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_help.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_subcommands.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_completion.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null \
-    && mojo run -I src -D ASSERT=all tests/test_declarative.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_hybrid.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_wrappers.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_dispatch.mojo \
-    && mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo \
-    && bash tests/check_schema_errors.sh"""
+    && mojo run -I . -D ASSERT=all tests/test_parse.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_options.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_response_file.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_groups.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_help.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_subcommands.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_completion.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_interactive.mojo < /dev/null \
+    && mojo run -I . -D ASSERT=all tests/test_declarative.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_hybrid.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_subcommands_declarative.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_wrappers.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_dispatch.mojo \
+    && mojo run -I . -D ASSERT=all tests/test_schema_validation.mojo \
+    && bash tests/check_schema_errors.sh \
+    && bash tests/check_tty.sh"""
 
 # run tests (parallel, fail if any test fails)
 t = """set -e
@@ -51,22 +55,23 @@ t = """set -e
   && pixi run package \
   && bash -c '\
   pids=(); \
-  mojo run -I src -D ASSERT=all tests/test_parse.mojo &                   pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_options.mojo &                 pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_response_file.mojo &           pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_groups.mojo &                  pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_help.mojo &                    pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_subcommands.mojo &             pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_completion.mojo &              pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_interactive.mojo < /dev/null & pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_declarative.mojo &             pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_hybrid.mojo &                  pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_subcommands_declarative.mojo & pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_wrappers.mojo &                pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_dispatch.mojo &                pids+=($!); \
-  mojo run -I src -D ASSERT=all tests/test_schema_validation.mojo &       pids+=($!);
+  mojo run -I . -D ASSERT=all tests/test_parse.mojo &                   pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_options.mojo &                 pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_response_file.mojo &           pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_groups.mojo &                  pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_help.mojo &                    pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_subcommands.mojo &             pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_completion.mojo &              pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_interactive.mojo < /dev/null & pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_declarative.mojo &             pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_hybrid.mojo &                  pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_subcommands_declarative.mojo & pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_wrappers.mojo &                pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_dispatch.mojo &                pids+=($!); \
+  mojo run -I . -D ASSERT=all tests/test_schema_validation.mojo &       pids+=($!);
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; \
-  bash tests/check_schema_errors.sh || rc=1; exit $rc'
+  bash tests/check_schema_errors.sh || rc=1; \
+  bash tests/check_tty.sh || rc=1; exit $rc'
 """
 
 # build example binaries (with timing); pass a name to build one only
@@ -79,14 +84,14 @@ build = "bash examples/build.sh"
 # The purpose is to exercise command construction (registration-time
 # validation), not argument parsing.
 debug = """pixi run package \
-&& mojo run -I src -D ASSERT=all examples/mgrep.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/mgit.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/demo.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/yu.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/declarative/search.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/declarative/convert.mojo -- --help \
-&& mojo run -I src -D ASSERT=all examples/declarative/jomo.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/mgrep.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/mgit.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/demo.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/yu.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/declarative/search.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/declarative/deploy.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/declarative/convert.mojo -- --help \
+&& mojo run -I . -D ASSERT=all examples/declarative/jomo.mojo -- --help \
 """
 
 # run (debug mode) example binaries (parallel, fail if any run fails)
@@ -95,14 +100,14 @@ debug = """pixi run package \
 # validation), not argument parsing.
 d = """pixi run package && bash -c '\
   pids=(); \
-  mojo run -I src -D ASSERT=all examples/mgrep.mojo -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/mgit.mojo  -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/demo.mojo  -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/yu.mojo    -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/declarative/search.mojo -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/declarative/deploy.mojo -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/declarative/convert.mojo -- --help & pids+=($!); \
-  mojo run -I src -D ASSERT=all examples/declarative/jomo.mojo -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/mgrep.mojo -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/mgit.mojo  -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/demo.mojo  -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/yu.mojo    -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/declarative/search.mojo -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/declarative/deploy.mojo -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/declarative/convert.mojo -- --help & pids+=($!); \
+  mojo run -I . -D ASSERT=all examples/declarative/jomo.mojo -- --help & pids+=($!); \
   rc=0; for p in "${pids[@]}"; do wait "$p" || rc=1; done; exit $rc'
 """
 

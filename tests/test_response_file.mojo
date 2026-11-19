@@ -375,5 +375,37 @@ def test_response_file_preserves_argv0() raises:
     _remove_file(path)
 
 
+def test_response_file_non_ascii_tokens() raises:
+    """Non-ASCII arguments and file lines are not mistaken for prefixed ones."""
+    var path = "/tmp/_argmojo_test_rf_non_ascii.txt"
+    _write_file(path, "日本語\n")
+
+    var command = _make_command()
+    command.add_argument(Argument("a", help="A").positional())
+    command.add_argument(Argument("b", help="B").positional())
+    command.add_argument(Argument("c", help="C").positional())
+
+    var args: List[String] = ["test", "日本.txt", "@" + path, "aé"]
+    var result = command.parse_arguments(args)
+    assert_equal(result.get_string("a"), "日本.txt")
+    assert_equal(result.get_string("b"), "日本語")
+    assert_equal(result.get_string("c"), "aé")
+    _remove_file(path)
+
+
+def test_response_file_escape_through_subcommand() raises:
+    """``@@x`` is unescaped once even when parent and child both enable
+    response files."""
+    var app = _make_command()
+    var sub = Command("sub", "Sub")
+    sub.add_argument(Argument("who", help="Who").positional())
+    sub.response_file_prefix()
+    app.add_subcommand(sub^)
+
+    var args: List[String] = ["test", "sub", "@@user"]
+    var result = app.parse_arguments(args)
+    assert_equal(result.get_subcommand_result().get_string("who"), "@user")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

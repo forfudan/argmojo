@@ -1461,5 +1461,171 @@ def test_allow_hyphen_values_opts_out_of_the_guard() raises:
     assert_equal(result.get_string("cmd"), "--verbose")
 
 
+# ── Non-ASCII tokens and empty input must give clean errors, not aborts ──────
+
+
+def _short_option_command() raises -> Command:
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("output", help="Output").long["output"]().short["o"]()
+    )
+    return command^
+
+
+def _parse_error(command: Command, args: List[String]) -> String:
+    """Returns the error message of a failing parse, or "" if it succeeds."""
+    try:
+        _ = command.parse_arguments(args)
+    except e:
+        return String(e)
+    return String("")
+
+
+def test_non_ascii_short_option_is_unknown() raises:
+    """``-é`` is reported as an unknown option instead of aborting."""
+    var command = _short_option_command()
+    var msg = _parse_error(command, ["test", "-é"])
+    assert_true("Unknown option '-é'" in msg, msg=msg)
+
+
+def test_non_ascii_in_short_cluster_is_unknown() raises:
+    """A non-ASCII character inside a cluster (``-v日``) is unknown, not an abort.
+    """
+    var command = _short_option_command()
+    var msg = _parse_error(command, ["test", "-v日"])
+    assert_true("Unknown option '-日'" in msg, msg=msg)
+
+
+def test_attached_short_value_non_ascii() raises:
+    """An attached short value may contain non-ASCII text (``-o日本.txt``)."""
+    var command = _short_option_command()
+    var result = command.parse_arguments(["test", "-o日本.txt"])
+    assert_equal(result.get_string("output"), "日本.txt")
+
+
+def test_value_starting_with_dash_and_non_ascii() raises:
+    """``--output -é`` takes ``-é`` as the value instead of aborting."""
+    var command = _short_option_command()
+    var result = command.parse_arguments(["test", "--output", "-é"])
+    assert_equal(result.get_string("output"), "-é")
+
+
+def test_empty_argument_list() raises:
+    """An empty list parses like the bare program name."""
+    var command = _short_option_command()
+    var empty = List[String]()
+    var result = command.parse_arguments(empty)
+    assert_false(result.get_flag("verbose"))
+    var known = command.parse_known_arguments(empty)
+    assert_false(known.get_flag("verbose"))
+
+
+# ── `=VALUE` on flags and counts ─────────────────────────────────────────────
+
+
+def _flag_count_command() raises -> Command:
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose")
+        .long["verbose"]()
+        .short["v"]()
+        .flag()
+    )
+    command.add_argument(
+        Argument("quiet", help="Quiet").long["quiet"]().short["q"]().count()
+    )
+    command.add_argument(
+        Argument("color", help="Color").long["color"]().flag().negatable()
+    )
+    return command^
+
+
+def test_flag_equals_boolean_literal() raises:
+    """``--flag=true`` / ``--flag=false`` set the flag to that value."""
+    var command = _flag_count_command()
+    var on = command.parse_arguments(["test", "--verbose=true"])
+    assert_true(on.get_flag("verbose"))
+    var off = command.parse_arguments(["test", "--verbose=false"])
+    assert_false(off.get_flag("verbose"))
+    assert_true(off.was_provided("verbose"))
+
+
+def test_flag_equals_other_value_rejected() raises:
+    """``--flag=maybe`` is an error, not a string stored under the flag."""
+    var command = _flag_count_command()
+    var msg = _parse_error(command, ["test", "--verbose=maybe"])
+    assert_true("is a flag" in msg, msg=msg)
+
+
+def test_count_equals_rejected() raises:
+    """``--count=3`` is an error; a count is set by repeating the option."""
+    var command = _flag_count_command()
+    var msg = _parse_error(command, ["test", "--quiet=3"])
+    assert_true("is a counter" in msg, msg=msg)
+
+
+def test_short_flag_equals_rejected() raises:
+    """``-v=1`` names the flag in its error instead of ``'-='``."""
+    var command = _flag_count_command()
+    var msg = _parse_error(command, ["test", "-v=1"])
+    assert_true("Option '-v' does not take a value" in msg, msg=msg)
+
+
+def test_bare_no_prefix_is_unknown() raises:
+    """``--no-`` with nothing after it negates nothing."""
+    var command = _flag_count_command()
+    var msg = _parse_error(command, ["test", "--no-"])
+    assert_true("Unknown option '--no-'" in msg, msg=msg)
+
+
+def test_switched_off_flag_does_not_imply() raises:
+    """``--no-x`` and ``--x=false`` do not fire ``implies(x, y)``."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="Verbose").long["verbose"]().flag().negatable()
+    )
+    command.add_argument(Argument("debug", help="Debug").long["debug"]().flag())
+    command.implies("verbose", "debug")
+    var on = command.parse_arguments(["test", "--verbose"])
+    assert_true(on.get_flag("debug"))
+    var negated = command.parse_arguments(["test", "--no-verbose"])
+    assert_false(negated.get_flag("debug"))
+    assert_false(negated.was_provided("debug"))
+    var off = command.parse_arguments(["test", "--verbose=false"])
+    assert_false(off.get_flag("debug"))
+
+
+def test_max_without_count_raises() raises:
+    """``.max[]()`` without ``.count()`` raises at registration, not exit(1)."""
+    var command = Command("test", "Test app")
+    var raised = False
+    try:
+        command.add_argument(Argument("x", help="X").long["x"]().max[3]())
+    except e:
+        raised = True
+        assert_true(".count()" in String(e), msg=String(e))
+    assert_true(raised, msg=".max[]() without .count() must raise")
+
+
+def test_max_before_count_is_accepted() raises:
+    """``.max[]()`` may come before ``.count()`` in the chain."""
+    var command = Command("test", "Test app")
+    command.add_argument(
+        Argument("verbose", help="V")
+        .long["verbose"]()
+        .short["v"]()
+        .max[2]()
+        .count()
+    )
+    var result = command.parse_arguments(["test", "-vvvv"])
+    assert_equal(result.get_count("verbose"), 2)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
