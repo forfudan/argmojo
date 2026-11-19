@@ -363,8 +363,6 @@ def main() raises:
 | `description` | `String` | No       | One-line description shown at the top of help.   |
 | `version`     | `String` | No       | Version string printed by `--version`.           |
 
----
-
 #### `parse()` vs `parse_arguments()` <!-- omit from toc -->
 
 - **`command.parse()`** reads the real command-line via `sys.argv()`.
@@ -704,7 +702,7 @@ remaining ones use their default values (if any). If more are provided, an error
 is raised (see
 [Positional Argument Count Validation](#positional-argument-count-validation)).
 
-#### Retrieving: <!-- omit from toc -->
+#### Retrieving <!-- omit from toc -->
 
 ```mojo
 var pattern = result.get_string("pattern")  # "hello"
@@ -787,7 +785,7 @@ myapp --verbose=maybe   # error: myapp: Option '--verbose' is a flag; it takes n
 myapp -v=1              # error: myapp: Option '-v' does not take a value; '=' is not allowed here
 ```
 
-#### Retrieving: (Flags) <!-- omit from toc -->
+#### Retrieving (Flags) <!-- omit from toc -->
 
 ```mojo
 var verbose = result.get_flag("verbose")  # Bool
@@ -876,8 +874,6 @@ command.add_argument(
 myapp --colour red     # OK — colour = "red"
 myapp --color  red     # OK — resolved via alias, colour = "red"
 ```
-
----
 
 **Prefix matching** applies to aliases as well.  When both the
 primary name and an alias share a prefix, they count as one match, so the
@@ -974,7 +970,7 @@ myapp -v --verbose   # verbose = 2  (short + long both increment)
 myapp                # verbose = 0  (default)
 ```
 
-#### Retrieving: (Count) <!-- omit from toc -->
+#### Retrieving (Count) <!-- omit from toc -->
 
 ```mojo
 var level = result.get_count("verbose")  # Int
@@ -1032,8 +1028,6 @@ explicitly set to `False`.
 This replaces the manual pattern of defining two separate flags (`--color` and
 `--no-color`) and a mutually exclusive group.
 
----
-
 #### Defining a negatable flag <!-- omit from toc -->
 
 ```mojo
@@ -1042,8 +1036,6 @@ command.add_argument(
     .long["color"]().flag().negatable()
 )
 ```
-
----
 
 ```shell
 myapp --color       # color = True,  was_provided("color") = True
@@ -1054,8 +1046,6 @@ myapp               # color = False, was_provided("color") = False  (default)
 Use `result.was_provided("color")` to distinguish between "user explicitly
 disabled colour" (`--no-color`) and "user didn't mention colour at all".
 
----
-
 #### Help output <!-- omit from toc -->
 
 Negatable flags are displayed as a paired form:
@@ -1064,11 +1054,9 @@ Negatable flags are displayed as a paired form:
       --color / --no-color  Enable colored output
 ```
 
----
-
 #### Comparison with manual approach <!-- omit from toc -->
 
-#### Before (two flags + mutually exclusive): <!-- omit from toc -->
+##### Before (two flags + mutually exclusive) <!-- omit from toc -->
 
 ```mojo
 command.add_argument(Argument("color", help="Force colored output").long["color"]().flag())
@@ -1077,7 +1065,7 @@ var group: List[String] = ["color", "no-color"]
 command.mutually_exclusive(group^)
 ```
 
-#### After (single negatable flag): <!-- omit from toc -->
+##### After (single negatable flag) <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -1087,8 +1075,6 @@ command.add_argument(
 ```
 
 The negatable approach is simpler and uses only one entry in `ParseResult`.
-
----
 
 | Scenario           | Example                              |
 | ------------------ | ------------------------------------ |
@@ -1115,8 +1101,6 @@ previous value.
 This is a common pattern for options like `--include`, `--tag`, or `--define`
 where more than one value is expected.
 
----
-
 #### Defining an append option <!-- omit from toc -->
 
 ```mojo
@@ -1125,8 +1109,6 @@ command.add_argument(
     .long["tag"]().short["t"]().append()
 )
 ```
-
----
 
 ```shell
 myapp --tag alpha --tag beta --tag gamma
@@ -1148,8 +1130,6 @@ myapp
 All value syntaxes (space-separated, equals, attached short) work with append
 options.
 
----
-
 #### Retrieving <!-- omit from toc -->
 
 ```mojo
@@ -1159,8 +1139,6 @@ for i in range(len(tags)):
 ```
 
 `get_list()` returns an empty `List[String]` when the option was never provided.
-
----
 
 #### Help output (Append) <!-- omit from toc -->
 
@@ -1181,8 +1159,6 @@ command.add_argument(
 ```text
   -I, --include <DIR>...    Include path
 ```
-
----
 
 #### Combining with choices <!-- omit from toc -->
 
@@ -1209,8 +1185,6 @@ token by splitting on a delimiter character. For example,
 This is similar to Go cobra's `StringSliceVar` and Rust clap's
 `value_delimiter`.
 
----
-
 #### Defining a delimiter option <!-- omit from toc -->
 
 ```mojo
@@ -1222,8 +1196,6 @@ command.add_argument(
 
 Calling `.delimiter[","]()` automatically implies `.append()` — you do not need
 to call both.
-
----
 
 ```shell
 myapp --env dev,staging,prod
@@ -1248,8 +1220,6 @@ myapp
 Trailing delimiters are ignored — `--env a,b,` produces `["a", "b"]`, not
 `["a", "b", ""]`.
 
----
-
 #### Retrieving (Delimiter) <!-- omit from toc -->
 
 ```mojo
@@ -1257,8 +1227,6 @@ var envs = result.get_list("env")  # List[String]
 for i in range(len(envs)):
     print("env:", envs[i])
 ```
-
----
 
 #### Combining with choices (Delimiter) <!-- omit from toc -->
 
@@ -1275,8 +1243,6 @@ command.add_argument(
 myapp --env dev,prod       # OK
 myapp --env dev,local      # error: myapp: Invalid value 'local' for argument 'env' (choose from 'dev', 'staging', 'prod')
 ```
-
----
 
 #### Other delimiters <!-- omit from toc -->
 
@@ -1295,8 +1261,6 @@ command.add_argument(
 myapp --path "/usr/lib;/opt/lib;/home/lib"
 # paths = ["/usr/lib", "/opt/lib", "/home/lib"]
 ```
-
----
 
 #### Combining with append <!-- omit from toc -->
 
@@ -1321,8 +1285,6 @@ colour needs three (`--rgb 255 128 0`).
 
 This is similar to Python argparse's `nargs=N` and Rust clap's `num_args`.
 
----
-
 #### Defining a multi-value option <!-- omit from toc -->
 
 Use `.number_of_values[N]()` to specify how many values the option consumes:
@@ -1335,8 +1297,6 @@ command.add_argument(Argument("rgb", help="RGB colour").long["rgb"]().short["c"]
 `.number_of_values[N]()` automatically implies `.append()` — values are
 retrieved with `get_list()`.
 
----
-
 ```shell
 myapp --point 10 20
 # point = ["10", "20"]
@@ -1344,8 +1304,6 @@ myapp --point 10 20
 myapp --rgb 255 128 0
 # rgb = ["255", "128", "0"]
 ```
-
----
 
 #### Repeated occurrences <!-- omit from toc -->
 
@@ -1356,8 +1314,6 @@ myapp --point 1 2 --point 3 4
 # point = ["1", "2", "3", "4"]
 ```
 
----
-
 #### Short options <!-- omit from toc -->
 
 nargs works with short options too:
@@ -1367,8 +1323,6 @@ myapp -c 255 128 0
 # rgb = ["255", "128", "0"]
 ```
 
----
-
 #### Retrieving values <!-- omit from toc -->
 
 ```mojo
@@ -1376,8 +1330,6 @@ var result = command.parse()
 var coords = result.get_list("point")
 # coords[0] = "10", coords[1] = "20"
 ```
-
----
 
 #### Choices validation <!-- omit from toc -->
 
@@ -1394,8 +1346,6 @@ command.add_argument(
 myapp --route north east    # ✓ both valid
 myapp --route north up      # ✗ 'up' is not a valid choice
 ```
-
----
 
 #### Help output (Multi-Value) <!-- omit from toc -->
 
@@ -1414,8 +1364,6 @@ options:
 
 Regular append options show `...` to indicate repeatability, while nargs
 options show exactly N placeholders — making the expected arity clear.
-
----
 
 #### Limitations <!-- omit from toc -->
 
@@ -1444,14 +1392,10 @@ myapp --define CC=gcc -D CXX=g++
 # result.get_map("define") → {"CC": "gcc", "CXX": "g++"}
 ```
 
----
-
 **Equals syntax** is supported — `--define=CC=gcc` works.
 The first `=` is consumed by argmojo's `--long=value` splitting;
 the remaining `CC=gcc` is treated as the raw value and split at the
 next `=` to produce key `CC` and value `gcc`.
-
----
 
 **Value with embedded `=`** — everything after the first `=` in the
 raw value is the value part:
@@ -1460,8 +1404,6 @@ raw value is the value part:
 myapp --define PATH=/usr/bin:/bin
 # key = "PATH", value = "/usr/bin:/bin"
 ```
-
----
 
 **Delimiter** — combine with `.delimiter[","]()` to pass multiple
 key-value pairs in a single token:
@@ -1480,8 +1422,6 @@ myapp --define CC=gcc,CXX=g++
 # result.get_map("define") → {"CC": "gcc", "CXX": "g++"}
 ```
 
----
-
 **Retrieving values** — use `result.get_map(name)` to get a
 `Dict[String, String]` copy of all collected pairs:
 
@@ -1492,8 +1432,6 @@ var m = result.get_map("define")
 
 If the argument was not provided, `get_map()` returns an empty
 dictionary just like `get_list()` returns an empty list.
-
----
 
 **Help placeholder** — map options automatically show
 `<key=value>` instead of the default `<name>` placeholder:
@@ -1540,7 +1478,7 @@ myapp --log-level trace    # error: myapp: Invalid value 'trace' for argument 'l
                             Log level
 ```
 
-#### Combining with short options and attached values: <!-- omit from toc -->
+#### Combining with short options and attached values <!-- omit from toc -->
 
 ```shell
 myapp -ldebug              # (if short name is "l") OK
@@ -1595,16 +1533,12 @@ myapp --port 0       # error: myapp: Value 0 for '--port' is out of range [1, 65
 myapp --port 70000   # error: myapp: Value 70000 for '--port' is out of range [1, 65535]
 ```
 
----
-
 **Boundary values** — both min and max are inclusive:
 
 ```shell
 myapp --port 1       # OK
 myapp --port 65535   # OK
 ```
-
----
 
 **Append / list values** — when combined with `.append()` or
 `.delimiter[","]()`, every collected value is validated individually:
@@ -1647,8 +1581,6 @@ The warning looks like:
 warning: '--level' value 20 is out of range [0, 9], clamped to 9
 ```
 
----
-
 **With append mode** — each collected value is clamped individually:
 
 ```mojo
@@ -1663,8 +1595,6 @@ myapp --port 50 --port 200 --port 0
 # warning: '--port' value 0 is out of range [1, 100], clamped to 1
 # Result: ports = [50, 100, 1]
 ```
-
----
 
 **Without `.clamp()`** — the existing behaviour is unchanged; an out-of-range
 value raises an error:
@@ -1690,8 +1620,6 @@ If the user supplies two or more arguments from the same group, parsing fails.
 This is useful when two options are logically contradictory, such as `--json` vs
 `--yaml` (you can only pick one output format), or `--color` vs `--no-color`.
 
----
-
 #### Defining a group <!-- omit from toc -->
 
 ```mojo
@@ -1703,8 +1631,6 @@ var group: List[String] = ["json", "yaml", "csv"]
 command.mutually_exclusive(group^)
 ```
 
----
-
 ```shell
 myapp --json           # OK — only one from the group
 myapp --yaml           # OK
@@ -1712,8 +1638,6 @@ myapp                  # OK — none from the group is also fine
 myapp --json --yaml    # error: myapp: Arguments are mutually exclusive: '--json', '--yaml'
 myapp --json --csv     # error: myapp: Arguments are mutually exclusive: '--json', '--csv'
 ```
-
----
 
 #### Works with value-taking options too <!-- omit from toc -->
 
@@ -1733,8 +1657,6 @@ myapp --stdin                  # OK
 myapp --input data.csv --stdin # error: myapp: Arguments are mutually exclusive: '--input', '--stdin'
 ```
 
----
-
 #### Multiple groups <!-- omit from toc -->
 
 You can register more than one exclusive group on the same command:
@@ -1749,8 +1671,6 @@ command.mutually_exclusive(color_group^)
 
 Each group is validated independently — using `--json` and `--no-color` together
 is fine, because they belong to different groups.
-
----
 
 | Scenario                   | Example                       |
 | -------------------------- | ----------------------------- |
@@ -1773,8 +1693,6 @@ source.
 This mirrors Go cobra's `MarkFlagsOneRequired` and Rust clap's
 `ArgGroup::required`.
 
----
-
 #### Defining a one-required group <!-- omit from toc -->
 
 ```mojo
@@ -1783,8 +1701,6 @@ command.add_argument(Argument("yaml", help="Output as YAML").long["yaml"]().flag
 var format_group: List[String] = ["json", "yaml"]
 command.one_required(format_group^)
 ```
-
----
 
 ```shell
 myapp --json               # OK (one provided)
@@ -1796,8 +1712,6 @@ myapp --json --yaml        # OK (at least one is satisfied — both is fine for 
 Note that `one_required` only checks that **at least one** is present. It does
 not prevent multiple from being used. To enforce **exactly one**, combine it
 with `mutually_exclusive`:
-
----
 
 #### Exactly-one pattern (one-required + mutually exclusive) <!-- omit from toc -->
 
@@ -1818,8 +1732,6 @@ myapp                      # error: myapp: At least one of the following argumen
 myapp --json --yaml        # error: myapp: Arguments are mutually exclusive: '--json', '--yaml'
 ```
 
----
-
 #### Works with value-taking options <!-- omit from toc -->
 
 ```mojo
@@ -1833,8 +1745,6 @@ myapp --input data.txt     # OK
 myapp --stdin              # OK
 myapp                      # error: myapp: At least one of the following arguments is required: '--input', '--stdin'
 ```
-
----
 
 #### Multiple one-required groups <!-- omit from toc -->
 
@@ -1859,8 +1769,6 @@ This is useful for sets of arguments that only make sense as a group — for
 example, authentication credentials (`--username` and `--password`), or network
 settings (`--host`, `--port`, `--protocol`).
 
----
-
 #### Defining a group (Required-Together) <!-- omit from toc -->
 
 ```mojo
@@ -1871,16 +1779,12 @@ var group: List[String] = ["username", "password"]
 command.required_together(group^)
 ```
 
----
-
 ```shell
 myapp --username admin --password secret   # OK — both provided
 myapp                                      # OK — neither provided
 myapp --username admin                     # error: myapp: Arguments required together: '--password' required when '--username' is provided
 myapp --password secret                    # error: myapp: Arguments required together: '--username' required when '--password' is provided
 ```
-
----
 
 #### Three or more arguments <!-- omit from toc -->
 
@@ -1900,8 +1804,6 @@ myapp --host localhost --port 8080 --proto https   # OK
 myapp --host localhost                             # error: myapp: Arguments required together: '--port', '--proto' required when '--host' is provided
 ```
 
----
-
 #### Combining with mutually exclusive groups <!-- omit from toc -->
 
 Required-together and mutually exclusive can coexist on the same command:
@@ -1915,8 +1817,6 @@ command.required_together(auth^)
 var excl: List[String] = ["json", "yaml"]
 command.mutually_exclusive(excl^)
 ```
-
----
 
 | Scenario            | Example                                 |
 | ------------------- | --------------------------------------- |
@@ -1933,8 +1833,6 @@ command.mutually_exclusive(excl^)
 Sometimes an argument should only be required when another argument is present.
 For example, `--output` might only make sense when `--save` is also provided.
 
----
-
 ```mojo
 command.add_argument(Argument("save", help="Save results").long["save"]().flag())
 command.add_argument(Argument("output", help="Output file").long["output"]().short["o"]())
@@ -1950,8 +1848,6 @@ myapp --output file.txt         # OK — condition not triggered
 myapp                           # OK — neither present
 ```
 
----
-
 #### Multiple conditional rules <!-- omit from toc -->
 
 You can declare multiple conditional requirements on the same command:
@@ -1963,8 +1859,6 @@ command.required_if("format", "compress")   # --format required when --compress
 
 Each rule is checked independently after parsing.
 
----
-
 #### Error messages <!-- omit from toc -->
 
 Error messages use `--long` display names when available:
@@ -1972,8 +1866,6 @@ Error messages use `--long` display names when available:
 ```console
 error: myapp: Argument '--output' is required when '--save' is provided
 ```
-
----
 
 | Scenario                    | Example                               |
 | --------------------------- | ------------------------------------- |
@@ -1992,8 +1884,6 @@ Use `implies()` to declare that setting one argument automatically sets another.
 This is useful when one mode logically entails another — for example, debug mode
 should always enable verbose output.
 
----
-
 ```mojo
 command.add_argument(Argument("debug", help="Debug mode").long["debug"]().flag())
 command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
@@ -2009,8 +1899,6 @@ myapp --verbose        # OK — --debug is NOT set (one-directional)
 myapp                  # OK — neither set
 ```
 
----
-
 #### Chained implications <!-- omit from toc -->
 
 Implications can be chained. If A implies B and B implies C, then setting A will
@@ -2022,8 +1910,6 @@ command.implies("verbose", "log")
 # --debug → --verbose → --log (all three are set)
 ```
 
----
-
 #### Multiple implications from one trigger <!-- omit from toc -->
 
 A single argument can imply multiple targets:
@@ -2033,8 +1919,6 @@ command.implies("debug", "verbose")
 command.implies("debug", "log")
 # --debug sets both --verbose and --log
 ```
-
----
 
 #### Works with count arguments <!-- omit from toc -->
 
@@ -2048,8 +1932,6 @@ command.implies("debug", "verbose")
 # --debug -vvv   → verbose count = 3 (explicit value kept)
 ```
 
----
-
 #### Cycle detection <!-- omit from toc -->
 
 Circular implications are detected when the rule is added (at
@@ -2062,8 +1944,6 @@ command.implies("b", "a")   # raises: Implication cycle detected: adding 'b' imp
 ```
 
 This also catches indirect cycles (A → B → C → A).
-
----
 
 #### Integration with other constraints <!-- omit from toc -->
 
@@ -2083,8 +1963,6 @@ var excl: List[String] = ["verbose", "quiet"]
 command.mutually_exclusive(excl^)
 # --debug --quiet fails: --debug implies --verbose, which conflicts with --quiet
 ```
-
----
 
 | Scenario                  | Example                                                        |
 | ------------------------- | -------------------------------------------------------------- |
@@ -2246,8 +2124,6 @@ app search "fn main" --max-depth 3
 app init my-project
 ```
 
----
-
 **Root-level flags before the subcommand token** are parsed as part of the root
 command:
 
@@ -2255,8 +2131,6 @@ command:
 app --verbose search "fn main"
 # verbose = True (root flag), subcommand = "search"
 ```
-
----
 
 **Help output** — when subcommands are registered, the root help automatically
 includes a **Commands** section and the usage line shows `<COMMAND>`:
@@ -2277,8 +2151,6 @@ commands:
   search  Search for patterns
   init    Initialise a new project
 ```
-
----
 
 **Child help** shows the full command path in the usage line:
 
@@ -2304,8 +2176,6 @@ options:
 tips:
   Use '--' to pass values starting with '-' as positionals:  app search -- -my-value
 ```
-
----
 
 **The `--` stop marker** prevents subcommand dispatch. After `--`, all tokens
 become positional arguments for the root command:
@@ -2354,8 +2224,6 @@ available in every subcommand. The user can place it either **before** or
 This is inspired by Go cobra's `PersistentFlags()` and is useful for
 cross-cutting concerns like verbosity, output format, or colour control.
 
----
-
 #### Defining persistent flags <!-- omit from toc -->
 
 ```mojo
@@ -2379,8 +2247,6 @@ search.add_argument(Argument("pattern", help="Pattern").positional().required())
 app.add_subcommand(search^)
 ```
 
----
-
 #### Both positions work <!-- omit from toc -->
 
 ```shell
@@ -2388,8 +2254,6 @@ app --verbose search "fn main"     # flag BEFORE subcommand
 app search --verbose "fn main"     # flag AFTER subcommand  (same result)
 app -v search -o json "fn main"    # short forms work too
 ```
-
----
 
 **Bidirectional sync** — persistent flag values are synchronised between root
 and child results, regardless of where the user places them:
@@ -2402,8 +2266,6 @@ var sub = result.get_subcommand_result()
 print(result.get_flag("verbose"))   # True
 print(sub.get_flag("verbose"))      # True
 ```
-
----
 
 **Help output** — persistent flags appear under a separate **Global Options**
 heading in both root and child help:
@@ -2437,8 +2299,6 @@ tips:
   Use '--' to pass values starting with '-' as positionals:  app search -- -my-value
 ```
 
----
-
 **Conflict detection** — if a persistent flag on the parent has the same long or
 short name as a local flag on a child, `add_subcommand()` raises an error at
 registration time:
@@ -2456,8 +2316,6 @@ app.add_subcommand(sub^)  # raises: Persistent flag '--verbose' on 'app'
 
 Non-persistent root flags with the same name as child flags do **not** conflict
 — they are independent and scoped to their own command.
-
----
 
 **All argument types** can be made persistent — flags, count flags, value
 options, choices, etc.:
@@ -2484,8 +2342,6 @@ app help           # shows root help (same as: app --help)
 
 The auto-registered `help` subcommand is excluded from the **Commands** section
 in help output to avoid clutter.
-
----
 
 #### Disabling the help subcommand <!-- omit from toc -->
 
@@ -2639,8 +2495,6 @@ design your CLI with a clear separation between subcommands and positionals.
 Allowing both on the same command can lead to confusing user experiences and
 error messages.
 
----
-
 **Error path prefix** — errors inside child parsing include the full command
 path for clarity:
 
@@ -2697,8 +2551,6 @@ No `if/elif` boilerplate. This is the pattern
 pioneered: every command carries its own handler, and `Execute()` walks the tree
 automatically.
 
----
-
 #### Step 1 — Define handler functions <!-- omit from toc -->
 
 Each handler is a free function with signature `def (ParseResult) raises`. It
@@ -2742,8 +2594,6 @@ def main() raises:
 Running `myapp search hello` calls `handle_search` with `pattern="hello"`.
 Running `myapp init myproject` calls `handle_init` with `name="myproject"`.
 
----
-
 #### Method reference <!-- omit from toc -->
 
 | Method                              | Description                                                                                                            |
@@ -2771,8 +2621,6 @@ instead of reading `sys.argv()`. Unlike `execute()`, parse errors **raise**
 instead of calling `exit(2)`, making it suitable for tests that need to catch
 and inspect errors. Production code should always call `execute()`.
 
----
-
 #### How dispatch walks the tree <!-- omit from toc -->
 
 Given `app remote add origin`, the internal dispatch chain is:
@@ -2794,8 +2642,6 @@ At each level:
   raising — matching Cobra's behaviour.
 - **No handler, no subcommands?** Raise
   `Error("No run function registered for command '…'")`.
-
----
 
 #### Nested subcommands <!-- omit from toc -->
 
@@ -2826,8 +2672,6 @@ The `remote` command does not need a handler — it exists only to group `add`,
 `remove`, and other child commands. If a user types just `app remote` with no
 child subcommand, the help for `remote` is shown automatically (matching Cobra's
 behaviour for grouping commands).
-
----
 
 #### Testing with `_execute_with_arguments()` <!-- omit from toc -->
 
@@ -2880,7 +2724,7 @@ command.add_argument(
 )
 ```
 
-#### Help output (before): <!-- omit from toc -->
+#### Help output (before) <!-- omit from toc -->
 
 ```console
   -o, --output <output>     Output file path
@@ -2888,7 +2732,7 @@ command.add_argument(
                             Maximum directory depth
 ```
 
-#### Help output (after `.value_name()` — wrapped by default): <!-- omit from toc -->
+#### Help output (after `.value_name()` — wrapped by default) <!-- omit from toc -->
 
 ```console
   -o, --output <FILE>       Output file path
@@ -2928,7 +2772,7 @@ myapp --debug-index    # Works — flag is set to True
 myapp --help           # --debug-index does NOT appear in the help text
 ```
 
-#### Typical use cases: <!-- omit from toc -->
+#### Typical use cases <!-- omit from toc -->
 
 - Internal debugging flags that end users shouldn't need.
 - Features that are experimental or not yet stable.
@@ -2954,8 +2798,6 @@ myapp --format-old csv
 # parsing continues: format_old = "csv"
 ```
 
----
-
 **Short options** also trigger the warning:
 
 ```mojo
@@ -2970,8 +2812,6 @@ command.add_argument(
 myapp -C
 # stderr: warning: '-C' is deprecated: Will be removed in 2.0
 ```
-
----
 
 **Help display** — deprecated arguments show the deprecation
 message in the help text:
@@ -3013,7 +2853,7 @@ command.add_argument(
 )
 ```
 
-#### Help output: <!-- omit from toc -->
+#### Help output <!-- omit from toc -->
 
 ```console
 options:
@@ -3031,7 +2871,7 @@ Output:
   -o, --output <FILE>  Output file path
 ```
 
-#### Key behaviours: <!-- omit from toc -->
+#### Key behaviours <!-- omit from toc -->
 
 - **Ungrouped arguments** remain under "Options:".
 - **Group headings** appear in first-appearance order after "Options:".
@@ -3053,7 +2893,7 @@ myapp -h
 myapp '-?'     # quote needed: ? is a shell glob wildcard
 ```
 
-#### Example output: <!-- omit from toc -->
+#### Example output <!-- omit from toc -->
 
 ```console
 A CJK-aware text search tool
@@ -3090,8 +2930,6 @@ environment variable when it is set to a number, otherwise from the terminal
 itself; it is clamped to 40–120 columns, and 80 is used when neither is
 available (for example when output is piped).
 
----
-
 #### Coloured Output <!-- omit from toc -->
 
 Help output uses **ANSI colour codes** by default to enhance readability.
@@ -3115,8 +2953,6 @@ The `_generate_help()` method accepts an optional `color` parameter:
 var help_colored = command._generate_help()              # color=True (default)
 var help_plain   = command._generate_help(color=False)   # no ANSI codes
 ```
-
----
 
 #### Custom Colours <!-- omit from toc -->
 
@@ -3168,7 +3004,7 @@ Padding calculation is always based on the **plain-text width** (without escape
 codes), so columns remain correctly aligned regardless of whether colour is
 enabled.
 
-#### What controls the output: <!-- omit from toc -->
+#### What controls the output <!-- omit from toc -->
 
 | Builder method       | Effect on help                                        |
 | -------------------- | ----------------------------------------------------- |
@@ -3179,8 +3015,6 @@ enabled.
 | `.required()`        | Positional args show as `<name>` instead of `[name]`. |
 
 After printing help, the program exits cleanly with exit code 0.
-
----
 
 #### `NO_COLOR` Environment Variable <!-- omit from toc -->
 
@@ -3201,8 +3035,6 @@ myapp --help               # coloured output (NO_COLOR is unset)
 This takes priority over the `color=True` default but does **not** override an
 explicit `_generate_help(color=False)` call (which already produces plain output
 regardless).
-
----
 
 #### Show Help When No Arguments Provided <!-- omit from toc -->
 
@@ -3257,16 +3089,12 @@ tips:
   Use quotes if you use spaces in expressions.
 ```
 
----
-
 **Smart default tip** — when positional arguments are defined, ArgMojo
 automatically adds a built-in tip explaining the `--` separator. The example in
 this default tip adapts based on whether negative numbers are auto-detected: if
 they are, it uses `-my-value`; otherwise, it uses `-10.18`.
 
 User-defined tips appear **below** the built-in tip.
-
----
 
 Multiple tips can be added; each is displayed on its own line under the
 `tips:` heading.
@@ -3280,7 +3108,7 @@ myapp --version
 myapp -V
 ```
 
-#### Output: <!-- omit from toc -->
+#### Output <!-- omit from toc -->
 
 ```console
 myapp 1.0.0
@@ -3362,7 +3190,7 @@ See the
 [Unicode East Asian Width specification](https://www.unicode.org/reports/tr11/)
 for details on CJK character ranges and properties.
 
-#### Example — mixed ASCII and CJK options: <!-- omit from toc -->
+#### Example — mixed ASCII and CJK options <!-- omit from toc -->
 
 ```mojo
 var command = Command("工具", "一個命令行工具")
@@ -3384,7 +3212,7 @@ options:
                             Generate shell completion (bash, zsh, fish)
 ```
 
-#### Example — CJK subcommands: <!-- omit from toc -->
+#### Example — CJK subcommands <!-- omit from toc -->
 
 ```mojo
 var app = Command("工具", "一個命令行工具")
@@ -3418,7 +3246,7 @@ printing a coloured warning to stderr:
 warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
 ```
 
-#### What gets corrected: <!-- omit from toc -->
+#### What gets corrected <!-- omit from toc -->
 
 - Fullwidth ASCII characters (`U+FF01`–`U+FF5E`) are converted to their
   halfwidth equivalents (`U+0021`–`U+007E`) by subtracting `0xFEE0`.
@@ -3431,7 +3259,7 @@ warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-c
   trigger a warning. Positional values are also converted but no warning is
   emitted.
 
-#### Example — fullwidth flag: <!-- omit from toc -->
+#### Example — fullwidth flag <!-- omit from toc -->
 
 ```mojo
 var app = Command("myapp", "My CLI")
@@ -3441,7 +3269,7 @@ var result = app.parse_arguments(["myapp", "－－ｖｅｒｂｏｓｅ"])
 # stderr: warning: detected full-width characters in '－－ｖｅｒｂｏｓｅ', auto-corrected to '--verbose'
 ```
 
-#### Example — fullwidth equals syntax: <!-- omit from toc -->
+#### Example — fullwidth equals syntax <!-- omit from toc -->
 
 ```mojo
 var app = Command("myapp", "My CLI")
@@ -3450,7 +3278,7 @@ var result = app.parse_arguments(["myapp", "－－ｏｕｔｐｕｔ＝ｆｉｌ
 # result.get_string("output") == "file.txt"
 ```
 
-#### Disabling auto-correction: <!-- omit from toc -->
+#### Disabling auto-correction <!-- omit from toc -->
 
 Call `disable_fullwidth_correction()` if you prefer strict parsing:
 
@@ -3460,7 +3288,7 @@ app.disable_fullwidth_correction()
 # Now: fullwidth characters are NOT corrected
 ```
 
-#### Whitespace handling: <!-- omit from toc -->
+#### Whitespace handling <!-- omit from toc -->
 
 By default, only fullwidth space (`U+3000`) triggers token splitting. Other
 Unicode whitespace characters (for example, EM SPACE `U+2003`) are treated as
@@ -3479,8 +3307,6 @@ problem when you need to pass **negative numbers** (like `-10.18`, `-3.14`,
 
 ArgMojo provides four complementary approaches to handle this, inspired by
 Python's argparse.
-
----
 
 ### Approach 1: Auto-detect (zero configuration) <!-- omit from toc -->
 
@@ -3507,8 +3333,6 @@ The parser sees a numeric pattern and skips the option-dispatch path.
 Recognised patterns: `-N`, `-N.N`, `-.N`, `-NeX`, `-N.NeX`, `-Ne+X`, `-Ne-X`
 (where `N` and `X` are digit sequences).
 
----
-
 ### Approach 2: The `--` separator (always works) <!-- omit from toc -->
 
 The `--` stop marker forces everything after it to be treated as positional.
@@ -3527,8 +3351,6 @@ reminding users about this:
 tips:
   Use '--' to pass values starting with '-' as positionals:  calc -- -my-value
 ```
-
----
 
 ### Approach 3: `allow_negative_numbers()` (explicit opt-in) <!-- omit from toc -->
 
@@ -3554,8 +3376,6 @@ calc -3               # operand = "-3" (NOT the -3 flag!)
 > **Warning:** When `allow_negative_numbers()` is active, even a bare `-3` that
 > exactly matches a registered short option will be consumed as a positional
 > number. Use the long form (`--triple`) to set the flag.
-
----
 
 ### Approach 4: `allow_negative_expressions()` (expressions and arbitrary tokens) <!-- omit from toc -->
 
@@ -3593,8 +3413,6 @@ Rules:
 > **Note:** `allow_negative_expressions()` is a superset of
 > `allow_negative_numbers()`. You don't need to call both.
 
----
-
 ### When to use which approach <!-- omit from toc -->
 
 | Scenario                                                                  | Recommended approach                     |
@@ -3605,8 +3423,6 @@ Rules:
 | One specific argument needs to accept `-` (stdin) or dash-prefixed values | `allow_hyphen_values()` on that argument |
 | You need to pass arbitrary dash-prefixed strings (not just numbers)       | `--` separator                           |
 | Legacy or defensive: works in all cases                                   | `--` separator                           |
-
----
 
 ### `allow_negative_expressions()` vs `allow_hyphen_values()` — how do they relate? <!-- omit from toc -->
 
@@ -3640,8 +3456,6 @@ Choose `allow_hyphen_values()` when:
 - You need the bare `-` (stdin/stdout convention).
 - The argument is an **option** (`--file`), not a positional.
 
----
-
 ### What is NOT a number <!-- omit from toc -->
 
 Tokens like `-1abc`, `-e5`, or `-1-2` are not valid numeric patterns. Without
@@ -3664,8 +3478,6 @@ matches exactly one registered option, it is automatically resolved.
 
 This mirrors Python argparse's `allow_abbrev` behaviour.
 
----
-
 ```mojo
 command.add_argument(Argument("verbose", help="Verbose output").long["verbose"]().short["v"]().flag())
 command.add_argument(Argument("output",  help="Output file").long["output"]().short["o"]())
@@ -3676,8 +3488,6 @@ myapp --verb               # resolves to --verbose
 myapp --out file.txt       # resolves to --output file.txt
 myapp --out=file.txt       # resolves to --output=file.txt
 ```
-
----
 
 #### Ambiguous prefixes <!-- omit from toc -->
 
@@ -3692,8 +3502,6 @@ command.add_argument(Argument("version-info", help="Version info").long["version
 myapp --ver
 # error: myapp: Ambiguous option '--ver' could match: '--verbose', '--version-info'
 ```
-
----
 
 #### Exact match always wins <!-- omit from toc -->
 
@@ -3710,8 +3518,6 @@ myapp --color       # exact match → color (not ambiguous with colorize)
 myapp --col         # ambiguous → error
 ```
 
----
-
 #### Works with negatable flags <!-- omit from toc -->
 
 Prefix matching also applies to `--no-X` negation:
@@ -3719,8 +3525,6 @@ Prefix matching also applies to `--no-X` negation:
 ```shell
 myapp --no-col      # resolves to --no-color (if color is the only negatable match)
 ```
-
----
 
 This feature is always enabled — no configuration needed. It is most useful for
 long option names where typing the full name is cumbersome:
@@ -3801,7 +3605,7 @@ runner myapp --verbose -x --output=foo.txt
 The remainder positional automatically implies `.positional()` and `.append()`.
 In help output, it is displayed as `args...` (with trailing ellipsis).
 
-#### Rules: <!-- omit from toc -->
+#### Rules <!-- omit from toc -->
 
 - `.remainder()` must not have `.long()` or `.short()` — it is positional-only.
 - At most **one** remainder positional is allowed per command.
@@ -3897,7 +3701,7 @@ command.add_argument(
 )
 ```
 
-#### Behaviour: <!-- omit from toc -->
+#### Behaviour <!-- omit from toc -->
 
 | Syntax             | Value                                              |
 | ------------------ | -------------------------------------------------- |
@@ -3907,7 +3711,7 @@ command.add_argument(
 | `-c`               | `"gzip"` (default-if-no-value)                     |
 | `-cbzip2`          | `"bzip2"` (attached)                               |
 
-#### Combined with `.default()`: <!-- omit from toc -->
+#### Combined with `.default()` <!-- omit from toc -->
 
 ```mojo
 command.add_argument(
@@ -3959,7 +3763,7 @@ command.add_argument(
 )
 ```
 
-#### Behaviour: (Require-Equals) <!-- omit from toc -->
+#### Behaviour (Require-Equals) <!-- omit from toc -->
 
 | Syntax              | Result                                           |
 | ------------------- | ------------------------------------------------ |
@@ -4672,9 +4476,7 @@ work). An error is raised for unrecognised shell names.
 After generating a script, users `source` it or place it in a shell-specific
 directory.
 
----
-
-#### Bash: <!-- omit from toc -->
+#### Bash <!-- omit from toc -->
 
 ```bash
 # One-shot (current session only)
@@ -4685,9 +4487,7 @@ myapp --completions bash > ~/.bash_completion.d/myapp
 # Then add to ~/.bashrc:  source ~/.bash_completion.d/myapp
 ```
 
----
-
-#### Zsh: <!-- omit from toc -->
+#### Zsh <!-- omit from toc -->
 
 ```zsh
 # Place in your fpath (file must be named _myapp)
@@ -4698,9 +4498,7 @@ myapp --completions zsh > ~/.zsh/completions/_myapp
 #   autoload -Uz compinit && compinit
 ```
 
----
-
-#### Fish: <!-- omit from toc -->
+#### Fish <!-- omit from toc -->
 
 ```shell
 # Fish auto-loads from this directory
