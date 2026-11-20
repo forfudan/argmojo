@@ -39,6 +39,7 @@ This release is about stability: ordinary input no longer crashes the program, i
 1. The user manual is published as a book at [argmojo.mojo-lang.com](https://argmojo.mojo-lang.com/), built from `docs/user_manual.md` by [argmojo-docs](https://github.com/forfudan/argmojo-docs). It replaces the copy in the GitHub wiki.
 2. The user manual describes the new flag and count behaviour, the help width, and the password and closed-stdin handling, and shows the real unknown-subcommand error.
 3. The planning documents are brought up to date: file tree, FFI conventions, exit codes, parsing order, and the subcommand signature. Declarative `run()` dispatch and custom value types are no longer listed as blocked by Mojo, since both work today.
+4. The user manual is checked against the code: wrong examples, signatures and tables are fixed, every help, warning and error transcript is regenerated from real output, and each page opens with a sentence and shows the imports it needs.
 
 ## 20261022 (v0.10.0)
 
